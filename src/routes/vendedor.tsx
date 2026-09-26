@@ -274,7 +274,11 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
             const path = `${storeId}/${crypto.randomUUID()}-${file.name}`;
             const { error: upErr } = await supabase.storage.from("product-images").upload(path, file);
             if (upErr) throw upErr;
-            imageUrl = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+            const { data: signed, error: signErr } = await supabase.storage
+              .from("product-images")
+              .createSignedUrl(path, 60 * 60 * 24 * 365);
+            if (signErr) throw signErr;
+            imageUrl = signed.signedUrl;
           }
           const { error } = await supabase.from("products").insert({
             store_id: storeId,
