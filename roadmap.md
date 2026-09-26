@@ -7,4 +7,4 @@
 - [x] Seller Center: saldo, vendas do dia, cadastro de produto
 - [x] Painel Admin: comissão e aprovação de lojas
 - [x] Login (e-mail/senha + Google)
-- [ ] Usar a logo enviada pelo usuário no header e no favicon
+- [x] Usar a logo enviada pelo usuário no header, rodapé e ícone da aba
