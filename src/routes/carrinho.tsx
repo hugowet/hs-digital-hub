@@ -74,8 +74,9 @@ function CartPage() {
       "Pagamento: Pix (combinar chave e envio).",
     ].filter(Boolean);
 
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join("\n"))}`;
-    window.open(url, "_blank", "noopener");
+    const encodedMessage = encodeURIComponent(lines.join("\n"));
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+    window.location.assign(whatsappUrl);
     toast.success("Pedido enviado para o WhatsApp!", {
       description: "Finalize o pagamento via Pix direto com a nossa equipe.",
     });
