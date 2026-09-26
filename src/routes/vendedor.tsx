@@ -223,7 +223,7 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
         const { error } = await supabase
           .from("stores")
           .insert({ owner_id: userId, name, slug: `${slug}-${Date.now().toString(36)}`, description });
-        if (error) return toast.error(error.message);
+        if (error) { toast.error(error.message); return; }
         toast.success("Loja criada! Aguarde a aprovação do time HS Digital.");
         onDone();
       }}

@@ -123,7 +123,7 @@ function AdminPage() {
                       .from("platform_settings")
                       .update({ commission_rate: Number(rate) / 100, updated_at: new Date().toISOString() })
                       .eq("id", true);
-                    if (error) return toast.error(error.message);
+                    if (error) { toast.error(error.message); return; }
                     toast.success("Comissão atualizada");
                     qc.invalidateQueries({ queryKey: ["platform-settings"] });
                     qc.invalidateQueries({ queryKey: ["commission-rate"] });
@@ -156,7 +156,7 @@ function AdminPage() {
                             .from("stores")
                             .update({ status: "approved" })
                             .eq("id", s.id);
-                          if (error) return toast.error(error.message);
+                          if (error) { toast.error(error.message); return; }
                           toast.success("Loja aprovada");
                           qc.invalidateQueries({ queryKey: ["all-stores"] });
                         }}
