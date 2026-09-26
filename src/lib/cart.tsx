@@ -83,7 +83,10 @@ export function useCart() {
 
 /** Agrupa o carrinho por loja (carrinho multi-loja estilo Shopee). */
 export function groupByStore(items: CartItem[]) {
-  const map = new Map<string, { storeId: string; storeName: string; items: CartItem[]; subtotal: number }>();
+  const map = new Map<
+    string,
+    { storeId: string; storeName: string; items: CartItem[]; subtotal: number }
+  >();
   for (const item of items) {
     const group = map.get(item.storeId) ?? {
       storeId: item.storeId,

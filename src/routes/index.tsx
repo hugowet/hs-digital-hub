@@ -128,7 +128,11 @@ function Home() {
         <section className="mt-4 grid gap-3 sm:grid-cols-3">
           {[
             { icon: Truck, title: "Frete grátis", text: "Em milhares de produtos selecionados" },
-            { icon: ShieldCheck, title: "Pedido conferido", text: "Resumo completo antes do pagamento" },
+            {
+              icon: ShieldCheck,
+              title: "Pedido conferido",
+              text: "Resumo completo antes do pagamento",
+            },
             { icon: Headphones, title: "Suporte 7 dias", text: "Atendimento rápido de verdade" },
           ].map((item) => (
             <div key={item.title} className="surface-card flex items-center gap-3 p-4">
@@ -160,7 +164,9 @@ function Home() {
                 >
                   <span
                     className={`grid h-12 w-12 place-items-center rounded-full ${
-                      active ? "primary-gradient text-primary-foreground" : "bg-secondary text-secondary-foreground"
+                      active
+                        ? "primary-gradient text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground"
                     }`}
                   >
                     <Icon className="h-5 w-5" />

@@ -20,7 +20,10 @@ export const Route = createFileRoute("/vendedor")({
       { title: "Seller Center · HS Digital" },
       { name: "description", content: "Gerencie sua loja, produtos e vendas na HS Digital." },
       { property: "og:title", content: "Seller Center · HS Digital" },
-      { property: "og:description", content: "Painel do vendedor da HS Digital: saldo, vendas e produtos." },
+      {
+        property: "og:description",
+        content: "Painel do vendedor da HS Digital: saldo, vendas e produtos.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -91,7 +94,11 @@ function SellerCenter() {
   });
 
   if (userId === undefined) {
-    return <Shell><p className="text-sm text-muted-foreground">Carregando…</p></Shell>;
+    return (
+      <Shell>
+        <p className="text-sm text-muted-foreground">Carregando…</p>
+      </Shell>
+    );
   }
 
   if (!userId) {
@@ -113,7 +120,10 @@ function SellerCenter() {
   if (!store) {
     return (
       <Shell>
-        <CreateStoreForm userId={userId} onDone={() => qc.invalidateQueries({ queryKey: ["my-store"] })} />
+        <CreateStoreForm
+          userId={userId}
+          onDone={() => qc.invalidateQueries({ queryKey: ["my-store"] })}
+        />
       </Shell>
     );
   }
@@ -150,7 +160,12 @@ function SellerCenter() {
             {products.map((p) => (
               <li key={p.id} className="flex items-center gap-3 py-3">
                 {p.image_url ? (
-                  <img src={p.image_url} alt={p.title} loading="lazy" className="h-12 w-12 rounded-lg object-cover" />
+                  <img
+                    src={p.image_url}
+                    alt={p.title}
+                    loading="lazy"
+                    className="h-12 w-12 rounded-lg object-cover"
+                  />
                 ) : (
                   <span className="grid h-12 w-12 place-items-center rounded-lg bg-muted">
                     <Package className="h-5 w-5 text-muted-foreground" />
@@ -223,15 +238,16 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
           .replace(/[\u0300-\u036f]/g, "")
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "");
-        const { error } = await supabase
-          .from("stores")
-          .insert({
-            owner_id: userId,
-            name: name.trim(),
-            slug: `${slug}-${Date.now().toString(36)}`,
-            description: description.trim(),
-          });
-        if (error) { toast.error(error.message); return; }
+        const { error } = await supabase.from("stores").insert({
+          owner_id: userId,
+          name: name.trim(),
+          slug: `${slug}-${Date.now().toString(36)}`,
+          description: description.trim(),
+        });
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
         toast.success("Loja criada! Aguarde a aprovação do time HS Digital.");
         onDone();
       }}
@@ -292,7 +308,9 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
               throw new Error("Envie uma imagem de até 10 MB.");
             }
             const path = `${storeId}/${crypto.randomUUID()}-${file.name}`;
-            const { error: upErr } = await supabase.storage.from("product-images").upload(path, file);
+            const { error: upErr } = await supabase.storage
+              .from("product-images")
+              .upload(path, file);
             if (upErr) throw upErr;
             const { data: signed, error: signErr } = await supabase.storage
               .from("product-images")
