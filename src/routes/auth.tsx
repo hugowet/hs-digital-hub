@@ -104,81 +104,82 @@ function AuthPage() {
               depois entre na sua conta.
             </div>
           ) : (
-
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            {mode === "signup" && (
-              <>
-                <div>
-                  <Label htmlFor="full-name">Nome completo</Label>
-                  <Input
-                    id="full-name"
-                    required
-                    minLength={2}
-                    maxLength={100}
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-                <fieldset>
-                  <legend className="text-sm font-medium">Quero usar a HS Digital como</legend>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    {([
-                      ["buyer", "Comprador"],
-                      ["seller", "Vendedor"],
-                    ] as const).map(([value, label]) => (
-                      <label
-                        key={value}
-                        className={`cursor-pointer rounded-md border p-3 text-center text-sm font-medium ${accountType === value ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
-                      >
-                        <input
-                          type="radio"
-                          name="account-type"
-                          value={value}
-                          checked={accountType === value}
-                          onChange={() => setAccountType(value)}
-                          className="sr-only"
-                        />
-                        {label}
-                      </label>
-                    ))}
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              {mode === "signup" && (
+                <>
+                  <div>
+                    <Label htmlFor="full-name">Nome completo</Label>
+                    <Input
+                      id="full-name"
+                      required
+                      minLength={2}
+                      maxLength={100}
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="mt-1"
+                    />
                   </div>
-                </fieldset>
-              </>
-            )}
-            <div>
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {mode === "signin" ? "Entrar" : "Criar conta"}
-            </Button>
-          </form>
+                  <fieldset>
+                    <legend className="text-sm font-medium">Quero usar a HS Digital como</legend>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {(
+                        [
+                          ["buyer", "Comprador"],
+                          ["seller", "Vendedor"],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <label
+                          key={value}
+                          className={`cursor-pointer rounded-md border p-3 text-center text-sm font-medium ${accountType === value ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
+                        >
+                          <input
+                            type="radio"
+                            name="account-type"
+                            value={value}
+                            checked={accountType === value}
+                            onChange={() => setAccountType(value)}
+                            className="sr-only"
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </>
+              )}
+              <div>
+                <Label htmlFor="email">E-mail</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {mode === "signin" ? "Entrar" : "Criar conta"}
+              </Button>
+            </form>
           )}
 
           {!awaitingConfirmation && mode === "signin" && (
-          <Button variant="outline" className="mt-3 w-full" onClick={handleGoogle}>
-            Continuar com Google
-          </Button>
+            <Button variant="outline" className="mt-3 w-full" onClick={handleGoogle}>
+              Continuar com Google
+            </Button>
           )}
 
           <button
