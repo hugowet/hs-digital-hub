@@ -9,4 +9,5 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- O checkout envia o pedido por `https://wa.me/<numero>?text=<encodeURIComponent>` e preserva o carrinho após o redirecionamento, pois o fechamento e o Pix acontecem manualmente no WhatsApp.
+- O checkout registra o pedido atomicamente no banco, reserva estoque e calcula a comissão vigente antes de enviar `https://wa.me/<numero>?text=<encodeURIComponent>`; o Pix permanece manual no WhatsApp.
+- Papéis de comprador/vendedor são criados por trigger a partir do cadastro e nunca são gravados pelo navegador, evitando elevação de privilégio.

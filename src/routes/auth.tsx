@@ -30,24 +30,40 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [fullName, setFullName] = useState("");
+  const [accountType, setAccountType] = useState<"buyer" | "seller">("buyer");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim().toLowerCase(),
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: {
+            emailRedirectTo: window.location.origin,
+            data: { full_name: fullName.trim(), account_type: accountType },
+          },
         });
         if (error) throw error;
-        toast.success("Conta criada! Verifique seu e-mail se for solicitado.");
+        if (!data.session) {
+          setAwaitingConfirmation(true);
+          toast.success("Conta criada! Confirme seu e-mail para entrar.");
+          return;
+        }
+        toast.success("Conta criada com sucesso!");
+        navigate({ to: accountType === "seller" ? "/vendedor" : "/" });
+        return;
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        });
         if (error) throw error;
       }
       navigate({ to: "/" });
@@ -82,7 +98,54 @@ function AuthPage() {
             Compre, acompanhe pedidos e gerencie sua loja.
           </p>
 
+          {awaitingConfirmation ? (
+            <div className="mt-6 rounded-md border border-border bg-muted p-4 text-sm">
+              Enviamos uma confirmação para <strong>{email.trim()}</strong>. Abra o link recebido e
+              depois entre na sua conta.
+            </div>
+          ) : (
+
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            {mode === "signup" && (
+              <>
+                <div>
+                  <Label htmlFor="full-name">Nome completo</Label>
+                  <Input
+                    id="full-name"
+                    required
+                    minLength={2}
+                    maxLength={100}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <fieldset>
+                  <legend className="text-sm font-medium">Quero usar a HS Digital como</legend>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {([
+                      ["buyer", "Comprador"],
+                      ["seller", "Vendedor"],
+                    ] as const).map(([value, label]) => (
+                      <label
+                        key={value}
+                        className={`cursor-pointer rounded-md border p-3 text-center text-sm font-medium ${accountType === value ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
+                      >
+                        <input
+                          type="radio"
+                          name="account-type"
+                          value={value}
+                          checked={accountType === value}
+                          onChange={() => setAccountType(value)}
+                          className="sr-only"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </>
+            )}
             <div>
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -110,14 +173,20 @@ function AuthPage() {
               {mode === "signin" ? "Entrar" : "Criar conta"}
             </Button>
           </form>
+          )}
 
+          {!awaitingConfirmation && mode === "signin" && (
           <Button variant="outline" className="mt-3 w-full" onClick={handleGoogle}>
             Continuar com Google
           </Button>
+          )}
 
           <button
             className="mt-4 w-full text-sm text-primary hover:underline"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+            onClick={() => {
+              setAwaitingConfirmation(false);
+              setMode(mode === "signin" ? "signup" : "signin");
+            }}
           >
             {mode === "signin" ? "Não tem conta? Cadastre-se" : "Já tenho conta"}
           </button>

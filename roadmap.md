@@ -9,3 +9,5 @@
 - [x] Login (e-mail/senha + Google)
 - [x] Usar a logo enviada pelo usuário no header, rodapé e ícone da aba
 - [x] Revisão pré-publicação: páginas, produtos, imagens, carrinho, links e WhatsApp
+- [x] Cadastro real com escolha entre Comprador e Vendedor
+- [x] Chave Pix do vendedor, estoque transacional e comissão automática por venda
