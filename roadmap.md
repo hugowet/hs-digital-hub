@@ -11,3 +11,5 @@
 - [x] Revisão pré-publicação: páginas, produtos, imagens, carrinho, links e WhatsApp
 - [x] Cadastro real com escolha entre Comprador e Vendedor
 - [x] Chave Pix do vendedor, estoque transacional e comissão automática por venda
+- [ ] Substituir WhatsApp por checkout automático Pix/cartão com split para vendedores
+- [ ] Adicionar gestão de transações ao Painel Admin
