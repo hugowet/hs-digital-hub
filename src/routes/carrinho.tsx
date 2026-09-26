@@ -1,22 +1,26 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Minus, Plus, Store, Trash2 } from "lucide-react";
+import { MessageCircle, Minus, Plus, Store, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
-import { fetchCommissionRate } from "@/lib/catalog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { groupByStore, useCart } from "@/lib/cart";
-import { brl, splitPayment } from "@/lib/format";
+import { brl } from "@/lib/format";
+
+// Número do WhatsApp da HS Digital (DDD + número, só dígitos, com 55 na frente)
+const WHATSAPP_NUMBER = "559200000000";
 
 export const Route = createFileRoute("/carrinho")({
   head: () => ({
     meta: [
       { title: "Carrinho · HS Digital" },
-      { name: "description", content: "Revise seus itens por loja e finalize a compra na HS Digital." },
+      { name: "description", content: "Revise seus itens por loja e finalize o pedido pelo WhatsApp na HS Digital." },
       { property: "og:title", content: "Carrinho · HS Digital" },
-      { property: "og:description", content: "Carrinho multi-loja da HS Digital com checkout seguro." },
+      { property: "og:description", content: "Carrinho multi-loja da HS Digital com pedido via WhatsApp." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -27,17 +31,56 @@ export const Route = createFileRoute("/carrinho")({
 function CartPage() {
   const { items, setQuantity, remove, subtotal, clear } = useCart();
   const groups = groupByStore(items);
-  const { data: commissionRate = 0.12 } = useQuery({
-    queryKey: ["commission-rate"],
-    queryFn: fetchCommissionRate,
-  });
+
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [note, setNote] = useState("");
 
   const shipping = groups.reduce(
     (sum, g) => sum + (g.items.every((i) => i.freeShipping) ? 0 : 19.9),
     0,
   );
   const total = subtotal + shipping;
-  const split = splitPayment(total, commissionRate);
+
+  const checkoutViaWhatsApp = () => {
+    if (!name.trim() || !address.trim() || !city.trim()) {
+      toast.error("Preencha nome, endereço e cidade para entrega.");
+      return;
+    }
+
+    const lines: string[] = [
+      "*Novo pedido — HS Digital*",
+      "",
+      "*Itens:*",
+      ...groups.flatMap((g) => [
+        `Loja: ${g.storeName}`,
+        ...g.items.map(
+          (i) => `• ${i.quantity}x ${i.title} — ${brl(i.price * i.quantity)}`,
+        ),
+      ]),
+      "",
+      `Subtotal: ${brl(subtotal)}`,
+      `Frete: ${shipping === 0 ? "Grátis" : brl(shipping)}`,
+      `*Total: ${brl(total)}*`,
+      "",
+      "*Entrega:*",
+      `Nome: ${name.trim()}`,
+      phone.trim() ? `Telefone: ${phone.trim()}` : "",
+      `Endereço: ${address.trim()} — ${city.trim()}`,
+      note.trim() ? `Obs: ${note.trim()}` : "",
+      "",
+      "Pagamento: Pix (combinar chave e envio).",
+    ].filter(Boolean);
+
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join("\n"))}`;
+    window.open(url, "_blank", "noopener");
+    toast.success("Pedido enviado para o WhatsApp!", {
+      description: "Finalize o pagamento via Pix direto com a nossa equipe.",
+    });
+    clear();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,7 +96,7 @@ function CartPage() {
             </Button>
           </div>
         ) : (
-          <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_320px]">
+          <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_360px]">
             <div className="space-y-4">
               {groups.map((group) => (
                 <section key={group.storeId} className="surface-card overflow-hidden">
@@ -134,32 +177,36 @@ function CartPage() {
                 </div>
               </dl>
 
-              <div className="mt-4 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-                <p className="font-semibold text-foreground">Split de pagamento</p>
-                <p className="mt-1 flex justify-between">
-                  <span>Comissão HS Digital ({(commissionRate * 100).toFixed(1)}%)</span>
-                  <span>{brl(split.platformFee)}</span>
-                </p>
-                <p className="flex justify-between">
-                  <span>Repasse aos vendedores</span>
-                  <span>{brl(split.sellerAmount)}</span>
-                </p>
+              <div className="mt-4 space-y-3 border-t border-border pt-4">
+                <p className="text-sm font-semibold">Dados de entrega</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="name">Nome completo *</Label>
+                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} placeholder="Seu nome" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone">Telefone</Label>
+                  <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} placeholder="(92) 99999-0000" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="address">Endereço *</Label>
+                  <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={200} placeholder="Rua, número, bairro" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="city">Cidade/UF *</Label>
+                  <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} maxLength={100} placeholder="Manaus/AM" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="note">Observações</Label>
+                  <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="Ponto de referência, etc." />
+                </div>
               </div>
 
-              <Button
-                className="mt-4 w-full"
-                size="lg"
-                onClick={() => {
-                  toast.success("Pedido pronto para pagamento", {
-                    description: "Integração de split com Mercado Pago/Asaas entra nesta etapa.",
-                  });
-                  clear();
-                }}
-              >
-                Finalizar compra
+              <Button className="mt-4 w-full" size="lg" onClick={checkoutViaWhatsApp}>
+                <MessageCircle className="mr-2 h-5 w-5" />
+                Finalizar pedido via WhatsApp
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Pix, cartão e boleto · pagamento processado com split automático
+                O resumo do pedido abre no WhatsApp e o pagamento é fechado via Pix com a nossa equipe.
               </p>
             </aside>
           </div>
