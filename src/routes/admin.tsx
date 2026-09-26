@@ -38,10 +38,11 @@ function AdminPage() {
     enabled: !!userId,
     queryKey: ["is-admin", userId],
     queryFn: async () => {
+      if (!userId) return false;
       const { data } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", userId!)
+        .eq("user_id", userId)
         .eq("role", "admin")
         .maybeSingle();
       return !!data;
@@ -112,6 +113,9 @@ function AdminPage() {
                     id="rate"
                     type="number"
                     step="0.01"
+                    min="0"
+                    max="100"
+                    required
                     value={rate}
                     onChange={(e) => setRate(e.target.value)}
                     className="mt-1 w-32"
@@ -119,9 +123,14 @@ function AdminPage() {
                 </div>
                 <Button
                   onClick={async () => {
+                    const parsedRate = Number(rate);
+                    if (!Number.isFinite(parsedRate) || parsedRate < 0 || parsedRate > 100) {
+                      toast.error("Informe uma taxa entre 0% e 100%.");
+                      return;
+                    }
                     const { error } = await supabase
                       .from("platform_settings")
-                      .update({ commission_rate: Number(rate) / 100, updated_at: new Date().toISOString() })
+                      .update({ commission_rate: parsedRate / 100, updated_at: new Date().toISOString() })
                       .eq("id", true);
                     if (error) { toast.error(error.message); return; }
                     toast.success("Comissão atualizada");

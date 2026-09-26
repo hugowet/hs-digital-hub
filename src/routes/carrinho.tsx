@@ -29,7 +29,7 @@ export const Route = createFileRoute("/carrinho")({
 });
 
 function CartPage() {
-  const { items, setQuantity, remove, subtotal, clear } = useCart();
+  const { items, setQuantity, remove, subtotal } = useCart();
   const groups = groupByStore(items);
 
   const [name, setName] = useState("");
@@ -77,10 +77,6 @@ function CartPage() {
     const encodedMessage = encodeURIComponent(lines.join("\n"));
     const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
     window.location.assign(whatsappUrl);
-    toast.success("Pedido enviado para o WhatsApp!", {
-      description: "Finalize o pagamento via Pix direto com a nossa equipe.",
-    });
-    clear();
   };
 
   return (

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, LogIn, Menu, Search, ShoppingCart, Store, User } from "lucide-react";
+import { LogIn, Menu, Search, ShoppingCart, Store, User } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,8 @@ export function SiteHeader({
             <input
               value={query ?? ""}
               onChange={(e) => onQueryChange?.(e.target.value)}
-              placeholder="Buscar produtos, marcas e lojas..."
+              placeholder="Buscar produtos e lojas..."
+              aria-label="Buscar produtos e lojas"
               className="h-10 w-full rounded-full border border-white/15 bg-white pl-9 pr-4 text-sm text-foreground outline-none ring-primary-glow/60 placeholder:text-muted-foreground focus:ring-2"
             />
           </div>
@@ -63,13 +64,6 @@ export function SiteHeader({
                 </span>
               )}
             </Link>
-            <button
-              className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden"
-              aria-label="Notificações"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary-glow" />
-            </button>
             <Link
               to="/auth"
               className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden"
@@ -113,7 +107,11 @@ export function SiteHeader({
                 {item.label}
               </Link>
             ))}
-            <Link to="/auth" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">
+            <Link
+              to="/auth"
+              onClick={() => setOpen(false)}
+              className="rounded-lg px-3 py-2 hover:bg-white/10"
+            >
               Entrar / Criar conta
             </Link>
           </div>

@@ -44,10 +44,11 @@ function SellerCenter() {
     enabled: !!userId,
     queryKey: ["my-store", userId],
     queryFn: async () => {
+      if (!userId) return null;
       const { data, error } = await supabase
         .from("stores")
         .select("*")
-        .eq("owner_id", userId!)
+        .eq("owner_id", userId)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -58,10 +59,11 @@ function SellerCenter() {
     enabled: !!store?.id,
     queryKey: ["store-products", store?.id],
     queryFn: async () => {
+      if (!store?.id) return [];
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .eq("store_id", store!.id)
+        .eq("store_id", store.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -72,12 +74,13 @@ function SellerCenter() {
     enabled: !!store?.id,
     queryKey: ["today-sales", store?.id],
     queryFn: async () => {
+      if (!store?.id) return { count: 0, amount: 0 };
       const start = new Date();
       start.setHours(0, 0, 0, 0);
       const { data, error } = await supabase
         .from("order_items")
         .select("quantity,seller_amount")
-        .eq("store_id", store!.id)
+        .eq("store_id", store.id)
         .gte("created_at", start.toISOString());
       if (error) throw error;
       return {
@@ -222,7 +225,12 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
           .replace(/^-|-$/g, "");
         const { error } = await supabase
           .from("stores")
-          .insert({ owner_id: userId, name, slug: `${slug}-${Date.now().toString(36)}`, description });
+          .insert({
+            owner_id: userId,
+            name: name.trim(),
+            slug: `${slug}-${Date.now().toString(36)}`,
+            description: description.trim(),
+          });
         if (error) { toast.error(error.message); return; }
         toast.success("Loja criada! Aguarde a aprovação do time HS Digital.");
         onDone();
@@ -235,7 +243,15 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
       <div className="mt-4 space-y-3">
         <div>
           <Label htmlFor="store-name">Nome da loja</Label>
-          <Input id="store-name" required value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
+          <Input
+            id="store-name"
+            required
+            minLength={2}
+            maxLength={100}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1"
+          />
         </div>
         <div>
           <Label htmlFor="store-desc">Descrição</Label>
@@ -243,6 +259,7 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
             id="store-desc"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            maxLength={500}
             className="mt-1"
           />
         </div>
@@ -271,6 +288,9 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         try {
           let imageUrl: string | null = null;
           if (file) {
+            if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) {
+              throw new Error("Envie uma imagem de até 10 MB.");
+            }
             const path = `${storeId}/${crypto.randomUUID()}-${file.name}`;
             const { error: upErr } = await supabase.storage.from("product-images").upload(path, file);
             if (upErr) throw upErr;
@@ -282,7 +302,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           }
           const { error } = await supabase.from("products").insert({
             store_id: storeId,
-            title,
+            title: title.trim(),
             price: Number(price),
             stock: Number(stock),
             category,
@@ -308,7 +328,15 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       <div className="mt-3 space-y-3">
         <div>
           <Label htmlFor="p-title">Título</Label>
-          <Input id="p-title" required value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1" />
+          <Input
+            id="p-title"
+            required
+            minLength={2}
+            maxLength={160}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="mt-1"
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -317,6 +345,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
               id="p-price"
               type="number"
               step="0.01"
+              min="0.01"
               required
               value={price}
               onChange={(e) => setPrice(e.target.value)}
@@ -329,6 +358,8 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
               id="p-stock"
               type="number"
               required
+              min="0"
+              step="1"
               value={stock}
               onChange={(e) => setStock(e.target.value)}
               className="mt-1"
