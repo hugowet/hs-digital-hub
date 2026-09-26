@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { DollarSign, Package, Plus, ShoppingBag, TrendingUp } from "lucide-react";
+import { DollarSign, KeyRound, Package, Plus, ShoppingBag, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/site-header";
@@ -55,6 +55,21 @@ function SellerCenter() {
         .maybeSingle();
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: isSeller } = useQuery({
+    enabled: !!userId,
+    queryKey: ["is-seller", userId],
+    queryFn: async () => {
+      if (!userId) return false;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "seller")
+        .maybeSingle();
+      return !!data;
     },
   });
 
@@ -117,6 +132,19 @@ function SellerCenter() {
     );
   }
 
+  if (isSeller === false) {
+    return (
+      <Shell>
+        <div className="surface-card p-8 text-center">
+          <h2 className="font-display text-xl font-bold">Conta de Comprador</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Para abrir uma loja, crie uma conta escolhendo o perfil Vendedor.
+          </p>
+        </div>
+      </Shell>
+    );
+  }
+
   if (!store) {
     return (
       <Shell>
@@ -147,6 +175,13 @@ function SellerCenter() {
         <Stat icon={TrendingUp} label="Vendas de hoje" value={brl(todaySales.amount)} />
         <Stat icon={ShoppingBag} label="Itens vendidos hoje" value={String(todaySales.count)} />
       </div>
+
+      <PixSettings
+        storeId={store.id}
+        initialType={store.pix_key_type}
+        initialKey={store.pix_key}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["my-store"] })}
+      />
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[360px_1fr]">
         <ProductForm
@@ -226,6 +261,8 @@ function Stat({
 function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [pixKeyType, setPixKeyType] = useState("email");
+  const [pixKey, setPixKey] = useState("");
 
   return (
     <form
@@ -243,6 +280,8 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
           name: name.trim(),
           slug: `${slug}-${Date.now().toString(36)}`,
           description: description.trim(),
+          pix_key_type: pixKeyType,
+          pix_key: pixKey.trim(),
         });
         if (error) {
           toast.error(error.message);
@@ -269,6 +308,35 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
             className="mt-1"
           />
         </div>
+        <div className="grid grid-cols-[130px_1fr] gap-3">
+          <div>
+            <Label htmlFor="store-pix-type">Tipo de chave Pix</Label>
+            <select
+              id="store-pix-type"
+              value={pixKeyType}
+              onChange={(e) => setPixKeyType(e.target.value)}
+              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="cpf">CPF</option>
+              <option value="cnpj">CNPJ</option>
+              <option value="email">E-mail</option>
+              <option value="phone">Telefone</option>
+              <option value="random">Aleatória</option>
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="store-pix">Chave Pix</Label>
+            <Input
+              id="store-pix"
+              required
+              minLength={3}
+              maxLength={140}
+              value={pixKey}
+              onChange={(e) => setPixKey(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+        </div>
         <div>
           <Label htmlFor="store-desc">Descrição</Label>
           <Textarea
@@ -281,6 +349,82 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
         </div>
         <Button type="submit" className="w-full">
           Criar loja
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function PixSettings({
+  storeId,
+  initialType,
+  initialKey,
+  onSaved,
+}: {
+  storeId: string;
+  initialType: string | null;
+  initialKey: string | null;
+  onSaved: () => void;
+}) {
+  const [pixKeyType, setPixKeyType] = useState(initialType ?? "email");
+  const [pixKey, setPixKey] = useState(initialKey ?? "");
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <form
+      className="surface-card mt-4 p-4"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setSaving(true);
+        const { error } = await supabase
+          .from("stores")
+          .update({ pix_key_type: pixKeyType, pix_key: pixKey.trim() })
+          .eq("id", storeId);
+        setSaving(false);
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+        toast.success("Chave Pix atualizada");
+        onSaved();
+      }}
+    >
+      <h2 className="flex items-center gap-2 text-base font-semibold">
+        <KeyRound className="h-4 w-4 text-primary" /> Recebimento via Pix
+      </h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Esta chave será usada pela equipe para o repasse das vendas após a comissão.
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-[180px_1fr_auto] sm:items-end">
+        <div>
+          <Label htmlFor="pix-type">Tipo</Label>
+          <select
+            id="pix-type"
+            value={pixKeyType}
+            onChange={(e) => setPixKeyType(e.target.value)}
+            className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="cpf">CPF</option>
+            <option value="cnpj">CNPJ</option>
+            <option value="email">E-mail</option>
+            <option value="phone">Telefone</option>
+            <option value="random">Aleatória</option>
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="pix-key">Chave Pix</Label>
+          <Input
+            id="pix-key"
+            required
+            minLength={3}
+            maxLength={140}
+            value={pixKey}
+            onChange={(e) => setPixKey(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+        <Button type="submit" disabled={saving}>
+          {saving ? "Salvando…" : "Salvar Pix"}
         </Button>
       </div>
     </form>
@@ -303,6 +447,14 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         setSaving(true);
         try {
           let imageUrl: string | null = null;
+          const parsedPrice = Number(price);
+          const parsedStock = Number(stock);
+          if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+            throw new Error("Informe um preço válido.");
+          }
+          if (!Number.isInteger(parsedStock) || parsedStock < 0) {
+            throw new Error("Informe um estoque válido.");
+          }
           if (file) {
             if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) {
               throw new Error("Envie uma imagem de até 10 MB.");
@@ -321,8 +473,8 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           const { error } = await supabase.from("products").insert({
             store_id: storeId,
             title: title.trim(),
-            price: Number(price),
-            stock: Number(stock),
+            price: parsedPrice,
+            stock: parsedStock,
             category,
             image_url: imageUrl,
           });

@@ -171,11 +171,15 @@ function CartPage() {
                             <button
                               className="grid h-8 w-8 place-items-center"
                               onClick={() => setQuantity(item.productId, item.quantity + 1)}
+                              disabled={item.quantity >= item.stock}
                               aria-label="Aumentar"
                             >
                               <Plus className="h-3.5 w-3.5" />
                             </button>
                           </div>
+                          <span className="text-[11px] text-muted-foreground">
+                            {item.stock} disponíveis
+                          </span>
                           <button
                             className="text-muted-foreground hover:text-destructive"
                             onClick={() => remove(item.productId)}
