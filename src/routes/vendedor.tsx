@@ -223,7 +223,7 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
         const { error } = await supabase
           .from("stores")
           .insert({ owner_id: userId, name, slug: `${slug}-${Date.now().toString(36)}`, description });
-        if (error) return toast.error(error.message);
+        if (error) { toast.error(error.message); return; }
         toast.success("Loja criada! Aguarde a aprovação do time HS Digital.");
         onDone();
       }}
@@ -274,7 +274,11 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
             const path = `${storeId}/${crypto.randomUUID()}-${file.name}`;
             const { error: upErr } = await supabase.storage.from("product-images").upload(path, file);
             if (upErr) throw upErr;
-            imageUrl = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+            const { data: signed, error: signErr } = await supabase.storage
+              .from("product-images")
+              .createSignedUrl(path, 60 * 60 * 24 * 365);
+            if (signErr) throw signErr;
+            imageUrl = signed.signedUrl;
           }
           const { error } = await supabase.from("products").insert({
             store_id: storeId,

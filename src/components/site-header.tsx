@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart";
+import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 
 const NAV = [
   { to: "/", label: "Início" },
@@ -27,9 +28,13 @@ export function SiteHeader({
       <div className="mx-auto w-full max-w-7xl px-4 py-3">
         <div className="flex items-center gap-3">
           <Link to="/" className="flex shrink-0 items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-lg primary-gradient font-display text-base font-bold">
-              HS
-            </span>
+            <img
+              src={logoAsset.url}
+              alt="HS Digital"
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-full ring-1 ring-white/20"
+            />
             <span className="font-display text-lg font-bold tracking-tight max-sm:hidden">
               HS Digital
             </span>
