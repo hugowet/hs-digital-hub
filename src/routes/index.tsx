@@ -73,7 +73,12 @@ function Home() {
   });
 
   const filtered = useMemo(() => {
-    const r = PRICE_RANGES.find((p) => p.id === range) ?? PRICE_RANGES[0];
+    const r = PRICE_RANGES.find((p) => p.id === range) ?? {
+      id: "all",
+      label: "Todos os preços",
+      min: 0,
+      max: Infinity,
+    };
     return products.filter((p) => {
       const price = Number(p.price);
       const searchText = `${p.title} ${p.stores?.name ?? ""}`.toLowerCase();
