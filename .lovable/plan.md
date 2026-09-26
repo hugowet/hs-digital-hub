@@ -1,25 +1,21 @@
-# Marketplace real: contas, Pix, estoque e comissão
+# Checkout automático com split
 
 ## Resultado
-- Cadastro passa a pedir nome e tipo de conta: **Comprador** ou **Vendedor**.
-- Cada novo usuário recebe automaticamente perfil e papel corretos no banco.
-- Vendedores configuram sua chave Pix no Seller Center antes de vender.
-- Ao finalizar pelo WhatsApp, um comprador conectado registra o pedido, reserva o estoque e grava a comissão configurada antes de abrir a conversa.
+- Remover o redirecionamento do WhatsApp e oferecer pagamento por Pix ou Cartão.
+- Cobrar o valor total, reter automaticamente a comissão configurada e destinar o restante ao vendedor.
+- Adicionar uma área de Transações no painel Admin para acompanhar pagamentos, taxas e repasses.
 
-## Alterações
-- Ampliar perfis com tipo de conta e adicionar tipo/chave Pix à loja, protegidos para cada proprietário.
-- Criar automação de cadastro para gerar perfil e papel a partir dos dados enviados na criação da conta.
-- Criar operação transacional no banco para validar preços e estoque, calcular a comissão vigente, gravar pedido e itens, e reduzir estoque sem confiar nos valores enviados pelo navegador.
-- Atualizar a tela de cadastro com nome e seletor Comprador/Vendedor; após confirmação, direcionar vendedores ao Seller Center.
-- Adicionar área Pix ao perfil da loja e impedir finalização de pedidos com vendedores sem Pix configurado.
-- Registrar o pedido antes de abrir `wa.me`, mantendo produtos, total e entrega codificados na mensagem.
-- Preservar o carrinho se o redirecionamento falhar; limpar somente após o pedido ser registrado.
+## Decisão necessária
+A integração exige uma conta real em um provedor. Para marketplace de produtos físicos no Brasil, vou comparar Asaas e Mercado Pago e implementar com o escolhido. O split é feito para uma carteira vinculada do vendedor no provedor; uma chave Pix isolada normalmente não substitui o cadastro financeiro e regulatório do recebedor.
 
-## Regras iniciais
-- Comissão começa na taxa já configurada no painel administrativo (atualmente 12%) e cada item salva a taxa aplicada naquele momento.
-- O Pix continua manual pelo WhatsApp; o sistema registra o pedido como aguardando pagamento.
-- Contas Google existentes continuam entrando normalmente; a escolha explícita de perfil acontece no cadastro por e-mail.
+## Implementação
+- Guardar identificador seguro da carteira/subconta do vendedor e estado de habilitação para receber.
+- Criar sessão de cobrança no servidor com validação de pedido, estoque, taxa, idempotência e valores calculados no banco.
+- Criar retorno público e webhook assinado para atualizar pagamento, repasse, cancelamento e estorno.
+- Reservar estoque durante a cobrança e confirmar ou liberar conforme o resultado.
+- Manter credenciais privadas apenas no cofre de segredos.
+- Criar tabela/visão de transações e aba Admin com filtros por status, pedido e vendedor.
 
 ## Verificação
-- Testar cadastro dos dois perfis, criação/edição de loja e Pix, cadastro de produto com estoque e pedido autenticado.
-- Confirmar redução de estoque, valores de comissão/repasse, URL `wa.me` codificada, páginas, imagens e build final.
+- Testar Pix e cartão no ambiente de testes do provedor.
+- Confirmar comissão, valor do vendedor, proteção contra pagamentos duplicados, atualização por webhook e estados de erro.

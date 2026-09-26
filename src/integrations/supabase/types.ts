@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       order_items: {
         Row: {
+          commission_rate: number
           created_at: string
           id: string
           order_id: string
@@ -28,6 +29,7 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          commission_rate?: number
           created_at?: string
           id?: string
           order_id: string
@@ -40,6 +42,7 @@ export type Database = {
           unit_price: number
         }
         Update: {
+          commission_rate?: number
           created_at?: string
           id?: string
           order_id?: string
@@ -202,18 +205,21 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_type: Database["public"]["Enums"]["app_role"]
           created_at: string
           full_name: string | null
           id: string
           phone: string | null
         }
         Insert: {
+          account_type?: Database["public"]["Enums"]["app_role"]
           created_at?: string
           full_name?: string | null
           id: string
           phone?: string | null
         }
         Update: {
+          account_type?: Database["public"]["Enums"]["app_role"]
           created_at?: string
           full_name?: string | null
           id?: string
@@ -230,6 +236,8 @@ export type Database = {
           logo_url: string | null
           name: string
           owner_id: string | null
+          pix_key: string | null
+          pix_key_type: string | null
           rating: number
           slug: string
           status: string
@@ -242,6 +250,8 @@ export type Database = {
           logo_url?: string | null
           name: string
           owner_id?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
           rating?: number
           slug: string
           status?: string
@@ -254,6 +264,8 @@ export type Database = {
           logo_url?: string | null
           name?: string
           owner_id?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
           rating?: number
           slug?: string
           status?: string
@@ -286,6 +298,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_marketplace_order: {
+        Args: { _items: Json; _shipping_address: Json }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

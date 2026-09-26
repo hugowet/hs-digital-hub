@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { groupByStore, useCart } from "@/lib/cart";
 import { brl } from "@/lib/format";
+import { supabase } from "@/integrations/supabase/client";
 
 // Número do WhatsApp da HS Digital (DDD + número, só dígitos, com 55 na frente)
 const WHATSAPP_NUMBER = "556993612254";
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/carrinho")({
 });
 
 function CartPage() {
-  const { items, setQuantity, remove, subtotal } = useCart();
+  const { items, setQuantity, remove, subtotal, clear } = useCart();
   const groups = groupByStore(items);
 
   const [name, setName] = useState("");
@@ -43,6 +44,7 @@ function CartPage() {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const shipping = groups.reduce(
     (sum, g) => sum + (g.items.every((i) => i.freeShipping) ? 0 : 19.9),
@@ -50,14 +52,39 @@ function CartPage() {
   );
   const total = subtotal + shipping;
 
-  const checkoutViaWhatsApp = () => {
+  const checkoutViaWhatsApp = async () => {
     if (!name.trim() || !address.trim() || !city.trim()) {
       toast.error("Preencha nome, endereço e cidade para entrega.");
       return;
     }
 
+    setSubmitting(true);
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      setSubmitting(false);
+      toast.error("Entre como Comprador para registrar e finalizar seu pedido.");
+      return;
+    }
+
+    const { data: orderId, error } = await supabase.rpc("create_marketplace_order", {
+      _items: items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
+      _shipping_address: {
+        name: name.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+        city: city.trim(),
+        note: note.trim(),
+      },
+    });
+    if (error || !orderId) {
+      setSubmitting(false);
+      toast.error(error?.message ?? "Não foi possível registrar o pedido.");
+      return;
+    }
+
     const lines: string[] = [
       "*Novo pedido — HS Digital*",
+      `Pedido: ${orderId.slice(0, 8).toUpperCase()}`,
       "",
       "*Itens:*",
       ...groups.flatMap((g) => [
@@ -80,6 +107,7 @@ function CartPage() {
 
     const encodedMessage = encodeURIComponent(lines.join("\n"));
     const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+    clear();
     window.location.assign(whatsappUrl);
   };
 
@@ -143,11 +171,15 @@ function CartPage() {
                             <button
                               className="grid h-8 w-8 place-items-center"
                               onClick={() => setQuantity(item.productId, item.quantity + 1)}
+                              disabled={item.quantity >= item.stock}
                               aria-label="Aumentar"
                             >
                               <Plus className="h-3.5 w-3.5" />
                             </button>
                           </div>
+                          <span className="text-[11px] text-muted-foreground">
+                            {item.stock} disponíveis
+                          </span>
                           <button
                             className="text-muted-foreground hover:text-destructive"
                             onClick={() => remove(item.productId)}
@@ -234,9 +266,14 @@ function CartPage() {
                 </div>
               </div>
 
-              <Button className="mt-4 w-full" size="lg" onClick={checkoutViaWhatsApp}>
+              <Button
+                className="mt-4 w-full"
+                size="lg"
+                onClick={checkoutViaWhatsApp}
+                disabled={submitting}
+              >
                 <MessageCircle className="mr-2 h-5 w-5" />
-                Finalizar pedido via WhatsApp
+                {submitting ? "Registrando pedido…" : "Finalizar pedido via WhatsApp"}
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
                 O resumo do pedido abre no WhatsApp e o pagamento é fechado via Pix com a nossa

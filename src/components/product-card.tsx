@@ -85,12 +85,14 @@ export function ProductCard({ product }: { product: Product }) {
                 storeId: product.store_id,
                 storeName: product.stores?.name ?? "Loja parceira",
                 freeShipping: product.free_shipping,
+                stock: product.stock,
               });
               toast.success("Adicionado ao carrinho", { description: product.title });
             }}
-            className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg primary-gradient text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+            disabled={product.stock <= 0}
+            className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg primary-gradient text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Zap className="h-4 w-4" /> Compra rápida
+            <Zap className="h-4 w-4" /> {product.stock > 0 ? "Compra rápida" : "Sem estoque"}
           </button>
         </div>
       </div>

@@ -1,10 +1,12 @@
-import { Link } from "@tanstack/react-router";
-import { LogIn, Menu, Search, ShoppingCart, Store, User } from "lucide-react";
-import { useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { LogIn, LogOut, Menu, Search, ShoppingCart, Store, User } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart";
 import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
+import { supabase } from "@/integrations/supabase/client";
 
 const NAV = [
   { to: "/", label: "Início" },
@@ -21,7 +23,27 @@ export function SiteHeader({
   onQueryChange?: (value: string) => void;
 }) {
   const { count } = useCart();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setSignedIn(!!data.user));
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        setSignedIn(!!session?.user);
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  async function signOut() {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  }
 
   return (
     <header className="sticky top-0 z-50 brand-gradient text-primary-foreground">
@@ -64,13 +86,25 @@ export function SiteHeader({
                 </span>
               )}
             </Link>
-            <Link
-              to="/auth"
-              className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden"
-              aria-label="Minha conta"
-            >
-              <User className="h-5 w-5" />
-            </Link>
+            {signedIn ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={signOut}
+                className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground max-sm:hidden"
+                aria-label="Sair da conta"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            ) : (
+              <Link
+                to="/auth"
+                className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden"
+                aria-label="Minha conta"
+              >
+                <User className="h-5 w-5" />
+              </Link>
+            )}
             <button
               onClick={() => setOpen((v) => !v)}
               className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 sm:hidden"
@@ -107,13 +141,26 @@ export function SiteHeader({
                 {item.label}
               </Link>
             ))}
-            <Link
-              to="/auth"
-              onClick={() => setOpen(false)}
-              className="rounded-lg px-3 py-2 hover:bg-white/10"
-            >
-              Entrar / Criar conta
-            </Link>
+            {signedIn ? (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setOpen(false);
+                  void signOut();
+                }}
+                className="justify-start text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
+              >
+                Sair da conta
+              </Button>
+            ) : (
+              <Link
+                to="/auth"
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-3 py-2 hover:bg-white/10"
+              >
+                Entrar / Criar conta
+              </Link>
+            )}
           </div>
         )}
       </div>

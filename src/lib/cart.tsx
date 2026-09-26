@@ -8,6 +8,7 @@ export type CartItem = {
   storeId: string;
   storeName: string;
   freeShipping: boolean;
+  stock: number;
   quantity: number;
 };
 
@@ -30,7 +31,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(JSON.parse(raw) as CartItem[]);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Array<CartItem & { stock?: number }>;
+        setItems(
+          parsed.map((item) => ({
+            ...item,
+            stock: Number.isFinite(item.stock) ? Number(item.stock) : 99,
+          })),
+        );
+      }
     } catch {
       /* carrinho vazio */
     }
@@ -56,7 +65,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const found = prev.find((i) => i.productId === item.productId);
           if (found) {
             return prev.map((i) =>
-              i.productId === item.productId ? { ...i, quantity: i.quantity + quantity } : i,
+              i.productId === item.productId
+                ? { ...i, quantity: Math.min(i.quantity + quantity, i.stock) }
+                : i,
             );
           }
           return [...prev, { ...item, quantity }];
@@ -65,7 +76,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems((prev) =>
           quantity <= 0
             ? prev.filter((i) => i.productId !== productId)
-            : prev.map((i) => (i.productId === productId ? { ...i, quantity } : i)),
+            : prev.map((i) =>
+                i.productId === productId ? { ...i, quantity: Math.min(quantity, i.stock) } : i,
+              ),
         ),
       remove: (productId) => setItems((prev) => prev.filter((i) => i.productId !== productId)),
       clear: () => setItems([]),
