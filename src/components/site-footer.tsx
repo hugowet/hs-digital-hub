@@ -17,7 +17,7 @@ export function SiteFooter() {
             <span className="font-display text-lg font-bold">HS Digital</span>
           </div>
           <p className="mt-3 max-w-xs text-sm text-white/60">
-            Marketplace multi-lojas com split de pagamento automático entre vendedor e plataforma.
+            Marketplace multi-lojas com atendimento pelo WhatsApp e pagamento via Pix.
           </p>
         </div>
         <div className="text-sm">
