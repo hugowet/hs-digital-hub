@@ -18,9 +18,15 @@ export const Route = createFileRoute("/carrinho")({
   head: () => ({
     meta: [
       { title: "Carrinho · HS Digital" },
-      { name: "description", content: "Revise seus itens por loja e finalize o pedido pelo WhatsApp na HS Digital." },
+      {
+        name: "description",
+        content: "Revise seus itens por loja e finalize o pedido pelo WhatsApp na HS Digital.",
+      },
       { property: "og:title", content: "Carrinho · HS Digital" },
-      { property: "og:description", content: "Carrinho multi-loja da HS Digital com pedido via WhatsApp." },
+      {
+        property: "og:description",
+        content: "Carrinho multi-loja da HS Digital com pedido via WhatsApp.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -29,7 +35,7 @@ export const Route = createFileRoute("/carrinho")({
 });
 
 function CartPage() {
-  const { items, setQuantity, remove, subtotal, clear } = useCart();
+  const { items, setQuantity, remove, subtotal } = useCart();
   const groups = groupByStore(items);
 
   const [name, setName] = useState("");
@@ -56,9 +62,7 @@ function CartPage() {
       "*Itens:*",
       ...groups.flatMap((g) => [
         `Loja: ${g.storeName}`,
-        ...g.items.map(
-          (i) => `• ${i.quantity}x ${i.title} — ${brl(i.price * i.quantity)}`,
-        ),
+        ...g.items.map((i) => `• ${i.quantity}x ${i.title} — ${brl(i.price * i.quantity)}`),
       ]),
       "",
       `Subtotal: ${brl(subtotal)}`,
@@ -77,10 +81,6 @@ function CartPage() {
     const encodedMessage = encodeURIComponent(lines.join("\n"));
     const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
     window.location.assign(whatsappUrl);
-    toast.success("Pedido enviado para o WhatsApp!", {
-      description: "Finalize o pagamento via Pix direto com a nossa equipe.",
-    });
-    clear();
   };
 
   return (
@@ -121,7 +121,9 @@ function CartPage() {
                         )}
                         <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-sm font-medium">{item.title}</p>
-                          <p className="mt-1 font-display font-bold text-primary">{brl(item.price)}</p>
+                          <p className="mt-1 font-display font-bold text-primary">
+                            {brl(item.price)}
+                          </p>
                           {item.freeShipping && (
                             <span className="mt-1 inline-block rounded bg-success/10 px-1.5 py-0.5 text-[11px] font-semibold text-success">
                               Frete Grátis
@@ -182,23 +184,53 @@ function CartPage() {
                 <p className="text-sm font-semibold">Dados de entrega</p>
                 <div className="space-y-1.5">
                   <Label htmlFor="name">Nome completo *</Label>
-                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} placeholder="Seu nome" />
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    maxLength={100}
+                    placeholder="Seu nome"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="phone">Telefone</Label>
-                  <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} placeholder="(92) 99999-0000" />
+                  <Input
+                    id="phone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    maxLength={20}
+                    placeholder="(92) 99999-0000"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="address">Endereço *</Label>
-                  <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={200} placeholder="Rua, número, bairro" />
+                  <Input
+                    id="address"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    maxLength={200}
+                    placeholder="Rua, número, bairro"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="city">Cidade/UF *</Label>
-                  <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} maxLength={100} placeholder="Manaus/AM" />
+                  <Input
+                    id="city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    maxLength={100}
+                    placeholder="Manaus/AM"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="note">Observações</Label>
-                  <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="Ponto de referência, etc." />
+                  <Input
+                    id="note"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    maxLength={200}
+                    placeholder="Ponto de referência, etc."
+                  />
                 </div>
               </div>
 
@@ -207,7 +239,8 @@ function CartPage() {
                 Finalizar pedido via WhatsApp
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                O resumo do pedido abre no WhatsApp e o pagamento é fechado via Pix com a nossa equipe.
+                O resumo do pedido abre no WhatsApp e o pagamento é fechado via Pix com a nossa
+                equipe.
               </p>
             </aside>
           </div>

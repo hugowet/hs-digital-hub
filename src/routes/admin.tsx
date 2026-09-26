@@ -16,9 +16,15 @@ export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
       { title: "Painel Admin · HS Digital" },
-      { name: "description", content: "Gestão de comissão da plataforma e aprovação de vendedores." },
+      {
+        name: "description",
+        content: "Gestão de comissão da plataforma e aprovação de vendedores.",
+      },
       { property: "og:title", content: "Painel Admin · HS Digital" },
-      { property: "og:description", content: "Comissão da plataforma e aprovação de lojas na HS Digital." },
+      {
+        property: "og:description",
+        content: "Comissão da plataforma e aprovação de lojas na HS Digital.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -38,10 +44,11 @@ function AdminPage() {
     enabled: !!userId,
     queryKey: ["is-admin", userId],
     queryFn: async () => {
+      if (!userId) return false;
       const { data } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", userId!)
+        .eq("user_id", userId)
         .eq("role", "admin")
         .maybeSingle();
       return !!data;
@@ -112,6 +119,9 @@ function AdminPage() {
                     id="rate"
                     type="number"
                     step="0.01"
+                    min="0"
+                    max="100"
+                    required
                     value={rate}
                     onChange={(e) => setRate(e.target.value)}
                     className="mt-1 w-32"
@@ -119,11 +129,22 @@ function AdminPage() {
                 </div>
                 <Button
                   onClick={async () => {
+                    const parsedRate = Number(rate);
+                    if (!Number.isFinite(parsedRate) || parsedRate < 0 || parsedRate > 100) {
+                      toast.error("Informe uma taxa entre 0% e 100%.");
+                      return;
+                    }
                     const { error } = await supabase
                       .from("platform_settings")
-                      .update({ commission_rate: Number(rate) / 100, updated_at: new Date().toISOString() })
+                      .update({
+                        commission_rate: parsedRate / 100,
+                        updated_at: new Date().toISOString(),
+                      })
                       .eq("id", true);
-                    if (error) { toast.error(error.message); return; }
+                    if (error) {
+                      toast.error(error.message);
+                      return;
+                    }
                     toast.success("Comissão atualizada");
                     qc.invalidateQueries({ queryKey: ["platform-settings"] });
                     qc.invalidateQueries({ queryKey: ["commission-rate"] });
@@ -156,7 +177,10 @@ function AdminPage() {
                             .from("stores")
                             .update({ status: "approved" })
                             .eq("id", s.id);
-                          if (error) { toast.error(error.message); return; }
+                          if (error) {
+                            toast.error(error.message);
+                            return;
+                          }
                           toast.success("Loja aprovada");
                           qc.invalidateQueries({ queryKey: ["all-stores"] });
                         }}

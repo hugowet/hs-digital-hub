@@ -73,10 +73,16 @@ function Home() {
   });
 
   const filtered = useMemo(() => {
-    const r = PRICE_RANGES.find((p) => p.id === range)!;
+    const r = PRICE_RANGES.find((p) => p.id === range) ?? {
+      id: "all",
+      label: "Todos os preços",
+      min: 0,
+      max: Infinity,
+    };
     return products.filter((p) => {
       const price = Number(p.price);
-      const matchQuery = p.title.toLowerCase().includes(query.trim().toLowerCase());
+      const searchText = `${p.title} ${p.stores?.name ?? ""}`.toLowerCase();
+      const matchQuery = searchText.includes(query.trim().toLowerCase());
       const matchCategory = !category || p.category === category;
       return matchQuery && matchCategory && price >= r.min && price <= r.max;
     });
@@ -100,8 +106,8 @@ function Home() {
                 Tudo o que você precisa, de várias lojas, num só carrinho.
               </h1>
               <p className="mt-3 max-w-md text-sm text-white/75 sm:text-base">
-                Frete grátis em milhares de itens, pagamento seguro e repasse automático para os
-                vendedores parceiros.
+                Frete grátis em itens selecionados e atendimento direto pelo WhatsApp para fechar
+                seu pedido via Pix.
               </p>
               {highlight && (
                 <p className="mt-5 text-sm text-white/80">
@@ -127,7 +133,11 @@ function Home() {
         <section className="mt-4 grid gap-3 sm:grid-cols-3">
           {[
             { icon: Truck, title: "Frete grátis", text: "Em milhares de produtos selecionados" },
-            { icon: ShieldCheck, title: "Compra segura", text: "Pagamento protegido pela HS Digital" },
+            {
+              icon: ShieldCheck,
+              title: "Pedido conferido",
+              text: "Resumo completo antes do pagamento",
+            },
             { icon: Headphones, title: "Suporte 7 dias", text: "Atendimento rápido de verdade" },
           ].map((item) => (
             <div key={item.title} className="surface-card flex items-center gap-3 p-4">
@@ -159,7 +169,9 @@ function Home() {
                 >
                   <span
                     className={`grid h-12 w-12 place-items-center rounded-full ${
-                      active ? "primary-gradient text-primary-foreground" : "bg-secondary text-secondary-foreground"
+                      active
+                        ? "primary-gradient text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground"
                     }`}
                   >
                     <Icon className="h-5 w-5" />

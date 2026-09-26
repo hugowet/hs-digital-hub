@@ -82,13 +82,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "HS Digital · Marketplace" },
       {
         name: "description",
-        content: "Marketplace HS Digital: compre de várias lojas com frete grátis e entrega rápida.",
+        content:
+          "Marketplace HS Digital: compre de várias lojas com frete grátis e entrega rápida.",
       },
       { name: "author", content: "HS Digital" },
       { property: "og:title", content: "HS Digital · Marketplace" },
       {
         property: "og:description",
-        content: "Marketplace HS Digital: compre de várias lojas com frete grátis e entrega rápida.",
+        content:
+          "Marketplace HS Digital: compre de várias lojas com frete grátis e entrega rápida.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -116,7 +118,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>

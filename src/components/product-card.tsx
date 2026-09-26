@@ -60,7 +60,9 @@ export function ProductCard({ product }: { product: Product }) {
 
         <div className="mt-auto">
           <div className="flex items-baseline gap-2">
-            <span className="font-display text-lg font-bold text-primary">{brl(Number(product.price))}</span>
+            <span className="font-display text-lg font-bold text-primary">
+              {brl(Number(product.price))}
+            </span>
             {discount > 0 && (
               <span className="text-xs text-muted-foreground line-through">
                 {brl(Number(product.compare_at_price))}

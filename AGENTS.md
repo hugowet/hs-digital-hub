@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- O checkout envia o pedido por `https://wa.me/<numero>?text=<encodeURIComponent>` e preserva o carrinho após o redirecionamento, pois o fechamento e o Pix acontecem manualmente no WhatsApp.

@@ -16,7 +16,10 @@ export const Route = createFileRoute("/auth")({
       { title: "Entrar · HS Digital" },
       { name: "description", content: "Acesse sua conta HS Digital para comprar ou vender." },
       { property: "og:title", content: "Entrar · HS Digital" },
-      { property: "og:description", content: "Acesse sua conta HS Digital para comprar ou vender." },
+      {
+        property: "og:description",
+        content: "Acesse sua conta HS Digital para comprar ou vender.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
