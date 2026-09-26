@@ -12,7 +12,7 @@ import { groupByStore, useCart } from "@/lib/cart";
 import { brl } from "@/lib/format";
 
 // Número do WhatsApp da HS Digital (DDD + número, só dígitos, com 55 na frente)
-const WHATSAPP_NUMBER = "559200000000";
+const WHATSAPP_NUMBER = "556993612254";
 
 export const Route = createFileRoute("/carrinho")({
   head: () => ({
