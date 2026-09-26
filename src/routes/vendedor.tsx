@@ -132,6 +132,14 @@ function SellerCenter() {
     );
   }
 
+  if (isSeller === undefined) {
+    return (
+      <Shell>
+        <p className="text-sm text-muted-foreground">Carregando perfil…</p>
+      </Shell>
+    );
+  }
+
   if (isSeller === false) {
     return (
       <Shell>

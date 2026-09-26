@@ -31,7 +31,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(JSON.parse(raw) as CartItem[]);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Array<CartItem & { stock?: number }>;
+        setItems(
+          parsed.map((item) => ({
+            ...item,
+            stock: Number.isFinite(item.stock) ? Number(item.stock) : 99,
+          })),
+        );
+      }
     } catch {
       /* carrinho vazio */
     }
