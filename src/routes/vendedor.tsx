@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { DollarSign, KeyRound, Package, Plus, ShoppingBag, TrendingUp } from "lucide-react";
+import { DollarSign, ExternalLink, Package, Plus, ShoppingBag, TrendingUp, WalletCards } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/site-header";
@@ -12,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CATEGORIES } from "@/lib/catalog";
 import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
+import { startMercadoPagoConnection } from "@/lib/payments.functions";
 
 export const Route = createFileRoute("/vendedor")({
   ssr: false,
@@ -34,6 +36,7 @@ export const Route = createFileRoute("/vendedor")({
 function SellerCenter() {
   const qc = useQueryClient();
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
+  const startConnection = useServerFn(startMercadoPagoConnection);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -105,6 +108,19 @@ function SellerCenter() {
         count: (data ?? []).reduce((s, i) => s + i.quantity, 0),
         amount: (data ?? []).reduce((s, i) => s + Number(i.seller_amount), 0),
       };
+    },
+  });
+
+  const { data: transactions = [] } = useQuery({
+    enabled: !!store?.id,
+    queryKey: ["seller-transactions", store?.id],
+    queryFn: async () => {
+      if (!store?.id) return [];
+      const { data, error } = await supabase.from("payment_transactions")
+        .select("id,order_id,status,gross_amount,platform_fee,seller_amount,payment_method,created_at")
+        .eq("store_id", store.id).order("created_at", { ascending: false }).limit(50);
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -184,12 +200,10 @@ function SellerCenter() {
         <Stat icon={ShoppingBag} label="Itens vendidos hoje" value={String(todaySales.count)} />
       </div>
 
-      <PixSettings
-        storeId={store.id}
-        initialType={store.pix_key_type}
-        initialKey={store.pix_key}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["my-store"] })}
-      />
+      <section className="surface-card mt-4 flex flex-wrap items-center justify-between gap-4 p-4">
+        <div><h2 className="flex items-center gap-2 font-semibold"><WalletCards className="h-5 w-5 text-primary" />Carteira Mercado Pago</h2><p className="mt-1 text-sm text-muted-foreground">Receba automaticamente o valor líquido das vendas após a comissão.</p></div>
+        {store.mercado_pago_status === "connected" ? <span className="rounded-md bg-success/10 px-3 py-2 text-sm font-semibold text-success">Conta conectada</span> : <Button onClick={async () => { try { const result = await startConnection({ data: { storeId: store.id, origin: window.location.origin } }); window.location.assign(result.url); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível conectar."); } }}><ExternalLink />Conectar Mercado Pago</Button>}
+      </section>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[360px_1fr]">
         <ProductForm
@@ -231,6 +245,7 @@ function SellerCenter() {
           </ul>
         </section>
       </div>
+      <section className="surface-card mt-4 overflow-hidden"><header className="border-b border-border p-4"><h2 className="font-semibold">Vendas e pagamentos</h2></header><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-sm"><thead className="bg-muted/50 text-left text-muted-foreground"><tr><th className="p-3">Pedido</th><th className="p-3">Data</th><th className="p-3">Pagamento</th><th className="p-3 text-right">Bruto</th><th className="p-3 text-right">Comissão</th><th className="p-3 text-right">Líquido</th></tr></thead><tbody className="divide-y divide-border">{transactions.map((tx) => <tr key={tx.id}><td className="p-3 font-medium">{tx.order_id.slice(0, 8).toUpperCase()}</td><td className="p-3">{new Date(tx.created_at).toLocaleDateString("pt-BR")}</td><td className="p-3">{tx.status === "approved" ? "Pago" : tx.status === "pending" ? "Pendente" : tx.status}</td><td className="p-3 text-right">{brl(Number(tx.gross_amount))}</td><td className="p-3 text-right">{brl(Number(tx.platform_fee))}</td><td className="p-3 text-right font-semibold text-success">{brl(Number(tx.seller_amount))}</td></tr>)}{transactions.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhuma venda registrada.</td></tr>}</tbody></table></div></section>
     </Shell>
   );
 }
@@ -269,8 +284,6 @@ function Stat({
 function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [pixKeyType, setPixKeyType] = useState("email");
-  const [pixKey, setPixKey] = useState("");
 
   return (
     <form
@@ -288,8 +301,6 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
           name: name.trim(),
           slug: `${slug}-${Date.now().toString(36)}`,
           description: description.trim(),
-          pix_key_type: pixKeyType,
-          pix_key: pixKey.trim(),
         });
         if (error) {
           toast.error(error.message);
@@ -316,35 +327,6 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
             className="mt-1"
           />
         </div>
-        <div className="grid grid-cols-[130px_1fr] gap-3">
-          <div>
-            <Label htmlFor="store-pix-type">Tipo de chave Pix</Label>
-            <select
-              id="store-pix-type"
-              value={pixKeyType}
-              onChange={(e) => setPixKeyType(e.target.value)}
-              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="cpf">CPF</option>
-              <option value="cnpj">CNPJ</option>
-              <option value="email">E-mail</option>
-              <option value="phone">Telefone</option>
-              <option value="random">Aleatória</option>
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="store-pix">Chave Pix</Label>
-            <Input
-              id="store-pix"
-              required
-              minLength={3}
-              maxLength={140}
-              value={pixKey}
-              onChange={(e) => setPixKey(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-        </div>
         <div>
           <Label htmlFor="store-desc">Descrição</Label>
           <Textarea
@@ -363,87 +345,13 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
   );
 }
 
-function PixSettings({
-  storeId,
-  initialType,
-  initialKey,
-  onSaved,
-}: {
-  storeId: string;
-  initialType: string | null;
-  initialKey: string | null;
-  onSaved: () => void;
-}) {
-  const [pixKeyType, setPixKeyType] = useState(initialType ?? "email");
-  const [pixKey, setPixKey] = useState(initialKey ?? "");
-  const [saving, setSaving] = useState(false);
-
-  return (
-    <form
-      className="surface-card mt-4 p-4"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        setSaving(true);
-        const { error } = await supabase
-          .from("stores")
-          .update({ pix_key_type: pixKeyType, pix_key: pixKey.trim() })
-          .eq("id", storeId);
-        setSaving(false);
-        if (error) {
-          toast.error(error.message);
-          return;
-        }
-        toast.success("Chave Pix atualizada");
-        onSaved();
-      }}
-    >
-      <h2 className="flex items-center gap-2 text-base font-semibold">
-        <KeyRound className="h-4 w-4 text-primary" /> Recebimento via Pix
-      </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Esta chave será usada pela equipe para o repasse das vendas após a comissão.
-      </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-[180px_1fr_auto] sm:items-end">
-        <div>
-          <Label htmlFor="pix-type">Tipo</Label>
-          <select
-            id="pix-type"
-            value={pixKeyType}
-            onChange={(e) => setPixKeyType(e.target.value)}
-            className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="cpf">CPF</option>
-            <option value="cnpj">CNPJ</option>
-            <option value="email">E-mail</option>
-            <option value="phone">Telefone</option>
-            <option value="random">Aleatória</option>
-          </select>
-        </div>
-        <div>
-          <Label htmlFor="pix-key">Chave Pix</Label>
-          <Input
-            id="pix-key"
-            required
-            minLength={3}
-            maxLength={140}
-            value={pixKey}
-            onChange={(e) => setPixKey(e.target.value)}
-            className="mt-1"
-          />
-        </div>
-        <Button type="submit" disabled={saving}>
-          {saving ? "Salvando…" : "Salvar Pix"}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
 function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () => void }) {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("1");
   const [category, setCategory] = useState<string>(CATEGORIES[0].slug);
+  const [productType, setProductType] = useState<"physical" | "digital">("physical");
+  const [deliveryUrl, setDeliveryUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -478,20 +386,27 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
             if (signErr) throw signErr;
             imageUrl = signed.signedUrl;
           }
-          const { error } = await supabase.from("products").insert({
+          if (productType === "digital" && !deliveryUrl.trim()) throw new Error("Informe o link de entrega do produto digital.");
+          const { data: product, error } = await supabase.from("products").insert({
             store_id: storeId,
             title: title.trim(),
             price: parsedPrice,
             stock: parsedStock,
             category,
             image_url: imageUrl,
-          });
+            product_type: productType,
+          }).select("id").single();
           if (error) throw error;
+          if (productType === "digital" && product) {
+            const { error: assetError } = await supabase.from("digital_product_assets").insert({ product_id: product.id, store_id: storeId, delivery_url: deliveryUrl.trim() });
+            if (assetError) throw assetError;
+          }
           toast.success("Produto cadastrado!");
           setTitle("");
           setPrice("");
           setStock("1");
           setFile(null);
+          setDeliveryUrl("");
           onCreated();
         } catch (err) {
           toast.error(err instanceof Error ? err.message : "Erro ao cadastrar");
@@ -516,6 +431,8 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
             className="mt-1"
           />
         </div>
+        <div><Label htmlFor="p-type">Tipo de produto</Label><select id="p-type" value={productType} onChange={(e) => setProductType(e.target.value as "physical" | "digital")} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="physical">Físico</option><option value="digital">Digital</option></select></div>
+        {productType === "digital" && <div><Label htmlFor="p-delivery">Link de entrega</Label><Input id="p-delivery" type="url" required value={deliveryUrl} onChange={(e) => setDeliveryUrl(e.target.value)} placeholder="https://..." className="mt-1" /><p className="mt-1 text-xs text-muted-foreground">Visível somente ao comprador após o pagamento confirmado.</p></div>}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="p-price">Preço (R$)</Label>
