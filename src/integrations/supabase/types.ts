@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      abandoned_carts: {
+        Row: {
+          contact_email: string
+          created_at: string
+          id: string
+          product_id: string
+          quantity: number
+          reminder_processed_at: string | null
+          source: string
+          status: string
+          updated_at: string
+          user_id: string
+          webhook_reference: string | null
+        }
+        Insert: {
+          contact_email: string
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity?: number
+          reminder_processed_at?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          webhook_reference?: string | null
+        }
+        Update: {
+          contact_email?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity?: number
+          reminder_processed_at?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          webhook_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abandoned_carts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercado_pago_accounts: {
         Row: {
           access_token_encrypted: string
@@ -349,7 +399,9 @@ export type Database = {
           compare_at_price: number | null
           created_at: string
           description: string | null
+          description_long: string | null
           free_shipping: boolean
+          gallery_urls: string[]
           id: string
           image_url: string | null
           is_active: boolean
@@ -357,16 +409,20 @@ export type Database = {
           rating: number
           reviews_count: number
           sold_count: number
+          specifications: Json
           stock: number
           store_id: string
           title: string
+          variations: Json
         }
         Insert: {
           category?: string
           compare_at_price?: number | null
           created_at?: string
           description?: string | null
+          description_long?: string | null
           free_shipping?: boolean
+          gallery_urls?: string[]
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -374,16 +430,20 @@ export type Database = {
           rating?: number
           reviews_count?: number
           sold_count?: number
+          specifications?: Json
           stock?: number
           store_id: string
           title: string
+          variations?: Json
         }
         Update: {
           category?: string
           compare_at_price?: number | null
           created_at?: string
           description?: string | null
+          description_long?: string | null
           free_shipping?: boolean
+          gallery_urls?: string[]
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -391,9 +451,11 @@ export type Database = {
           rating?: number
           reviews_count?: number
           sold_count?: number
+          specifications?: Json
           stock?: number
           store_id?: string
           title?: string
+          variations?: Json
         }
         Relationships: [
           {
