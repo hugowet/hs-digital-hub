@@ -1,7 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
-
-import { decryptSecret, mercadoPagoRequest } from "@/lib/mercado-pago.server";
 
 type Payment = {
   id: number;
@@ -12,24 +9,11 @@ type Payment = {
   metadata?: { transaction_id?: string };
 };
 
-function validSignature(request: Request, dataId: string, secret: string) {
-  const signature = request.headers.get("x-signature") ?? "";
-  const requestId = request.headers.get("x-request-id") ?? "";
-  const parts = Object.fromEntries(signature.split(",").map((part) => part.trim().split("=")));
-  const ts = parts.ts;
-  const provided = parts.v1;
-  if (!ts || !provided || !requestId) return false;
-  const manifest = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`;
-  const expected = createHmac("sha256", secret).update(manifest).digest("hex");
-  const left = Buffer.from(provided);
-  const right = Buffer.from(expected);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
-
 export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const { decryptSecret, mercadoPagoRequest, validWebhookSignature } = await import("@/lib/mercado-pago.server");
         const requestUrl = new URL(request.url);
         const rawBody = await request.text();
         let payload: Record<string, any>;
@@ -46,7 +30,12 @@ export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
           .maybeSingle();
         if (!settings) return new Response("Not configured", { status: 503 });
         const webhookSecret = await decryptSecret(settings.webhook_secret_encrypted);
-        if (!validSignature(request, dataId, webhookSecret)) return new Response("Invalid signature", { status: 401 });
+        const signature = request.headers.get("x-signature") ?? "";
+        const requestId = request.headers.get("x-request-id") ?? "";
+        const parts = Object.fromEntries(signature.split(",").map((part) => part.trim().split("=")));
+        if (!parts.ts || !parts.v1 || !requestId || !await validWebhookSignature(dataId, requestId, parts.ts, parts.v1, webhookSecret)) {
+          return new Response("Invalid signature", { status: 401 });
+        }
 
         const providerEventId = String(payload.id ?? `${eventType}:${dataId}`);
         const { data: existing } = await supabaseAdmin

@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { MessageCircle, Minus, Plus, Store, Trash2 } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { CreditCard, Minus, Plus, Store, Trash2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -11,10 +12,7 @@ import { Label } from "@/components/ui/label";
 import { groupByStore, useCart } from "@/lib/cart";
 import { trackCheckoutAbandonment } from "@/lib/abandoned-cart";
 import { brl } from "@/lib/format";
-import { supabase } from "@/integrations/supabase/client";
-
-// Número do WhatsApp da HS Digital (DDD + número, só dígitos, com 55 na frente)
-const WHATSAPP_NUMBER = "556993612254";
+import { createMarketplaceCheckout } from "@/lib/payments.functions";
 
 export const Route = createFileRoute("/carrinho")({
   head: () => ({
@@ -22,12 +20,12 @@ export const Route = createFileRoute("/carrinho")({
       { title: "Carrinho · HS Digital" },
       {
         name: "description",
-        content: "Revise seus itens por loja e finalize o pedido pelo WhatsApp na HS Digital.",
+        content: "Revise seus itens por loja e pague com Pix ou cartão na HS Digital.",
       },
       { property: "og:title", content: "Carrinho · HS Digital" },
       {
         property: "og:description",
-        content: "Carrinho multi-loja da HS Digital com pedido via WhatsApp.",
+        content: "Carrinho multi-loja da HS Digital com pagamento protegido.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -38,6 +36,8 @@ export const Route = createFileRoute("/carrinho")({
 
 function CartPage() {
   const { items, setQuantity, remove, subtotal, clear } = useCart();
+  const navigate = useNavigate();
+  const createCheckout = useServerFn(createMarketplaceCheckout);
   const groups = groupByStore(items);
 
   const [name, setName] = useState("");
@@ -57,63 +57,30 @@ function CartPage() {
     if (items.length > 0) void trackCheckoutAbandonment(items);
   }, [items]);
 
-  const checkoutViaWhatsApp = async () => {
+  const checkout = async () => {
     if (!name.trim() || !address.trim() || !city.trim()) {
       toast.error("Preencha nome, endereço e cidade para entrega.");
       return;
     }
 
     setSubmitting(true);
-    const { data: authData } = await supabase.auth.getUser();
-    if (!authData.user) {
-      setSubmitting(false);
-      toast.error("Entre como Comprador para registrar e finalizar seu pedido.");
-      return;
-    }
-
-    const { data: orderId, error } = await supabase.rpc("create_marketplace_order", {
-      _items: items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
-      _shipping_address: {
+    try {
+      const { orderId } = await createCheckout({ data: {
+        items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+        shippingAddress: {
         name: name.trim(),
         phone: phone.trim(),
         address: address.trim(),
         city: city.trim(),
         note: note.trim(),
-      },
-    });
-    if (error || !orderId) {
+        },
+      } });
       setSubmitting(false);
-      toast.error(error?.message ?? "Não foi possível registrar o pedido.");
-      return;
+      navigate({ to: "/pedido/$orderId", params: { orderId } });
+    } catch (error) {
+      setSubmitting(false);
+      toast.error(error instanceof Error ? error.message : "Não foi possível registrar o pedido.");
     }
-
-    const lines: string[] = [
-      "*Novo pedido — HS Digital*",
-      `Pedido: ${orderId.slice(0, 8).toUpperCase()}`,
-      "",
-      "*Itens:*",
-      ...groups.flatMap((g) => [
-        `Loja: ${g.storeName}`,
-        ...g.items.map((i) => `• ${i.quantity}x ${i.title} — ${brl(i.price * i.quantity)}`),
-      ]),
-      "",
-      `Subtotal: ${brl(subtotal)}`,
-      `Frete: ${shipping === 0 ? "Grátis" : brl(shipping)}`,
-      `*Total: ${brl(total)}*`,
-      "",
-      "*Entrega:*",
-      `Nome: ${name.trim()}`,
-      phone.trim() ? `Telefone: ${phone.trim()}` : "",
-      `Endereço: ${address.trim()} — ${city.trim()}`,
-      note.trim() ? `Obs: ${note.trim()}` : "",
-      "",
-      "Pagamento: Pix (combinar chave e envio).",
-    ].filter(Boolean);
-
-    const encodedMessage = encodeURIComponent(lines.join("\n"));
-    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
-    clear();
-    window.location.assign(whatsappUrl);
   };
 
   return (
@@ -280,15 +247,14 @@ function CartPage() {
               <Button
                 className="mt-4 w-full"
                 size="lg"
-                onClick={checkoutViaWhatsApp}
+                onClick={checkout}
                 disabled={submitting}
               >
-                <MessageCircle className="mr-2 h-5 w-5" />
-                {submitting ? "Registrando pedido…" : "Finalizar pedido via WhatsApp"}
+                <CreditCard className="mr-2 h-5 w-5" />
+                {submitting ? "Criando pedido…" : "Ir para o pagamento"}
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                O resumo do pedido abre no WhatsApp e o pagamento é fechado via Pix com a nossa
-                equipe.
+                Pagamento seguro por Pix ou cartão. Carrinhos com várias lojas são pagos por loja.
               </p>
             </aside>
           </div>

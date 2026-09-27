@@ -2,13 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import {
-  decryptSecret,
-  encryptSecret,
-  mercadoPagoRequest,
-  safeOrigin,
-  sha256,
-} from "@/lib/mercado-pago.server";
 
 const settingsSchema = z.object({
   publicKey: z.string().min(8).max(300),
@@ -59,6 +52,7 @@ export const saveMercadoPagoConfiguration = createServerFn({ method: "POST" })
   .inputValidator((input) => settingsSchema.parse(input))
   .handler(async ({ data, context }) => {
     await ensureAdmin(context);
+    const { encryptSecret, mercadoPagoRequest } = await import("@/lib/mercado-pago.server");
     await mercadoPagoRequest<{ id: number }>("/users/me", data.accessToken);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("payment_provider_settings").upsert({
@@ -80,6 +74,7 @@ export const startMercadoPagoConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ storeId: z.string().uuid(), origin: z.string().url() }).parse(input))
   .handler(async ({ data, context }) => {
+    const { safeOrigin, sha256 } = await import("@/lib/mercado-pago.server");
     const origin = safeOrigin(data.origin);
     const { data: store } = await context.supabase
       .from("stores")
@@ -131,6 +126,7 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => checkoutSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { decryptSecret, mercadoPagoRequest, safeOrigin } = await import("@/lib/mercado-pago.server");
     const { data: orderId, error } = await context.supabase.rpc("create_marketplace_order", {
       _items: data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
       _shipping_address: data.shippingAddress,

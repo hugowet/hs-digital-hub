@@ -45,6 +45,31 @@ export async function sha256(value: string) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+export async function validWebhookSignature(
+  dataId: string,
+  requestId: string,
+  timestamp: string,
+  provided: string,
+  secret: string,
+) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const manifest = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${timestamp};`;
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(manifest));
+  const expected = Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  if (expected.length !== provided.length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    mismatch |= expected.charCodeAt(index) ^ provided.charCodeAt(index);
+  }
+  return mismatch === 0;
+}
+
 export function safeOrigin(value: string) {
   const url = new URL(value);
   if (url.protocol !== "https:" && url.hostname !== "localhost") {

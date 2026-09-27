@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { decryptSecret, encryptSecret, mercadoPagoRequest, sha256 } from "@/lib/mercado-pago.server";
-
 type OAuthResponse = {
   access_token: string;
   refresh_token?: string;
@@ -13,6 +11,7 @@ export const Route = createFileRoute("/api/public/mercado-pago/oauth-callback")(
   server: {
     handlers: {
       GET: async ({ request }) => {
+        const { decryptSecret, encryptSecret, sha256 } = await import("@/lib/mercado-pago.server");
         const requestUrl = new URL(request.url);
         const code = requestUrl.searchParams.get("code");
         const state = requestUrl.searchParams.get("state");
@@ -36,16 +35,23 @@ export const Route = createFileRoute("/api/public/mercado-pago/oauth-callback")(
         if (!settings) return new Response("Mercado Pago não configurado.", { status: 503 });
 
         const redirectUri = `${oauthState.redirect_origin}/api/public/mercado-pago/oauth-callback`;
-        const token = await mercadoPagoRequest<OAuthResponse>("/oauth/token", await decryptSecret(settings.client_secret_encrypted), {
+        const clientSecret = await decryptSecret(settings.client_secret_encrypted);
+        const tokenResponse = await fetch("https://api.mercadopago.com/oauth/token", {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             client_id: settings.client_id,
-            client_secret: await decryptSecret(settings.client_secret_encrypted),
+            client_secret: clientSecret,
             code,
             grant_type: "authorization_code",
             redirect_uri: redirectUri,
           }),
         });
+        if (!tokenResponse.ok) {
+          console.error(`Mercado Pago OAuth failed [${tokenResponse.status}]: ${await tokenResponse.text()}`);
+          return new Response("Não foi possível conectar a conta Mercado Pago.", { status: 502 });
+        }
+        const token = await tokenResponse.json() as OAuthResponse;
         const expiresAt = token.expires_in
           ? new Date(Date.now() + token.expires_in * 1000).toISOString()
           : null;
