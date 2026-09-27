@@ -81,7 +81,9 @@ export type Database = {
       orders: {
         Row: {
           buyer_id: string
+          checkout_group_id: string
           created_at: string
+          expires_at: string
           id: string
           payment_provider: string | null
           payment_reference: string | null
@@ -94,7 +96,9 @@ export type Database = {
         }
         Insert: {
           buyer_id: string
+          checkout_group_id?: string
           created_at?: string
+          expires_at?: string
           id?: string
           payment_provider?: string | null
           payment_reference?: string | null
@@ -107,7 +111,9 @@ export type Database = {
         }
         Update: {
           buyer_id?: string
+          checkout_group_id?: string
           created_at?: string
+          expires_at?: string
           id?: string
           payment_provider?: string | null
           payment_reference?: string | null
@@ -119,6 +125,120 @@ export type Database = {
           total?: number
         }
         Relationships: []
+      }
+      payment_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+          processed_at: string | null
+          provider: string
+          provider_event_id: string
+          provider_payment_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          payload: Json
+          processed_at?: string | null
+          provider?: string
+          provider_event_id: string
+          provider_payment_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          provider?: string
+          provider_event_id?: string
+          provider_payment_id?: string | null
+        }
+        Relationships: []
+      }
+      payment_transactions: {
+        Row: {
+          buyer_id: string
+          checkout_url: string | null
+          created_at: string
+          currency: string
+          failure_reason: string | null
+          gross_amount: number
+          id: string
+          order_id: string
+          paid_at: string | null
+          payment_method: string | null
+          platform_fee: number
+          provider: string
+          provider_payload: Json | null
+          provider_payment_id: string | null
+          provider_preference_id: string | null
+          seller_amount: number
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          checkout_url?: string | null
+          created_at?: string
+          currency?: string
+          failure_reason?: string | null
+          gross_amount: number
+          id?: string
+          order_id: string
+          paid_at?: string | null
+          payment_method?: string | null
+          platform_fee: number
+          provider?: string
+          provider_payload?: Json | null
+          provider_payment_id?: string | null
+          provider_preference_id?: string | null
+          seller_amount: number
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          checkout_url?: string | null
+          created_at?: string
+          currency?: string
+          failure_reason?: string | null
+          gross_amount?: number
+          id?: string
+          order_id?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          platform_fee?: number
+          provider?: string
+          provider_payload?: Json | null
+          provider_payment_id?: string | null
+          provider_preference_id?: string | null
+          seller_amount?: number
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_settings: {
         Row: {
@@ -234,6 +354,11 @@ export type Database = {
           description: string | null
           id: string
           logo_url: string | null
+          mercado_pago_access_token_encrypted: string | null
+          mercado_pago_refresh_token_encrypted: string | null
+          mercado_pago_status: string
+          mercado_pago_token_expires_at: string | null
+          mercado_pago_user_id: string | null
           name: string
           owner_id: string | null
           pix_key: string | null
@@ -248,6 +373,11 @@ export type Database = {
           description?: string | null
           id?: string
           logo_url?: string | null
+          mercado_pago_access_token_encrypted?: string | null
+          mercado_pago_refresh_token_encrypted?: string | null
+          mercado_pago_status?: string
+          mercado_pago_token_expires_at?: string | null
+          mercado_pago_user_id?: string | null
           name: string
           owner_id?: string | null
           pix_key?: string | null
@@ -262,6 +392,11 @@ export type Database = {
           description?: string | null
           id?: string
           logo_url?: string | null
+          mercado_pago_access_token_encrypted?: string | null
+          mercado_pago_refresh_token_encrypted?: string | null
+          mercado_pago_status?: string
+          mercado_pago_token_expires_at?: string | null
+          mercado_pago_user_id?: string | null
           name?: string
           owner_id?: string | null
           pix_key?: string | null
