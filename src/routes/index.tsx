@@ -50,14 +50,16 @@ function Home() {
   const { data: products = [], isLoading } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
 
   const filtered = useMemo(() => {
-    const selectedRange = PRICE_RANGES.find((item) => item.id === range) ?? PRICE_RANGES[0];
+    const selectedRange = PRICE_RANGES.find((item) => item.id === range) ?? {
+      id: "all", label: "Todos os preços", min: 0, max: Infinity,
+    };
     const result = products.filter((product) => {
       const price = Number(product.price);
       const search = `${product.title} ${product.stores?.name ?? ""} ${product.category}`.toLowerCase();
       return search.includes(query.trim().toLowerCase()) && (!category || product.category === category)
         && price >= selectedRange.min && price <= selectedRange.max;
     });
-    return result.toSorted((a, b) => sort === "price-asc"
+    return [...result].sort((a, b) => sort === "price-asc"
       ? Number(a.price) - Number(b.price)
       : sort === "price-desc" ? Number(b.price) - Number(a.price) : b.sold_count - a.sold_count);
   }, [products, query, category, range, sort]);

@@ -86,19 +86,20 @@ export function SiteHeader({
             {onQueryChange && searchFocused && matches.length > 0 && (
               <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl">
                 {matches.map((item) => (
-                  <button
+                  <Button
                     key={item.id}
                     type="button"
+                    variant="ghost"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => {
                       onQueryChange(item.title);
                       setSearchFocused(false);
                     }}
-                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-accent"
+                    className="h-auto w-full justify-between rounded-none px-4 py-3 text-left text-sm"
                   >
                     <span className="truncate font-medium">{item.title}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">{item.category}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}

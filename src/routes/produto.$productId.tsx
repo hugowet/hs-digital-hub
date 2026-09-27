@@ -33,7 +33,7 @@ function ProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selections, setSelections] = useState<Record<string, string>>({});
   const { data: product, isLoading } = useQuery({ queryKey: ["product", productId], queryFn: () => fetchProduct(productId) });
-  const images = useMemo(() => product ? [...new Set([product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean))] as string[] : [], [product]);
+  const images = useMemo(() => product ? [product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean) as string[] : [], [product]);
 
   if (isLoading) return <Shell><div className="h-[520px] animate-pulse bg-muted" /></Shell>;
   if (!product) return <Shell><div className="py-24 text-center"><h1 className="text-2xl font-bold">Produto não encontrado</h1><Button asChild className="mt-4"><Link to="/">Voltar às ofertas</Link></Button></div></Shell>;
@@ -48,8 +48,8 @@ function ProductDetailPage() {
     <nav className="mb-5 flex items-center gap-1 text-xs text-muted-foreground"><Link to="/" className="hover:text-primary">Início</Link><ChevronRight className="h-3 w-3" /><span className="truncate">{product.title}</span></nav>
     <section className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr]">
       <div className="grid gap-3 sm:grid-cols-[76px_1fr]">
-        <div className="order-2 flex gap-2 sm:order-1 sm:flex-col">{images.map((url, index) => <button key={`${url}-${index}`} onClick={() => setSelectedImage(index)} aria-label={`Ver imagem ${index + 1}`} className={`aspect-square w-16 overflow-hidden rounded-md border-2 ${selectedImage === index ? "border-primary" : "border-border"}`}><img src={url} alt="" width={96} height={96} className="h-full w-full object-cover" /></button>)}</div>
-        <div className="group order-1 aspect-square overflow-hidden bg-muted sm:order-2"><img src={images[selectedImage] ?? product.image_url ?? ""} alt={product.title} width={900} height={900} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" /></div>
+        <div className="order-2 flex gap-2 sm:order-1 sm:flex-col">{images.map((url, index) => <Button key={`${url}-${index}`} variant="ghost" size="icon" onClick={() => setSelectedImage(index)} aria-label={`Ver imagem ${index + 1}`} className={`aspect-square h-16 w-16 overflow-hidden rounded-md border-2 p-0 ${selectedImage === index ? "border-primary" : "border-border"}`}><img src={url} alt="" width={96} height={96} className={`h-full w-full object-cover ${index > 0 ? "scale-125" : ""}`} /></Button>)}</div>
+        <div className="group order-1 aspect-square overflow-hidden bg-muted sm:order-2"><img src={images[selectedImage] ?? product.image_url ?? ""} alt={product.title} width={900} height={900} className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-110 ${selectedImage > 0 ? "scale-125 group-hover:scale-[1.35]" : ""}`} /></div>
       </div>
       <div>
         <p className="text-sm text-muted-foreground">Novo · {compact(product.sold_count)} vendidos</p>
