@@ -94,6 +94,7 @@ export function SiteHeader({
                     onClick={() => {
                       onQueryChange(item.title);
                       setSearchFocused(false);
+                      navigate({ to: "/produto/$productId", params: { productId: item.id } });
                     }}
                     className="h-auto w-full justify-between rounded-none px-4 py-3 text-left text-sm"
                   >

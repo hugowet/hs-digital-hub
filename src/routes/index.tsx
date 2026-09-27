@@ -71,16 +71,16 @@ function Home() {
       <SiteHeader query={query} onQueryChange={setQuery} suggestions={products.map((p) => ({ id: p.id, title: p.title, category: CATEGORIES.find((c) => c.slug === p.category)?.label ?? p.category }))} />
       <main>
         <section className="brand-gradient overflow-hidden text-primary-foreground">
-          <div className="mx-auto grid min-h-[410px] w-full max-w-7xl items-center gap-4 px-4 py-8 md:grid-cols-[1fr_420px_1fr]">
+          <div className="mx-auto grid w-full max-w-7xl items-center gap-4 px-4 py-6 md:min-h-[410px] md:grid-cols-[1fr_420px_1fr] md:py-8">
             <div className="max-w-md md:justify-self-end">
               <p className="text-sm font-semibold text-primary-glow">Seu marketplace, mais inteligente</p>
               <h1 className="mt-3 text-3xl font-bold leading-tight md:text-5xl">HS Digital Marketplace</h1>
               <p className="mt-4 text-sm text-primary-foreground/75 md:text-base">Produtos digitais, tecnologia e soluções para transformar sua rotina.</p>
             </div>
-            <img src={loopAsset.url} alt="Loop, mascote lobo vermelho da HS Digital" width={768} height={768} className="loop-float mx-auto aspect-square w-full max-w-[340px] object-contain" />
+            <img src={loopAsset.url} alt="Loop, mascote lobo vermelho da HS Digital" width={768} height={768} className="loop-float mx-auto aspect-square w-full max-w-[240px] object-contain md:max-w-[340px]" />
             <div className="relative max-w-sm rounded-lg border border-primary-foreground/15 bg-primary-foreground/10 p-5 backdrop-blur-sm md:justify-self-start">
               <span className="absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rotate-45 border-b border-l border-primary-foreground/15 bg-ink/70 max-md:hidden" />
-              <p className="font-display text-lg font-semibold leading-relaxed">Bem-vindo ao HS Digital Marketplace! Encontre os melhores produtos com a entrega mais rápida.</p>
+              <p className="font-display text-base font-semibold leading-relaxed md:text-lg">Bem-vindo ao HS Digital Marketplace! Encontre os melhores produtos com a entrega mais rápida.</p>
               <p className="mt-2 text-sm text-primary-foreground/65">— Loop</p>
             </div>
           </div>
