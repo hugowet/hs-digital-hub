@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      mercado_pago_accounts: {
+        Row: {
+          access_token_encrypted: string
+          created_at: string
+          mercado_pago_user_id: string
+          refresh_token_encrypted: string | null
+          store_id: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token_encrypted: string
+          created_at?: string
+          mercado_pago_user_id: string
+          refresh_token_encrypted?: string | null
+          store_id: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token_encrypted?: string
+          created_at?: string
+          mercado_pago_user_id?: string
+          refresh_token_encrypted?: string | null
+          store_id?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercado_pago_accounts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercado_pago_oauth_states: {
         Row: {
           created_at: string
