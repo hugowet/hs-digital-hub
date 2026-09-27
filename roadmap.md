@@ -11,9 +11,9 @@
 - [x] Revisão pré-publicação: páginas, produtos, imagens, carrinho, links e WhatsApp
 - [x] Cadastro real com escolha entre Comprador e Vendedor
 - [x] Chave Pix do vendedor, estoque transacional e comissão automática por venda
-- [ ] Remover checkout via WhatsApp e criar checkout automático por Pix/Cartão
-- [ ] Integrar gateway com split automático entre comissão HS Digital e vendedor
-- [ ] Criar aba de transações no painel Admin
+- [ ] Remover checkout via WhatsApp e criar checkout automático real por Pix/Cartão, separado por loja
+- [ ] Conectar contas Mercado Pago dos vendedores e aplicar comissão automática por pagamento
+- [ ] Criar configuração segura e aba de transações Mercado Pago no painel Admin
 - [x] Conceder acesso Admin mestre ao usuário solicitado com validação segura no banco
 - [ ] Corrigir acesso público indevido às imagens privadas de produtos
 - [x] Integrar o mascote Loop à Home com animação e mensagem de boas-vindas
@@ -22,3 +22,7 @@
 - [x] Registrar carrinhos abandonados de usuários autenticados
 - [x] Adicionar 20 produtos fictícios com imagens próprias sem remover os 8 atuais
 - [x] Informar claramente os bloqueios restantes para vendas reais e publicação
+
+- [ ] Adicionar liberação segura de produtos digitais após pagamento confirmado
+- [ ] Criar página de confirmação e histórico de pedidos do comprador
+- [ ] Validar webhook Mercado Pago, idempotência e devolução de estoque
