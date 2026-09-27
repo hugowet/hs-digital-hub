@@ -19,6 +19,7 @@ export type Product = {
   gallery_urls: string[];
   specifications: Record<string, string>;
   variations: Array<{ name: string; options: string[] }>;
+  product_type: string;
 };
 
 export const CATEGORIES = [
@@ -41,7 +42,7 @@ export async function fetchProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,stores(name,slug)",
+      "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,stores(name,slug)",
     )
     .eq("is_active", true)
     .order("sold_count", { ascending: false });
@@ -54,7 +55,7 @@ export async function fetchProduct(productId: string): Promise<Product | null> {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,stores(name,slug)",
+      "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,stores(name,slug)",
     )
     .eq("id", productId)
     .eq("is_active", true)
