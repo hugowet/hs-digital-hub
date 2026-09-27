@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageCircle, Minus, Plus, Store, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteFooter } from "@/components/site-footer";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { groupByStore, useCart } from "@/lib/cart";
+import { trackCheckoutAbandonment } from "@/lib/abandoned-cart";
 import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -51,6 +52,10 @@ function CartPage() {
     0,
   );
   const total = subtotal + shipping;
+
+  useEffect(() => {
+    if (items.length > 0) void trackCheckoutAbandonment(items);
+  }, [items]);
 
   const checkoutViaWhatsApp = async () => {
     if (!name.trim() || !address.trim() || !city.trim()) {

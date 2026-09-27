@@ -41,7 +41,6 @@ export async function fetchProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id,title,price,compare_at_price,stock,category,image_url,free_shipping,rating,reviews_count,sold_count,store_id,stores(name,slug)",
       "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,stores(name,slug)",
     )
     .eq("is_active", true)
@@ -49,6 +48,19 @@ export async function fetchProducts(): Promise<Product[]> {
 
   if (error) throw error;
   return (data ?? []) as unknown as Product[];
+}
+
+export async function fetchProduct(productId: string): Promise<Product | null> {
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,stores(name,slug)",
+    )
+    .eq("id", productId)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) throw error;
+  return data as unknown as Product | null;
 }
 
 export async function fetchCommissionRate(): Promise<number> {

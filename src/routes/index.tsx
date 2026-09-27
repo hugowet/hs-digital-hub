@@ -1,41 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Baby,
-  BadgePercent,
-  Dumbbell,
-  Gamepad2,
-  Headphones,
-  ShieldCheck,
-  Shirt,
-  ShoppingBasket,
-  Smartphone,
-  Sofa,
-  Sparkles,
-  Truck,
+  Baby, Dumbbell, Files, Gamepad2, GraduationCap, Headphones, Keyboard,
+  LampDesk, ShieldCheck, Shirt, ShoppingBasket, Smartphone, Sofa, Sparkles,
+  Truck, Watch,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import loopAsset from "@/assets/loop-mascote.png.asset.json";
 import { ProductCard } from "@/components/product-card";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CATEGORIES, fetchProducts } from "@/lib/catalog";
-import { brl } from "@/lib/format";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "HS Digital · Ofertas de várias lojas em um só lugar" },
-      {
-        name: "description",
-        content:
-          "Compre eletrônicos, moda, beleza e games no marketplace HS Digital com frete grátis e compra rápida.",
-      },
+      { title: "HS Digital · Marketplace de produtos e soluções digitais" },
+      { name: "description", content: "Encontre produtos digitais, cursos, tecnologia e acessórios na HS Digital." },
       { property: "og:title", content: "HS Digital · Marketplace" },
-      {
-        property: "og:description",
-        content: "Ofertas de várias lojas, frete grátis e compra rápida no marketplace HS Digital.",
-      },
+      { property: "og:description", content: "Produtos selecionados, compra rápida e entrega segura na HS Digital." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -44,188 +30,97 @@ export const Route = createFileRoute("/")({
 });
 
 const ICONS: Record<string, typeof Smartphone> = {
-  Smartphone,
-  Shirt,
-  Sofa,
-  Sparkles,
-  Gamepad2,
-  Dumbbell,
-  Baby,
-  ShoppingBasket,
+  Files, GraduationCap, Watch, Keyboard, LampDesk, Smartphone, Shirt, Sofa,
+  Sparkles, Gamepad2, Dumbbell, Baby, ShoppingBasket,
 };
 
 const PRICE_RANGES = [
   { id: "all", label: "Todos os preços", min: 0, max: Infinity },
-  { id: "a", label: "Até R$ 100", min: 0, max: 100 },
-  { id: "b", label: "R$ 100 a R$ 250", min: 100, max: 250 },
-  { id: "c", label: "R$ 250 a R$ 500", min: 250, max: 500 },
-  { id: "d", label: "Acima de R$ 500", min: 500, max: Infinity },
+  { id: "a", label: "Até R$ 50", min: 0, max: 50 },
+  { id: "b", label: "R$ 50 a R$ 100", min: 50, max: 100 },
+  { id: "c", label: "R$ 100 a R$ 200", min: 100, max: 200 },
+  { id: "d", label: "Acima de R$ 200", min: 200, max: Infinity },
 ];
 
 function Home() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [range, setRange] = useState("all");
-
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products"],
-    queryFn: fetchProducts,
-  });
+  const [sort, setSort] = useState("popular");
+  const { data: products = [], isLoading } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
 
   const filtered = useMemo(() => {
-    const r = PRICE_RANGES.find((p) => p.id === range) ?? {
-      id: "all",
-      label: "Todos os preços",
-      min: 0,
-      max: Infinity,
-    };
-    return products.filter((p) => {
-      const price = Number(p.price);
-      const searchText = `${p.title} ${p.stores?.name ?? ""}`.toLowerCase();
-      const matchQuery = searchText.includes(query.trim().toLowerCase());
-      const matchCategory = !category || p.category === category;
-      return matchQuery && matchCategory && price >= r.min && price <= r.max;
+    const selectedRange = PRICE_RANGES.find((item) => item.id === range) ?? PRICE_RANGES[0];
+    const result = products.filter((product) => {
+      const price = Number(product.price);
+      const search = `${product.title} ${product.stores?.name ?? ""} ${product.category}`.toLowerCase();
+      return search.includes(query.trim().toLowerCase()) && (!category || product.category === category)
+        && price >= selectedRange.min && price <= selectedRange.max;
     });
-  }, [products, query, category, range]);
+    return result.toSorted((a, b) => sort === "price-asc"
+      ? Number(a.price) - Number(b.price)
+      : sort === "price-desc" ? Number(b.price) - Number(a.price) : b.sold_count - a.sold_count);
+  }, [products, query, category, range, sort]);
 
-  const highlight = products[0];
+  const categoryLabel = category ? CATEGORIES.find((item) => item.slug === category)?.label : "Todas as ofertas";
 
   return (
     <div className="min-h-screen bg-background">
-      <SiteHeader query={query} onQueryChange={setQuery} />
-
-      <main className="mx-auto w-full max-w-7xl px-4 pb-8">
-        {/* Banner principal */}
-        <section className="mt-4 overflow-hidden rounded-2xl brand-gradient">
-          <div className="grid items-center gap-6 p-6 sm:grid-cols-2 sm:p-10">
-            <div className="text-primary-foreground">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
-                <BadgePercent className="h-3.5 w-3.5" /> Semana HS · até 45% OFF
-              </span>
-              <h1 className="mt-4 text-3xl font-bold leading-tight sm:text-5xl">
-                Tudo o que você precisa, de várias lojas, num só carrinho.
-              </h1>
-              <p className="mt-3 max-w-md text-sm text-white/75 sm:text-base">
-                Frete grátis em itens selecionados e atendimento direto pelo WhatsApp para fechar
-                seu pedido via Pix.
-              </p>
-              {highlight && (
-                <p className="mt-5 text-sm text-white/80">
-                  Destaque de hoje:{" "}
-                  <span className="font-semibold text-white">{highlight.title}</span> por{" "}
-                  <span className="font-display text-xl font-bold text-white">
-                    {brl(Number(highlight.price))}
-                  </span>
-                </p>
-              )}
+      <SiteHeader query={query} onQueryChange={setQuery} suggestions={products.map((p) => ({ id: p.id, title: p.title, category: CATEGORIES.find((c) => c.slug === p.category)?.label ?? p.category }))} />
+      <main>
+        <section className="brand-gradient overflow-hidden text-primary-foreground">
+          <div className="mx-auto grid min-h-[410px] w-full max-w-7xl items-center gap-4 px-4 py-8 md:grid-cols-[1fr_420px_1fr]">
+            <div className="max-w-md md:justify-self-end">
+              <p className="text-sm font-semibold text-primary-glow">Seu marketplace, mais inteligente</p>
+              <h1 className="mt-3 text-3xl font-bold leading-tight md:text-5xl">HS Digital Marketplace</h1>
+              <p className="mt-4 text-sm text-primary-foreground/75 md:text-base">Produtos digitais, tecnologia e soluções para transformar sua rotina.</p>
             </div>
-            <img
-              src="/images/banner-1.jpg"
-              alt="Ofertas HS Digital"
-              width={1600}
-              height={704}
-              className="h-48 w-full rounded-xl object-cover sm:h-64"
-            />
+            <img src={loopAsset.url} alt="Loop, mascote lobo vermelho da HS Digital" width={768} height={768} className="loop-float mx-auto aspect-square w-full max-w-[340px] object-contain" />
+            <div className="relative max-w-sm rounded-lg border border-primary-foreground/15 bg-primary-foreground/10 p-5 backdrop-blur-sm md:justify-self-start">
+              <span className="absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rotate-45 border-b border-l border-primary-foreground/15 bg-ink/70 max-md:hidden" />
+              <p className="font-display text-lg font-semibold leading-relaxed">Bem-vindo ao HS Digital Marketplace! Encontre os melhores produtos com a entrega mais rápida.</p>
+              <p className="mt-2 text-sm text-primary-foreground/65">— Loop</p>
+            </div>
           </div>
         </section>
 
-        {/* Selos */}
-        <section className="mt-4 grid gap-3 sm:grid-cols-3">
-          {[
-            { icon: Truck, title: "Frete grátis", text: "Em milhares de produtos selecionados" },
-            {
-              icon: ShieldCheck,
-              title: "Pedido conferido",
-              text: "Resumo completo antes do pagamento",
-            },
-            { icon: Headphones, title: "Suporte 7 dias", text: "Atendimento rápido de verdade" },
-          ].map((item) => (
-            <div key={item.title} className="surface-card flex items-center gap-3 p-4">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground">
-                <item.icon className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold">{item.title}</p>
-                <p className="text-xs text-muted-foreground">{item.text}</p>
+        <div className="mx-auto w-full max-w-7xl px-4 pb-10">
+          <section className="grid gap-3 py-5 sm:grid-cols-3">
+            {[
+              { icon: Truck, title: "Entrega rápida", text: "Agilidade em produtos selecionados" },
+              { icon: ShieldCheck, title: "Compra protegida", text: "Pedido conferido antes do pagamento" },
+              { icon: Headphones, title: "Suporte próximo", text: "Atendimento quando você precisar" },
+            ].map((item) => <div key={item.title} className="flex items-center gap-3 border-b border-border py-3"><item.icon className="h-5 w-5 text-primary" /><div><p className="text-sm font-semibold">{item.title}</p><p className="text-xs text-muted-foreground">{item.text}</p></div></div>)}
+          </section>
+
+          <section className="grid gap-6 pt-3 lg:grid-cols-[230px_1fr]">
+            <aside className="h-fit border-t border-border pt-5 lg:sticky lg:top-32">
+              <h2 className="text-base font-bold">Filtros</h2>
+              <div className="mt-5">
+                <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Categorias</p>
+                <div className="space-y-1">
+                  <Button variant={category === null ? "secondary" : "ghost"} className="w-full justify-start" onClick={() => setCategory(null)}>Todas</Button>
+                  {CATEGORIES.map((item) => { const Icon = ICONS[item.icon] ?? Smartphone; return <Button key={item.slug} variant={category === item.slug ? "secondary" : "ghost"} className="h-auto w-full justify-start whitespace-normal py-2 text-left" onClick={() => setCategory(item.slug)}><Icon className="h-4 w-4" />{item.label}</Button>; })}
+                </div>
               </div>
-            </div>
-          ))}
-        </section>
+              <div className="mt-6">
+                <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Faixa de preço</p>
+                <div className="space-y-1">{PRICE_RANGES.map((item) => <Button key={item.id} variant={range === item.id ? "secondary" : "ghost"} className="w-full justify-start" onClick={() => setRange(item.id)}>{item.label}</Button>)}</div>
+              </div>
+            </aside>
 
-        {/* Categorias */}
-        <section className="surface-card mt-4 p-4">
-          <h2 className="mb-4 text-base font-semibold">Categorias</h2>
-          <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
-            {CATEGORIES.map((c) => {
-              const Icon = ICONS[c.icon] ?? Smartphone;
-              const active = category === c.slug;
-              return (
-                <button
-                  key={c.slug}
-                  onClick={() => setCategory(active ? null : c.slug)}
-                  className={`flex flex-col items-center gap-2 rounded-xl p-2 text-center transition-colors ${
-                    active ? "bg-accent" : "hover:bg-muted"
-                  }`}
-                >
-                  <span
-                    className={`grid h-12 w-12 place-items-center rounded-full ${
-                      active
-                        ? "primary-gradient text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="text-[11px] font-medium leading-tight">{c.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Filtros + grid */}
-        <section className="mt-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-display text-xl font-bold">
-              {category ? CATEGORIES.find((c) => c.slug === category)?.label : "Ofertas do dia"}
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {PRICE_RANGES.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setRange(r.id)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                    range === r.id
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-muted-foreground hover:border-primary/40"
-                  }`}
-                >
-                  {r.label}
-                </button>
-              ))}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
+                <div><h2 className="text-xl font-bold">{categoryLabel}</h2><p className="text-sm text-muted-foreground">{filtered.length} produtos encontrados</p></div>
+                <Select value={sort} onValueChange={setSort}><SelectTrigger className="w-[190px]" aria-label="Ordenar produtos"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="popular">Mais vendidos</SelectItem><SelectItem value="price-asc">Menor preço</SelectItem><SelectItem value="price-desc">Maior preço</SelectItem></SelectContent></Select>
+              </div>
+              {isLoading ? <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3"><div className="surface-card h-80 animate-pulse bg-muted" /><div className="surface-card h-80 animate-pulse bg-muted" /></div>
+              : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">Nenhum produto encontrado para esta busca.</p>
+              : <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">{filtered.map((product) => <ProductCard key={product.id} product={product} />)}</div>}
             </div>
-          </div>
-
-          {isLoading ? (
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="surface-card h-80 animate-pulse bg-muted/60" />
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <p className="surface-card mt-4 p-8 text-center text-sm text-muted-foreground">
-              Nenhum produto encontrado para esta busca.
-            </p>
-          ) : (
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {filtered.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-          )}
-        </section>
+          </section>
+        </div>
       </main>
-
       <SiteFooter />
     </div>
   );
