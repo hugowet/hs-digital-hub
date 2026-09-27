@@ -1,5 +1,4 @@
 import { Star, Zap } from "lucide-react";
-import { toast } from "sonner";
 
 import { brl, compact } from "@/lib/format";
 import { useCart } from "@/lib/cart";
@@ -87,7 +86,6 @@ export function ProductCard({ product }: { product: Product }) {
                 freeShipping: product.free_shipping,
                 stock: product.stock,
               });
-              toast.success("Adicionado ao carrinho", { description: product.title });
             }}
             disabled={product.stock <= 0}
             className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg primary-gradient text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"

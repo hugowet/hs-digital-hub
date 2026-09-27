@@ -14,5 +14,5 @@
 - [ ] Remover checkout via WhatsApp e criar checkout automático por Pix/Cartão
 - [ ] Integrar gateway com split automático entre comissão HS Digital e vendedor
 - [ ] Criar aba de transações no painel Admin
-- [ ] Conceder acesso Admin mestre ao usuário solicitado com validação segura no banco
+- [x] Conceder acesso Admin mestre ao usuário solicitado com validação segura no banco
 - [ ] Corrigir acesso público indevido às imagens privadas de produtos
