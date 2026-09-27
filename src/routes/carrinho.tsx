@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageCircle, Minus, Plus, Store, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteFooter } from "@/components/site-footer";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { groupByStore, useCart } from "@/lib/cart";
+import { trackCheckoutAbandonment } from "@/lib/abandoned-cart";
 import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -51,6 +52,10 @@ function CartPage() {
     0,
   );
   const total = subtotal + shipping;
+
+  useEffect(() => {
+    if (items.length > 0) void trackCheckoutAbandonment(items);
+  }, [items]);
 
   const checkoutViaWhatsApp = async () => {
     if (!name.trim() || !address.trim() || !city.trim()) {
@@ -160,33 +165,39 @@ function CartPage() {
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <div className="flex items-center rounded-lg border border-border">
-                            <button
-                              className="grid h-8 w-8 place-items-center"
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
                               onClick={() => setQuantity(item.productId, item.quantity - 1)}
                               aria-label="Diminuir"
                             >
                               <Minus className="h-3.5 w-3.5" />
-                            </button>
+                            </Button>
                             <span className="w-8 text-center text-sm">{item.quantity}</span>
-                            <button
-                              className="grid h-8 w-8 place-items-center"
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
                               onClick={() => setQuantity(item.productId, item.quantity + 1)}
                               disabled={item.quantity >= item.stock}
                               aria-label="Aumentar"
                             >
                               <Plus className="h-3.5 w-3.5" />
-                            </button>
+                            </Button>
                           </div>
                           <span className="text-[11px] text-muted-foreground">
                             {item.stock} disponíveis
                           </span>
-                          <button
-                            className="text-muted-foreground hover:text-destructive"
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
                             onClick={() => remove(item.productId)}
                             aria-label="Remover"
                           >
                             <Trash2 className="h-4 w-4" />
-                          </button>
+                          </Button>
                         </div>
                       </li>
                     ))}

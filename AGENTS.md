@@ -13,3 +13,4 @@
 
 - O checkout registra o pedido atomicamente no banco, reserva estoque e calcula a comissão vigente antes de enviar `https://wa.me/<numero>?text=<encodeURIComponent>`; o Pix permanece manual no WhatsApp.
 - Papéis de comprador/vendedor são criados por trigger a partir do cadastro e nunca são gravados pelo navegador, evitando elevação de privilégio.
+- Eventos de carrinho abandonado são persistidos apenas para usuários autenticados e protegidos por usuário, permitindo automações futuras sem expor contatos.
