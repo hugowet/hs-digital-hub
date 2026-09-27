@@ -48,7 +48,7 @@ function CartPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const shipping = groups.reduce(
-    (sum, g) => sum + (g.items.every((i) => i.freeShipping) ? 0 : 19.9),
+    (sum, g) => sum + (g.items.every((i) => i.freeShipping || i.productType === "digital") ? 0 : 19.9),
     0,
   );
   const total = subtotal + shipping;
@@ -124,9 +124,9 @@ function CartPage() {
                           <p className="mt-1 font-display font-bold text-primary">
                             {brl(item.price)}
                           </p>
-                          {item.freeShipping && (
+                          {(item.freeShipping || item.productType === "digital") && (
                             <span className="mt-1 inline-block rounded bg-success/10 px-1.5 py-0.5 text-[11px] font-semibold text-success">
-                              Frete Grátis
+                              {item.productType === "digital" ? "Entrega digital" : "Frete Grátis"}
                             </span>
                           )}
                         </div>

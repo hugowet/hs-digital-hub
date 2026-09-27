@@ -94,6 +94,7 @@ export function ProductCard({ product }: { product: Product }) {
                 storeId: product.store_id,
                 storeName: product.stores?.name ?? "Loja parceira",
                 freeShipping: product.free_shipping,
+                productType: product.product_type,
                 stock: product.stock,
               });
               void trackAbandonedCart(product.id, 1);

@@ -39,7 +39,7 @@ function ProductDetailPage() {
   if (!product) return <Shell><div className="py-24 text-center"><h1 className="text-2xl font-bold">Produto não encontrado</h1><Button asChild className="mt-4"><Link to="/">Voltar às ofertas</Link></Button></div></Shell>;
 
   const addProduct = () => {
-    add({ productId: product.id, title: product.title, price: Number(product.price), imageUrl: product.image_url, storeId: product.store_id, storeName: product.stores?.name ?? "Loja parceira", freeShipping: product.free_shipping, stock: product.stock }, quantity);
+    add({ productId: product.id, title: product.title, price: Number(product.price), imageUrl: product.image_url, storeId: product.store_id, storeName: product.stores?.name ?? "Loja parceira", freeShipping: product.free_shipping, productType: product.product_type, stock: product.stock }, quantity);
     void trackAbandonedCart(product.id, quantity);
     toast.success("Adicionado ao carrinho");
   };

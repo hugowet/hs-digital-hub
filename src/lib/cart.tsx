@@ -8,6 +8,7 @@ export type CartItem = {
   storeId: string;
   storeName: string;
   freeShipping: boolean;
+  productType: string;
   stock: number;
   quantity: number;
 };
@@ -37,6 +38,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           parsed.map((item) => ({
             ...item,
             stock: Number.isFinite(item.stock) ? Number(item.stock) : 99,
+            productType: item.productType ?? "physical",
           })),
         );
       }

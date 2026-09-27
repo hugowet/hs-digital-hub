@@ -52,6 +52,10 @@ export async function validWebhookSignature(
   provided: string,
   secret: string,
 ) {
+  const timestampSeconds = Number(timestamp);
+  if (!Number.isFinite(timestampSeconds) || Math.abs(Date.now() / 1000 - timestampSeconds) > 600) {
+    return false;
+  }
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(secret),
@@ -72,7 +76,8 @@ export async function validWebhookSignature(
 
 export function safeOrigin(value: string) {
   const url = new URL(value);
-  if (url.protocol !== "https:" && url.hostname !== "localhost") {
+  const isLocalPreview = url.protocol === "http:" && url.hostname === "localhost";
+  if (url.protocol !== "https:" && !isLocalPreview) {
     throw new Error("Origem de retorno inválida.");
   }
   return url.origin;
