@@ -401,6 +401,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_provider_settings: {
+        Row: {
+          access_token_encrypted: string
+          client_id: string
+          client_secret_encrypted: string
+          configured_at: string
+          configured_by: string
+          environment: string
+          provider: string
+          public_key: string
+          updated_at: string
+          webhook_secret_encrypted: string
+        }
+        Insert: {
+          access_token_encrypted: string
+          client_id: string
+          client_secret_encrypted: string
+          configured_at?: string
+          configured_by: string
+          environment?: string
+          provider: string
+          public_key: string
+          updated_at?: string
+          webhook_secret_encrypted: string
+        }
+        Update: {
+          access_token_encrypted?: string
+          client_id?: string
+          client_secret_encrypted?: string
+          configured_at?: string
+          configured_by?: string
+          environment?: string
+          provider?: string
+          public_key?: string
+          updated_at?: string
+          webhook_secret_encrypted?: string
+        }
+        Relationships: []
+      }
       payment_transactions: {
         Row: {
           buyer_id: string
@@ -723,6 +762,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      release_expired_marketplace_orders: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "seller" | "buyer"
