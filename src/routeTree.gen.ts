@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CarrinhoRouteImport } from './routes/carrinho'
 import { Route as VendedorRouteImport } from './routes/vendedor'
+import { Route as PedidoOrderIdRouteImport } from './routes/pedido.$orderId'
 import { Route as ProdutoProductIdRouteImport } from './routes/produto.$productId'
 import { Route as ApiPublicMercadoPagoOauthCallbackRouteImport } from './routes/api/public/mercado-pago/oauth-callback'
 import { Route as ApiPublicMercadoPagoWebhookRouteImport } from './routes/api/public/mercado-pago/webhook'
@@ -43,6 +44,11 @@ const VendedorRoute = VendedorRouteImport.update({
   path: '/vendedor',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PedidoOrderIdRoute = PedidoOrderIdRouteImport.update({
+  id: '/pedido/$orderId',
+  path: '/pedido/$orderId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProdutoProductIdRoute = ProdutoProductIdRouteImport.update({
   id: '/produto/$productId',
   path: '/produto/$productId',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
   '/vendedor': typeof VendedorRoute
+  '/pedido/$orderId': typeof PedidoOrderIdRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
   '/vendedor': typeof VendedorRoute
+  '/pedido/$orderId': typeof PedidoOrderIdRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
   '/vendedor': typeof VendedorRoute
+  '/pedido/$orderId': typeof PedidoOrderIdRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/carrinho'
     | '/vendedor'
+    | '/pedido/$orderId'
     | '/produto/$productId'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/carrinho'
     | '/vendedor'
+    | '/pedido/$orderId'
     | '/produto/$productId'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/carrinho'
     | '/vendedor'
+    | '/pedido/$orderId'
     | '/produto/$productId'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CarrinhoRoute: typeof CarrinhoRoute
   VendedorRoute: typeof VendedorRoute
+  PedidoOrderIdRoute: typeof PedidoOrderIdRoute
   ProdutoProductIdRoute: typeof ProdutoProductIdRoute
   ApiPublicMercadoPagoOauthCallbackRoute: typeof ApiPublicMercadoPagoOauthCallbackRoute
   ApiPublicMercadoPagoWebhookRoute: typeof ApiPublicMercadoPagoWebhookRoute
@@ -173,6 +186,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendedorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pedido/$orderId': {
+      id: '/pedido/$orderId'
+      path: '/pedido/$orderId'
+      fullPath: '/pedido/$orderId'
+      preLoaderRoute: typeof PedidoOrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/produto/$productId': {
       id: '/produto/$productId'
       path: '/produto/$productId'
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CarrinhoRoute: CarrinhoRoute,
   VendedorRoute: VendedorRoute,
+  PedidoOrderIdRoute: PedidoOrderIdRoute,
   ProdutoProductIdRoute: ProdutoProductIdRoute,
   ApiPublicMercadoPagoOauthCallbackRoute:
     ApiPublicMercadoPagoOauthCallbackRoute,

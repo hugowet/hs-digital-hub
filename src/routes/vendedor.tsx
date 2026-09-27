@@ -284,8 +284,6 @@ function Stat({
 function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [pixKeyType, setPixKeyType] = useState("email");
-  const [pixKey, setPixKey] = useState("");
 
   return (
     <form
@@ -303,8 +301,6 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
           name: name.trim(),
           slug: `${slug}-${Date.now().toString(36)}`,
           description: description.trim(),
-          pix_key_type: pixKeyType,
-          pix_key: pixKey.trim(),
         });
         if (error) {
           toast.error(error.message);
@@ -330,35 +326,6 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
             onChange={(e) => setName(e.target.value)}
             className="mt-1"
           />
-        </div>
-        <div className="grid grid-cols-[130px_1fr] gap-3">
-          <div>
-            <Label htmlFor="store-pix-type">Tipo de chave Pix</Label>
-            <select
-              id="store-pix-type"
-              value={pixKeyType}
-              onChange={(e) => setPixKeyType(e.target.value)}
-              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="cpf">CPF</option>
-              <option value="cnpj">CNPJ</option>
-              <option value="email">E-mail</option>
-              <option value="phone">Telefone</option>
-              <option value="random">Aleatória</option>
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="store-pix">Chave Pix</Label>
-            <Input
-              id="store-pix"
-              required
-              minLength={3}
-              maxLength={140}
-              value={pixKey}
-              onChange={(e) => setPixKey(e.target.value)}
-              className="mt-1"
-            />
-          </div>
         </div>
         <div>
           <Label htmlFor="store-desc">Descrição</Label>
