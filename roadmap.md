@@ -21,3 +21,4 @@
 - [ ] Criar página completa de detalhes do produto
 - [ ] Registrar carrinhos abandonados de usuários autenticados
 - [ ] Adicionar 20 produtos fictícios com imagens próprias sem remover os 8 atuais
+- [ ] Informar claramente os bloqueios restantes para vendas reais e publicação
