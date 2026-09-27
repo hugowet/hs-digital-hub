@@ -14,6 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      mercado_pago_accounts: {
+        Row: {
+          access_token_encrypted: string
+          created_at: string
+          mercado_pago_user_id: string
+          refresh_token_encrypted: string | null
+          store_id: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token_encrypted: string
+          created_at?: string
+          mercado_pago_user_id: string
+          refresh_token_encrypted?: string | null
+          store_id: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token_encrypted?: string
+          created_at?: string
+          mercado_pago_user_id?: string
+          refresh_token_encrypted?: string | null
+          store_id?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercado_pago_accounts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mercado_pago_oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          redirect_origin: string
+          state_hash: string
+          store_id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          redirect_origin: string
+          state_hash: string
+          store_id: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          redirect_origin?: string
+          state_hash?: string
+          store_id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercado_pago_oauth_states_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           commission_rate: number
@@ -168,6 +247,7 @@ export type Database = {
           failure_reason: string | null
           gross_amount: number
           id: string
+          inventory_released: boolean
           order_id: string
           paid_at: string | null
           payment_method: string | null
@@ -189,6 +269,7 @@ export type Database = {
           failure_reason?: string | null
           gross_amount: number
           id?: string
+          inventory_released?: boolean
           order_id: string
           paid_at?: string | null
           payment_method?: string | null
@@ -210,6 +291,7 @@ export type Database = {
           failure_reason?: string | null
           gross_amount?: number
           id?: string
+          inventory_released?: boolean
           order_id?: string
           paid_at?: string | null
           payment_method?: string | null
@@ -433,6 +515,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_mercado_pago_status: {
+        Args: {
+          _payment_method: string
+          _provider_payload: Json
+          _provider_payment_id: string
+          _status: string
+          _transaction_id: string
+        }
+        Returns: undefined
+      }
       create_marketplace_order: {
         Args: { _items: Json; _shipping_address: Json }
         Returns: string
