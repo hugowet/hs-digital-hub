@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { LogIn, LogOut, Menu, Search, ShoppingCart, Store, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart";
@@ -18,15 +18,25 @@ const NAV = [
 export function SiteHeader({
   query,
   onQueryChange,
+  suggestions = [],
 }: {
   query?: string;
   onQueryChange?: (value: string) => void;
+  suggestions?: Array<{ id: string; title: string; category: string }>;
 }) {
   const { count } = useCart();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const matches = useMemo(() => {
+    const normalized = (query ?? "").trim().toLowerCase();
+    if (!normalized) return suggestions.slice(0, 5);
+    return suggestions
+      .filter((item) => `${item.title} ${item.category}`.toLowerCase().includes(normalized))
+      .slice(0, 5);
+  }, [query, suggestions]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setSignedIn(!!data.user));
@@ -67,10 +77,31 @@ export function SiteHeader({
             <input
               value={query ?? ""}
               onChange={(e) => onQueryChange?.(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => window.setTimeout(() => setSearchFocused(false), 120)}
               placeholder="Buscar produtos e lojas..."
               aria-label="Buscar produtos e lojas"
               className="h-10 w-full rounded-full border border-white/15 bg-white pl-9 pr-4 text-sm text-foreground outline-none ring-primary-glow/60 placeholder:text-muted-foreground focus:ring-2"
             />
+            {onQueryChange && searchFocused && matches.length > 0 && (
+              <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl">
+                {matches.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      onQueryChange(item.title);
+                      setSearchFocused(false);
+                    }}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-accent"
+                  >
+                    <span className="truncate font-medium">{item.title}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{item.category}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <nav className="flex items-center gap-1">

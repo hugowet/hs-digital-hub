@@ -14,9 +14,19 @@ export type Product = {
   sold_count: number;
   store_id: string;
   stores: { name: string; slug: string } | null;
+  description: string | null;
+  description_long: string | null;
+  gallery_urls: string[];
+  specifications: Record<string, string>;
+  variations: Array<{ name: string; options: string[] }>;
 };
 
 export const CATEGORIES = [
+  { slug: "digitais-templates", label: "Digitais & Templates", icon: "Files" },
+  { slug: "cursos-infoprodutos", label: "Cursos & Infoprodutos", icon: "GraduationCap" },
+  { slug: "eletronicos-gadgets", label: "Eletrônicos & Gadgets", icon: "Watch" },
+  { slug: "perifericos-acessorios", label: "Periféricos & Acessórios", icon: "Keyboard" },
+  { slug: "casa-setup", label: "Casa & Setup", icon: "LampDesk" },
   { slug: "eletronicos", label: "Eletrônicos", icon: "Smartphone" },
   { slug: "moda", label: "Moda", icon: "Shirt" },
   { slug: "casa", label: "Casa", icon: "Sofa" },
@@ -32,6 +42,7 @@ export async function fetchProducts(): Promise<Product[]> {
     .from("products")
     .select(
       "id,title,price,compare_at_price,stock,category,image_url,free_shipping,rating,reviews_count,sold_count,store_id,stores(name,slug)",
+      "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,stores(name,slug)",
     )
     .eq("is_active", true)
     .order("sold_count", { ascending: false });

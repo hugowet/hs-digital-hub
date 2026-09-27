@@ -16,3 +16,8 @@
 - [ ] Criar aba de transações no painel Admin
 - [x] Conceder acesso Admin mestre ao usuário solicitado com validação segura no banco
 - [ ] Corrigir acesso público indevido às imagens privadas de produtos
+- [ ] Integrar o mascote Loop à Home com animação e mensagem de boas-vindas
+- [ ] Adicionar filtros laterais, autocomplete e ordenação ao catálogo
+- [ ] Criar página completa de detalhes do produto
+- [ ] Registrar carrinhos abandonados de usuários autenticados
+- [ ] Adicionar 20 produtos fictícios com imagens próprias sem remover os 8 atuais
