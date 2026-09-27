@@ -18,8 +18,9 @@ export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
         const rawBody = await request.text();
         let payload: Record<string, any>;
         try { payload = JSON.parse(rawBody); } catch { return new Response("Invalid JSON", { status: 400 }); }
-        const dataId = String(payload.data?.id ?? requestUrl.searchParams.get("data.id") ?? "");
-        const eventType = String(payload.type ?? requestUrl.searchParams.get("type") ?? "");
+        const eventData = payload["data"] as { id?: string | number } | undefined;
+        const dataId = String(eventData?.id ?? requestUrl.searchParams.get("data.id") ?? "");
+        const eventType = String(payload["type"] ?? requestUrl.searchParams.get("type") ?? "");
         if (!dataId || !eventType.includes("payment")) return new Response("Ignored", { status: 200 });
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
           return new Response("Invalid signature", { status: 401 });
         }
 
-        const providerEventId = String(payload.id ?? `${eventType}:${dataId}`);
+        const providerEventId = String(payload["id"] ?? `${eventType}:${dataId}`);
         const { data: existing } = await supabaseAdmin
           .from("payment_events")
           .select("processed_at")
@@ -56,7 +57,7 @@ export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
         const { data: transaction } = await supabaseAdmin
           .from("payment_transactions")
           .select("id,store_id")
-          .or(`provider_payment_id.eq.${dataId},id.eq.${payload.external_reference ?? "00000000-0000-0000-0000-000000000000"}`)
+          .eq("provider_payment_id", dataId)
           .maybeSingle();
         if (!transaction) return new Response("Transaction not found", { status: 202 });
         const { data: account } = await supabaseAdmin

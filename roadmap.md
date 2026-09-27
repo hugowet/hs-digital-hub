@@ -26,3 +26,4 @@
 - [ ] Adicionar liberação segura de produtos digitais após pagamento confirmado
 - [ ] Criar página de confirmação e histórico de pedidos do comprador
 - [ ] Validar webhook Mercado Pago, idempotência e devolução de estoque
+- [ ] Validar o payload final contra o exemplo enviado, mantendo `application_fee` calculado pela comissão vigente

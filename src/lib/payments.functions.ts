@@ -126,7 +126,6 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => checkoutSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { decryptSecret, mercadoPagoRequest, safeOrigin } = await import("@/lib/mercado-pago.server");
     const { data: orderId, error } = await context.supabase.rpc("create_marketplace_order", {
       _items: data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
       _shipping_address: data.shippingAddress,
@@ -163,6 +162,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => paymentSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { decryptSecret, mercadoPagoRequest, safeOrigin } = await import("@/lib/mercado-pago.server");
     const origin = safeOrigin(data.origin);
     const { data: transaction, error } = await context.supabase
       .from("payment_transactions")
@@ -198,14 +198,14 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
       metadata: { order_id: transaction.order_id, transaction_id: transaction.id, store_id: transaction.store_id },
     };
     if (data.method === "pix") {
-      body.payment_method_id = "pix";
-      body.date_of_expiration = expiration;
+      body["payment_method_id"] = "pix";
+      body["date_of_expiration"] = expiration;
     } else if (data.card) {
-      body.token = data.card.token;
-      body.payment_method_id = data.card.paymentMethodId;
-      body.issuer_id = data.card.issuerId;
-      body.installments = data.card.installments;
-      body.payer = {
+      body["token"] = data.card.token;
+      body["payment_method_id"] = data.card.paymentMethodId;
+      body["issuer_id"] = data.card.issuerId;
+      body["installments"] = data.card.installments;
+      body["payer"] = {
         email: data.card.email,
         identification: data.card.identificationType && data.card.identificationNumber
           ? { type: data.card.identificationType, number: data.card.identificationNumber }
