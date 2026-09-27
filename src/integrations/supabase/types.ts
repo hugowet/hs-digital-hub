@@ -64,6 +64,119 @@ export type Database = {
           },
         ]
       }
+      digital_deliveries: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          delivery_instructions: string | null
+          delivery_url: string
+          id: string
+          order_id: string
+          order_item_id: string
+          product_id: string | null
+          released_at: string
+          store_id: string
+          title: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          delivery_instructions?: string | null
+          delivery_url: string
+          id?: string
+          order_id: string
+          order_item_id: string
+          product_id?: string | null
+          released_at?: string
+          store_id: string
+          title: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          delivery_instructions?: string | null
+          delivery_url?: string
+          id?: string
+          order_id?: string
+          order_item_id?: string
+          product_id?: string | null
+          released_at?: string
+          store_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digital_deliveries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "digital_deliveries_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: true
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "digital_deliveries_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "digital_deliveries_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      digital_product_assets: {
+        Row: {
+          created_at: string
+          delivery_instructions: string | null
+          delivery_url: string
+          product_id: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_instructions?: string | null
+          delivery_url: string
+          product_id: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivery_instructions?: string | null
+          delivery_url?: string
+          product_id?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digital_product_assets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "digital_product_assets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercado_pago_accounts: {
         Row: {
           access_token_encrypted: string
@@ -300,7 +413,10 @@ export type Database = {
           inventory_released: boolean
           order_id: string
           paid_at: string | null
+          payment_expires_at: string | null
           payment_method: string | null
+          pix_qr_code: string | null
+          pix_qr_code_base64: string | null
           platform_fee: number
           provider: string
           provider_payload: Json | null
@@ -322,7 +438,10 @@ export type Database = {
           inventory_released?: boolean
           order_id: string
           paid_at?: string | null
+          payment_expires_at?: string | null
           payment_method?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_base64?: string | null
           platform_fee: number
           provider?: string
           provider_payload?: Json | null
@@ -344,7 +463,10 @@ export type Database = {
           inventory_released?: boolean
           order_id?: string
           paid_at?: string | null
+          payment_expires_at?: string | null
           payment_method?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_base64?: string | null
           platform_fee?: number
           provider?: string
           provider_payload?: Json | null
@@ -406,6 +528,7 @@ export type Database = {
           image_url: string | null
           is_active: boolean
           price: number
+          product_type: string
           rating: number
           reviews_count: number
           sold_count: number
@@ -427,6 +550,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean
           price: number
+          product_type?: string
           rating?: number
           reviews_count?: number
           sold_count?: number
@@ -448,6 +572,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean
           price?: number
+          product_type?: string
           rating?: number
           reviews_count?: number
           sold_count?: number
