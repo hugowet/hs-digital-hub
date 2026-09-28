@@ -89,7 +89,7 @@ function SellerCenter() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       const rows = data ?? [];
-      const paths = rows.map((product) => product.image_url).filter((url): url is string => Boolean(url) && !url.startsWith("http") && !url.startsWith("/"));
+      const paths = rows.map((product) => product.image_url).filter((url): url is string => typeof url === "string" && !url.startsWith("http") && !url.startsWith("/"));
       if (paths.length === 0) return rows;
       const { data: signed } = await supabase.storage.from("product-images").createSignedUrls(paths, 60 * 60);
       const urls = new Map(paths.map((path, index) => [path, signed?.[index]?.signedUrl ?? path]));
@@ -379,6 +379,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           }
           if (files.length > 10) throw new Error("Envie no máximo 10 fotos ou vídeos.");
           if (files.some((file) => file.type.startsWith("image/") ? file.size > 10 * 1024 * 1024 : file.type.startsWith("video/") ? file.size > 50 * 1024 * 1024 : true)) throw new Error("Fotos podem ter até 10 MB e vídeos até 50 MB.");
+          if (files.length > 0 && !files.some((file) => file.type.startsWith("image/"))) throw new Error("Inclua ao menos uma foto para usar como capa.");
           if (productType === "digital" && !deliveryUrl.trim()) throw new Error("Informe o link de entrega do produto digital.");
           const uploaded: Array<{ storagePath: string; mediaType: "image" | "video"; mimeType: string; sizeBytes: number; position: number }> = [];
           try {

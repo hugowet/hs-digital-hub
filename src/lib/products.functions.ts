@@ -11,11 +11,17 @@ const mediaSchema = z.object({
   position: z.number().int().min(0).max(9),
 });
 
+const categories = [
+  "digitais-templates", "cursos-infoprodutos", "eletronicos-gadgets",
+  "perifericos-acessorios", "casa-setup", "eletronicos", "moda", "casa",
+  "beleza", "games", "esportes", "infantil", "mercado",
+] as const;
+
 const productSchema = z.object({
   title: z.string().trim().min(2).max(160),
   price: z.number().positive().max(99_999_999.99),
   stock: z.number().int().min(0).max(1_000_000),
-  category: z.string().min(1).max(80),
+  category: z.enum(categories),
   productType: z.enum(["physical", "digital"]),
   deliveryUrl: z.string().url().max(2_000).or(z.literal("")),
   media: z.array(mediaSchema).max(10),
@@ -29,6 +35,9 @@ const productSchema = z.object({
       : item.mimeType.startsWith("video/") && item.sizeBytes <= 50 * 1024 * 1024;
     if (!valid) context.addIssue({ code: z.ZodIssueCode.custom, path: ["media", index], message: "Mídia inválida." });
   });
+  if (data.media.length > 0 && !data.media.some((item) => item.mediaType === "image")) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["media"], message: "Inclua ao menos uma foto para usar como capa." });
+  }
 });
 
 export const createSellerProduct = createServerFn({ method: "POST" })
