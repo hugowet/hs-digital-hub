@@ -554,6 +554,57 @@ export type Database = {
         }
         Relationships: []
       }
+      product_media: {
+        Row: {
+          created_at: string
+          id: string
+          media_type: string
+          mime_type: string
+          position: number
+          product_id: string
+          size_bytes: number
+          storage_path: string
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_type: string
+          mime_type: string
+          position: number
+          product_id: string
+          size_bytes: number
+          storage_path: string
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_type?: string
+          mime_type?: string
+          position?: number
+          product_id?: string
+          size_bytes?: number
+          storage_path?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_media_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_media_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string
@@ -753,6 +804,18 @@ export type Database = {
       }
       create_marketplace_order: {
         Args: { _items: Json; _shipping_address: Json }
+        Returns: string
+      }
+      create_seller_product: {
+        Args: {
+          _category: string
+          _delivery_url: string
+          _media: Json
+          _price: number
+          _product_type: string
+          _stock: number
+          _title: string
+        }
         Returns: string
       }
       has_role: {
