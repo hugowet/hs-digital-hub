@@ -130,8 +130,14 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
       _items: data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
       _shipping_address: data.shippingAddress,
     });
-    const timeout = new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("O checkout demorou mais que o esperado. Tente novamente.")), 20_000));
-    const { data: orderId, error } = await Promise.race([request, timeout]);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error("O checkout demorou mais que o esperado. Tente novamente.")), 20_000);
+    });
+    const result = await Promise.race([request, timeout]).finally(() => {
+      if (timeoutId) clearTimeout(timeoutId);
+    });
+    const { data: orderId, error } = result;
     if (error || !orderId) throw new Error(error?.message ?? "Não foi possível criar o pedido.");
     return { orderId };
   });

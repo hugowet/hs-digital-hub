@@ -88,7 +88,12 @@ function SellerCenter() {
         .eq("store_id", store.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      const paths = rows.map((product) => product.image_url).filter((url): url is string => Boolean(url) && !url.startsWith("http") && !url.startsWith("/"));
+      if (paths.length === 0) return rows;
+      const { data: signed } = await supabase.storage.from("product-images").createSignedUrls(paths, 60 * 60);
+      const urls = new Map(paths.map((path, index) => [path, signed?.[index]?.signedUrl ?? path]));
+      return rows.map((product) => ({ ...product, image_url: product.image_url ? urls.get(product.image_url) ?? product.image_url : null }));
     },
   });
 

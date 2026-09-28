@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import type { Database } from "@/integrations/supabase/types";
 import type { Product, ProductMedia } from "@/lib/catalog";
 
 const MEDIA_BUCKET = "product-images";
@@ -55,21 +57,40 @@ async function signProductMedia(product: Product, supabaseAdmin: any): Promise<P
 const projection = "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,stores(name,slug)";
 
 export const fetchProducts = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
+  const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
+  const supabasePublic = createClient<Database>(process.env["SUPABASE_URL"]!, key, {
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+    global: { fetch: (input, init) => {
+      const headers = new Headers(init?.headers);
+      if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
+      headers.set("apikey", key);
+      return fetch(input, { ...init, headers });
+    } },
+  });
+  const { data, error } = await supabasePublic
     .from("products")
     .select(projection)
     .eq("is_active", true)
     .order("sold_count", { ascending: false });
   if (error) throw error;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return Promise.all(((data ?? []) as unknown as Product[]).map((product) => signProductMedia(product, supabaseAdmin)));
 });
 
 export const fetchProduct = createServerFn({ method: "GET" })
   .inputValidator((input) => z.object({ productId: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: product, error } = await supabaseAdmin
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
+    const supabasePublic = createClient<Database>(process.env["SUPABASE_URL"]!, key, {
+      auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+      global: { fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
+        headers.set("apikey", key);
+        return fetch(input, { ...init, headers });
+      } },
+    });
+    const { data: product, error } = await supabasePublic
       .from("products")
       .select(projection)
       .eq("id", data.productId)
@@ -77,5 +98,6 @@ export const fetchProduct = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw error;
     if (!product) return null;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     return signProductMedia(product as unknown as Product, supabaseAdmin);
   });
