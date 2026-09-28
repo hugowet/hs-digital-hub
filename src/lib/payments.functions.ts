@@ -126,10 +126,12 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => checkoutSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: orderId, error } = await context.supabase.rpc("create_marketplace_order", {
+    const request = context.supabase.rpc("create_marketplace_order", {
       _items: data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
       _shipping_address: data.shippingAddress,
     });
+    const timeout = new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("O checkout demorou mais que o esperado. Tente novamente.")), 20_000));
+    const { data: orderId, error } = await Promise.race([request, timeout]);
     if (error || !orderId) throw new Error(error?.message ?? "Não foi possível criar o pedido.");
     return { orderId };
   });
