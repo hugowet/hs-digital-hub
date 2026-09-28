@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck, ChevronRight, Minus, Plus, ShieldCheck, ShoppingCart, Star, Truck } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -45,7 +44,6 @@ function ProductDetailPage() {
   const addProduct = () => {
     add({ productId: product.id, title: product.title, price: Number(product.price), imageUrl: product.image_url, storeId: product.store_id, storeName: product.stores?.name ?? "Loja parceira", freeShipping: product.free_shipping, productType: product.product_type, stock: product.stock }, quantity);
     void trackAbandonedCart(product.id, quantity);
-    toast.success("Adicionado ao carrinho");
   };
 
   return <Shell>

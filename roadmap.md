@@ -15,8 +15,8 @@
 - [x] Permitir conexão das contas Mercado Pago dos vendedores e aplicar comissão automática por pagamento
 - [x] Criar configuração segura e aba de transações Mercado Pago no painel Admin
 - [x] Conceder acesso Admin mestre ao usuário solicitado com validação segura no banco
-- [ ] Corrigir acesso público indevido às imagens privadas de produtos
-- [x] Integrar o mascote Loop à Home com animação e mensagem de boas-vindas
+- [x] Corrigir acesso público indevido às imagens privadas de produtos
+- [x] Remover o mascote Loop da Home
 - [x] Adicionar filtros laterais, autocomplete e ordenação ao catálogo
 - [x] Criar página completa de detalhes do produto
 - [x] Registrar carrinhos abandonados de usuários autenticados
@@ -29,7 +29,7 @@
 - [x] Validar o payload final contra o exemplo enviado, mantendo `application_fee` calculado pela comissão vigente
 - [ ] Ativação externa: salvar credenciais de produção, registrar a URL do webhook e conectar cada conta vendedora
 - [ ] Homologação externa: realizar e estornar uma compra real de baixo valor após a ativação
-- [ ] Corrigir cadastro seguro de produtos e permitir até 10 fotos ou vídeos
-- [ ] Remover mascote e transformar categorias em carrossel
-- [ ] Ampliar menu da conta com compras e notificações reais
-- [ ] Eliminar travamento do checkout com bloqueios ordenados e limite de espera
+- [x] Corrigir cadastro seguro de produtos e permitir até 10 fotos ou vídeos
+- [x] Remover mascote e transformar categorias em carrossel
+- [x] Ampliar menu da conta com compras e notificações reais
+- [x] Eliminar travamento do checkout com bloqueios ordenados e limite de espera

@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { ShoppingCart, Star } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { trackAbandonedCart } from "@/lib/abandoned-cart";
@@ -98,7 +97,6 @@ export function ProductCard({ product }: { product: Product }) {
                 stock: product.stock,
               });
               void trackAbandonedCart(product.id, 1);
-              toast.success("Adicionado ao carrinho");
             }}
             disabled={product.stock <= 0}
             className="mt-3 w-full primary-gradient"
