@@ -29,3 +29,7 @@
 - [x] Validar o payload final contra o exemplo enviado, mantendo `application_fee` calculado pela comissão vigente
 - [ ] Ativação externa: salvar credenciais de produção, registrar a URL do webhook e conectar cada conta vendedora
 - [ ] Homologação externa: realizar e estornar uma compra real de baixo valor após a ativação
+- [ ] Corrigir cadastro seguro de produtos e permitir até 10 fotos ou vídeos
+- [ ] Remover mascote e transformar categorias em carrossel
+- [ ] Ampliar menu da conta com compras e notificações reais
+- [ ] Eliminar travamento do checkout com bloqueios ordenados e limite de espera
