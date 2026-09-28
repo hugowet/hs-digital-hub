@@ -1,0 +1,1 @@
+ALTER FUNCTION public.create_seller_product(text, numeric, integer, text, text, text, jsonb) SECURITY INVOKER;
