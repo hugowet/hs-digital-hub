@@ -10,10 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CarrinhoRouteImport } from './routes/carrinho'
 import { Route as VendedorRouteImport } from './routes/vendedor'
+import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
+import { Route as AuthenticatedContaRouteImport } from './routes/_authenticated/conta'
+import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
 import { Route as PedidoOrderIdRouteImport } from './routes/pedido.$orderId'
 import { Route as ProdutoProductIdRouteImport } from './routes/produto.$productId'
 import { Route as ApiPublicMercadoPagoOauthCallbackRouteImport } from './routes/api/public/mercado-pago/oauth-callback'
@@ -22,6 +26,10 @@ import { Route as ApiPublicMercadoPagoWebhookRouteImport } from './routes/api/pu
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -44,6 +52,22 @@ const VendedorRoute = VendedorRouteImport.update({
   path: '/vendedor',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedComprasRoute = AuthenticatedComprasRouteImport.update({
+  id: '/compras',
+  path: '/compras',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedContaRoute = AuthenticatedContaRouteImport.update({
+  id: '/conta',
+  path: '/conta',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedNotificacoesRoute =
+  AuthenticatedNotificacoesRouteImport.update({
+    id: '/notificacoes',
+    path: '/notificacoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const PedidoOrderIdRoute = PedidoOrderIdRouteImport.update({
   id: '/pedido/$orderId',
   path: '/pedido/$orderId',
@@ -73,6 +97,9 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
   '/vendedor': typeof VendedorRoute
+  '/compras': typeof AuthenticatedComprasRoute
+  '/conta': typeof AuthenticatedContaRoute
+  '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/pedido/$orderId': typeof PedidoOrderIdRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
@@ -84,6 +111,9 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
   '/vendedor': typeof VendedorRoute
+  '/compras': typeof AuthenticatedComprasRoute
+  '/conta': typeof AuthenticatedContaRoute
+  '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/pedido/$orderId': typeof PedidoOrderIdRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
@@ -92,10 +122,14 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
   '/vendedor': typeof VendedorRoute
+  '/_authenticated/compras': typeof AuthenticatedComprasRoute
+  '/_authenticated/conta': typeof AuthenticatedContaRoute
+  '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/pedido/$orderId': typeof PedidoOrderIdRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
@@ -109,6 +143,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/carrinho'
     | '/vendedor'
+    | '/compras'
+    | '/conta'
+    | '/notificacoes'
     | '/pedido/$orderId'
     | '/produto/$productId'
     | '/api/public/mercado-pago/oauth-callback'
@@ -120,6 +157,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/carrinho'
     | '/vendedor'
+    | '/compras'
+    | '/conta'
+    | '/notificacoes'
     | '/pedido/$orderId'
     | '/produto/$productId'
     | '/api/public/mercado-pago/oauth-callback'
@@ -127,10 +167,14 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
     | '/admin'
     | '/auth'
     | '/carrinho'
     | '/vendedor'
+    | '/_authenticated/compras'
+    | '/_authenticated/conta'
+    | '/_authenticated/notificacoes'
     | '/pedido/$orderId'
     | '/produto/$productId'
     | '/api/public/mercado-pago/oauth-callback'
@@ -139,6 +183,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   CarrinhoRoute: typeof CarrinhoRoute
@@ -156,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -185,6 +237,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/vendedor'
       preLoaderRoute: typeof VendedorRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/compras': {
+      id: '/_authenticated/compras'
+      path: '/compras'
+      fullPath: '/compras'
+      preLoaderRoute: typeof AuthenticatedComprasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/conta': {
+      id: '/_authenticated/conta'
+      path: '/conta'
+      fullPath: '/conta'
+      preLoaderRoute: typeof AuthenticatedContaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/notificacoes': {
+      id: '/_authenticated/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/notificacoes'
+      preLoaderRoute: typeof AuthenticatedNotificacoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/pedido/$orderId': {
       id: '/pedido/$orderId'
@@ -217,8 +290,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
+  AuthenticatedContaRoute: typeof AuthenticatedContaRoute
+  AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedComprasRoute: AuthenticatedComprasRoute,
+  AuthenticatedContaRoute: AuthenticatedContaRoute,
+  AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   CarrinhoRoute: CarrinhoRoute,
