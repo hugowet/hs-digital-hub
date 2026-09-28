@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.create_seller_product(text, numeric, integer, text, text, text, jsonb) FROM anon;

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { DollarSign, ExternalLink, Package, Plus, ShoppingBag, TrendingUp, WalletCards } from "lucide-react";
+import { DollarSign, ExternalLink, Image, Package, Plus, ShoppingBag, Trash2, TrendingUp, Video, WalletCards } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
@@ -14,6 +14,7 @@ import { CATEGORIES } from "@/lib/catalog";
 import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
+import { createSellerProduct } from "@/lib/products.functions";
 
 export const Route = createFileRoute("/vendedor")({
   ssr: false,
@@ -87,7 +88,12 @@ function SellerCenter() {
         .eq("store_id", store.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      const paths = rows.map((product) => product.image_url).filter((url): url is string => typeof url === "string" && !url.startsWith("http") && !url.startsWith("/"));
+      if (paths.length === 0) return rows;
+      const { data: signed } = await supabase.storage.from("product-images").createSignedUrls(paths, 60 * 60);
+      const urls = new Map(paths.map((path, index) => [path, signed?.[index]?.signedUrl ?? path]));
+      return rows.map((product) => ({ ...product, image_url: product.image_url ? urls.get(product.image_url) ?? product.image_url : null }));
     },
   });
 
@@ -346,13 +352,14 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
 }
 
 function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () => void }) {
+  const createProduct = useServerFn(createSellerProduct);
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("1");
   const [category, setCategory] = useState<string>(CATEGORIES[0].slug);
   const [productType, setProductType] = useState<"physical" | "digital">("physical");
   const [deliveryUrl, setDeliveryUrl] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
 
   return (
@@ -362,7 +369,6 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         e.preventDefault();
         setSaving(true);
         try {
-          let imageUrl: string | null = null;
           const parsedPrice = Number(price);
           const parsedStock = Number(stock);
           if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
@@ -371,41 +377,29 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           if (!Number.isInteger(parsedStock) || parsedStock < 0) {
             throw new Error("Informe um estoque válido.");
           }
-          if (file) {
-            if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) {
-              throw new Error("Envie uma imagem de até 10 MB.");
-            }
-            const path = `${storeId}/${crypto.randomUUID()}-${file.name}`;
-            const { error: upErr } = await supabase.storage
-              .from("product-images")
-              .upload(path, file);
-            if (upErr) throw upErr;
-            const { data: signed, error: signErr } = await supabase.storage
-              .from("product-images")
-              .createSignedUrl(path, 60 * 60 * 24 * 365);
-            if (signErr) throw signErr;
-            imageUrl = signed.signedUrl;
-          }
+          if (files.length > 10) throw new Error("Envie no máximo 10 fotos ou vídeos.");
+          if (files.some((file) => file.type.startsWith("image/") ? file.size > 10 * 1024 * 1024 : file.type.startsWith("video/") ? file.size > 50 * 1024 * 1024 : true)) throw new Error("Fotos podem ter até 10 MB e vídeos até 50 MB.");
+          if (files.length > 0 && !files.some((file) => file.type.startsWith("image/"))) throw new Error("Inclua ao menos uma foto para usar como capa.");
           if (productType === "digital" && !deliveryUrl.trim()) throw new Error("Informe o link de entrega do produto digital.");
-          const { data: product, error } = await supabase.from("products").insert({
-            store_id: storeId,
-            title: title.trim(),
-            price: parsedPrice,
-            stock: parsedStock,
-            category,
-            image_url: imageUrl,
-            product_type: productType,
-          }).select("id").single();
-          if (error) throw error;
-          if (productType === "digital" && product) {
-            const { error: assetError } = await supabase.from("digital_product_assets").insert({ product_id: product.id, store_id: storeId, delivery_url: deliveryUrl.trim() });
-            if (assetError) throw assetError;
+          const uploaded: Array<{ storagePath: string; mediaType: "image" | "video"; mimeType: string; sizeBytes: number; position: number }> = [];
+          try {
+            for (const [position, file] of files.entries()) {
+              const extension = file.name.split(".").pop()?.toLowerCase() ?? (file.type.startsWith("video/") ? "mp4" : "jpg");
+              const path = `${storeId}/${crypto.randomUUID()}.${extension.replace(/[^a-z0-9]/g, "")}`;
+              const { error: uploadError } = await supabase.storage.from("product-images").upload(path, file, { contentType: file.type, upsert: false });
+              if (uploadError) throw uploadError;
+              uploaded.push({ storagePath: path, mediaType: file.type.startsWith("video/") ? "video" : "image", mimeType: file.type, sizeBytes: file.size, position });
+            }
+            await createProduct({ data: { title: title.trim(), price: parsedPrice, stock: parsedStock, category, productType, deliveryUrl: deliveryUrl.trim(), media: uploaded } });
+          } catch (error) {
+            if (uploaded.length > 0) await supabase.storage.from("product-images").remove(uploaded.map((item) => item.storagePath));
+            throw error;
           }
           toast.success("Produto cadastrado!");
           setTitle("");
           setPrice("");
           setStock("1");
-          setFile(null);
+          setFiles([]);
           setDeliveryUrl("");
           onCreated();
         } catch (err) {
@@ -477,14 +471,21 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           </select>
         </div>
         <div>
-          <Label htmlFor="p-photo">Foto</Label>
+          <Label htmlFor="p-photo">Fotos e vídeos ({files.length}/10)</Label>
           <Input
             id="p-photo"
             type="file"
-            accept="image/*"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+            multiple
+            onChange={(e) => {
+              const selected = Array.from(e.target.files ?? []);
+              if (selected.length > 10) { toast.error("Selecione no máximo 10 mídias."); e.currentTarget.value = ""; return; }
+              setFiles(selected);
+            }}
             className="mt-1"
           />
+          <p className="mt-1 text-xs text-muted-foreground">Fotos até 10 MB e vídeos até 50 MB. A primeira foto será a capa.</p>
+          {files.length > 0 && <div className="mt-3 grid grid-cols-3 gap-2">{files.map((file, index) => { const url = URL.createObjectURL(file); return <div key={`${file.name}-${file.lastModified}`} className="relative aspect-square overflow-hidden rounded-md border border-border bg-muted">{file.type.startsWith("video/") ? <video src={url} muted className="h-full w-full object-cover" /> : <img src={url} alt={`Prévia ${index + 1}`} className="h-full w-full object-cover" />}<span className="absolute bottom-1 left-1 rounded bg-ink/80 px-1.5 py-0.5 text-[10px] text-primary-foreground">{file.type.startsWith("video/") ? <Video className="inline h-3 w-3" /> : <Image className="inline h-3 w-3" />} {index + 1}</span><Button type="button" variant="destructive" size="icon" className="absolute right-1 top-1 h-6 w-6" aria-label={`Remover mídia ${index + 1}`} onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}><Trash2 className="h-3 w-3" /></Button></div>; })}</div>}
         </div>
         <Button type="submit" className="w-full" disabled={saving}>
           {saving ? "Salvando…" : "Cadastrar produto"}
