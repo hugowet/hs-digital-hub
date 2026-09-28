@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trackAbandonedCart } from "@/lib/abandoned-cart";
 import { useCart } from "@/lib/cart";
-import { fetchProduct } from "@/lib/catalog";
+import { fetchProduct } from "@/lib/catalog.functions";
 import { brl, compact } from "@/lib/format";
 
 export const Route = createFileRoute("/produto/$productId")({
@@ -32,8 +32,12 @@ function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selections, setSelections] = useState<Record<string, string>>({});
-  const { data: product, isLoading } = useQuery({ queryKey: ["product", productId], queryFn: () => fetchProduct(productId) });
-  const images = useMemo(() => product ? [product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean) as string[] : [], [product]);
+  const { data: product, isLoading } = useQuery({ queryKey: ["product", productId], queryFn: () => fetchProduct({ data: { productId } }) });
+  const media = useMemo(() => {
+    if (!product) return [];
+    if (product.media?.length) return product.media;
+    return [...new Set([product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean) as string[])].map((url, index) => ({ id: `${index}`, storage_path: url, media_type: "image" as const, mime_type: "image/*", position: index, url }));
+  }, [product]);
 
   if (isLoading) return <Shell><div className="h-[520px] animate-pulse bg-muted" /></Shell>;
   if (!product) return <Shell><div className="py-24 text-center"><h1 className="text-2xl font-bold">Produto não encontrado</h1><Button asChild className="mt-4"><Link to="/">Voltar às ofertas</Link></Button></div></Shell>;
@@ -48,8 +52,8 @@ function ProductDetailPage() {
     <nav className="mb-5 flex items-center gap-1 text-xs text-muted-foreground"><Link to="/" className="hover:text-primary">Início</Link><ChevronRight className="h-3 w-3" /><span className="truncate">{product.title}</span></nav>
     <section className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr]">
       <div className="grid gap-3 sm:grid-cols-[76px_1fr]">
-        <div className="order-2 flex gap-2 sm:order-1 sm:flex-col">{images.map((url, index) => <Button key={`${url}-${index}`} variant="ghost" size="icon" onClick={() => setSelectedImage(index)} aria-label={`Ver imagem ${index + 1}`} className={`aspect-square h-16 w-16 overflow-hidden rounded-md border-2 p-0 ${selectedImage === index ? "border-primary" : "border-border"}`}><img src={url} alt="" width={96} height={96} className={`h-full w-full object-cover ${index > 0 ? "scale-125" : ""}`} /></Button>)}</div>
-        <div className="group order-1 aspect-square overflow-hidden bg-muted sm:order-2"><img src={images[selectedImage] ?? product.image_url ?? ""} alt={product.title} width={900} height={900} className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-110 ${selectedImage > 0 ? "scale-125 group-hover:scale-[1.35]" : ""}`} /></div>
+        <div className="order-2 flex gap-2 overflow-x-auto sm:order-1 sm:flex-col">{media.map((item, index) => <Button key={item.id} variant="ghost" size="icon" onClick={() => setSelectedImage(index)} aria-label={`Ver mídia ${index + 1}`} className={`aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 p-0 ${selectedImage === index ? "border-primary" : "border-border"}`}>{item.media_type === "video" ? <video src={item.url} muted className="h-full w-full object-cover" /> : <img src={item.url} alt="" width={96} height={96} className="h-full w-full object-cover" />}</Button>)}</div>
+        <div className="group order-1 aspect-square overflow-hidden bg-muted sm:order-2">{media[selectedImage]?.media_type === "video" ? <video src={media[selectedImage].url} controls playsInline className="h-full w-full object-contain" aria-label={`Vídeo de ${product.title}`} /> : <img src={media[selectedImage]?.url ?? product.image_url ?? ""} alt={product.title} width={900} height={900} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />}</div>
       </div>
       <div>
         <p className="text-sm text-muted-foreground">Novo · {compact(product.sold_count)} vendidos</p>

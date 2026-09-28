@@ -1,4 +1,11 @@
-import { supabase } from "@/integrations/supabase/client";
+export type ProductMedia = {
+  id: string;
+  storage_path: string;
+  media_type: "image" | "video";
+  mime_type: string;
+  position: number;
+  url: string;
+};
 
 export type Product = {
   id: string;
@@ -20,6 +27,7 @@ export type Product = {
   specifications: Record<string, string>;
   variations: Array<{ name: string; options: string[] }>;
   product_type: string;
+  media?: ProductMedia[];
 };
 
 export const CATEGORIES = [
@@ -38,33 +46,3 @@ export const CATEGORIES = [
   { slug: "mercado", label: "Mercado", icon: "ShoppingBasket" },
 ] as const;
 
-export async function fetchProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
-    .from("products")
-    .select(
-      "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,stores(name,slug)",
-    )
-    .eq("is_active", true)
-    .order("sold_count", { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []) as unknown as Product[];
-}
-
-export async function fetchProduct(productId: string): Promise<Product | null> {
-  const { data, error } = await supabase
-    .from("products")
-    .select(
-      "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,stores(name,slug)",
-    )
-    .eq("id", productId)
-    .eq("is_active", true)
-    .maybeSingle();
-  if (error) throw error;
-  return data as unknown as Product | null;
-}
-
-export async function fetchCommissionRate(): Promise<number> {
-  const { data } = await supabase.from("platform_settings").select("commission_rate").maybeSingle();
-  return Number(data?.commission_rate ?? 0.12);
-}

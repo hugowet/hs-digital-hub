@@ -7,13 +7,14 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import loopAsset from "@/assets/loop-mascote.png.asset.json";
 import { ProductCard } from "@/components/product-card";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CATEGORIES, fetchProducts } from "@/lib/catalog";
+import { CATEGORIES } from "@/lib/catalog";
+import { fetchProducts } from "@/lib/catalog.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -71,17 +72,11 @@ function Home() {
       <SiteHeader query={query} onQueryChange={setQuery} suggestions={products.map((p) => ({ id: p.id, title: p.title, category: CATEGORIES.find((c) => c.slug === p.category)?.label ?? p.category }))} />
       <main>
         <section className="brand-gradient overflow-hidden text-primary-foreground">
-          <div className="mx-auto grid w-full max-w-7xl items-center gap-4 px-4 py-6 md:min-h-[410px] md:grid-cols-[1fr_420px_1fr] md:py-8">
-            <div className="max-w-md md:justify-self-end">
+          <div className="mx-auto flex min-h-[250px] w-full max-w-7xl items-center px-4 py-10 md:min-h-[330px]">
+            <div className="max-w-3xl">
               <p className="text-sm font-semibold text-primary-glow">Seu marketplace, mais inteligente</p>
               <h1 className="mt-3 text-3xl font-bold leading-tight md:text-5xl">HS Digital Marketplace</h1>
-              <p className="mt-4 text-sm text-primary-foreground/75 md:text-base">Produtos digitais, tecnologia e soluções para transformar sua rotina.</p>
-            </div>
-            <img src={loopAsset.url} alt="Loop, mascote lobo vermelho da HS Digital" width={768} height={768} className="loop-float mx-auto aspect-square w-full max-w-[240px] object-contain md:max-w-[340px]" />
-            <div className="relative max-w-sm rounded-lg border border-primary-foreground/15 bg-primary-foreground/10 p-5 backdrop-blur-sm md:justify-self-start">
-              <span className="absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rotate-45 border-b border-l border-primary-foreground/15 bg-ink/70 max-md:hidden" />
-              <p className="font-display text-base font-semibold leading-relaxed md:text-lg">Bem-vindo ao HS Digital Marketplace! Encontre os melhores produtos com a entrega mais rápida.</p>
-              <p className="mt-2 text-sm text-primary-foreground/65">— Loop</p>
+              <p className="mt-4 max-w-2xl text-sm text-primary-foreground/75 md:text-lg">Produtos digitais, tecnologia e soluções selecionadas para transformar sua rotina.</p>
             </div>
           </div>
         </section>
@@ -95,23 +90,19 @@ function Home() {
             ].map((item) => <div key={item.title} className="flex items-center gap-3 border-b border-border py-3"><item.icon className="h-5 w-5 text-primary" /><div><p className="text-sm font-semibold">{item.title}</p><p className="text-xs text-muted-foreground">{item.text}</p></div></div>)}
           </section>
 
-          <section className="grid gap-6 pt-3 lg:grid-cols-[230px_1fr]">
-            <aside className="h-fit border-t border-border pt-5 lg:sticky lg:top-32">
-              <h2 className="text-base font-bold">Filtros</h2>
-              <div className="mt-5">
-                <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Categorias</p>
-                <div className="space-y-1">
-                  <Button variant={category === null ? "secondary" : "ghost"} className="w-full justify-start" onClick={() => setCategory(null)}>Todas</Button>
-                  {CATEGORIES.map((item) => { const Icon = ICONS[item.icon] ?? Smartphone; return <Button key={item.slug} variant={category === item.slug ? "secondary" : "ghost"} className="h-auto w-full justify-start whitespace-normal py-2 text-left" onClick={() => setCategory(item.slug)}><Icon className="h-4 w-4" />{item.label}</Button>; })}
-                </div>
-              </div>
-              <div className="mt-6">
-                <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Faixa de preço</p>
-                <div className="space-y-1">{PRICE_RANGES.map((item) => <Button key={item.id} variant={range === item.id ? "secondary" : "ghost"} className="w-full justify-start" onClick={() => setRange(item.id)}>{item.label}</Button>)}</div>
-              </div>
-            </aside>
-
-            <div className="min-w-0">
+          <section className="pt-3">
+            <div className="border-y border-border py-5">
+              <div className="mb-3 flex items-center justify-between"><h2 className="text-base font-bold">Explore por categoria</h2><Button variant="ghost" size="sm" onClick={() => setCategory(null)}>Ver todas</Button></div>
+              <Carousel opts={{ align: "start", dragFree: true }} className="px-9">
+                <CarouselContent>
+                  <CarouselItem className="basis-1/3 sm:basis-1/4 lg:basis-1/7"><Button variant={category === null ? "secondary" : "ghost"} onClick={() => setCategory(null)} className="h-24 w-full flex-col gap-2 whitespace-normal"><ShoppingBasket className="h-5 w-5" /><span className="text-xs">Todas</span></Button></CarouselItem>
+                  {CATEGORIES.map((item) => { const Icon = ICONS[item.icon] ?? Smartphone; return <CarouselItem key={item.slug} className="basis-1/3 sm:basis-1/4 lg:basis-1/7"><Button variant={category === item.slug ? "secondary" : "ghost"} onClick={() => setCategory(item.slug)} className="h-24 w-full flex-col gap-2 whitespace-normal px-2 text-center"><Icon className="h-5 w-5" /><span className="line-clamp-2 text-xs">{item.label}</span></Button></CarouselItem>; })}
+                </CarouselContent>
+                <CarouselPrevious className="left-0" /><CarouselNext className="right-0" />
+              </Carousel>
+            </div>
+            <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Faixa de preço">{PRICE_RANGES.map((item) => <Button key={item.id} size="sm" variant={range === item.id ? "secondary" : "outline"} className="shrink-0" onClick={() => setRange(item.id)}>{item.label}</Button>)}</div>
+            <div className="mt-4 min-w-0">
               <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
                 <div><h2 className="text-xl font-bold">{categoryLabel}</h2><p className="text-sm text-muted-foreground">{filtered.length} produtos encontrados</p></div>
                 <Select value={sort} onValueChange={setSort}><SelectTrigger className="w-[190px]" aria-label="Ordenar produtos"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="popular">Mais vendidos</SelectItem><SelectItem value="price-asc">Menor preço</SelectItem><SelectItem value="price-desc">Maior preço</SelectItem></SelectContent></Select>
