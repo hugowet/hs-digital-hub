@@ -38,3 +38,6 @@
 - [x] Adicionar uma área dedicada “Meus produtos” no painel do vendedor
 - [x] Corrigir a geração de Pix e adicionar reconciliação do pagamento com o Mercado Pago
 - [x] Permitir dispensar notificações e cancelar pedidos não pagos com devolução de estoque
+- [x] Adicionar endereços salvos e preencher o endereço padrão no checkout
+- [x] Adicionar mensagens por pedido, atendimento no Admin e badge de mensagens
+- [x] Adicionar acompanhamento de entrega em cinco etapas
