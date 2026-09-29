@@ -35,6 +35,6 @@
 - [x] Eliminar travamento do checkout com bloqueios ordenados e limite de espera
 - [x] Corrigir a recusa do Mercado Pago ao gerar pagamentos Pix
 - [x] Corrigir o cadastro de produtos com fotos privadas
-- [ ] Adicionar uma área dedicada “Meus produtos” no painel do vendedor
-- [ ] Corrigir e validar a geração de Pix e o processamento da venda pelo Mercado Pago
-- [ ] Permitir limpar solicitações visíveis em transações e notificações sem apagar o histórico financeiro obrigatório
+- [x] Adicionar uma área dedicada “Meus produtos” no painel do vendedor
+- [x] Corrigir a geração de Pix e adicionar reconciliação do pagamento com o Mercado Pago
+- [x] Permitir dispensar notificações e cancelar pedidos não pagos com devolução de estoque

@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { CATEGORIES } from "@/lib/catalog";
 import { brl } from "@/lib/format";
@@ -211,13 +212,14 @@ function SellerCenter() {
         {store.mercado_pago_status === "connected" ? <span className="rounded-md bg-success/10 px-3 py-2 text-sm font-semibold text-success">Conta conectada</span> : <Button onClick={async () => { try { const result = await startConnection({ data: { storeId: store.id, origin: window.location.origin } }); window.location.assign(result.url); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível conectar."); } }}><ExternalLink />Conectar Mercado Pago</Button>}
       </section>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[360px_1fr]">
-        <ProductForm
-          storeId={store.id}
-          onCreated={() => qc.invalidateQueries({ queryKey: ["store-products"] })}
-        />
-
-        <section className="surface-card p-4">
+      <Tabs defaultValue="products" className="mt-6">
+        <TabsList className="h-auto w-full justify-start overflow-x-auto">
+          <TabsTrigger value="products">Meus produtos</TabsTrigger>
+          <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
+          <TabsTrigger value="sales">Vendas e pagamentos</TabsTrigger>
+        </TabsList>
+        <TabsContent value="products" className="pt-4">
+          <section className="surface-card p-4">
           <h2 className="text-base font-semibold">Meus produtos ({products.length})</h2>
           <ul className="mt-3 divide-y divide-border">
             {products.map((p) => (
@@ -249,9 +251,11 @@ function SellerCenter() {
               </li>
             )}
           </ul>
-        </section>
-      </div>
-      <section className="surface-card mt-4 overflow-hidden"><header className="border-b border-border p-4"><h2 className="font-semibold">Vendas e pagamentos</h2></header><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-sm"><thead className="bg-muted/50 text-left text-muted-foreground"><tr><th className="p-3">Pedido</th><th className="p-3">Data</th><th className="p-3">Pagamento</th><th className="p-3 text-right">Bruto</th><th className="p-3 text-right">Comissão</th><th className="p-3 text-right">Líquido</th></tr></thead><tbody className="divide-y divide-border">{transactions.map((tx) => <tr key={tx.id}><td className="p-3 font-medium">{tx.order_id.slice(0, 8).toUpperCase()}</td><td className="p-3">{new Date(tx.created_at).toLocaleDateString("pt-BR")}</td><td className="p-3">{tx.status === "approved" ? "Pago" : tx.status === "pending" ? "Pendente" : tx.status}</td><td className="p-3 text-right">{brl(Number(tx.gross_amount))}</td><td className="p-3 text-right">{brl(Number(tx.platform_fee))}</td><td className="p-3 text-right font-semibold text-success">{brl(Number(tx.seller_amount))}</td></tr>)}{transactions.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhuma venda registrada.</td></tr>}</tbody></table></div></section>
+          </section>
+        </TabsContent>
+        <TabsContent value="create" className="pt-4"><div className="max-w-xl"><ProductForm storeId={store.id} onCreated={() => qc.invalidateQueries({ queryKey: ["store-products"] })} /></div></TabsContent>
+        <TabsContent value="sales" className="pt-4"><section className="surface-card overflow-hidden"><header className="border-b border-border p-4"><h2 className="font-semibold">Vendas e pagamentos</h2></header><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-sm"><thead className="bg-muted/50 text-left text-muted-foreground"><tr><th className="p-3">Pedido</th><th className="p-3">Data</th><th className="p-3">Pagamento</th><th className="p-3 text-right">Bruto</th><th className="p-3 text-right">Comissão</th><th className="p-3 text-right">Líquido</th></tr></thead><tbody className="divide-y divide-border">{transactions.map((tx) => <tr key={tx.id}><td className="p-3 font-medium">{tx.order_id.slice(0, 8).toUpperCase()}</td><td className="p-3">{new Date(tx.created_at).toLocaleDateString("pt-BR")}</td><td className="p-3">{tx.status === "approved" ? "Pago" : tx.status === "pending" ? "Pendente" : tx.status}</td><td className="p-3 text-right">{brl(Number(tx.gross_amount))}</td><td className="p-3 text-right">{brl(Number(tx.platform_fee))}</td><td className="p-3 text-right font-semibold text-success">{brl(Number(tx.seller_amount))}</td></tr>)}{transactions.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhuma venda registrada.</td></tr>}</tbody></table></div></section></TabsContent>
+      </Tabs>
     </Shell>
   );
 }

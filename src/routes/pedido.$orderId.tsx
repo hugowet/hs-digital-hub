@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/lib/cart";
 import { brl } from "@/lib/format";
-import { createMercadoPagoPayment, getMercadoPagoPublicConfig } from "@/lib/payments.functions";
+import { createMercadoPagoPayment, getMercadoPagoPublicConfig, reconcileMercadoPagoPayment } from "@/lib/payments.functions";
 
 export const Route = createFileRoute("/pedido/$orderId")({
   ssr: false,
@@ -35,6 +35,7 @@ function OrderPaymentPage() {
   const qc = useQueryClient();
   const { clear } = useCart();
   const createPayment = useServerFn(createMercadoPagoPayment);
+  const reconcilePayment = useServerFn(reconcileMercadoPagoPayment);
   const getPublicConfig = useServerFn(getMercadoPagoPublicConfig);
   const [creatingPix, setCreatingPix] = useState<string | null>(null);
   const [pixCpf, setPixCpf] = useState("");
@@ -61,6 +62,17 @@ function OrderPaymentPage() {
   useEffect(() => {
     if (data?.order.payment_status === "approved") clear();
   }, [clear, data?.order.payment_status]);
+
+  useEffect(() => {
+    if (!data || data.order.payment_status === "approved") return;
+    const pending = data.transactions.filter((transaction) => transaction.provider_payment_id && ["pending", "in_process"].includes(transaction.status));
+    if (pending.length === 0) return;
+    const timeoutId = window.setTimeout(async () => {
+      await Promise.allSettled(pending.map((transaction) => reconcilePayment({ data: { transactionId: transaction.id } })));
+      await qc.invalidateQueries({ queryKey: ["buyer-order", orderId] });
+    }, 8_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [data, orderId, qc, reconcilePayment]);
 
   const payCard = useCallback(async (transactionId: string, cardData: {
     token: string; payment_method_id: string; issuer_id?: string; installments: number;

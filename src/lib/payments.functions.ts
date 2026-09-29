@@ -172,7 +172,67 @@ type PaymentResponse = {
 type MercadoPagoUser = {
   id: number;
   email?: string;
+  identification?: { number?: string };
 };
+
+const transactionSchema = z.object({ transactionId: z.string().uuid() });
+const orderSchema = z.object({ orderId: z.string().uuid() });
+
+async function applyPaymentStatus(transactionId: string, payment: PaymentResponse) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.rpc("apply_mercado_pago_status", {
+    _transaction_id: transactionId,
+    _provider_payment_id: String(payment.id),
+    _status: payment.status,
+    _payment_method: payment.payment_method_id ?? "",
+    _provider_payload: { status_detail: payment.status_detail ?? null },
+  });
+  if (error) throw error;
+}
+
+export const reconcileMercadoPagoPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => transactionSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: transaction, error } = await context.supabase
+      .from("payment_transactions")
+      .select("id,store_id,provider_payment_id,status")
+      .eq("id", data.transactionId)
+      .eq("buyer_id", context.userId)
+      .maybeSingle();
+    if (error || !transaction) throw new Error("Transação não encontrada.");
+    if (!transaction.provider_payment_id || transaction.status === "approved") {
+      return { status: transaction.status };
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: account } = await supabaseAdmin
+      .from("mercado_pago_accounts")
+      .select("access_token_encrypted")
+      .eq("store_id", transaction.store_id)
+      .maybeSingle();
+    if (!account) throw new Error("A conta Mercado Pago da loja precisa ser reconectada.");
+    const { decryptSecret, mercadoPagoRequest } = await import("@/lib/mercado-pago.server");
+    const payment = await mercadoPagoRequest<PaymentResponse>(
+      `/v1/payments/${encodeURIComponent(transaction.provider_payment_id)}`,
+      await decryptSecret(account.access_token_encrypted),
+    );
+    await applyPaymentStatus(transaction.id, payment);
+    return { status: payment.status };
+  });
+
+export const cancelUnpaidMarketplaceOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => orderSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.rpc("cancel_unpaid_marketplace_order_for_buyer", {
+      _order_id: data.orderId,
+      _buyer_id: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
 
 export const createMercadoPagoPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -180,7 +240,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { decryptSecret, mercadoPagoRequest, safeOrigin } = await import("@/lib/mercado-pago.server");
     const origin = safeOrigin(data.origin);
-    const paymentNotificationOrigin = origin === "http://localhost:8080"
+    const paymentNotificationOrigin = origin === "http://localhost:8080" || origin.endsWith(".lovable.app")
       ? "https://hs-digital-hub.lovable.app"
       : origin;
     const { data: transaction, error } = await context.supabase
@@ -222,6 +282,11 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     if (!email) throw new Error("E-mail do comprador não encontrado.");
     if (collectorUser.email && collectorUser.email.toLowerCase() === email.toLowerCase()) {
       throw new Error("O Mercado Pago não permite pagar uma venda para a própria conta. Use uma conta compradora diferente.");
+    }
+    const payerCpf = data.pix?.identificationNumber;
+    const collectorDocument = collectorUser.identification?.number?.replace(/\D/g, "");
+    if (payerCpf && collectorDocument && payerCpf === collectorDocument) {
+      throw new Error("O Mercado Pago não permite gerar Pix usando o CPF do titular da conta vendedora.");
     }
 
     const expiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
@@ -279,14 +344,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
       .eq("id", transaction.id);
     if (updateError) throw updateError;
     if (payment.status === "approved") {
-      const { error: applyError } = await supabaseAdmin.rpc("apply_mercado_pago_status", {
-        _transaction_id: transaction.id,
-        _provider_payment_id: String(payment.id),
-        _status: payment.status,
-        _payment_method: payment.payment_method_id ?? data.method,
-        _provider_payload: { status_detail: payment.status_detail ?? null },
-      });
-      if (applyError) throw applyError;
+      await applyPaymentStatus(transaction.id, payment);
     }
     return {
       status: payment.status,
