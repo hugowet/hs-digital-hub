@@ -289,26 +289,42 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
       throw new Error("O Mercado Pago não permite gerar Pix usando o CPF do titular da conta vendedora.");
     }
 
+   // Busca o nome do comprador cadastrado no perfil para validar no Mercado Pago
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.user?.id)
+      .maybeSingle();
+
+    const fullNameParts = (profile?.full_name || "Cliente").trim().split(/\s+/);
+    const firstName = fullNameParts[0] || "Cliente";
+    const lastName = fullNameParts.length > 1 ? fullNameParts.slice(1).join(" ") : "HS";
+
     const expiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     const body: Record<string, unknown> = {
       transaction_amount: Number(transaction.gross_amount),
       description: `Pedido HS Digital ${transaction.order_id.slice(0, 8).toUpperCase()}`,
       external_reference: transaction.id,
       notification_url: `${paymentNotificationOrigin}/api/public/mercado-pago/webhook`,
-      payer: { email },
+      payer: {
+        email,
+        first_name: firstName,
+        last_name: lastName,
+      },
       metadata: { order_id: transaction.order_id, transaction_id: transaction.id, store_id: transaction.store_id },
     };
-    // Mercado Pago rejects application_fee when the platform and collector are
-    // the same account. The commission remains recorded in our ledger; no
-    // external split is needed because the full payment already reaches the platform.
+
     if (!isPlatformOwnedStore) {
       body["application_fee"] = Number(transaction.platform_fee);
     }
+
     if (data.method === "pix") {
       body["payment_method_id"] = "pix";
       body["date_of_expiration"] = expiration;
       body["payer"] = {
         email,
+        first_name: firstName,
+        last_name: lastName,
         identification: { type: "CPF", number: data.pix?.identificationNumber },
       };
     } else if (data.card) {
