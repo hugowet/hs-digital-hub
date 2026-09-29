@@ -99,7 +99,20 @@ export async function mercadoPagoRequest<T>(
   const body = await response.text();
   if (!response.ok) {
     console.error(`Mercado Pago request failed [${response.status}]: ${body}`);
-    throw new Error(`Mercado Pago recusou a operação [${response.status}].`);
+    let detail = "";
+    try {
+      const parsed = JSON.parse(body) as {
+        message?: string;
+        cause?: Array<{ description?: string }>;
+      };
+      detail = parsed.cause?.[0]?.description ?? parsed.message ?? "";
+    } catch {
+      detail = "";
+    }
+    if (detail === "You cannot use application_fee with this payment.") {
+      throw new Error("A conta Mercado Pago da loja precisa ser reconectada como uma conta vendedora diferente da conta da plataforma.");
+    }
+    throw new Error(detail ? `Mercado Pago recusou a operação: ${detail}` : `Mercado Pago recusou a operação [${response.status}].`);
   }
   return JSON.parse(body) as T;
 }
