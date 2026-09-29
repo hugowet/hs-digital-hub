@@ -13,6 +13,7 @@ import { groupByStore, useCart } from "@/lib/cart";
 import { trackCheckoutAbandonment } from "@/lib/abandoned-cart";
 import { brl } from "@/lib/format";
 import { createMarketplaceCheckout } from "@/lib/payments.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/carrinho")({
   head: () => ({
@@ -56,6 +57,16 @@ function CartPage() {
   useEffect(() => {
     if (items.length > 0) void trackCheckoutAbandonment(items);
   }, [items]);
+
+  useEffect(() => {
+    supabase.from("user_addresses").select("recipient_name,phone,street_address,city,state,complement").eq("is_default", true).maybeSingle().then(({ data }) => {
+      if (!data) return;
+      setName(data.recipient_name);
+      setPhone(data.phone);
+      setAddress(`${data.street_address}${data.complement ? `, ${data.complement}` : ""}`);
+      setCity(`${data.city}/${data.state}`);
+    });
+  }, []);
 
   const checkout = async () => {
     if (!name.trim() || !address.trim() || !city.trim()) {

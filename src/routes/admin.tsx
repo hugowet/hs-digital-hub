@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { CheckCircle2, CreditCard, Percent, Settings2, Store } from "lucide-react";
+import { CheckCircle2, CreditCard, Percent, Settings2, Store, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/site-header";
@@ -197,6 +197,7 @@ function AdminPage() {
                       </p>
                     </div>
                     {s.status !== "approved" ? (
+                      <div className="flex gap-2">
                       <Button
                         size="sm"
                         onClick={async () => {
@@ -214,6 +215,9 @@ function AdminPage() {
                       >
                         Aprovar
                       </Button>
+                      <Button variant="outline" size="sm" onClick={async () => { const { error } = await supabase.from("stores").update({ status: "rejected" }).eq("id", s.id); if (error) toast.error(error.message); else { toast.success("Solicitação recusada"); await qc.invalidateQueries({ queryKey: ["all-stores"] }); } }}><XCircle />Recusar</Button>
+                      <Button variant="ghost" size="icon" aria-label="Excluir solicitação" className="text-destructive" onClick={async () => { if (!window.confirm("Excluir esta solicitação de vendedor?")) return; const { error } = await supabase.from("stores").delete().eq("id", s.id); if (error) toast.error("A solicitação possui dados vinculados e não pode ser excluída."); else await qc.invalidateQueries({ queryKey: ["all-stores"] }); }}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
                     ) : (
                       <CheckCircle2 className="h-5 w-5 text-success" />
                     )}
