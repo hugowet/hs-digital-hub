@@ -176,6 +176,9 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { decryptSecret, mercadoPagoRequest, safeOrigin } = await import("@/lib/mercado-pago.server");
     const origin = safeOrigin(data.origin);
+    const paymentNotificationOrigin = origin === "http://localhost:8080"
+      ? "https://hs-digital-hub.lovable.app"
+      : origin;
     const { data: transaction, error } = await context.supabase
       .from("payment_transactions")
       .select("id,order_id,store_id,gross_amount,platform_fee,status,provider_payment_id")
@@ -215,7 +218,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
       transaction_amount: Number(transaction.gross_amount),
       description: `Pedido HS Digital ${transaction.order_id.slice(0, 8).toUpperCase()}`,
       external_reference: transaction.id,
-      notification_url: `${origin}/api/public/mercado-pago/webhook`,
+      notification_url: `${paymentNotificationOrigin}/api/public/mercado-pago/webhook`,
       payer: { email },
       metadata: { order_id: transaction.order_id, transaction_id: transaction.id, store_id: transaction.store_id },
     };
