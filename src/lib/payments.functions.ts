@@ -146,6 +146,9 @@ const paymentSchema = z.object({
   transactionId: z.string().uuid(),
   origin: z.string().url(),
   method: z.enum(["pix", "card"]),
+  pix: z.object({
+    identificationNumber: z.string().transform((value) => value.replace(/\D/g, "")).pipe(z.string().length(11)),
+  }).optional(),
   card: z.object({
     token: z.string().min(10).max(500),
     paymentMethodId: z.string().min(1).max(80),
@@ -166,12 +169,20 @@ type PaymentResponse = {
   point_of_interaction?: { transaction_data?: { qr_code?: string; qr_code_base64?: string } };
 };
 
+type MercadoPagoUser = {
+  id: number;
+  email?: string;
+};
+
 export const createMercadoPagoPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => paymentSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { decryptSecret, mercadoPagoRequest, safeOrigin } = await import("@/lib/mercado-pago.server");
     const origin = safeOrigin(data.origin);
+    const paymentNotificationOrigin = origin === "http://localhost:8080"
+      ? "https://hs-digital-hub.lovable.app"
+      : origin;
     const { data: transaction, error } = await context.supabase
       .from("payment_transactions")
       .select("id,order_id,store_id,gross_amount,platform_fee,status,provider_payment_id")
@@ -181,33 +192,60 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     if (error || !transaction) throw new Error("Transação não encontrada.");
     if (transaction.status === "approved") return { status: "approved" as const };
     if (transaction.provider_payment_id) throw new Error("Este pagamento já foi iniciado.");
+    if (data.method === "pix" && !data.pix) throw new Error("Informe o CPF do pagador para gerar o Pix.");
     if (data.method === "card" && !data.card) throw new Error("Dados do cartão ausentes.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: account } = await supabaseAdmin
+    const [{ data: account }, { data: settings }] = await Promise.all([
+      supabaseAdmin
       .from("mercado_pago_accounts")
-      .select("access_token_encrypted")
+      .select("access_token_encrypted,mercado_pago_user_id")
       .eq("store_id", transaction.store_id)
-      .maybeSingle();
+      .maybeSingle(),
+      supabaseAdmin
+        .from("payment_provider_settings")
+        .select("access_token_encrypted")
+        .eq("provider", "mercadopago")
+        .maybeSingle(),
+    ]);
     if (!account) throw new Error("A loja ainda não conectou a carteira Mercado Pago.");
+    if (!settings) throw new Error("O Mercado Pago ainda não foi configurado pelo administrador.");
     const accessToken = await decryptSecret(account.access_token_encrypted);
+    const platformAccessToken = await decryptSecret(settings.access_token_encrypted);
+    const [platformUser, collectorUser] = await Promise.all([
+      mercadoPagoRequest<MercadoPagoUser>("/users/me", platformAccessToken),
+      mercadoPagoRequest<MercadoPagoUser>("/users/me", accessToken),
+    ]);
+    const isPlatformOwnedStore = String(platformUser.id) === account.mercado_pago_user_id;
     const { data: user } = await context.supabase.auth.getUser();
     const email = data.card?.email ?? user.user?.email;
     if (!email) throw new Error("E-mail do comprador não encontrado.");
+    if (collectorUser.email && collectorUser.email.toLowerCase() === email.toLowerCase()) {
+      throw new Error("O Mercado Pago não permite pagar uma venda para a própria conta. Use uma conta compradora diferente.");
+    }
 
     const expiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     const body: Record<string, unknown> = {
       transaction_amount: Number(transaction.gross_amount),
       description: `Pedido HS Digital ${transaction.order_id.slice(0, 8).toUpperCase()}`,
       external_reference: transaction.id,
-      notification_url: `${origin}/api/public/mercado-pago/webhook`,
-      application_fee: Number(transaction.platform_fee),
+      notification_url: `${paymentNotificationOrigin}/api/public/mercado-pago/webhook`,
       payer: { email },
       metadata: { order_id: transaction.order_id, transaction_id: transaction.id, store_id: transaction.store_id },
     };
+    // Mercado Pago rejects application_fee when the platform and collector are
+    // the same account. The commission remains recorded in our ledger; no
+    // external split is needed because the full payment already reaches the platform.
+    if (!isPlatformOwnedStore) {
+      body["application_fee"] = Number(transaction.platform_fee);
+    }
     if (data.method === "pix") {
       body["payment_method_id"] = "pix";
       body["date_of_expiration"] = expiration;
+      body["payer"] = {
+        email,
+        identification: { type: "CPF", number: data.pix?.identificationNumber },
+      };
     } else if (data.card) {
       body["token"] = data.card.token;
       body["payment_method_id"] = data.card.paymentMethodId;

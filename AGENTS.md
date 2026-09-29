@@ -17,3 +17,5 @@
 - Eventos de carrinho abandonado são persistidos apenas para usuários autenticados e protegidos por usuário, permitindo automações futuras sem expor contatos.
 - Mídias de produtos ficam em armazenamento privado e são entregues por URLs temporárias geradas no servidor, evitando links públicos permanentes.
 - O checkout bloqueia produtos em ordem determinística e possui limites de espera, evitando travamentos por concorrência.
+- Em lojas da própria conta Mercado Pago da plataforma, a cobrança omite `application_fee`; a comissão permanece no razão interno porque não existe repasse externo.
+- A geração de Pix exige CPF do pagador e bloqueia autopagamento quando comprador e recebedor usam a mesma conta Mercado Pago.
