@@ -212,12 +212,17 @@ function SellerCenter() {
         {store.mercado_pago_status === "connected" ? <span className="rounded-md bg-success/10 px-3 py-2 text-sm font-semibold text-success">Conta conectada</span> : <Button onClick={async () => { try { const result = await startConnection({ data: { storeId: store.id, origin: window.location.origin } }); window.location.assign(result.url); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível conectar."); } }}><ExternalLink />Conectar Mercado Pago</Button>}
       </section>
 
-      <Tabs defaultValue="products" className="mt-6">
+     <Tabs defaultValue="orders" className="mt-6">
         <TabsList className="h-auto w-full justify-start overflow-x-auto">
+          <TabsTrigger value="orders">Pedidos e Envios</TabsTrigger>
           <TabsTrigger value="products">Meus produtos</TabsTrigger>
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e pagamentos</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="orders" className="pt-4">
+          <SellerOrdersTab storeId={store.id} />
+        </TabsContent>
         <TabsContent value="products" className="pt-4">
           <section className="surface-card p-4">
           <h2 className="text-base font-semibold">Meus produtos ({products.length})</h2>
@@ -496,5 +501,168 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         </Button>
       </div>
     </form>
+  );
+}
+function SellerOrdersTab({ storeId }: { storeId: string }) {
+  const qc = useQueryClient();
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [trackingNote, setTrackingNote] = useState<Record<string, string>>({});
+
+  const { data: orders = [], isLoading } = useQuery({
+    queryKey: ["seller-orders", storeId],
+    queryFn: async () => {
+      const { data: items, error: itemsError } = await supabase
+        .from("order_items")
+        .select("order_id,title,quantity,unit_price,seller_amount")
+        .eq("store_id", storeId);
+      if (itemsError) throw itemsError;
+      if (!items || items.length === 0) return [];
+
+      const orderIds = Array.from(new Set(items.map((i) => i.order_id)));
+      const [{ data: ordersData }, { data: trackingEvents }] = await Promise.all([
+        supabase.from("orders").select("id,created_at,payment_status,total,shipping_address").in("id", orderIds).order("created_at", { ascending: false }),
+        supabase.from("order_tracking_events").select("order_id,status,note,created_at").in("order_id", orderIds).order("created_at", { ascending: true }),
+      ]);
+
+      return (ordersData ?? []).map((ord) => ({
+        ...ord,
+        items: items.filter((i) => i.order_id === ord.id),
+        events: (trackingEvents ?? []).filter((e) => e.order_id === ord.id),
+      }));
+    },
+  });
+
+  const addStatus = async (orderId: string, status: string, defaultNote: string) => {
+    try {
+      setUpdatingId(orderId);
+      const note = trackingNote[orderId]?.trim() || defaultNote;
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error("Você precisa estar autenticado.");
+
+      const { error } = await supabase.from("order_tracking_events").insert({
+        order_id: orderId,
+        status,
+        note,
+        created_by: user.user.id,
+      });
+      if (error) throw error;
+
+      toast.success("Status atualizado!");
+      setTrackingNote((prev) => ({ ...prev, [orderId]: "" }));
+      await qc.invalidateQueries({ queryKey: ["seller-orders", storeId] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao atualizar status");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  if (isLoading) return <p className="text-sm text-muted-foreground py-6">Carregando pedidos…</p>;
+
+  return (
+    <div className="space-y-4">
+      {orders.map((ord) => {
+        const addr = ord.shipping_address as Record<string, any> | null;
+        const lastEvent = ord.events.length > 0 ? ord.events[ord.events.length - 1].status : "confirmed";
+
+        return (
+          <div key={ord.id} className="surface-card p-5 border border-border rounded-xl space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+              <div>
+                <span className="text-xs text-muted-foreground">Pedido #{ord.id.slice(0, 8).toUpperCase()}</span>
+                <p className="text-sm font-semibold">{new Date(ord.created_at).toLocaleString("pt-BR")}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-1 text-xs rounded-full font-semibold ${ord.payment_status === "approved" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}>
+                  {ord.payment_status === "approved" ? "PAGO" : "AGUARDANDO PAGAMENTO"}
+                </span>
+                <span className="px-2.5 py-1 text-xs rounded-full bg-muted font-medium capitalize">
+                  {lastEvent === "confirmed" && "Confirmado"}
+                  {lastEvent === "preparing" && "Em separação"}
+                  {lastEvent === "shipped" && "Enviado"}
+                  {lastEvent === "out_for_delivery" && "Saiu para entrega"}
+                  {lastEvent === "delivered" && "Entregue"}
+                </span>
+              </div>
+            </div>
+
+            {/* Endereço de entrega para dropshipping */}
+            {addr && (
+              <div className="bg-muted/40 p-3 rounded-lg text-xs space-y-1">
+                <p className="font-semibold text-foreground">📍 Endereço de Entrega do Cliente:</p>
+                <p>{addr.recipient_name || "Destinatário"} · Tel: {addr.phone || "Não informado"}</p>
+                <p>{addr.street_address}{addr.complement ? `, ${addr.complement}` : ""} - {addr.city}/{addr.state} - CEP: {addr.postal_code}</p>
+              </div>
+            )}
+
+            {/* Itens */}
+            <div className="space-y-1 text-sm">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Itens da sua loja:</p>
+              {ord.items.map((i, idx) => (
+                <div key={idx} className="flex justify-between text-xs">
+                  <span>{i.quantity}x {i.title}</span>
+                  <span className="font-semibold text-success">{brl(Number(i.seller_amount))}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Botões de avanço de rastreio */}
+            <div className="border-t border-border pt-3 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground">Atualizar entrega do pedido:</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={lastEvent === "preparing" ? "secondary" : "outline"}
+                  disabled={updatingId === ord.id}
+                  onClick={() => addStatus(ord.id, "preparing", "Pedido em separação no fornecedor")}
+                >
+                  Em separação
+                </Button>
+
+                <div className="flex flex-1 min-w-[240px] gap-1">
+                  <Input
+                    placeholder="Código de rastreio (ex: AA123456789BR)"
+                    value={trackingNote[ord.id] || ""}
+                    onChange={(e) => setTrackingNote({ ...trackingNote, [ord.id]: e.target.value })}
+                    className="h-9 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={updatingId === ord.id}
+                    onClick={() => addStatus(ord.id, "shipped", trackingNote[ord.id] ? `Rastreio: ${trackingNote[ord.id]}` : "Enviado")}
+                  >
+                    Marcar Enviado
+                  </Button>
+                </div>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={updatingId === ord.id}
+                  onClick={() => addStatus(ord.id, "out_for_delivery", "Objeto saiu para entrega ao destinatário")}
+                >
+                  Saiu para entrega
+                </Button>
+
+                <Button
+                  size="sm"
+                  className="bg-success hover:bg-success/90 text-white"
+                  disabled={updatingId === ord.id}
+                  onClick={() => addStatus(ord.id, "delivered", "Entregue ao cliente")}
+                >
+                  Entregue
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {orders.length === 0 && (
+        <div className="surface-card p-8 text-center text-sm text-muted-foreground">
+          Nenhum pedido recebido ainda.
+        </div>
+      )}
+    </div>
   );
 }
