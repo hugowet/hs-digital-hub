@@ -146,6 +146,9 @@ const paymentSchema = z.object({
   transactionId: z.string().uuid(),
   origin: z.string().url(),
   method: z.enum(["pix", "card"]),
+  pix: z.object({
+    identificationNumber: z.string().transform((value) => value.replace(/\D/g, "")).pipe(z.string().length(11)),
+  }).optional(),
   card: z.object({
     token: z.string().min(10).max(500),
     paymentMethodId: z.string().min(1).max(80),
@@ -168,6 +171,7 @@ type PaymentResponse = {
 
 type MercadoPagoUser = {
   id: number;
+  email?: string;
 };
 
 export const createMercadoPagoPayment = createServerFn({ method: "POST" })
@@ -188,6 +192,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     if (error || !transaction) throw new Error("Transação não encontrada.");
     if (transaction.status === "approved") return { status: "approved" as const };
     if (transaction.provider_payment_id) throw new Error("Este pagamento já foi iniciado.");
+    if (data.method === "pix" && !data.pix) throw new Error("Informe o CPF do pagador para gerar o Pix.");
     if (data.method === "card" && !data.card) throw new Error("Dados do cartão ausentes.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -207,11 +212,17 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     if (!settings) throw new Error("O Mercado Pago ainda não foi configurado pelo administrador.");
     const accessToken = await decryptSecret(account.access_token_encrypted);
     const platformAccessToken = await decryptSecret(settings.access_token_encrypted);
-    const platformUser = await mercadoPagoRequest<MercadoPagoUser>("/users/me", platformAccessToken);
+    const [platformUser, collectorUser] = await Promise.all([
+      mercadoPagoRequest<MercadoPagoUser>("/users/me", platformAccessToken),
+      mercadoPagoRequest<MercadoPagoUser>("/users/me", accessToken),
+    ]);
     const isPlatformOwnedStore = String(platformUser.id) === account.mercado_pago_user_id;
     const { data: user } = await context.supabase.auth.getUser();
     const email = data.card?.email ?? user.user?.email;
     if (!email) throw new Error("E-mail do comprador não encontrado.");
+    if (collectorUser.email && collectorUser.email.toLowerCase() === email.toLowerCase()) {
+      throw new Error("O Mercado Pago não permite pagar uma venda para a própria conta. Use uma conta compradora diferente.");
+    }
 
     const expiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     const body: Record<string, unknown> = {
@@ -231,6 +242,10 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     if (data.method === "pix") {
       body["payment_method_id"] = "pix";
       body["date_of_expiration"] = expiration;
+      body["payer"] = {
+        email,
+        identification: { type: "CPF", number: data.pix?.identificationNumber },
+      };
     } else if (data.card) {
       body["token"] = data.card.token;
       body["payment_method_id"] = data.card.paymentMethodId;
