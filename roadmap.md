@@ -33,3 +33,4 @@
 - [x] Remover mascote e transformar categorias em carrossel
 - [x] Ampliar menu da conta com compras e notificações reais
 - [x] Eliminar travamento do checkout com bloqueios ordenados e limite de espera
+- [ ] Corrigir a recusa do Mercado Pago ao gerar pagamentos Pix
