@@ -177,6 +177,35 @@ export type Database = {
           },
         ]
       }
+      dismissed_order_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissed_order_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercado_pago_accounts: {
         Row: {
           access_token_encrypted: string
@@ -800,6 +829,10 @@ export type Database = {
           _status: string
           _transaction_id: string
         }
+        Returns: undefined
+      }
+      cancel_unpaid_marketplace_order: {
+        Args: { _order_id: string }
         Returns: undefined
       }
       create_marketplace_order: {
