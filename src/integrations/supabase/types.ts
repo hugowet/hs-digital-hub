@@ -835,6 +835,10 @@ export type Database = {
         Args: { _order_id: string }
         Returns: undefined
       }
+      cancel_unpaid_marketplace_order_for_buyer: {
+        Args: { _buyer_id: string; _order_id: string }
+        Returns: undefined
+      }
       create_marketplace_order: {
         Args: { _items: Json; _shipping_address: Json }
         Returns: string
