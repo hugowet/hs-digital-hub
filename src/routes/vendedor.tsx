@@ -501,8 +501,6 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         </Button>
       </div>
     </form>
-  );
-}
 function SellerOrdersTab({ storeId }: { storeId: string }) {
   const qc = useQueryClient();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
