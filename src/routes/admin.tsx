@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { CheckCircle2, CreditCard, Percent, Settings2, Store } from "lucide-react";
+import { CheckCircle2, CreditCard, MessageCircle, Percent, Send, Settings2, Store, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/site-header";
@@ -101,6 +101,9 @@ function AdminPage() {
   });
 
   const [rate, setRate] = useState("");
+  const [activeConversation, setActiveConversation] = useState<string | null>(null);
+  const [reply, setReply] = useState("");
+  const { data: conversations = [] } = useQuery({ enabled: !!isAdmin, queryKey: ["admin-conversations"], queryFn: async () => { const { data, error } = await supabase.from("order_conversations").select("id,order_id,buyer_id,subject,updated_at,order_messages(id,body,sender_id,read_at,created_at)").order("updated_at", { ascending: false }); if (error) throw error; return data ?? []; } });
   useEffect(() => {
     if (settings) setRate((Number(settings.commission_rate) * 100).toFixed(2));
   }, [settings]);
@@ -128,7 +131,7 @@ function AdminPage() {
 
         {isAdmin && (
           <Tabs defaultValue="overview" className="mt-6">
-            <TabsList className="h-auto w-full justify-start overflow-x-auto"><TabsTrigger value="overview">Visão geral</TabsTrigger><TabsTrigger value="sellers">Vendedores</TabsTrigger><TabsTrigger value="payments">Mercado Pago</TabsTrigger><TabsTrigger value="transactions">Transações</TabsTrigger></TabsList>
+            <TabsList className="h-auto w-full justify-start overflow-x-auto"><TabsTrigger value="overview">Visão geral</TabsTrigger><TabsTrigger value="sellers">Vendedores</TabsTrigger><TabsTrigger value="messages">Mensagens</TabsTrigger><TabsTrigger value="payments">Mercado Pago</TabsTrigger><TabsTrigger value="transactions">Transações</TabsTrigger></TabsList>
             <TabsContent value="overview" className="space-y-4 pt-4">
             <section className="surface-card p-4">
               <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -181,6 +184,7 @@ function AdminPage() {
             </section>
             <div className="grid gap-3 sm:grid-cols-3"><AdminMetric label="Volume processado" value={brl(transactions.reduce((sum, tx) => sum + Number(tx.gross_amount), 0))} /><AdminMetric label="Comissão" value={brl(transactions.filter((tx) => tx.status === "approved").reduce((sum, tx) => sum + Number(tx.platform_fee), 0))} /><AdminMetric label="Pagamentos aprovados" value={String(transactions.filter((tx) => tx.status === "approved").length)} /></div>
             </TabsContent>
+            <TabsContent value="messages" className="pt-4"><section className="surface-card grid min-h-[440px] overflow-hidden md:grid-cols-[280px_1fr]"><aside className="border-b border-border md:border-b-0 md:border-r"><h2 className="flex items-center gap-2 p-4 font-semibold"><MessageCircle className="h-5 w-5 text-primary" />Mensagens</h2>{conversations.map((conversation) => <button key={conversation.id} type="button" onClick={() => setActiveConversation(conversation.id)} className={`block w-full border-t border-border p-4 text-left text-sm ${activeConversation === conversation.id ? "bg-primary/10" : "hover:bg-muted"}`}><strong>Pedido {conversation.order_id.slice(0, 8).toUpperCase()}</strong><p className="mt-1 truncate text-xs text-muted-foreground">{conversation.order_messages.at(-1)?.body ?? conversation.subject}</p></button>)}</aside><div className="flex min-h-[360px] flex-col p-4">{activeConversation ? <>{(() => { const conversation = conversations.find((item) => item.id === activeConversation); return <div className="flex-1 space-y-2 overflow-y-auto">{conversation?.order_messages.sort((a, b) => a.created_at.localeCompare(b.created_at)).map((message) => <div key={message.id} className="rounded-lg bg-muted p-3 text-sm"><p>{message.body}</p><p className="mt-1 text-[10px] text-muted-foreground">{new Date(message.created_at).toLocaleString("pt-BR")}</p></div>)}</div>; })()}<form className="mt-3 flex gap-2" onSubmit={async (event) => { event.preventDefault(); if (!userId || !reply.trim()) return; const { error } = await supabase.from("order_messages").insert({ conversation_id: activeConversation, sender_id: userId, body: reply.trim() }); if (error) toast.error(error.message); else { setReply(""); await qc.invalidateQueries({ queryKey: ["admin-conversations"] }); } }}><Input value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Responder comprador" maxLength={2000} /><Button type="submit" size="icon" aria-label="Enviar resposta"><Send /></Button></form></> : <p className="m-auto text-sm text-muted-foreground">Selecione uma conversa.</p>}</div></section></TabsContent>
             <TabsContent value="sellers" className="pt-4">
             <section className="surface-card p-4">
               <h2 className="flex items-center gap-2 text-base font-semibold">
@@ -197,6 +201,7 @@ function AdminPage() {
                       </p>
                     </div>
                     {s.status !== "approved" ? (
+                      <div className="flex gap-2">
                       <Button
                         size="sm"
                         onClick={async () => {
@@ -214,6 +219,9 @@ function AdminPage() {
                       >
                         Aprovar
                       </Button>
+                      <Button variant="outline" size="sm" onClick={async () => { const { error } = await supabase.from("stores").update({ status: "rejected" }).eq("id", s.id); if (error) toast.error(error.message); else { toast.success("Solicitação recusada"); await qc.invalidateQueries({ queryKey: ["all-stores"] }); } }}><XCircle />Recusar</Button>
+                      <Button variant="ghost" size="icon" aria-label="Excluir solicitação" className="text-destructive" onClick={async () => { if (!window.confirm("Excluir esta solicitação de vendedor?")) return; const { error } = await supabase.from("stores").delete().eq("id", s.id); if (error) toast.error("A solicitação possui dados vinculados e não pode ser excluída."); else await qc.invalidateQueries({ queryKey: ["all-stores"] }); }}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
                     ) : (
                       <CheckCircle2 className="h-5 w-5 text-success" />
                     )}

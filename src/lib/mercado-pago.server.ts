@@ -112,6 +112,13 @@ export async function mercadoPagoRequest<T>(
     if (detail === "You cannot use application_fee with this payment.") {
       throw new Error("A conta Mercado Pago da loja precisa ser reconectada como uma conta vendedora diferente da conta da plataforma.");
     }
+    const normalizedDetail = detail.toLowerCase();
+    if (normalizedDetail.includes("cannot pay") && normalizedDetail.includes("yourself")) {
+      throw new Error("O Mercado Pago não permite pagar para a própria conta. Use outro CPF e outra conta compradora.");
+    }
+    if (normalizedDetail.includes("identification") || normalizedDetail.includes("cpf")) {
+      throw new Error("O Mercado Pago recusou o CPF informado. Confira os 11 números e tente novamente.");
+    }
     throw new Error(detail ? `Mercado Pago recusou a operação: ${detail}` : `Mercado Pago recusou a operação [${response.status}].`);
   }
   return JSON.parse(body) as T;

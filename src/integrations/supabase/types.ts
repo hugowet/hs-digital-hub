@@ -177,6 +177,35 @@ export type Database = {
           },
         ]
       }
+      dismissed_order_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissed_order_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercado_pago_accounts: {
         Row: {
           access_token_encrypted: string
@@ -256,6 +285,41 @@ export type Database = {
           },
         ]
       }
+      order_conversations: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          id: string
+          order_id: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          id?: string
+          order_id: string
+          subject?: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          order_id?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_conversations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           commission_rate: number
@@ -316,6 +380,76 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender_id: string
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "order_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_tracking_events: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          note: string
+          order_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          note?: string
+          order_id: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          note?: string
+          order_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_tracking_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -766,6 +900,54 @@ export type Database = {
         }
         Relationships: []
       }
+      user_addresses: {
+        Row: {
+          city: string
+          complement: string
+          created_at: string
+          id: string
+          is_default: boolean
+          label: string
+          phone: string
+          postal_code: string
+          recipient_name: string
+          state: string
+          street_address: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city: string
+          complement?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          phone?: string
+          postal_code?: string
+          recipient_name: string
+          state: string
+          street_address: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string
+          complement?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          phone?: string
+          postal_code?: string
+          recipient_name?: string
+          state?: string
+          street_address?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -800,6 +982,14 @@ export type Database = {
           _status: string
           _transaction_id: string
         }
+        Returns: undefined
+      }
+      cancel_unpaid_marketplace_order: {
+        Args: { _order_id: string }
+        Returns: undefined
+      }
+      cancel_unpaid_marketplace_order_for_buyer: {
+        Args: { _buyer_id: string; _order_id: string }
         Returns: undefined
       }
       create_marketplace_order: {

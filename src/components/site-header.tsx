@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, Home, LogIn, LogOut, Menu, Search, ShoppingBag, ShoppingCart, Store, User } from "lucide-react";
+import { Bell, Home, LogIn, LogOut, MapPin, Menu, Search, ShoppingBag, ShoppingCart, Store, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export function SiteHeader({
   const [open, setOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [searchFocused, setSearchFocused] = useState(false);
   const matches = useMemo(() => {
     const normalized = (query ?? "").trim().toLowerCase();
@@ -39,6 +40,8 @@ export function SiteHeader({
       if (data.user) {
         const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).eq("role", "admin").maybeSingle();
         setIsAdmin(Boolean(role));
+        const { count: unread } = await supabase.from("order_messages").select("id,order_conversations!inner(buyer_id)", { count: "exact", head: true }).is("read_at", null).neq("sender_id", data.user.id).eq("order_conversations.buyer_id", data.user.id);
+        setUnreadMessages(unread ?? 0);
       }
     });
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
@@ -123,11 +126,12 @@ export function SiteHeader({
             </Link>
             {signedIn ? (
               <>
-                <Link to="/notificacoes" className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden" aria-label="Notificações"><Bell className="h-5 w-5" /></Link>
+                 <Link to="/notificacoes" className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden" aria-label="Notificações"><Bell className="h-5 w-5" />{unreadMessages > 0 && <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold">{unreadMessages}</span>}</Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground max-sm:hidden" aria-label="Menu da conta"><User className="h-5 w-5" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-60"><DropdownMenuLabel>Minha conta HS Digital</DropdownMenuLabel><DropdownMenuSeparator />
                     <DropdownMenuItem asChild><Link to="/conta"><User />Minha conta</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link to="/conta"><MapPin />Meus endereços</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link to="/compras"><ShoppingBag />Minhas compras</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link to="/notificacoes"><Bell />Notificações</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link to="/vendedor"><Store />Seller Center</Link></DropdownMenuItem>
@@ -170,7 +174,7 @@ export function SiteHeader({
         {open && (
           <div className="mt-3 grid gap-1 rounded-lg border border-primary-foreground/10 bg-ink/70 p-2 text-sm shadow-xl backdrop-blur sm:hidden">
             <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><Home className="h-4 w-4" />Início</Link>
-            {signedIn && <><Link to="/conta" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><User className="h-4 w-4" />Minha conta</Link><Link to="/compras" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><ShoppingBag className="h-4 w-4" />Minhas compras</Link><Link to="/notificacoes" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><Bell className="h-4 w-4" />Notificações</Link></>}
+             {signedIn && <><Link to="/conta" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><User className="h-4 w-4" />Minha conta e endereços</Link><Link to="/compras" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><ShoppingBag className="h-4 w-4" />Minhas compras</Link><Link to="/notificacoes" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><Bell className="h-4 w-4" />Notificações {unreadMessages > 0 ? `(${unreadMessages})` : ""}</Link></>}
             <Link to="/carrinho" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><ShoppingCart className="h-4 w-4" />Carrinho {count > 0 ? `(${count})` : ""}</Link>
             <Link to="/vendedor" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><Store className="h-4 w-4" />Seller Center</Link>
             {isAdmin && <Link to="/admin" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><User className="h-4 w-4" />Admin</Link>}
