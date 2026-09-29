@@ -34,3 +34,4 @@
 - [x] Ampliar menu da conta com compras e notificações reais
 - [x] Eliminar travamento do checkout com bloqueios ordenados e limite de espera
 - [x] Corrigir a recusa do Mercado Pago ao gerar pagamentos Pix
+- [x] Corrigir o cadastro de produtos com fotos privadas
