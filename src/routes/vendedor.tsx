@@ -277,8 +277,8 @@ function SellerSalesManager({ storeId, transactions }: { storeId: string; transa
     const isPaid = o.payment_status === "approved" || o.status === "paid";
     const isCancelled = o.status === "cancelled" || o.payment_status === "failed";
     const hoursOld = (now - new Date(o.created_at).getTime()) / (1000 * 60 * 60);
-    // Se ainda não pagou e tem menos de 24 horas
-    return !isPaid && !isCancelled && hoursOld < 24;
+    // Se ainda não pagou e tem menos de 72 horas
+    return !isPaid && !isCancelled && hoursOld < 72;
   });
 
   const approvedOrders = salesOrders.filter((o) => o.payment_status === "approved" || o.status === "paid");
@@ -287,8 +287,8 @@ function SellerSalesManager({ storeId, transactions }: { storeId: string; transa
     const isPaid = o.payment_status === "approved" || o.status === "paid";
     const isExplicitlyCancelled = o.status === "cancelled" || o.payment_status === "failed";
     const hoursOld = (now - new Date(o.created_at).getTime()) / (1000 * 60 * 60);
-    // Cancelado pelo sistema ou Pix expirou após 24 horas
-    return !isPaid && (isExplicitlyCancelled || hoursOld >= 24);
+    // Cancelado pelo sistema ou Pix expirou após 72 horas
+    return !isPaid && (isExplicitlyCancelled || hoursOld >= 72);
   });
 
   const sendWhatsAppReminder = (ord: any) => {
@@ -309,7 +309,7 @@ function SellerSalesManager({ storeId, transactions }: { storeId: string; transa
 
 Identificamos seu pedido #${orderNum} na HS Digital no valor de ${brl(Number(ord.total))}, que está aguardando a confirmação do pagamento via Pix.
 
-⏰ Sua reserva e o estoque ficam garantidos por até 24 horas!
+⏰ Sua reserva e o estoque ficam garantidos por até 72 horas!
 
 Você pode acessar o link do pedido para pagar ou copiar o código Pix aqui:
 👉 ${payUrl}
@@ -333,7 +333,7 @@ Se tiver qualquer dúvida ou precisar de ajuda para concluir, basta responder es
 
 Seu pedido #${orderNum} na HS Digital está aguardando o pagamento do Pix no valor de ${brl(Number(ord.total))}.
 
-Lembramos que sua reserva é válida por até 24 horas. Após esse período, o pedido é cancelado e o produto volta para a loja.
+Lembramos que sua reserva é válida por até 72 horas. Após esse período, o pedido é cancelado e o produto volta para a loja.
 
 Para concluir seu pagamento com segurança, acesse o link abaixo:
 ${payUrl}
@@ -386,14 +386,14 @@ Equipe HS Digital`;
           <div className="rounded-lg bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200 flex items-center gap-2">
             <Clock className="h-4 w-4 shrink-0" />
             <span>
-              Clientes que geraram o código Pix. O estoque fica reservado por até <strong>24 horas</strong>. Envie um lembrete para recuperar a venda antes de expirar!
+              Clientes que geraram o código Pix. O estoque fica reservado por até <strong>72 horas</strong>. Envie um lembrete para recuperar a venda antes de expirar!
             </span>
           </div>
 
           {pendingOrders.map((ord) => {
             const addr = ord.shipping_address as Record<string, any> | null;
             const hoursOld = (now - new Date(ord.created_at).getTime()) / (1000 * 60 * 60);
-            const hoursLeft = Math.max(0, Math.ceil(24 - hoursOld));
+            const hoursLeft = Math.max(0, Math.ceil(72 - hoursOld));
 
             return (
               <div key={ord.id} className="surface-card p-4 border border-border rounded-xl space-y-3">
@@ -402,7 +402,12 @@ Equipe HS Digital`;
                     <span className="text-xs text-muted-foreground">Pedido #{ord.id.slice(0, 8).toUpperCase()}</span>
                     <p className="text-sm font-semibold">{new Date(ord.created_at).toLocaleString("pt-BR")}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {hoursOld >= 1 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                        ⚡ +1h pendente: Enviar lembrete
+                      </span>
+                    )}
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
                       <Clock className="h-3 w-3" />
                       Expira em {hoursLeft}h
@@ -507,7 +512,7 @@ Equipe HS Digital`;
           <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>
-              Pedidos cancelados pelo cliente ou cujo Pix expirou após 24 horas sem pagamento. O estoque reservado foi liberado novamente para venda.
+              Pedidos cancelados pelo cliente ou cujo Pix expirou após 72 horas sem pagamento. O estoque reservado foi liberado novamente para venda.
             </span>
           </div>
 
@@ -525,7 +530,7 @@ Equipe HS Digital`;
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
                       <XCircle className="h-3 w-3" />
-                      {hoursOld >= 24 && ord.status !== "cancelled" ? "Expirado (+24h)" : "Cancelado"}
+                      {hoursOld >= 72 && ord.status !== "cancelled" ? "Expirado (+72h)" : "Cancelado"}
                     </span>
                     <span className="text-sm font-bold line-through text-muted-foreground">{brl(Number(ord.total))}</span>
                   </div>
@@ -722,6 +727,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
   const qc = useQueryClient();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [trackingNote, setTrackingNote] = useState<Record<string, string>>({});
+  const [orderFilter, setOrderFilter] = useState<"paid" | "pending" | "all">("paid");
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["seller-orders", storeId],
@@ -774,9 +780,43 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
 
   if (isLoading) return <p className="text-sm text-muted-foreground py-6">Carregando pedidos...</p>;
 
+  const paidOrders = orders.filter((o) => o.payment_status === "approved");
+  const pendingOrders = orders.filter((o) => o.payment_status !== "approved");
+  const displayedOrders = orderFilter === "paid" ? paidOrders : orderFilter === "pending" ? pendingOrders : orders;
+
   return (
     <div className="space-y-4">
-      {orders.map((ord) => {
+      {/* Filtros de Pedidos Pagos vs Aguardando Pagamento */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+        <Button
+          variant={orderFilter === "paid" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setOrderFilter("paid")}
+          className="gap-2"
+        >
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          Pagos e Prontos para Envio ({paidOrders.length})
+        </Button>
+        <Button
+          variant={orderFilter === "pending" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setOrderFilter("pending")}
+          className="gap-2"
+        >
+          <Clock className="h-4 w-4 text-amber-500" />
+          Aguardando Pagamento ({pendingOrders.length})
+        </Button>
+        <Button
+          variant={orderFilter === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setOrderFilter("all")}
+          className="gap-2"
+        >
+          Todos os Pedidos ({orders.length})
+        </Button>
+      </div>
+
+      {displayedOrders.map((ord) => {
         const addr = ord.shipping_address as Record<string, any> | null;
         const lastEvent = ord.events.length > 0 ? ord.events[ord.events.length - 1].status : "confirmed";
 
@@ -873,9 +913,9 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
         );
       })}
 
-      {orders.length === 0 && (
+      {displayedOrders.length === 0 && (
         <div className="surface-card p-8 text-center text-sm text-muted-foreground">
-          Nenhum pedido recebido ainda nesta loja.
+          {orderFilter === "paid" ? "Nenhum pedido pago aguardando envio no momento." : orderFilter === "pending" ? "Nenhum pedido aguardando pagamento no momento." : "Nenhum pedido registrado nesta loja."}
         </div>
       )}
     </div>
