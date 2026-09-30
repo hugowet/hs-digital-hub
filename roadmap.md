@@ -41,3 +41,9 @@
 - [x] Adicionar endereços salvos e preencher o endereço padrão no checkout
 - [x] Adicionar mensagens por pedido, atendimento no Admin e badge de mensagens
 - [x] Adicionar acompanhamento de entrega em cinco etapas
+
+- [ ] Adicionar descrição longa ao cadastro de produto e persistir no catálogo.
+- [ ] Adicionar aba Painel do Vendedor com pedidos da loja.
+- [ ] Permitir que o vendedor avance/ajuste as cinco etapas de entrega.
+- [ ] Atualizar o rastreio do comprador em tempo real.
+- [ ] Validar o fluxo vendedor → acompanhamento do comprador.
