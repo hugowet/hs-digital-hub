@@ -1,7 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { DollarSign, ExternalLink, Image, Package, Plus, ShoppingBag, Trash2, TrendingUp, Truck, Video, WalletCards } from "lucide-react";
+import { 
+  AlertCircle,
+  CheckCircle2, 
+  Clock, 
+  DollarSign, 
+  ExternalLink, 
+  Image, 
+  Mail, 
+  MessageCircle, 
+  Package, 
+  Plus, 
+  ShoppingBag, 
+  Trash2, 
+  TrendingUp, 
+  Truck, 
+  Video, 
+  WalletCards, 
+  XCircle 
+} from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
@@ -16,18 +34,6 @@ import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
 import { createSellerProduct } from "@/lib/products.functions";
-
-export const Route = createFileRoute("/vendedor")({
-  ssr: false,
-  head: () => ({
-    meta: [
-      { title: "Seller Center · HS Digital" },
-      { name: "description", content: "Gerencie sua loja, produtos, vendas e pedidos na HS Digital." },
-    ],
-  }),
-  component: SellerCenterPage,
-});
-
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
@@ -216,51 +222,321 @@ function SellerCenterPage() {
         </TabsContent>
 
         {/* Aba de Vendas */}
+        {/* Aba de Vendas e Extrato com Separação e Lembretes */}
         <TabsContent value="sales" className="pt-4">
-          <section className="surface-card overflow-hidden">
-            <header className="border-b border-border p-4">
-              <h2 className="font-semibold">Histórico de Transações</h2>
-            </header>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] text-sm">
-                <thead className="bg-muted/50 text-left text-muted-foreground">
-                  <tr>
-                    <th className="p-3">Pedido</th>
-                    <th className="p-3">Data</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Bruto</th>
-                    <th className="p-3 text-right">Comissão</th>
-                    <th className="p-3 text-right">Líquido</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {transactions.map((tx) => (
-                    <tr key={tx.id}>
-                      <td className="p-3 font-medium">#{tx.order_id.slice(0, 8).toUpperCase()}</td>
-                      <td className="p-3">{new Date(tx.created_at).toLocaleDateString("pt-BR")}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${tx.status === "approved" ? "bg-success/10 text-success" : "bg-muted"}`}>
-                          {tx.status === "approved" ? "Pago" : tx.status}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right">{brl(Number(tx.gross_amount))}</td>
-                      <td className="p-3 text-right text-muted-foreground">-{brl(Number(tx.platform_fee))}</td>
-                      <td className="p-3 text-right font-semibold text-success">{brl(Number(tx.seller_amount))}</td>
-                    </tr>
-                  ))}
-                  {transactions.length === 0 && (
-                    <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhuma venda registrada.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <SellerSalesManager storeId={store.id} transactions={transactions} />
         </TabsContent>
       </Tabs>
     </Shell>
   );
 }
 
+function SellerSalesManager({ storeId, transactions }: { storeId: string; transactions: any[] }) {
+  const [salesSubTab, setSalesSubTab] = useState<"pending" | "approved" | "cancelled">("pending");
+
+  // Buscar pedidos com itens desta loja para obter dados de contato e prazos
+  const { data: salesOrders = [], isLoading } = useQuery({
+    queryKey: ["seller-sales-orders", storeId],
+    queryFn: async () => {
+      const { data: items } = await supabase
+        .from("order_items")
+        .select("order_id,title,quantity,unit_price,seller_amount")
+        .eq("store_id", storeId);
+      if (!items || items.length === 0) return [];
+
+      const orderIds = Array.from(new Set(items.map((i) => i.order_id)));
+      const { data: ordersData } = await supabase
+        .from("orders")
+        .select("id,created_at,payment_status,status,total,shipping_address")
+        .in("id", orderIds)
+        .order("created_at", { ascending: false });
+
+      return (ordersData ?? []).map((ord) => ({
+        ...ord,
+        items: items.filter((i) => i.order_id === ord.id),
+      }));
+    },
+  });
+
+  const now = Date.now();
+
+  // Classificação dos pedidos
+  const pendingOrders = salesOrders.filter((o) => {
+    const isPaid = o.payment_status === "approved" || o.status === "paid";
+    const isCancelled = o.status === "cancelled" || o.payment_status === "failed";
+    const hoursOld = (now - new Date(o.created_at).getTime()) / (1000 * 60 * 60);
+    // Se ainda não pagou e tem menos de 24 horas
+    return !isPaid && !isCancelled && hoursOld < 24;
+  });
+
+  const approvedOrders = salesOrders.filter((o) => o.payment_status === "approved" || o.status === "paid");
+
+  const cancelledOrders = salesOrders.filter((o) => {
+    const isPaid = o.payment_status === "approved" || o.status === "paid";
+    const isExplicitlyCancelled = o.status === "cancelled" || o.payment_status === "failed";
+    const hoursOld = (now - new Date(o.created_at).getTime()) / (1000 * 60 * 60);
+    // Cancelado pelo sistema ou Pix expirou após 24 horas
+    return !isPaid && (isExplicitlyCancelled || hoursOld >= 24);
+  });
+
+  const sendWhatsAppReminder = (ord: any) => {
+    const addr = ord.shipping_address as Record<string, any> | null;
+    const rawPhone = addr?.phone || "";
+    const cleanPhone = rawPhone.replace(/\D/g, "");
+    if (!cleanPhone) {
+      toast.error("O cliente não informou telefone no cadastro.");
+      return;
+    }
+    const targetPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+    const buyerName = addr?.name || addr?.recipient_name || "Cliente";
+    const orderNum = ord.id.slice(0, 8).toUpperCase();
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://hs-digital-hub.lovable.app";
+    const payUrl = `${origin}/pedido/${ord.id}`;
+
+    const text = `Olá, ${buyerName}! Tudo bem? 😃
+
+Identificamos seu pedido #${orderNum} na HS Digital no valor de ${brl(Number(ord.total))}, que está aguardando a confirmação do pagamento via Pix.
+
+⏰ Sua reserva e o estoque ficam garantidos por até 24 horas!
+
+Você pode acessar o link do pedido para pagar ou copiar o código Pix aqui:
+👉 ${payUrl}
+
+Se tiver qualquer dúvida ou precisar de ajuda para concluir, basta responder esta mensagem. Abraço da equipe HS Digital!`;
+
+    window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(text)}`, "_blank");
+    toast.success("Mensagem do WhatsApp aberta!");
+  };
+
+  const sendEmailReminder = (ord: any) => {
+    const addr = ord.shipping_address as Record<string, any> | null;
+    const buyerEmail = addr?.email || "";
+    const buyerName = addr?.name || addr?.recipient_name || "Cliente";
+    const orderNum = ord.id.slice(0, 8).toUpperCase();
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://hs-digital-hub.lovable.app";
+    const payUrl = `${origin}/pedido/${ord.id}`;
+
+    const subject = `Lembrete de Pagamento Pix - Pedido #${orderNum} - HS Digital`;
+    const body = `Olá ${buyerName},
+
+Seu pedido #${orderNum} na HS Digital está aguardando o pagamento do Pix no valor de ${brl(Number(ord.total))}.
+
+Lembramos que sua reserva é válida por até 24 horas. Após esse período, o pedido é cancelado e o produto volta para a loja.
+
+Para concluir seu pagamento com segurança, acesse o link abaixo:
+${payUrl}
+
+Qualquer dúvida, conte conosco!
+Equipe HS Digital`;
+
+    window.location.href = `mailto:${buyerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    toast.success("E-mail de lembrete preparado no seu aplicativo!");
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Sub-abas de status */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+        <Button
+          variant={salesSubTab === "pending" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSalesSubTab("pending")}
+          className="gap-2"
+        >
+          <Clock className="h-4 w-4 text-amber-500" />
+          Aguardando Pagamento ({pendingOrders.length})
+        </Button>
+        <Button
+          variant={salesSubTab === "approved" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSalesSubTab("approved")}
+          className="gap-2"
+        >
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          Pagos ({approvedOrders.length})
+        </Button>
+        <Button
+          variant={salesSubTab === "cancelled" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSalesSubTab("cancelled")}
+          className="gap-2"
+        >
+          <XCircle className="h-4 w-4 text-rose-500" />
+          Cancelados / Expirados ({cancelledOrders.length})
+        </Button>
+      </div>
+
+      {isLoading && <p className="py-8 text-center text-sm text-muted-foreground">Carregando transações...</p>}
+
+      {/* 1. ABA AGUARDANDO PAGAMENTO */}
+      {salesSubTab === "pending" && !isLoading && (
+        <div className="space-y-3">
+          <div className="rounded-lg bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200 flex items-center gap-2">
+            <Clock className="h-4 w-4 shrink-0" />
+            <span>
+              Clientes que geraram o código Pix. O estoque fica reservado por até <strong>24 horas</strong>. Envie um lembrete para recuperar a venda antes de expirar!
+            </span>
+          </div>
+
+          {pendingOrders.map((ord) => {
+            const addr = ord.shipping_address as Record<string, any> | null;
+            const hoursOld = (now - new Date(ord.created_at).getTime()) / (1000 * 60 * 60);
+            const hoursLeft = Math.max(0, Math.ceil(24 - hoursOld));
+
+            return (
+              <div key={ord.id} className="surface-card p-4 border border-border rounded-xl space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
+                  <div>
+                    <span className="text-xs text-muted-foreground">Pedido #{ord.id.slice(0, 8).toUpperCase()}</span>
+                    <p className="text-sm font-semibold">{new Date(ord.created_at).toLocaleString("pt-BR")}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                      <Clock className="h-3 w-3" />
+                      Expira em {hoursLeft}h
+                    </span>
+                    <span className="text-sm font-bold text-foreground">{brl(Number(ord.total))}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div>
+                    <p><strong>Cliente:</strong> {addr?.name || addr?.recipient_name || "Cliente"} {addr?.phone ? `· 📞 ${addr.phone}` : ""}</p>
+                    <p className="text-muted-foreground mt-0.5">
+                      {ord.items.map((i: any) => `${i.quantity}x ${i.title}`).join(", ")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 h-8 text-xs"
+                      onClick={() => sendWhatsAppReminder(ord)}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      Lembrar no WhatsApp
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 h-8 text-xs"
+                      onClick={() => sendEmailReminder(ord)}
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      Lembrar por E-mail
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {pendingOrders.length === 0 && (
+            <div className="surface-card p-8 text-center text-sm text-muted-foreground">
+              Nenhum Pix aguardando pagamento no momento.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 2. ABA PAGOS */}
+      {salesSubTab === "approved" && !isLoading && (
+        <div className="surface-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[680px] text-sm">
+              <thead className="bg-muted/50 text-left text-muted-foreground">
+                <tr>
+                  <th className="p-3">Pedido</th>
+                  <th className="p-3">Data</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3 text-right">Total Pedido</th>
+                  <th className="p-3 text-right">Comissão HS Digital</th>
+                  <th className="p-3 text-right">Líquido Vendedor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {approvedOrders.map((ord) => {
+                  const tx = transactions.find((t) => t.order_id === ord.id);
+                  const gross = tx ? Number(tx.gross_amount) : Number(ord.total);
+                  const fee = tx ? Number(tx.platform_fee) : 0;
+                  const net = tx ? Number(tx.seller_amount) : gross - fee;
+
+                  return (
+                    <tr key={ord.id}>
+                      <td className="p-3 font-medium">#{ord.id.slice(0, 8).toUpperCase()}</td>
+                      <td className="p-3">{new Date(ord.created_at).toLocaleDateString("pt-BR")}</td>
+                      <td className="p-3">
+                        <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Pago
+                        </span>
+                      </td>
+                      <td className="p-3 text-right">{brl(gross)}</td>
+                      <td className="p-3 text-right text-muted-foreground">-{brl(fee)}</td>
+                      <td className="p-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">{brl(net)}</td>
+                    </tr>
+                  );
+                })}
+                {approvedOrders.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                      Nenhuma venda paga registrada ainda.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 3. ABA CANCELADOS / EXPIRADOS (24H) */}
+      {salesSubTab === "cancelled" && !isLoading && (
+        <div className="space-y-3">
+          <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>
+              Pedidos cancelados pelo cliente ou cujo Pix expirou após 24 horas sem pagamento. O estoque reservado foi liberado novamente para venda.
+            </span>
+          </div>
+
+          {cancelledOrders.map((ord) => {
+            const addr = ord.shipping_address as Record<string, any> | null;
+            const hoursOld = (now - new Date(ord.created_at).getTime()) / (1000 * 60 * 60);
+
+            return (
+              <div key={ord.id} className="surface-card p-4 border border-border rounded-xl space-y-2 opacity-80">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
+                  <div>
+                    <span className="text-xs text-muted-foreground">Pedido #{ord.id.slice(0, 8).toUpperCase()}</span>
+                    <p className="text-sm font-semibold">{new Date(ord.created_at).toLocaleString("pt-BR")}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                      <XCircle className="h-3 w-3" />
+                      {hoursOld >= 24 && ord.status !== "cancelled" ? "Expirado (+24h)" : "Cancelado"}
+                    </span>
+                    <span className="text-sm font-bold line-through text-muted-foreground">{brl(Number(ord.total))}</span>
+                  </div>
+                </div>
+
+                <div className="text-xs text-muted-foreground flex justify-between">
+                  <span>Cliente: {addr?.name || addr?.recipient_name || "Cliente"}</span>
+                  <span className="text-emerald-600 font-medium">✓ Estoque estornado e disponível</span>
+                </div>
+              </div>
+            );
+          })}
+
+          {cancelledOrders.length === 0 && (
+            <div className="surface-card p-8 text-center text-sm text-muted-foreground">
+              Nenhuma compra cancelada ou expirada.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 function StoreSetupForm({ userId, onCreated }: { userId: string; onCreated: () => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
