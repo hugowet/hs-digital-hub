@@ -1,21 +1,79 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { DollarSign, ExternalLink, Image, Package, Plus, ShoppingBag, Truck, Trash2, TrendingUp, Video, WalletCards } from "lucide-react";
-import { useServerFn } from "@tanstack/react-start";
-import { toast } from "sonner";
+Analise e corrija o projeto HS Digital usando o código atual de src/routes/vendedor.tsx como base. NÃO recrie a página do zero e NÃO remova funcionalidades que já estão funcionando. Faça somente os ajustes necessários abaixo.
 
-import { SiteHeader } from "@/components/site-header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { CATEGORIES } from "@/lib/catalog";
-import { brl } from "@/lib/format";
-import { supabase } from "@/integrations/supabase/client";
-import { startMercadoPagoConnection } from "@/lib/payments.functions";
-import { createSellerProduct } from "@/lib/products.functions";
+1. CORRIGIR AS ABAS DO VENDEDOR
+
+No componente Tabs de src/routes/vendedor.tsx existem atualmente:
+
+<TabsTrigger value="orders">Pedidos e Envios</TabsTrigger>
+<TabsTrigger value="products">Meus produtos</TabsTrigger>
+<TabsTrigger value="create">Cadastrar produto</TabsTrigger>
+<TabsTrigger value="sales">Vendas e pagamentos</TabsTrigger>
+<TabsTrigger value="orders">Painel do Vendedor</TabsTrigger>
+
+Isso está errado porque "Pedidos e Envios" e "Painel do Vendedor" usam o mesmo value.
+
+Altere a quarta aba para:
+
+<TabsTrigger value="seller-panel">Painel do Vendedor</TabsTrigger>
+
+E altere o respectivo:
+
+<TabsContent value="orders">
+
+do painel de rastreamento para:
+
+<TabsContent value="seller-panel">
+
+A aba "Pedidos e Envios" deve continuar usando value="orders" e continuar funcionando normalmente.
+
+2. DESCRIÇÃO DO PRODUTO
+
+No ProductForm de src/routes/vendedor.tsx já existe o estado:
+
+const [description, setDescription] = useState("");
+
+e já existe o Textarea abaixo da Categoria.
+
+Mantenha essa implementação.
+
+O campo deve permanecer logo abaixo de Categoria, com:
+
+<Label htmlFor="p-description">Descrição do produto</Label>
+
+e um Textarea ligado ao estado description, permitindo uma descrição longa, por exemplo maxLength 5000 e rows 6.
+
+No envio do produto, garanta que description.trim() seja enviado para createSellerProduct.
+
+IMPORTANTE: verifique também a implementação de createSellerProduct em src/lib/products.functions.ts. Garanta que o campo description recebido seja realmente persistido na coluna products.description no Supabase. Não basta apenas enviar o valor pelo formulário.
+
+3. PAINEL DO VENDEDOR
+
+A aba "Painel do Vendedor" deve utilizar os pedidos da loja do vendedor.
+
+Use a consulta sellerOrders já existente em SellerCenter como referência, ou reutilize a mesma lógica sem criar consultas duplicadas desnecessariamente.
+
+O painel deve mostrar uma tabela responsiva com:
+
+- Pedido
+- Data
+- Produtos
+- Pagamento
+- Etapa da entrega
+- Ação/status
+
+Cada pedido deve possuir um SELECT/DROPDOWN para alteração manual do rastreamento.
+
+4. DROPDOWN DE RASTREAMENTO
+
+O dropdown deve possuir EXATAMENTE estas cinco opções e respectivos valores:
+
+confirmed = Pedido confirmado
+preparing = Em separação
+shipped = Enviado
+out_for_delivery = Saiu para entrega
+delivered = Entregue
+
+Pode reutilizar o array deliverySteps que já existe no arquivo:
 
 const deliverySteps = [
   ["confirmed", "Pedido confirmado"],
@@ -25,245 +83,107 @@ const deliverySteps = [
   ["delivered", "Entregue"],
 ] as const;
 
-export const Route = createFileRoute("/vendedor")({
-  ssr: false,
-  head: () => ({
-    meta: [
-      { title: "Seller Center · HS Digital" },
-      { name: "description", content: "Gerencie sua loja, produtos e vendas na HS Digital." },
-      { property: "og:title", content: "Seller Center · HS Digital" },
-      {
-        property: "og:description",
-        content: "Painel do vendedor da HS Digital: saldo, vendas e produtos.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: SellerCenter,
-});
+Não crie valores diferentes.
 
-function SellerCenter() {
-  const qc = useQueryClient();
-  const [userId, setUserId] = useState<string | null | undefined>(undefined);
-  const startConnection = useServerFn(startMercadoPagoConnection);
+5. ATUALIZAÇÃO DO RASTREAMENTO
 
-  // Estados para o formulário de cadastro de produto
-  const [loading, setLoading] = useState(false);
-  const [title, setTitle] = useState("");
-  const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("1");
-  const [category, setCategory] = useState(CATEGORIES?.[0]?.id || "");
-  const [type, setType] = useState("physical");
-  const [description, setDescription] = useState(""); 
+Quando o vendedor alterar o SELECT:
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
-      setUserId(session?.user?.id ?? null),
-    );
-    return () => sub.subscription.unsubscribe();
-  }, []);
+- obter o usuário autenticado com supabase.auth.getUser();
+- inserir um novo registro em order_tracking_events;
+- usar:
+  order_id: order.id
+  status: novo status selecionado
+  created_by: user.user.id
+  note: uma mensagem adequada, como "Status atualizado pelo vendedor"
 
-  const { data: store } = useQuery({
-    enabled: !!userId,
-    queryKey: ["my-store", userId],
-    queryFn: async () => {
-      if (!userId) return null;
-      const { data, error } = await supabase
-        .from("stores")
-        .select("*")
-        .eq("owner_id", userId)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+Use insert em order_tracking_events para manter o histórico dos eventos.
 
-  const { data: isSeller } = useQuery({
-    enabled: !!userId,
-    queryKey: ["is-seller", userId],
-    queryFn: async () => {
-      if (!userId) return false;
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "seller")
-        .maybeSingle();
-      return !!data;
-    },
-  });
+Depois do insert:
 
-  const { data: products = [] } = useQuery({
-    enabled: !!store?.id,
-    queryKey: ["store-products", store?.id],
-    queryFn: async () => {
-      if (!store?.id) return [];
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("store_id", store.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      const rows = data ?? [];
-      const paths = rows.map((product) => product.image_url).filter((url): url is string => typeof url === "string" && !url.startsWith("http") && !url.startsWith("/"));
-      if (paths.length === 0) return rows;
-      const { data: signed } = await supabase.storage.from("product-images").createSignedUrls(paths, 60 * 60);
-      const urls = new Map(paths.map((path, index) => [path, signed?.[index]?.signedUrl ?? path]));
-      return rows.map((product) => ({ ...product, image_url: product.image_url ? urls.get(product.image_url) ?? product.image_url : null }));
-    },
-  });
+- atualizar/invalidate a query ["seller-orders", store.id];
+- mostrar toast de sucesso;
+- se houver erro, mostrar toast.error com a mensagem real;
+- impedir alterações enquanto a atualização daquele pedido estiver acontecendo.
 
-  const { data: todaySales = { count: 0, amount: 0 } } = useQuery({
-    enabled: !!store?.id,
-    queryKey: ["today-sales", store?.id],
-    queryFn: async () => {
-      if (!store?.id) return { count: 0, amount: 0 };
-      const start = new Date();
-      start.setHours(0, 0, 0, 0);
-      const { data, error } = await supabase
-        .from("order_items")
-        .select("quantity,seller_amount")
-        .eq("store_id", store.id)
-        .gte("created_at", start.toISOString());
-      if (error) throw error;
-      return {
-        count: (data ?? []).reduce((s, i) => s + i.quantity, 0),
-        amount: (data ?? []).reduce((s, i) => s + Number(i.seller_amount), 0),
-      };
-    },
-  });
+Não crie registros duplicados automaticamente sem necessidade.
 
-  const { data: transactions = [] } = useQuery({
-    enabled: !!store?.id,
-    queryKey: ["seller-transactions", store?.id],
-    queryFn: async () => {
-      if (!store?.id) return [];
-      const { data, error } = await supabase.from("payment_transactions")
-        .select("id,order_id,status,gross_amount,platform_fee,seller_amount,payment_method,created_at")
-        .eq("store_id", store.id).order("created_at", { ascending: false }).limit(50);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+6. STATUS INICIAL
 
-  const { data: sellerOrders = [], refetch: refetchOrders } = useQuery({
-    enabled: !!store?.id,
-    queryKey: ["seller-orders", store?.id],
-    queryFn: async () => {
-      if (!store?.id) return [];
-      const { data, error } = await supabase
-        .from("order_items")
-        .select("order_id,title,quantity,orders(id,status,payment_status,created_at,shipping_address),stores!inner(id)")
-        .eq("store_id", store.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+Se o pedido ainda não tiver evento em order_tracking_events:
 
-      const grouped = new Map<string, { order: NonNullable<(typeof data)[number]["orders"]>; items: string[] }>();
-      for (const row of data ?? []) {
-        if (!row.orders) continue;
-        const current = grouped.get(row.order_id) ?? { order: row.orders, items: [] };
-        current.items.push(`${row.quantity}x ${row.title}`);
-        grouped.set(row.order_id, current);
-      }
-      const orderIds = [...grouped.keys()];
-      const { data: tracking, error: trackingError } = orderIds.length
-        ? await supabase.from("order_tracking_events").select("order_id,status,created_at").in("order_id", orderIds).order("created_at", { ascending: false })
-        : { data: [], error: null };
-      if (trackingError) throw trackingError;
-      return [...grouped.values()].map((entry) => ({
-        ...entry,
-        latestStatus: tracking?.find((event) => event.order_id === entry.order.id)?.status
-          ?? (entry.order.payment_status === "approved" ? "confirmed" : ""),
-      }));
-    },
-  });
+- se payment_status === "approved", considerar inicialmente "confirmed";
+- caso contrário, deixar sem etapa ou indicar que aguarda pagamento.
 
-  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from("order_tracking_events")
-        .insert([{ order_id: orderId, status: newStatus }]);
+O SELECT deve refletir o último evento registrado daquele pedido.
 
-      if (error) throw error;
-      toast.success("Status de entrega updated!");
-      refetchOrders();
-    } catch (e: any) {
-      toast.error("Erro ao atualizar status: " + e.message);
-    }
-  };
+7. VISÃO DO CLIENTE / BARRA "ACOMPANHE A ENTREGA"
 
-  const handleCreateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!store?.id) return;
-    setLoading(true);
-    try {
-      const { error } = await supabase.from("products").insert([
-        {
-          store_id: store.id,
-          title,
-          price: parseFloat(price),
-          stock: parseInt(stock),
-          category,
-          type,
-          description, 
-        },
-      ]);
-      if (error) throw error;
-      toast.success("Produto cadastrado com sucesso!");
-      setTitle("");
-      setPrice("");
-      setStock("1");
-      setDescription("");
-      qc.invalidateQueries({ queryKey: ["store-products"] });
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+A alteração feita pelo vendedor deve alimentar a mesma tabela order_tracking_events utilizada pela visão do comprador.
 
-  if (userId === undefined) {
-    return (
-      <div className="min-h-screen bg-gray-50/50 flex flex-col">
-        <SiteHeader />
-        <main className="flex-1 container max-w-7xl mx-auto px-4 py-8">
-          <p className="text-sm text-muted-foreground">Carregando…</p>
-        </main>
-      </div>
-    );
-  }
+Não crie uma segunda tabela ou outro sistema de status.
 
-  if (!userId) {
-    return (
-      <div className="min-h-screen bg-gray-50/50 flex flex-col">
-        <SiteHeader />
-        <main className="flex-1 container max-w-7xl mx-auto px-4 py-8">
-          <div className="surface-card p-8 text-center bg-white border rounded-xl shadow-sm">
-            <h2 className="font-display text-xl font-bold">Acesse sua conta de vendedor</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Entrar para ver saldo, vendas do dia e cadastrar produtos.</p>
-            <Button asChild className="mt-4"><Link to="/auth">Entrar</Link></Button>
-          </div>
-        </main>
-      </div>
-    );
-  }
+Verifique a implementação da página de pedido do comprador e garanta que ela leia o último evento de order_tracking_events para montar a barra "Acompanhe a entrega".
 
-  if (isSeller === undefined) {
-    return (
-      <div className="min-h-screen bg-gray-50/50 flex flex-col">
-        <SiteHeader />
-        <main className="flex-1 container max-w-7xl mx-auto px-4 py-8">
-          <p className="text-sm text-muted-foreground">Carregando perfil…</p>
-        </main>
-      </div>
-    );
-  }
+Se a visão do comprador já possuir Supabase Realtime para order_tracking_events, preserve e aproveite essa implementação.
 
-  if (isSeller === false) {
-    return (
-      <div className="min-h-screen bg-gray-50/50 flex flex-col">
-        <SiteHeader />
-        <main className="flex-1 container max-w-7xl mx-auto px-4 py-8">
-          <div className="surface-card p-8 text-center bg-white border rounded-xl shadow-sm">
+Se ainda não possuir Realtime, implemente uma inscrição Supabase Realtime específica para order_tracking_events filtrada pelo order_id da compra, fazendo a barra atualizar automaticamente quando um novo evento for inserido.
+
+Não faça polling desnecessário.
+
+8. NÃO DUPLICAR FUNCIONALIDADES
+
+O arquivo atual possui o componente SellerOrdersTab com botões:
+
+- Em separação
+- Marcar Enviado
+- Saiu para entrega
+- Entregue
+
+Não remova a aba "Pedidos e Envios" nem suas funcionalidades existentes sem necessidade.
+
+Porém, o NOVO "Painel do Vendedor" deve ser independente e possuir o SELECT solicitado para alteração manual das cinco etapas.
+
+Evite duas implementações conflitantes alterando o mesmo status.
+
+9. SEGURANÇA E SUPABASE
+
+Mantenha as verificações existentes de autenticação e loja.
+
+Não exponha service_role no frontend.
+
+Respeite as políticas RLS existentes do Supabase.
+
+Se o insert em order_tracking_events falhar por RLS, não contorne a segurança no frontend. Identifique a política necessária e ajuste somente se for necessário para permitir que o vendedor autenticado da loja correspondente registre o evento daquele pedido.
+
+10. QUALIDADE
+
+Depois das alterações:
+
+- garantir que o TypeScript compile sem erros;
+- garantir que não existam dois TabsTrigger com o mesmo value;
+- garantir que cada TabsContent tenha um value correspondente;
+- manter Tailwind e os componentes UI existentes;
+- manter o layout responsivo;
+- não alterar o design geral da HS Digital;
+- não apagar código funcional;
+- não criar dados fictícios;
+- não alterar outras páginas sem necessidade.
+
+O resultado final deve ter:
+
+Pedidos e Envios
+Meus produtos
+Cadastrar produto
+Vendas e pagamentos
+Painel do Vendedor
+
+E dentro de "Painel do Vendedor", cada pedido recebido deve possuir um dropdown para selecionar:
+
+Pedido confirmado
+Em separação
+Enviado
+Saiu para entrega
+Entregue
+
+Ao selecionar uma etapa, deve ser criado o evento correspondente em order_tracking_events e a visão do comprador deve refletir a nova etapa da entrega.
