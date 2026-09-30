@@ -34,6 +34,18 @@ import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
 import { createSellerProduct } from "@/lib/products.functions";
+
+export const Route = createFileRoute("/vendedor")({
+  ssr: false,
+  head: () => ({
+    meta: [
+      { title: "Seller Center · HS Digital" },
+      { name: "description", content: "Gerencie sua loja, produtos, vendas e pedidos na HS Digital." },
+    ],
+  }),
+  component: SellerCenterPage,
+});
+
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
