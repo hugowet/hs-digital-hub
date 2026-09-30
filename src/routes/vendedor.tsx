@@ -48,12 +48,11 @@ function SellerCenter() {
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
   const startConnection = useServerFn(startMercadoPagoConnection);
 
-  // Estados para o formulário de cadastro de produto
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("1");
-  const [category, setCategory] = useState(CATEGORIES[0]?.id || "");
+  const [category, setCategory] = useState(CATEGORIES?.[0]?.id || "");
   const [type, setType] = useState("physical");
   const [description, setDescription] = useState(""); 
 
@@ -240,7 +239,7 @@ function SellerCenter() {
       <div className="min-h-screen bg-gray-50/50 flex flex-col">
         <SiteHeader />
         <main className="flex-1 container max-w-7xl mx-auto px-4 py-8">
-          <div className="surface-card p-8 text-center bg-white border rounded-xl shadow-sm">
+          <div className="p-8 text-center bg-white border rounded-xl shadow-sm">
             <h2 className="font-display text-xl font-bold">Acesse sua conta de vendedor</h2>
             <p className="mt-2 text-sm text-muted-foreground">Entrar para ver saldo, vendas do dia e cadastrar produtos.</p>
             <Button asChild className="mt-4"><Link to="/auth">Entrar</Link></Button>
@@ -266,4 +265,5 @@ function SellerCenter() {
       <div className="min-h-screen bg-gray-50/50 flex flex-col">
         <SiteHeader />
         <main className="flex-1 container max-w-7xl mx-auto px-4 py-8">
-          <div className="surface-card p-8 text-center bg-white border rounded-xl shadow-sm">
+          <div className="p-8 text-center bg-white border rounded-xl shadow-sm">
+            <h2 className="font-display text-xl font-bold">Conta de Comprador</h2>
