@@ -55,7 +55,7 @@ function SellerCenter() {
   const [stock, setStock] = useState("1");
   const [category, setCategory] = useState(CATEGORIES[0]?.id || "");
   const [type, setType] = useState("physical");
-  const [description, setDescription] = useState(""); // Novo estado adicionado
+  const [description, setDescription] = useState(""); 
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -180,7 +180,6 @@ function SellerCenter() {
     },
   });
 
-  // Função para atualizar o status do rastreamento no Supabase
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     try {
       const { error } = await supabase
@@ -195,7 +194,6 @@ function SellerCenter() {
     }
   };
 
-  // Função de cadastro de produto integrada com o novo campo de descrição
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!store?.id) return;
@@ -209,7 +207,7 @@ function SellerCenter() {
           stock: parseInt(stock),
           category,
           type,
-          description, // Salvando o campo no banco
+          description, 
         },
       ]);
       if (error) throw error;
@@ -228,59 +226,44 @@ function SellerCenter() {
 
   if (userId === undefined) {
     return (
-      <Shell>
-        <p className="text-sm text-muted-foreground">Carregando…</p>
-      </Shell>
+      <div className="min-h-screen bg-gray-50/50 flex flex-col">
+        <SiteHeader />
+        <main className="flex-1 container max-w-7xl mx-auto px-4 py-8">
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        </main>
+      </div>
     );
   }
 
   if (!userId) {
     return (
-      <Shell>
-        <div className="surface-card p-8 text-center">
-          <h2 className="font-display text-xl font-bold">Acesse sua conta de vendedor</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Entre para ver saldo, vendas do dia e cadastrar produtos.
-          </p>
-          <Button asChild className="mt-4">
-            <Link to="/auth">Entrar</Link>
-          </Button>
-        </div>
-      </Shell>
+      <div className="min-h-screen bg-gray-50/50 flex flex-col">
+        <SiteHeader />
+        <main className="flex-1 container max-w-7xl mx-auto px-4 py-8">
+          <div className="surface-card p-8 text-center bg-white border rounded-xl shadow-sm">
+            <h2 className="font-display text-xl font-bold">Acesse sua conta de vendedor</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Entrar para ver saldo, vendas do dia e cadastrar produtos.</p>
+            <Button asChild className="mt-4"><Link to="/auth">Entrar</Link></Button>
+          </div>
+        </main>
+      </div>
     );
   }
 
   if (isSeller === undefined) {
     return (
-      <Shell>
-        <p className="text-sm text-muted-foreground">Carregando perfil…</p>
-      </Shell>
+      <div className="min-h-screen bg-gray-50/50 flex flex-col">
+        <SiteHeader />
+        <main className="flex-1 container max-w-7xl mx-auto px-4 py-8">
+          <p className="text-sm text-muted-foreground">Carregando perfil…</p>
+        </main>
+      </div>
     );
   }
 
   if (isSeller === false) {
     return (
-      <Shell>
-        <div className="surface-card p-8 text-center">
-          <h2 className="font-display text-xl font-bold">Conta de Comprador</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Para abrir uma loja, crie uma conta escolhendo o perfil Vendedor.
-          </p>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (!store) {
-    return (
-      <Shell>
-        <CreateStoreForm
-          userId={userId}
-          onDone={() => qc.invalidateQueries({ queryKey: ["my-store"] })}
-        />
-      </Shell>
-    );
-  }
-
-  return (
-    <Shell>
+      <div className="min-h-screen bg-gray-50/50 flex flex-col">
+        <SiteHeader />
+        <main className="flex-1 container max-w-7xl mx-auto px-4 py-8">
+          <div className="surface-card p-8 text-center bg-white border rounded-xl shadow-sm">
