@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { DollarSign, ExternalLink, Image, Package, Plus, ShoppingBag, Trash2, TrendingUp, Video, WalletCards } from "lucide-react";
+import { DollarSign, ExternalLink, Image, Package, Plus, ShoppingBag, Truck, Trash2, TrendingUp, Video, WalletCards } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
@@ -16,6 +16,14 @@ import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
 import { createSellerProduct } from "@/lib/products.functions";
+
+const deliverySteps = [
+  ["confirmed", "Pedido confirmado"],
+  ["preparing", "Em separação"],
+  ["shipped", "Enviado"],
+  ["out_for_delivery", "Saiu para entrega"],
+  ["delivered", "Entregue"],
+] as const;
 
 export const Route = createFileRoute("/vendedor")({
   ssr: false,
@@ -131,6 +139,38 @@ function SellerCenter() {
     },
   });
 
+  const { data: sellerOrders = [] } = useQuery({
+    enabled: !!store?.id,
+    queryKey: ["seller-orders", store?.id],
+    queryFn: async () => {
+      if (!store?.id) return [];
+      const { data, error } = await supabase
+        .from("order_items")
+        .select("order_id,title,quantity,orders(id,status,payment_status,created_at,shipping_address),stores!inner(id)")
+        .eq("store_id", store.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const grouped = new Map<string, { order: NonNullable<(typeof data)[number]["orders"]>; items: string[] }>();
+      for (const row of data ?? []) {
+        if (!row.orders) continue;
+        const current = grouped.get(row.order_id) ?? { order: row.orders, items: [] };
+        current.items.push(`${row.quantity}x ${row.title}`);
+        grouped.set(row.order_id, current);
+      }
+      const orderIds = [...grouped.keys()];
+      const { data: tracking, error: trackingError } = orderIds.length
+        ? await supabase.from("order_tracking_events").select("order_id,status,created_at").in("order_id", orderIds).order("created_at", { ascending: false })
+        : { data: [], error: null };
+      if (trackingError) throw trackingError;
+      return [...grouped.values()].map((entry) => ({
+        ...entry,
+        latestStatus: tracking?.find((event) => event.order_id === entry.order.id)?.status
+          ?? (entry.order.payment_status === "approved" ? "confirmed" : ""),
+      }));
+    },
+  });
+
   if (userId === undefined) {
     return (
       <Shell>
@@ -218,6 +258,7 @@ function SellerCenter() {
           <TabsTrigger value="products">Meus produtos</TabsTrigger>
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e pagamentos</TabsTrigger>
+          <TabsTrigger value="orders">Painel do Vendedor</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="pt-4">
@@ -260,6 +301,15 @@ function SellerCenter() {
         </TabsContent>
         <TabsContent value="create" className="pt-4"><div className="max-w-xl"><ProductForm storeId={store.id} onCreated={() => qc.invalidateQueries({ queryKey: ["store-products"] })} /></div></TabsContent>
         <TabsContent value="sales" className="pt-4"><section className="surface-card overflow-hidden"><header className="border-b border-border p-4"><h2 className="font-semibold">Vendas e pagamentos</h2></header><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-sm"><thead className="bg-muted/50 text-left text-muted-foreground"><tr><th className="p-3">Pedido</th><th className="p-3">Data</th><th className="p-3">Pagamento</th><th className="p-3 text-right">Bruto</th><th className="p-3 text-right">Comissão</th><th className="p-3 text-right">Líquido</th></tr></thead><tbody className="divide-y divide-border">{transactions.map((tx) => <tr key={tx.id}><td className="p-3 font-medium">{tx.order_id.slice(0, 8).toUpperCase()}</td><td className="p-3">{new Date(tx.created_at).toLocaleDateString("pt-BR")}</td><td className="p-3">{tx.status === "approved" ? "Pago" : tx.status === "pending" ? "Pendente" : tx.status}</td><td className="p-3 text-right">{brl(Number(tx.gross_amount))}</td><td className="p-3 text-right">{brl(Number(tx.platform_fee))}</td><td className="p-3 text-right font-semibold text-success">{brl(Number(tx.seller_amount))}</td></tr>)}{transactions.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhuma venda registrada.</td></tr>}</tbody></table></div></section></TabsContent>
+        <TabsContent value="orders" className="pt-4">
+          <section className="surface-card overflow-hidden">
+            <header className="border-b border-border p-4"><h2 className="flex items-center gap-2 font-semibold"><Truck className="h-5 w-5 text-primary" />Pedidos e entregas</h2></header>
+            <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead className="bg-muted/50 text-left text-muted-foreground"><tr><th className="p-3">Pedido</th><th className="p-3">Data</th><th className="p-3">Produtos</th><th className="p-3">Pagamento</th><th className="p-3">Etapa da entrega</th></tr></thead><tbody className="divide-y divide-border">
+              {sellerOrders.map(({ order, items, latestStatus }) => <tr key={order.id}><td className="p-3 font-medium">{order.id.slice(0, 8).toUpperCase()}</td><td className="p-3">{new Date(order.created_at).toLocaleDateString("pt-BR")}</td><td className="max-w-xs p-3">{items.join(", ")}</td><td className="p-3">{order.payment_status === "approved" ? "Pago" : "Pendente"}</td><td className="p-3"><select aria-label={`Etapa do pedido ${order.id.slice(0, 8)}`} value={latestStatus} disabled={order.payment_status !== "approved"} onChange={async (event) => { const status = event.target.value as typeof deliverySteps[number][0]; if (!status) return; const { data: user } = await supabase.auth.getUser(); if (!user.user) { toast.error("Entre novamente para atualizar o pedido."); return; } const { error } = await supabase.from("order_tracking_events").insert({ order_id: order.id, status, created_by: user.user.id, note: "" }); if (error) toast.error(error.message); else { toast.success("Etapa da entrega atualizada."); await qc.invalidateQueries({ queryKey: ["seller-orders", store.id] }); } }} className="h-9 min-w-48 rounded-md border border-input bg-background px-3 text-sm"><option value="">Selecione a etapa</option>{deliverySteps.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></td></tr>)}
+              {sellerOrders.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhum pedido recebido.</td></tr>}
+            </tbody></table></div>
+          </section>
+        </TabsContent>
       </Tabs>
     </Shell>
   );
@@ -363,6 +413,7 @@ function CreateStoreForm({ userId, onDone }: { userId: string; onDone: () => voi
 function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () => void }) {
   const createProduct = useServerFn(createSellerProduct);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("1");
   const [category, setCategory] = useState<string>(CATEGORIES[0].slug);
@@ -399,13 +450,14 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
               if (uploadError) throw uploadError;
               uploaded.push({ storagePath: path, mediaType: file.type.startsWith("video/") ? "video" : "image", mimeType: file.type, sizeBytes: file.size, position });
             }
-            await createProduct({ data: { title: title.trim(), price: parsedPrice, stock: parsedStock, category, productType, deliveryUrl: deliveryUrl.trim(), media: uploaded } });
+            await createProduct({ data: { title: title.trim(), description: description.trim(), price: parsedPrice, stock: parsedStock, category, productType, deliveryUrl: deliveryUrl.trim(), media: uploaded } });
           } catch (error) {
             if (uploaded.length > 0) await supabase.storage.from("product-images").remove(uploaded.map((item) => item.storagePath));
             throw error;
           }
           toast.success("Produto cadastrado!");
           setTitle("");
+          setDescription("");
           setPrice("");
           setStock("1");
           setFiles([]);
@@ -478,6 +530,10 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
               </option>
             ))}
           </select>
+        </div>
+        <div>
+          <Label htmlFor="p-description">Descrição</Label>
+          <Textarea id="p-description" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={5000} rows={6} placeholder="Descreva os detalhes, benefícios e informações importantes do produto" className="mt-1" />
         </div>
         <div>
           <Label htmlFor="p-photo">Fotos e vídeos ({files.length}/10)</Label>

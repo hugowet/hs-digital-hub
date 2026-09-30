@@ -67,6 +67,16 @@ function OrderPaymentPage() {
   }, [clear, data?.order.payment_status]);
 
   useEffect(() => {
+    const channel = supabase
+      .channel(`order-tracking-${orderId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "order_tracking_events", filter: `order_id=eq.${orderId}` }, () => {
+        void qc.invalidateQueries({ queryKey: ["buyer-order", orderId] });
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [orderId, qc]);
+
+  useEffect(() => {
     if (!data || data.order.payment_status === "approved") return;
     const pending = data.transactions.filter((transaction) => transaction.provider_payment_id && ["pending", "in_process"].includes(transaction.status));
     if (pending.length === 0) return;
