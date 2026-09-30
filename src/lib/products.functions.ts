@@ -19,6 +19,7 @@ const categories = [
 
 const productSchema = z.object({
   title: z.string().trim().min(2).max(160),
+  description: z.string().trim().max(5_000),
   price: z.number().positive().max(99_999_999.99),
   stock: z.number().int().min(0).max(1_000_000),
   category: z.enum(categories),
@@ -44,8 +45,9 @@ export const createSellerProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => productSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: productId, error } = await context.supabase.rpc("create_seller_product", {
+    const { data: productId, error } = await context.supabase.rpc("create_seller_product_v2", {
       _title: data.title,
+      _description: data.description,
       _price: data.price,
       _stock: data.stock,
       _category: data.category,
