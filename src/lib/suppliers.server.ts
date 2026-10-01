@@ -153,6 +153,7 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
 
   let imported = 0;
   let skipped = 0;
+  const errors: string[] = [];
 
   for (const productId of productIds) {
     try {
@@ -190,8 +191,9 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
       }, { onConflict: "store_id,supplier,supplier_variant_id" });
       if (error) throw error;
       imported += 1;
-    } catch {
+    } catch (error) {
       skipped += 1;
+      if (errors.length < 3) errors.push(error instanceof Error ? error.message : "Falha desconhecida da CJ.");
     }
   }
 
@@ -199,7 +201,7 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
     last_catalog_sync_at: new Date().toISOString(),
     last_error: null,
   }).eq("store_id", storeId).eq("provider", "cj");
-  return { imported, skipped, categories: CJ_POPULAR_CATEGORIES.length };
+  return { imported, skipped, categories: CJ_POPULAR_CATEGORIES.length, errors };
 }
 
 export async function syncCjStock(supabaseAdmin: any, storeId: string) {
