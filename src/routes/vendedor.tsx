@@ -172,7 +172,9 @@ function SellerCenterPage() {
         ]);
       } catch (error) {
         if (showResult) {
-          toast.error(error instanceof Error ? error.message : "Não foi possível sincronizar a CJ.");
+          toast.error(
+            error instanceof Error ? error.message : "Não foi possível sincronizar a CJ.",
+          );
         }
       } finally {
         cjBatchRunning.current = false;
@@ -369,10 +371,7 @@ function SellerCenterPage() {
                   Produtos e estoque reais da sua operação de dropshipping.
                 </p>
               </div>
-              <Button
-                disabled={syncingCj}
-                onClick={() => void continueCjImport(true)}
-              >
+              <Button disabled={syncingCj} onClick={() => void continueCjImport(true)}>
                 <RefreshCw className={`h-4 w-4 ${syncingCj ? "animate-spin" : ""}`} />
                 {syncingCj ? "Sincronizando…" : "Sincronizar CJ"}
               </Button>
