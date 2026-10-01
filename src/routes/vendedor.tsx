@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -66,6 +66,7 @@ function SellerCenterPage() {
   const startConnection = useServerFn(startMercadoPagoConnection);
   const syncCj = useServerFn(syncCjProducts);
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
+  const cjBatchRunning = useRef(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -148,6 +149,44 @@ function SellerCenterPage() {
     },
   });
   const [syncingCj, setSyncingCj] = useState(false);
+
+  const continueCjImport = useCallback(
+    async (showResult = false) => {
+      if (!store?.id || cjBatchRunning.current) return;
+      cjBatchRunning.current = true;
+      setSyncingCj(true);
+      try {
+        const result = await syncCj({ data: { storeId: store.id } });
+        if (showResult) {
+          toast.success(
+            result.done
+              ? "Catálogo completo da CJ sincronizado."
+              : `${result.imported} produtos importados neste lote. A fila continuará automaticamente.`,
+          );
+        }
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["store-products", store.id] }),
+          qc.invalidateQueries({ queryKey: ["supplier-integrations", store.id] }),
+          qc.invalidateQueries({ queryKey: ["cj-import-job", store.id] }),
+          qc.invalidateQueries({ queryKey: ["products"] }),
+        ]);
+      } catch (error) {
+        if (showResult) {
+          toast.error(error instanceof Error ? error.message : "Não foi possível sincronizar a CJ.");
+        }
+      } finally {
+        cjBatchRunning.current = false;
+        setSyncingCj(false);
+      }
+    },
+    [qc, store?.id, syncCj],
+  );
+
+  useEffect(() => {
+    if (!cjImportJob || !["pending", "running"].includes(cjImportJob.status)) return;
+    const timer = window.setTimeout(() => void continueCjImport(false), 3_000);
+    return () => window.clearTimeout(timer);
+  }, [cjImportJob, continueCjImport]);
 
   if (userId === undefined || (userId && storeLoading)) {
     return (
@@ -332,29 +371,7 @@ function SellerCenterPage() {
               </div>
               <Button
                 disabled={syncingCj}
-                onClick={async () => {
-                  try {
-                    setSyncingCj(true);
-                    const result = await syncCj({ data: { storeId: store.id } });
-                    toast.success(
-                      result.done
-                        ? "Catálogo completo da CJ sincronizado."
-                        : `${result.imported} produtos importados neste lote. A fila continuará automaticamente.`,
-                    );
-                    await Promise.all([
-                      qc.invalidateQueries({ queryKey: ["store-products", store.id] }),
-                      qc.invalidateQueries({ queryKey: ["supplier-integrations", store.id] }),
-                      qc.invalidateQueries({ queryKey: ["cj-import-job", store.id] }),
-                      qc.invalidateQueries({ queryKey: ["products"] }),
-                    ]);
-                  } catch (error) {
-                    toast.error(
-                      error instanceof Error ? error.message : "Não foi possível sincronizar a CJ.",
-                    );
-                  } finally {
-                    setSyncingCj(false);
-                  }
-                }}
+                onClick={() => void continueCjImport(true)}
               >
                 <RefreshCw className={`h-4 w-4 ${syncingCj ? "animate-spin" : ""}`} />
                 {syncingCj ? "Sincronizando…" : "Sincronizar CJ"}
