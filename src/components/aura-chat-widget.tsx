@@ -2,13 +2,18 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
   CircleHelp,
+  Mic,
+  MicOff,
   Package,
   Send,
+  ShoppingBag,
   Sparkles,
   Store,
+  Tag,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -16,13 +21,14 @@ interface Message {
   text: string;
   time: string;
   link?: { label: string; url: string };
+  actionTag?: string;
 }
 
 function AuraAvatar() {
   return (
-    <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-purple-700 via-indigo-600 to-pink-500 text-white shadow-md">
-      <Sparkles className="h-4 w-4 animate-pulse" />
-      <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-500" />
+    <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-purple-700 via-indigo-600 to-pink-500 text-white shadow-md">
+      <Sparkles className="h-4 w-4 animate-pulse text-amber-200" />
+      <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-500 shadow-sm" />
     </div>
   );
 }
@@ -32,7 +38,9 @@ export function AuraChatWidget() {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -42,7 +50,7 @@ export function AuraChatWidget() {
       {
         id: "welcome",
         sender: "aura",
-        text: "Olá! Sou a Aura, sua assistente virtual no HS Digital. Como posso te orientar hoje?",
+        text: "Olá! Sou a Aura, sua consultora inteligente no HS Digital ✨ Estou aqui para encontrar as melhores ofertas, orientar suas compras e te levar direto ao que você precisa. O que você procura hoje?",
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     ]);
@@ -53,6 +61,59 @@ export function AuraChatWidget() {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isOpen]);
+
+  // Função do Microfone (Web Speech API)
+  const toggleListening = () => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      toast.error("Seu navegador não suporta reconhecimento de voz direto. Digite sua dúvida!");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "pt-BR";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        toast.info("Aura ouvindo... Pode falar!", { duration: 2000 });
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInput(transcript);
+          // Opcional: dispara automaticamente a busca por voz
+          handleSend(transcript);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Erro no reconhecimento de voz:", event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error(err);
+      setIsListening(false);
+    }
+  };
 
   if (!mounted) return null;
 
@@ -76,33 +137,134 @@ export function AuraChatWidget() {
       const q = query.toLowerCase();
       let responseText = "";
       let linkAction: { label: string; url: string } | undefined;
+      let actionTag: string | undefined;
 
+      // Respostas sobre Criador / Fundador / Criação da IA e da HS Digital
       if (
         q.includes("fundador") ||
         q.includes("criador") ||
         q.includes("quem criou") ||
-        q.includes("quem fez") ||
+        q.includes("quem te criou") ||
+        q.includes("quem fez você") ||
+        q.includes("quem fez voce") ||
+        q.includes("quem fez a aura") ||
+        q.includes("quem inventou") ||
         q.includes("dono") ||
         q.includes("proprietario") ||
         q.includes("hugo")
       ) {
-        responseText = "A plataforma HS Digital foi fundada e criada por Hugo Rogerio, com o objetivo de oferecer uma experiência moderna, rápida e segura de marketplace.";
-      } else if (q.includes("meus pedidos") || q.includes("compras") || q.includes("rastrear") || q.includes("onde ta meu pedido")) {
-        responseText = "Você pode acompanhar o status de entrega, conciliação de pagamento e histórico de todos os seus pedidos na aba Minhas Compras.";
-        linkAction = { label: "Ir para Minhas Compras", url: "/compras" };
-      } else if (q.includes("carrinho") || q.includes("finalizar") || q.includes("checkout")) {
-        responseText = "Seus itens selecionados ficam salvos no carrinho por loja. Você pode revisar endereços e escolher frete rápido.";
-        linkAction = { label: "Ver meu Carrinho", url: "/carrinho" };
-      } else if (q.includes("vender") || q.includes("vendedor") || q.includes("loja") || q.includes("cadastrar produto")) {
-        responseText = "Você pode criar sua própria loja e anunciar produtos físicos ou digitais no Painel do Vendedor da HS Digital.";
-        linkAction = { label: "Acessar Painel do Vendedor", url: "/vendedor" };
-      } else if (q.includes("pagamento") || q.includes("pix") || q.includes("cartao") || q.includes("parcelamento")) {
-        responseText = "Aceitamos Pix com aprovação imediata e cartão de crédito com parcelamento seguro processado via Mercado Pago.";
-      } else if (q.includes("digital") || q.includes("ebook") || q.includes("curso") || q.includes("download")) {
-        responseText = "Para produtos digitais, o link para download é liberado automaticamente na sua tela de compras logo após a aprovação do pagamento.";
-        linkAction = { label: "Ver Minhas Compras", url: "/compras" };
-      } else {
-        responseText = "Posso te ajudar a navegar pelo marketplace, tirar dúvidas sobre pedidos, pagamentos e como começar a vender!";
+        responseText =
+          "Tanto a plataforma HS Digital quanto eu, a Aura, fomos idealizados e criados por Hugo Rogerio! Ele projetou cada detalhe desse ecossistema para oferecer tecnologia de ponta, segurança máxima e a melhor experiência de compras e vendas online.";
+        actionTag = "Fundador & Idealizador";
+      }
+      // Dúvidas de Compras / Rastreio / Pedidos
+      else if (
+        q.includes("meus pedidos") ||
+        q.includes("minhas compras") ||
+        q.includes("rastrear") ||
+        q.includes("onde esta meu pedido") ||
+        q.includes("pedido")
+      ) {
+        responseText =
+          "Você tem total controle! Na sua aba 'Minhas Compras', você acompanha a aprovação, o código de rastreio e acessa downloads imediatos caso tenha comprado itens digitais. Vamos até lá?";
+        linkAction = { label: "Acessar Minhas Compras", url: "/compras" };
+        actionTag = "Área do Cliente";
+      }
+      // Carrinho e Checkout
+      else if (
+        q.includes("carrinho") ||
+        q.includes("finalizar") ||
+        q.includes("checkout") ||
+        q.includes("comprar agora")
+      ) {
+        responseText =
+          "Seus produtos selecionados estão salvos! Não deixe para depois, pois as ofertas da semana têm estoque limitado e garantem frete especial por loja. Vamos fechar seu pedido com compra 100% protegida?";
+        linkAction = { label: "Ir para o Carrinho", url: "/carrinho" };
+        actionTag = "Finalizar Pedido";
+      }
+      // Vender na HS Digital
+      else if (
+        q.includes("vender") ||
+        q.includes("vendedor") ||
+        q.includes("abrir loja") ||
+        q.includes("anunciar") ||
+        q.includes("cadastrar produto")
+      ) {
+        responseText =
+          "Quer faturar na HS Digital? É uma oportunidade incrível! Você pode cadastrar produtos físicos ou digitais, receber via Mercado Pago e alcançar milhares de compradores com taxas super competitivas.";
+        linkAction = { label: "Abrir Painel do Vendedor", url: "/vendedor" };
+        actionTag = "Ganhe Dinheiro Conosco";
+      }
+      // Formas de Pagamento e Segurança
+      else if (
+        q.includes("pagamento") ||
+        q.includes("pix") ||
+        q.includes("cartao") ||
+        q.includes("parcelar") ||
+        q.includes("seguro") ||
+        q.includes("confiavel")
+      ) {
+        responseText =
+          "Sua compra é totalmente segura e blindada! Aceitamos Pix com liberação imediata e cartão de crédito em até 12x via Mercado Pago. Seus dados são criptografados e o pagamento só é repassado ao vendedor com garantia de entrega!";
+        actionTag = "Compra 100% Protegida";
+      }
+      // Cursos e Infoprodutos
+      else if (
+        q.includes("curso") ||
+        q.includes("infoproduto") ||
+        q.includes("aprender") ||
+        q.includes("aula")
+      ) {
+        responseText =
+          "Temos uma seleção imperdível de cursos e infoprodutos práticos para acelerar seus conhecimentos com acesso imediato após a confirmação. Dê uma olhada nos mais recomendados!";
+        linkAction = { label: "Ver Cursos & Infoprodutos", url: "/?category=cursos-infoprodutos" };
+        actionTag = "Educação & Alta Performance";
+      }
+      // Produtos Digitais e Templates
+      else if (
+        q.includes("digital") ||
+        q.includes("ebook") ||
+        q.includes("template") ||
+        q.includes("planilha") ||
+        q.includes("download")
+      ) {
+        responseText =
+          "Praticidade máxima! Nossos produtos digitais e templates têm entrega automática em segundos. Você adquire e já começa a usar na hora sem pagar nada de frete!";
+        linkAction = { label: "Explorar Produtos Digitais", url: "/?category=digitais-templates" };
+        actionTag = "Download Imediato";
+      }
+      // Eletrônicos, Gadgets e Acessórios
+      else if (
+        q.includes("celular") ||
+        q.includes("eletronico") ||
+        q.includes("gadget") ||
+        q.includes("teclado") ||
+        q.includes("fone") ||
+        q.includes("computador")
+      ) {
+        responseText =
+          "Temos gadgets modernos e periféricos de alta performance com ótimas condições de frete e procedência garantida. Confira os destaques tecnológicos!";
+        linkAction = { label: "Ver Eletrônicos & Periféricos", url: "/?category=eletronicos-gadgets" };
+        actionTag = "Tecnologia de Ponta";
+      }
+      // Login e Conta
+      else if (
+        q.includes("login") ||
+        q.includes("entrar") ||
+        q.includes("minha conta") ||
+        q.includes("cadastro")
+      ) {
+        responseText =
+          "Acesse sua conta para conferir seus cupons exclusivos, histórico de transações e promoções personalizadas:";
+        linkAction = { label: "Fazer Login / Cadastrar", url: "/entrar" };
+        actionTag = "Acesso Rápido";
+      }
+      // Resposta persuasiva padrão
+      else {
+        responseText =
+          `Com certeza posso te ajudar com "${query}"! No HS Digital você encontra as melhores ofertas, frete ágil e produtos exclusivos. Quer que eu te direcione para as promoções da semana ou prefere ver categorias específicas?`;
+        linkAction = { label: "Explorar Melhores Ofertas", url: "/" };
+        actionTag = "Oportunidade";
       }
 
       const botMsg: Message = {
@@ -111,24 +273,26 @@ export function AuraChatWidget() {
         text: responseText,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         link: linkAction,
+        actionTag,
       };
 
       setMessages((prev) => [...prev, botMsg]);
-    }, 450);
+    }, 400);
   };
 
   return (
     <>
+      {/* Botão Flutuante da Aura */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        aria-label="Abrir suporte com Aura"
+        aria-label="Abrir consultora Aura"
         className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-primary text-white shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95"
       >
         {isOpen ? (
           <X className="h-6 w-6" />
         ) : (
           <div className="relative">
-            <Sparkles className="h-6 w-6" />
+            <Sparkles className="h-6 w-6 text-amber-200" />
             <span className="absolute -top-1 -right-1 flex h-3 w-3">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pink-400 opacity-75" />
               <span className="relative inline-flex h-3 w-3 rounded-full bg-pink-500" />
@@ -137,19 +301,21 @@ export function AuraChatWidget() {
         )}
       </button>
 
+      {/* Janela de Atendimento Aura */}
       {isOpen && (
-        <div className="fixed bottom-22 right-5 z-50 flex h-[500px] w-[350px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-border/80 bg-background/95 shadow-2xl backdrop-blur-md transition-all sm:w-[380px]">
-          <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
+        <div className="fixed bottom-22 right-5 z-50 flex h-[520px] w-[360px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-border/80 bg-background/95 shadow-2xl backdrop-blur-md transition-all sm:w-[390px]">
+          {/* Topo do Chat */}
+          <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-purple-950/30 via-muted/40 to-background px-4 py-3">
             <div className="flex items-center gap-3">
               <AuraAvatar />
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-semibold text-foreground">Aura</h3>
-                  <span className="rounded-full bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-medium text-purple-400">
-                    IA Suporte
+                  <h3 className="text-sm font-bold text-foreground">Aura</h3>
+                  <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-semibold text-purple-400">
+                    Consultora IA
                   </span>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Assistente HS Digital</p>
+                <p className="text-[11px] text-muted-foreground">Especialista HS Digital</p>
               </div>
             </div>
             <button
@@ -160,8 +326,16 @@ export function AuraChatWidget() {
             </button>
           </div>
 
+          {/* Atalhos Rápidos com persuasão de vendas */}
           <div className="border-b border-border/60 bg-muted/20 px-3 py-2">
             <div className="flex gap-1.5 overflow-x-auto pb-1 text-[11px] scrollbar-none">
+              <button
+                onClick={() => handleSend("Quais as melhores ofertas?")}
+                className="flex shrink-0 items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 font-medium text-purple-300 hover:bg-purple-500/20"
+              >
+                <Tag className="h-3 w-3" />
+                Ofertas da Semana
+              </button>
               <button
                 onClick={() => handleSend("Onde vejo minhas compras?")}
                 className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground hover:border-primary/50 hover:text-foreground"
@@ -170,22 +344,23 @@ export function AuraChatWidget() {
                 Minhas Compras
               </button>
               <button
-                onClick={() => handleSend("Como faço para vender?")}
+                onClick={() => handleSend("Como posso vender no site?")}
                 className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground hover:border-primary/50 hover:text-foreground"
               >
                 <Store className="h-3 w-3 text-indigo-400" />
                 Seja Vendedor
               </button>
               <button
-                onClick={() => handleSend("Quais as formas de pagamento?")}
+                onClick={() => handleSend("Como funciona o pagamento?")}
                 className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground hover:border-primary/50 hover:text-foreground"
               >
                 <CircleHelp className="h-3 w-3 text-pink-400" />
-                Pagamento
+                Pagamento Seguro
               </button>
             </div>
           </div>
 
+          {/* Área de Mensagens */}
           <div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">
             {messages.map((m) => (
               <div
@@ -193,23 +368,31 @@ export function AuraChatWidget() {
                 className={`flex flex-col ${m.sender === "user" ? "items-end" : "items-start"}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 shadow-sm leading-relaxed ${
+                  className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 shadow-sm leading-relaxed ${
                     m.sender === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-none"
-                      : "bg-muted/80 text-foreground border border-border/50 rounded-bl-none"
+                      ? "bg-primary text-primary-foreground rounded-br-none font-medium"
+                      : "bg-muted/90 text-foreground border border-border/60 rounded-bl-none"
                   }`}
                 >
+                  {m.actionTag && (
+                    <span className="mb-1 inline-block rounded bg-purple-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-300">
+                      {m.actionTag}
+                    </span>
+                  )}
                   <p>{m.text}</p>
                   {m.link && (
                     <button
                       onClick={() => {
                         setIsOpen(false);
-                        navigate({ to: m.link.url as any });
+                        navigate({ to: m.link!.url as any });
                       }}
-                      className="mt-2 flex items-center gap-1 rounded-md bg-purple-600 px-2.5 py-1.5 text-[11px] font-medium text-white transition hover:bg-purple-700"
+                      className="mt-2.5 flex w-full items-center justify-between rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-2 text-[11px] font-semibold text-white shadow transition hover:from-purple-700 hover:to-indigo-700 active:scale-[0.98]"
                     >
-                      {m.link.label}
-                      <ArrowRight className="h-3 w-3" />
+                      <span className="flex items-center gap-1.5">
+                        <ShoppingBag className="h-3.5 w-3.5" />
+                        {m.link.label}
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
@@ -219,6 +402,7 @@ export function AuraChatWidget() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Campo de Envio com Microfone */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -230,9 +414,27 @@ export function AuraChatWidget() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Pergunte à Aura..."
-              className="flex-1 rounded-xl border border-input bg-muted/40 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder={isListening ? "Ouvindo você..." : "Pergunte ou use o microfone..."}
+              className={`flex-1 rounded-xl border border-input px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
+                isListening ? "bg-red-500/10 border-red-500/50 animate-pulse" : "bg-muted/40"
+              }`}
             />
+
+            {/* Botão de Microfone */}
+            <button
+              type="button"
+              onClick={toggleListening}
+              title={isListening ? "Parar de ouvir" : "Falar no microfone"}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${
+                isListening
+                  ? "bg-red-600 text-white animate-bounce shadow-md shadow-red-500/50"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+              }`}
+            >
+              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </button>
+
+            {/* Botão de Enviar */}
             <button
               type="submit"
               disabled={!input.trim()}
