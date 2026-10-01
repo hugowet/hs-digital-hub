@@ -112,7 +112,10 @@ export const startMercadoPagoConnection = createServerFn({ method: "POST" })
   });
 
 const checkoutSchema = z.object({
-  items: z.array(z.object({ productId: z.string().uuid(), quantity: z.number().int().min(1).max(99) })).min(1).max(50),
+  items: z
+    .array(z.object({ productId: z.string().uuid(), quantity: z.number().int().min(1).max(99) }))
+    .min(1)
+    .max(50),
   shippingAddress: z.object({
     name: z.string().trim().min(2).max(100),
     phone: z.string().trim().max(20),
@@ -132,7 +135,10 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
     });
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error("O checkout demorou mais que o esperado. Tente novamente.")), 20_000);
+      timeoutId = setTimeout(
+        () => reject(new Error("O checkout demorou mais que o esperado. Tente novamente.")),
+        20_000,
+      );
     });
     const result = await Promise.race([request, timeout]).finally(() => {
       if (timeoutId) clearTimeout(timeoutId);
@@ -146,18 +152,25 @@ const paymentSchema = z.object({
   transactionId: z.string().uuid(),
   origin: z.string().url(),
   method: z.enum(["pix", "card"]),
-  pix: z.object({
-    identificationNumber: z.string().transform((value) => value.replace(/\D/g, "")).pipe(z.string().length(11)),
-  }).optional(),
-  card: z.object({
-    token: z.string().min(10).max(500),
-    paymentMethodId: z.string().min(1).max(80),
-    issuerId: z.string().max(80).optional(),
-    installments: z.number().int().min(1).max(24),
-    email: z.string().email(),
-    identificationType: z.string().max(20).optional(),
-    identificationNumber: z.string().max(30).optional(),
-  }).optional(),
+  pix: z
+    .object({
+      identificationNumber: z
+        .string()
+        .transform((value) => value.replace(/\D/g, ""))
+        .pipe(z.string().length(11)),
+    })
+    .optional(),
+  card: z
+    .object({
+      token: z.string().min(10).max(500),
+      paymentMethodId: z.string().min(1).max(80),
+      issuerId: z.string().max(80).optional(),
+      installments: z.number().int().min(1).max(24),
+      email: z.string().email(),
+      identificationType: z.string().max(20).optional(),
+      identificationNumber: z.string().max(30).optional(),
+    })
+    .optional(),
 });
 
 type PaymentResponse = {
@@ -240,9 +253,10 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { decryptSecret, mercadoPagoRequest, safeOrigin } = await import("@/lib/mercado-pago.server");
     const origin = safeOrigin(data.origin);
-    const paymentNotificationOrigin = origin === "http://localhost:8080" || origin.endsWith(".lovable.app")
-      ? "https://hs-digital-hub.lovable.app"
-      : origin;
+    const paymentNotificationOrigin =
+      origin === "http://localhost:8080" || origin.endsWith(".lovable.app")
+        ? "https://hs-digital-hub.lovable.app"
+        : origin;
     const { data: transaction, error } = await context.supabase
       .from("payment_transactions")
       .select("id,order_id,store_id,gross_amount,platform_fee,status,provider_payment_id")
@@ -258,10 +272,10 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [{ data: account }, { data: settings }] = await Promise.all([
       supabaseAdmin
-      .from("mercado_pago_accounts")
-      .select("access_token_encrypted,mercado_pago_user_id")
-      .eq("store_id", transaction.store_id)
-      .maybeSingle(),
+        .from("mercado_pago_accounts")
+        .select("access_token_encrypted,mercado_pago_user_id")
+        .eq("store_id", transaction.store_id)
+        .maybeSingle(),
       supabaseAdmin
         .from("payment_provider_settings")
         .select("access_token_encrypted")
@@ -278,10 +292,14 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     ]);
     const isPlatformOwnedStore = String(platformUser.id) === account.mercado_pago_user_id;
     const { data: user } = await context.supabase.auth.getUser();
+    const buyerId = user.user?.id;
+    if (!buyerId) throw new Error("Usuário não autenticado.");
     const email = data.card?.email ?? user.user?.email;
     if (!email) throw new Error("E-mail do comprador não encontrado.");
     if (collectorUser.email && collectorUser.email.toLowerCase() === email.toLowerCase()) {
-      throw new Error("O Mercado Pago não permite pagar uma venda para a própria conta. Use uma conta compradora diferente.");
+      throw new Error(
+        "O Mercado Pago não permite pagar uma venda para a própria conta. Use uma conta compradora diferente.",
+      );
     }
     const payerCpf = data.pix?.identificationNumber;
     const collectorDocument = collectorUser.identification?.number?.replace(/\D/g, "");
@@ -289,11 +307,11 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
       throw new Error("O Mercado Pago não permite gerar Pix usando o CPF do titular da conta vendedora.");
     }
 
-   // Busca o nome do comprador cadastrado no perfil para validar no Mercado Pago
+    // Busca o nome do comprador cadastrado no perfil para validar no Mercado Pago
     const { data: profile } = await context.supabase
       .from("profiles")
       .select("full_name")
-      .eq("id", user.user?.id)
+      .eq("id", buyerId)
       .maybeSingle();
 
     const fullNameParts = (profile?.full_name || "Cliente").trim().split(/\s+/);
@@ -334,9 +352,10 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
       body["installments"] = data.card.installments;
       body["payer"] = {
         email: data.card.email,
-        identification: data.card.identificationType && data.card.identificationNumber
-          ? { type: data.card.identificationType, number: data.card.identificationNumber }
-          : undefined,
+        identification:
+          data.card.identificationType && data.card.identificationNumber
+            ? { type: data.card.identificationType, number: data.card.identificationNumber }
+            : undefined,
       };
     }
 
