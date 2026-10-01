@@ -47,3 +47,11 @@
 - [x] Permitir que o vendedor avance/ajuste as cinco etapas de entrega.
 - [x] Atualizar o rastreio do comprador em tempo real.
 - [ ] Validar o fluxo vendedor → acompanhamento do comprador.
+
+## Integração de fornecedores e logística
+
+- [ ] Integrar catálogo e estoque da CJ Dropshipping à loja JJ Kuster.
+- [ ] Integrar catálogo automático do Dropi/hubs nacionais com margem percentual.
+- [ ] Encaminhar pedidos pagos aos fornecedores com processamento idempotente.
+- [ ] Integrar rastreamento de Correios/Jadlog ao acompanhamento do comprador.
+- [ ] Remover apenas produtos fictícios, preservando cadastros reais.
