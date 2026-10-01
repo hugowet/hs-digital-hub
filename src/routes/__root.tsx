@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuraChatWidget } from "../components/aura-chat-widget";
+
 import {
   Outlet,
   Link,
@@ -138,6 +139,7 @@ function RootComponent() {
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
         <Toaster position="top-center" richColors />
+        <AuraChatWidget />
       </CartProvider>
     </QueryClientProvider>
   );
