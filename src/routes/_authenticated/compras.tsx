@@ -1,33 +1,28 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { 
-  AlertCircle, 
-  Award, 
-  CalendarDays, 
-  CheckCircle2, 
-  ChevronRight, 
-  Clock, 
-  ExternalLink, 
-  Gift, 
-  HelpCircle, 
-  Package, 
-  PackageCheck, 
-  RotateCcw, 
-  Send, 
-  ShieldCheck, 
-  ShoppingBag, 
-  Star, 
-  Trash2, 
-  Truck, 
-  XCircle 
+import {
+  Award,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Gift,
+  Package,
+  PackageCheck,
+  RotateCcw,
+  ShieldCheck,
+  ShoppingBag,
+  Star,
+  Trash2,
+  Truck,
+  XCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,7 +34,7 @@ export const Route = createFileRoute("/_authenticated/compras")({
   head: () => ({
     meta: [
       { title: "Minhas Compras · HS Digital" },
-      { name: "description", content: "Acompanhe seus pedidos, rastreamento de entregas, avaliações e missões de frete grátis." },
+      { name: "description", content: "Acompanhe seus pedidos, entregas, avaliações e missões de frete grátis." },
     ],
   }),
   component: PurchasesPage,
@@ -49,13 +44,9 @@ export function PurchasesPage() {
   const qc = useQueryClient();
   const cancelOrder = useServerFn(cancelUnpaidMarketplaceOrder);
 
-  // Controle de abas principais
   const [mainTab, setMainTab] = useState<"processadas" | "pendentes">("processadas");
-
-  // Modal / Seção de Missões de Frete Grátis
   const [showMissions, setShowMissions] = useState(false);
 
-  // Modal de Avaliação de Produto
   const [reviewOrder, setReviewOrder] = useState<any | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewPlatformRating, setReviewPlatformRating] = useState(5);
@@ -66,14 +57,12 @@ export function PurchasesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select(`
+        .select(
+          `
           id,
           total,
           status,
           payment_status,
-          shipping_status,
-          shipping_carrier,
-          shipping_tracking_code,
           shipping_address,
           created_at,
           order_items (
@@ -83,15 +72,15 @@ export function PurchasesPage() {
             unit_price,
             product_id
           )
-        `)
+        `,
+        )
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as any[];
     },
   });
 
-  // Salvar avaliação no localStorage para persistência imediata
   const handleSaveReview = () => {
     if (!reviewOrder) return;
     try {
@@ -111,12 +100,10 @@ export function PurchasesPage() {
     }
   };
 
-  // Separação de pedidos
   const processedOrders = orders.filter((o) => o.payment_status === "approved" && o.status !== "cancelled");
-  
+
   const pendingOrders = orders.filter((o) => {
     if (o.payment_status === "approved") return false;
-    // Checa expiração de 72h
     const diffHours = (Date.now() - new Date(o.created_at).getTime()) / (1000 * 60 * 60);
     return o.status === "awaiting_payment" && diffHours < 72;
   });
@@ -131,7 +118,6 @@ export function PurchasesPage() {
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main className="mx-auto w-full max-w-5xl px-4 py-8">
-        {/* Cabeçalho */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -139,14 +125,12 @@ export function PurchasesPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold font-display">Minhas Compras</h1>
-              <p className="text-sm text-muted-foreground">
-                Acompanhe o status dos seus pedidos, entregas e suporte.
-              </p>
+              <p className="text-sm text-muted-foreground">Acompanhe o status dos seus pedidos, entregas e suporte.</p>
             </div>
           </div>
 
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="flex items-center gap-2 border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary font-medium"
             onClick={() => setShowMissions(!showMissions)}
           >
@@ -155,7 +139,6 @@ export function PurchasesPage() {
           </Button>
         </div>
 
-        {/* Bloco de Missões de Frete Grátis */}
         {showMissions && (
           <section className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-6 animate-in fade-in duration-300">
             <div className="flex items-center gap-3">
@@ -175,7 +158,9 @@ export function PurchasesPage() {
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                 </div>
                 <h3 className="mt-2 text-sm font-bold">Primeira Compra</h3>
-                <p className="mt-1 text-xs text-muted-foreground">Faça qualquer compra no marketplace para liberar seu primeiro cupom.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Faça qualquer compra no marketplace para liberar seu primeiro cupom.
+                </p>
                 <div className="mt-3">
                   <span className="inline-block rounded-md bg-muted px-2 py-1 text-xs font-mono font-bold text-foreground">
                     CUPOM: FRETEPRIMEIRA
@@ -189,7 +174,9 @@ export function PurchasesPage() {
                   <Star className="h-4 w-4 text-amber-500" />
                 </div>
                 <h3 className="mt-2 text-sm font-bold">Avaliar Produto</h3>
-                <p className="mt-1 text-xs text-muted-foreground">Deixe uma avaliação de 5 estrelas e comentário em uma compra recebida.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Deixe uma avaliação de 5 estrelas e comentário em uma compra recebida.
+                </p>
                 <div className="mt-3">
                   <span className="inline-block rounded-md bg-muted px-2 py-1 text-xs font-mono font-bold text-foreground">
                     CUPOM: FRETEFEEDBACK
@@ -203,7 +190,9 @@ export function PurchasesPage() {
                   <ShieldCheck className="h-4 w-4 text-blue-500" />
                 </div>
                 <h3 className="mt-2 text-sm font-bold">Completar Perfil</h3>
-                <p className="mt-1 text-xs text-muted-foreground">Cadastre seu endereço e telefone para agilizar suas entregas.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Cadastre seu endereço e telefone para agilizar suas entregas.
+                </p>
                 <div className="mt-3">
                   <span className="inline-block rounded-md bg-muted px-2 py-1 text-xs font-mono font-bold text-foreground">
                     CUPOM: CLIENTEHS
@@ -214,13 +203,14 @@ export function PurchasesPage() {
           </section>
         )}
 
-        {/* Modal de Avaliação com Estrelinhas */}
         {reviewOrder && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
             <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold">Avaliar Pedido #{reviewOrder.id.slice(0, 8).toUpperCase()}</h3>
-                <Button variant="ghost" size="sm" onClick={() => setReviewOrder(null)}>✕</Button>
+                <Button variant="ghost" size="sm" onClick={() => setReviewOrder(null)}>
+                  ✕
+                </Button>
               </div>
 
               <div className="mt-4 space-y-4">
@@ -234,7 +224,9 @@ export function PurchasesPage() {
                         onClick={() => setReviewRating(star)}
                         className="p-1 focus:outline-none"
                       >
-                        <Star className={`h-6 w-6 ${star <= reviewRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
+                        <Star
+                          className={`h-6 w-6 ${star <= reviewRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`}
+                        />
                       </button>
                     ))}
                     <span className="ml-2 text-sm font-bold text-amber-500">{reviewRating} de 5</span>
@@ -242,7 +234,9 @@ export function PurchasesPage() {
                 </div>
 
                 <div>
-                  <Label className="text-xs text-muted-foreground">Avaliação da Experiência na Plataforma HS Digital:</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Avaliação da Experiência na Plataforma HS Digital:
+                  </Label>
                   <div className="mt-1 flex items-center gap-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
@@ -251,7 +245,9 @@ export function PurchasesPage() {
                         onClick={() => setReviewPlatformRating(star)}
                         className="p-1 focus:outline-none"
                       >
-                        <Star className={`h-6 w-6 ${star <= reviewPlatformRating ? "fill-primary text-primary" : "text-muted-foreground"}`} />
+                        <Star
+                          className={`h-6 w-6 ${star <= reviewPlatformRating ? "fill-primary text-primary" : "text-muted-foreground"}`}
+                        />
                       </button>
                     ))}
                     <span className="ml-2 text-sm font-bold text-primary">{reviewPlatformRating} de 5</span>
@@ -271,7 +267,9 @@ export function PurchasesPage() {
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setReviewOrder(null)}>Cancelar</Button>
+                  <Button variant="outline" onClick={() => setReviewOrder(null)}>
+                    Cancelar
+                  </Button>
                   <Button onClick={handleSaveReview}>Enviar Avaliação</Button>
                 </div>
               </div>
@@ -279,7 +277,6 @@ export function PurchasesPage() {
           </div>
         )}
 
-        {/* Abas Principais: Compras Processadas vs Compras Pendentes */}
         <div className="mt-8">
           <div className="flex border-b border-border">
             <button
@@ -320,14 +317,15 @@ export function PurchasesPage() {
             </div>
           ) : (
             <div className="mt-6">
-              {/* PAINEL: COMPRAS PROCESSADAS (PAGAS) */}
               {mainTab === "processadas" && (
                 <div>
                   {processedOrders.length === 0 ? (
                     <div className="surface-card p-12 text-center">
                       <PackageCheck className="mx-auto h-12 w-12 text-muted-foreground" />
                       <h3 className="mt-4 text-base font-bold">Nenhuma compra paga no momento</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">Quando seu pagamento for aprovado, ele aparecerá aqui com rastreamento.</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Quando seu pagamento for aprovado, ele aparecerá aqui com rastreamento.
+                      </p>
                       <Button asChild className="mt-4">
                         <Link to="/">Explorar catálogo</Link>
                       </Button>
@@ -335,8 +333,10 @@ export function PurchasesPage() {
                   ) : (
                     <div className="space-y-6">
                       {processedOrders.map((order) => (
-                        <article key={order.id} className="surface-card overflow-hidden rounded-2xl border border-border p-6 shadow-sm">
-                          {/* Topo do Pedido */}
+                        <article
+                          key={order.id}
+                          className="surface-card overflow-hidden rounded-2xl border border-border p-6 shadow-sm"
+                        >
                           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
                             <div>
                               <div className="flex items-center gap-2">
@@ -363,7 +363,6 @@ export function PurchasesPage() {
                             </div>
                           </div>
 
-                          {/* Sub-Abas do Pedido: Pedido | Pedido a Caminho | Devolução */}
                           <Tabs defaultValue="pedido" className="mt-4">
                             <TabsList className="grid w-full grid-cols-3">
                               <TabsTrigger value="pedido" className="text-xs sm:text-sm">
@@ -377,10 +376,11 @@ export function PurchasesPage() {
                               </TabsTrigger>
                             </TabsList>
 
-                            {/* SUB-ABA 1: PEDIDO */}
                             <TabsContent value="pedido" className="pt-4 space-y-4">
                               <div className="space-y-2">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Itens Comprados:</h4>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                  Itens Comprados:
+                                </h4>
                                 <div className="divide-y divide-border rounded-xl border border-border bg-card p-3">
                                   {order.order_items.map((item: any) => (
                                     <div key={item.id} className="flex items-center justify-between py-2 text-sm">
@@ -388,7 +388,9 @@ export function PurchasesPage() {
                                         <p className="font-semibold text-foreground">{item.title}</p>
                                         <p className="text-xs text-muted-foreground">Quantidade: {item.quantity}</p>
                                       </div>
-                                      <p className="font-mono font-medium">{brl(Number(item.unit_price) * item.quantity)}</p>
+                                      <p className="font-mono font-medium">
+                                        {brl(Number(item.unit_price) * item.quantity)}
+                                      </p>
                                     </div>
                                   ))}
                                 </div>
@@ -413,7 +415,6 @@ export function PurchasesPage() {
                               </div>
                             </TabsContent>
 
-                            {/* SUB-ABA 2: PEDIDO A CAMINHO (MONITORAMENTO DO ENVIO) */}
                             <TabsContent value="rastreio" className="pt-4">
                               <div className="rounded-xl border border-border bg-card p-4">
                                 <div className="flex items-center justify-between border-b border-border pb-3">
@@ -422,10 +423,7 @@ export function PurchasesPage() {
                                     <span className="font-semibold text-sm">Status do Envio</span>
                                   </div>
                                   <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                                    {order.shipping_status === "delivered" ? "Entregue" :
-                                     order.shipping_status === "shipped" ? "Objeto Postado / Em Trânsito" :
-                                     order.shipping_status === "packing" ? "Em Separação / Embalagem" :
-                                     "Aguardando Postagem pelo Vendedor"}
+                                    Aguardando Envio / Em Separação
                                   </span>
                                 </div>
 
@@ -433,33 +431,21 @@ export function PurchasesPage() {
                                   <div className="grid gap-2 sm:grid-cols-2 text-sm">
                                     <div>
                                       <p className="text-xs text-muted-foreground">Transportadora / Modo:</p>
-                                      <p className="font-medium text-foreground">{order.shipping_carrier || "Correios (PAC / SEDEX)"}</p>
+                                      <p className="font-medium text-foreground">Correios (PAC / SEDEX)</p>
                                     </div>
                                     <div>
                                       <p className="text-xs text-muted-foreground">Código de Rastreamento:</p>
-                                      {order.shipping_tracking_code ? (
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-mono font-bold text-primary">{order.shipping_tracking_code}</span>
-                                          <a
-                                            href={`https://rastreamento.correios.com.br/app/index.php?codigo=${encodeURIComponent(order.shipping_tracking_code)}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex items-center text-xs text-primary hover:underline"
-                                          >
-                                            Rastrear nos Correios <ExternalLink className="ml-1 h-3 w-3" />
-                                          </a>
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs italic text-muted-foreground">O vendedor ainda não inseriu o código de rastreio.</p>
-                                      )}
+                                      <p className="text-xs italic text-muted-foreground">
+                                        O vendedor fornecerá o código assim que postar.
+                                      </p>
                                     </div>
                                   </div>
 
                                   {order.shipping_address && (
                                     <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
                                       <span className="font-semibold text-foreground">Endereço de Entrega: </span>
-                                      {typeof order.shipping_address === "string" 
-                                        ? order.shipping_address 
+                                      {typeof order.shipping_address === "string"
+                                        ? order.shipping_address
                                         : `${order.shipping_address.street || ""}, ${order.shipping_address.number || ""} - ${order.shipping_address.neighborhood || ""}, ${order.shipping_address.city || ""}/${order.shipping_address.state || ""} - CEP ${order.shipping_address.postal_code || ""}`}
                                     </div>
                                   )}
@@ -467,7 +453,6 @@ export function PurchasesPage() {
                               </div>
                             </TabsContent>
 
-                            {/* SUB-ABA 3: DEVOLUÇÃO E GARANTIA (CDC) */}
                             <TabsContent value="devolucao" className="pt-4">
                               <div className="rounded-xl border border-border bg-card p-5 space-y-4">
                                 <div className="flex items-center gap-2 text-primary font-bold text-sm">
@@ -477,23 +462,33 @@ export function PurchasesPage() {
 
                                 <div className="space-y-3 text-xs text-muted-foreground leading-relaxed">
                                   <div className="rounded-lg border border-border/80 bg-muted/30 p-3">
-                                    <p className="font-bold text-foreground">⚖️ Direito de Arrependimento (Art. 49 do CDC)</p>
+                                    <p className="font-bold text-foreground">
+                                      ⚖️ Direito de Arrependimento (Art. 49 do CDC)
+                                    </p>
                                     <p className="mt-1">
-                                      Você tem até <strong>7 (sete) dias corridos</strong> a partir do recebimento da mercadoria para solicitar a desistência da compra pela internet, recebendo o reembolso integral.
+                                      Você tem até <strong>7 (sete) dias corridos</strong> a partir do recebimento da
+                                      mercadoria para solicitar a desistência da compra pela internet, recebendo o
+                                      reembolso integral.
                                     </p>
                                   </div>
 
                                   <div className="rounded-lg border border-border/80 bg-muted/30 p-3">
-                                    <p className="font-bold text-foreground">🛡️ Garantia Contra Defeitos de Fabricação</p>
+                                    <p className="font-bold text-foreground">
+                                      🛡️ Garantia Contra Defeitos de Fabricação
+                                    </p>
                                     <p className="mt-1">
-                                      Garantia legal de <strong>30 dias</strong> para produtos não duráveis e <strong>90 dias</strong> para produtos duráveis em caso de vício ou defeito não decorrente do mau uso.
+                                      Garantia legal de <strong>30 dias</strong> para produtos não duráveis e{" "}
+                                      <strong>90 dias</strong> para produtos duráveis em caso de vício ou defeito não
+                                      decorrente do mau uso.
                                     </p>
                                   </div>
 
                                   <div className="rounded-lg border border-border/80 bg-muted/30 p-3">
                                     <p className="font-bold text-foreground">📦 Condições para Devolução</p>
                                     <p className="mt-1">
-                                      O produto deve ser devolvido na embalagem original, com todos os manuais, acessórios e sem sinais de violação ou avarias causadas por queda ou uso incorreto.
+                                      O produto deve ser devolvido na embalagem original, com todos os manuais,
+                                      acessórios e sem sinais de violação ou avarias causadas por queda ou uso
+                                      incorreto.
                                     </p>
                                   </div>
                                 </div>
@@ -516,7 +511,6 @@ export function PurchasesPage() {
                 </div>
               )}
 
-              {/* PAINEL: COMPRAS PENDENTES / CANCELADAS */}
               {mainTab === "pendentes" && (
                 <Tabs defaultValue="aguardando" className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
@@ -530,13 +524,14 @@ export function PurchasesPage() {
                     </TabsTrigger>
                   </TabsList>
 
-                  {/* ABA: AGUARDANDO PAGAMENTO */}
                   <TabsContent value="aguardando" className="mt-6 space-y-4">
                     {pendingOrders.length === 0 ? (
                       <div className="surface-card p-10 text-center">
                         <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
                         <h3 className="mt-3 text-sm font-bold">Nenhum pagamento pendente</h3>
-                        <p className="text-xs text-muted-foreground">Todos os seus pedidos ativos já foram pagos ou concluídos.</p>
+                        <p className="text-xs text-muted-foreground">
+                          Todos os seus pedidos ativos já foram pagos ou concluídos.
+                        </p>
                       </div>
                     ) : (
                       pendingOrders.map((order) => {
@@ -544,18 +539,24 @@ export function PurchasesPage() {
                         const hoursRemaining = Math.max(0, 72 - hoursElapsed);
 
                         return (
-                          <article key={order.id} className="surface-card rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
+                          <article
+                            key={order.id}
+                            className="surface-card rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6"
+                          >
                             <div className="flex flex-wrap items-center justify-between gap-4">
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-mono text-xs font-bold">PEDIDO #{order.id.slice(0, 8).toUpperCase()}</span>
+                                  <span className="font-mono text-xs font-bold">
+                                    PEDIDO #{order.id.slice(0, 8).toUpperCase()}
+                                  </span>
                                   <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-600">
                                     Aguardando Pix / Pagamento
                                   </span>
                                 </div>
                                 <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                                   <Clock className="h-3.5 w-3.5 text-amber-600" />
-                                  Expira em aproximadamente {Math.floor(hoursRemaining)}h {Math.floor((hoursRemaining % 1) * 60)}m (prazo de 72h)
+                                  Expira em aproximadamente {Math.floor(hoursRemaining)}h{" "}
+                                  {Math.floor((hoursRemaining % 1) * 60)}m (prazo de 72h)
                                 </p>
                               </div>
 
@@ -576,7 +577,8 @@ export function PurchasesPage() {
                                   size="sm"
                                   className="text-destructive border-destructive/30 hover:bg-destructive/10"
                                   onClick={async () => {
-                                    if (!window.confirm("Deseja realmente cancelar este pedido e liberar os produtos?")) return;
+                                    if (!window.confirm("Deseja realmente cancelar este pedido e liberar os produtos?"))
+                                      return;
                                     try {
                                       await cancelOrder({ data: { orderId: order.id } });
                                       toast.success("Pedido cancelado com sucesso.");
@@ -602,7 +604,6 @@ export function PurchasesPage() {
                     )}
                   </TabsContent>
 
-                  {/* ABA: CANCELADAS / EXPIRADAS */}
                   <TabsContent value="canceladas" className="mt-6 space-y-4">
                     {cancelledOrders.length === 0 ? (
                       <div className="surface-card p-10 text-center">
@@ -611,11 +612,16 @@ export function PurchasesPage() {
                       </div>
                     ) : (
                       cancelledOrders.map((order) => (
-                        <article key={order.id} className="surface-card rounded-2xl border border-border p-5 opacity-80">
+                        <article
+                          key={order.id}
+                          className="surface-card rounded-2xl border border-border p-5 opacity-80"
+                        >
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs font-bold text-muted-foreground">PEDIDO #{order.id.slice(0, 8).toUpperCase()}</span>
+                                <span className="font-mono text-xs font-bold text-muted-foreground">
+                                  PEDIDO #{order.id.slice(0, 8).toUpperCase()}
+                                </span>
                                 <span className="rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-bold text-destructive">
                                   Cancelado / Expirado
                                 </span>
