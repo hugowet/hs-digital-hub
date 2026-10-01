@@ -1,12 +1,9 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
-  Bot,
-  HelpCircle,
-  MessageCircle,
+  CircleHelp,
   Package,
   Send,
-  ShoppingBag,
   Sparkles,
   Store,
   X,
@@ -21,7 +18,6 @@ interface Message {
   link?: { label: string; url: string };
 }
 
-// Avatar exclusivo com gradiente roxo combinando com o tema do HS Digital
 function AuraAvatar() {
   return (
     <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-purple-700 via-indigo-600 to-pink-500 text-white shadow-md">
@@ -58,7 +54,6 @@ export function AuraChatWidget() {
 
     const userTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-    // Mensagem do usuário
     const userMsg: Message = {
       id: crypto.randomUUID(),
       sender: "user",
@@ -69,13 +64,12 @@ export function AuraChatWidget() {
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInput("");
 
-    // Resposta lógica da Aura
     setTimeout(() => {
       const q = query.toLowerCase();
       let responseText = "";
       let linkAction: { label: string; url: string } | undefined;
 
-      // Pergunta sobre fundador (somente se perguntarem)
+      // Responde sobre o criador apenas se perguntado
       if (
         q.includes("fundador") ||
         q.includes("criador") ||
@@ -86,33 +80,21 @@ export function AuraChatWidget() {
         q.includes("hugo")
       ) {
         responseText = "A plataforma HS Digital foi fundada e criada por Hugo Rogerio, com o objetivo de oferecer uma experiência moderna, rápida e segura de marketplace.";
-      } 
-      // Dúvidas sobre compras e pedidos
-      else if (q.includes("meus pedidos") || q.includes("compras") || q.includes("rastrear") || q.includes("onde ta meu pedido")) {
+      } else if (q.includes("meus pedidos") || q.includes("compras") || q.includes("rastrear") || q.includes("onde ta meu pedido")) {
         responseText = "Você pode acompanhar o status de entrega, conciliação de pagamento e histórico de todos os seus pedidos na aba Minhas Compras.";
         linkAction = { label: "Ir para Minhas Compras", url: "/compras" };
-      } 
-      // Dúvidas sobre carrinho
-      else if (q.includes("carrinho") || q.includes("finalizar") || q.includes("checkout")) {
+      } else if (q.includes("carrinho") || q.includes("finalizar") || q.includes("checkout")) {
         responseText = "Seus itens selecionados ficam salvos no carrinho por loja. Você pode revisar endereços e escolher frete rápido.";
         linkAction = { label: "Ver meu Carrinho", url: "/carrinho" };
-      } 
-      // Dúvidas sobre vender no marketplace
-      else if (q.includes("vender") || q.includes("vendedor") || q.includes("loja") || q.includes("cadastrar produto")) {
+      } else if (q.includes("vender") || q.includes("vendedor") || q.includes("loja") || q.includes("cadastrar produto")) {
         responseText = "Você pode criar sua própria loja e anunciar produtos físicos ou digitais no Painel do Vendedor da HS Digital.";
         linkAction = { label: "Acessar Painel do Vendedor", url: "/vendedor" };
-      } 
-      // Formas de pagamento
-      else if (q.includes("pagamento") || q.includes("pix") || q.includes("cartao") || q.includes("parcelamento")) {
+      } else if (q.includes("pagamento") || q.includes("pix") || q.includes("cartao") || q.includes("parcelamento")) {
         responseText = "Aceitamos Pix com aprovação imediata e cartão de crédito com parcelamento seguro processado via Mercado Pago.";
-      } 
-      // Produtos digitais
-      else if (q.includes("digital") || q.includes("ebook") || q.includes("curso") || q.includes("download")) {
+      } else if (q.includes("digital") || q.includes("ebook") || q.includes("curso") || q.includes("download")) {
         responseText = "Para produtos digitais, o link para download é liberado automaticamente na sua tela de compras logo após a aprovação do pagamento.";
         linkAction = { label: "Ver Minhas Compras", url: "/compras" };
-      } 
-      // Padrão / Dúvidas gerais
-      else {
+      } else {
         responseText = "Posso te ajudar a navegar pelo marketplace, tirar dúvidas sobre pedidos, pagamentos e como começar a vender!";
       }
 
@@ -130,7 +112,6 @@ export function AuraChatWidget() {
 
   return (
     <>
-      {/* Botão Flutuante */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Abrir suporte com Aura"
@@ -149,10 +130,8 @@ export function AuraChatWidget() {
         )}
       </button>
 
-      {/* Janela de Chat */}
       {isOpen && (
         <div className="fixed bottom-22 right-5 z-50 flex h-[500px] w-[350px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-border/80 bg-background/95 shadow-2xl backdrop-blur-md transition-all sm:w-[380px]">
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
             <div className="flex items-center gap-3">
               <AuraAvatar />
@@ -174,7 +153,6 @@ export function AuraChatWidget() {
             </button>
           </div>
 
-          {/* Atalhos Rápidos */}
           <div className="border-b border-border/60 bg-muted/20 px-3 py-2">
             <div className="flex gap-1.5 overflow-x-auto pb-1 text-[11px] scrollbar-none">
               <button
@@ -195,13 +173,12 @@ export function AuraChatWidget() {
                 onClick={() => handleSend("Quais as formas de pagamento?")}
                 className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground hover:border-primary/50 hover:text-foreground"
               >
-                <HelpCircle className="h-3 w-3 text-pink-400" />
+                <CircleHelp className="h-3 w-3 text-pink-400" />
                 Pagamento
               </button>
             </div>
           </div>
 
-          {/* Mensagens */}
           <div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">
             {messages.map((m) => (
               <div
@@ -235,7 +212,6 @@ export function AuraChatWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Campo de Envio */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
