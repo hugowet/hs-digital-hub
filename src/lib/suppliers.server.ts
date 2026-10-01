@@ -18,6 +18,7 @@ type CjToken = {
 
 type CjProduct = {
   pid?: string;
+  bigImage?: string;
   productNameEn?: string;
   productName?: string;
   productImage?: string;
@@ -32,7 +33,33 @@ type CjProduct = {
   }>;
 };
 
+type CjPopularProduct = {
+  id?: string;
+};
+
+type CjPopularSearch = {
+  content?: Array<{ productList?: CjPopularProduct[] }>;
+};
+
+const CJ_POPULAR_CATEGORIES = [
+  "home decor",
+  "electronics",
+  "beauty",
+  "sports",
+  "fashion accessories",
+] as const;
+
+const CJ_PRODUCTS_PER_CATEGORY = 3;
+let cjLastRequestAt = 0;
+
+async function waitForCjRateLimit() {
+  const waitMs = Math.max(0, 1_050 - (Date.now() - cjLastRequestAt));
+  if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+  cjLastRequestAt = Date.now();
+}
+
 async function cjRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
+  await waitForCjRateLimit();
   const response = await fetch(`${CJ_API}${path}`, {
     ...init,
     headers: {
@@ -98,47 +125,73 @@ function categoryFor(name: string) {
 
 export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginPercent: number) {
   const token = await getCjAccessToken(supabaseAdmin, storeId);
-  const data = await cjRequest<any>("/product/list?pageNum=1&pageSize=50", token);
-  const list: CjProduct[] = Array.isArray(data?.list) ? data.list : Array.isArray(data) ? data : [];
-  let imported = 0;
+  const productIds = new Set<string>();
 
-  for (const product of list) {
-    const variant = product.variants?.[0];
-    const pid = product.pid;
-    const vid = variant?.vid;
-    const title = (product.productNameEn ?? product.productName ?? "").trim();
-    const cost = Number(variant?.variantSellPrice ?? product.sellPrice);
-    if (!pid || !vid || !title || !Number.isFinite(cost) || cost <= 0) continue;
-    const images = [variant?.variantImage, product.productImage, ...(product.productImageSet ?? [])]
-      .filter((value): value is string => Boolean(value?.startsWith("https://")));
-    const price = Math.round(cost * (1 + marginPercent / 100) * 100) / 100;
-    const { error } = await supabaseAdmin.from("products").upsert({
-      store_id: storeId,
-      title: title.slice(0, 160),
-      description: "Produto importado e enviado pela CJ Dropshipping.",
-      description_long: "Produto real do catálogo CJ Dropshipping, com estoque sincronizado pelo fornecedor.",
-      price,
-      stock: 0,
-      category: categoryFor(`${product.categoryName ?? ""} ${title}`),
-      image_url: images[0] ?? null,
-      gallery_urls: [...new Set(images)].slice(0, 10),
-      product_type: "physical",
-      is_active: true,
-      supplier: "cj",
-      supplier_product_id: pid,
-      supplier_variant_id: vid,
-      supplier_sku: variant.variantSku ?? null,
-      supplier_cost: cost,
-      supplier_last_synced_at: new Date().toISOString(),
-    }, { onConflict: "store_id,supplier,supplier_variant_id" });
-    if (!error) imported += 1;
+  for (const keyword of CJ_POPULAR_CATEGORIES) {
+    const params = new URLSearchParams({
+      page: "1",
+      size: String(CJ_PRODUCTS_PER_CATEGORY),
+      keyWord: keyword,
+      orderBy: "1",
+      sort: "desc",
+    });
+    const search = await cjRequest<CjPopularSearch>(`/product/listV2?${params.toString()}`, token);
+    for (const group of search.content ?? []) {
+      for (const product of group.productList ?? []) {
+        if (product.id) productIds.add(product.id);
+      }
+    }
+  }
+
+  let imported = 0;
+  let skipped = 0;
+
+  for (const productId of productIds) {
+    try {
+      const product = await cjRequest<CjProduct>(`/product/query?pid=${encodeURIComponent(productId)}`, token);
+      const variant = product.variants?.[0];
+      const pid = product.pid;
+      const vid = variant?.vid;
+      const title = (product.productNameEn ?? product.productName ?? "").trim();
+      const cost = Number(variant?.variantSellPrice ?? product.sellPrice);
+      if (!pid || !vid || !title || !Number.isFinite(cost) || cost <= 0) {
+        skipped += 1;
+        continue;
+      }
+      const images = [variant?.variantImage, product.bigImage, product.productImage, ...(product.productImageSet ?? [])]
+        .filter((value): value is string => Boolean(value?.startsWith("https://")));
+      const price = Math.round(cost * (1 + marginPercent / 100) * 100) / 100;
+      const { error } = await supabaseAdmin.from("products").upsert({
+        store_id: storeId,
+        title: title.slice(0, 160),
+        description: "Produto popular da CJ Dropshipping, selecionado entre os mais vendidos da categoria.",
+        description_long: "Produto real do catálogo CJ Dropshipping, com estoque sincronizado pelo fornecedor.",
+        price,
+        stock: 0,
+        category: categoryFor(`${product.categoryName ?? ""} ${title}`),
+        image_url: images[0] ?? null,
+        gallery_urls: [...new Set(images)].slice(0, 10),
+        product_type: "physical",
+        is_active: true,
+        supplier: "cj",
+        supplier_product_id: pid,
+        supplier_variant_id: vid,
+        supplier_sku: variant.variantSku ?? null,
+        supplier_cost: cost,
+        supplier_last_synced_at: new Date().toISOString(),
+      }, { onConflict: "store_id,supplier,supplier_variant_id" });
+      if (error) throw error;
+      imported += 1;
+    } catch {
+      skipped += 1;
+    }
   }
 
   await supabaseAdmin.from("supplier_integrations").update({
     last_catalog_sync_at: new Date().toISOString(),
     last_error: null,
   }).eq("store_id", storeId).eq("provider", "cj");
-  return { imported };
+  return { imported, skipped, categories: CJ_POPULAR_CATEGORIES.length };
 }
 
 export async function syncCjStock(supabaseAdmin: any, storeId: string) {
