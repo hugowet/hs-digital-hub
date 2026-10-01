@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
@@ -36,19 +37,19 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    if (error instanceof Error) {
+      reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    }
   }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">This page didn't load</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
@@ -82,15 +83,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "HS Digital · Marketplace" },
       {
         name: "description",
-        content:
-          "Marketplace HS Digital: compre de várias lojas com frete grátis e entrega rápida.",
+        content: "Marketplace HS Digital: compre de várias lojas com frete grátis e entrega rápida.",
       },
       { name: "author", content: "HS Digital" },
       { property: "og:title", content: "HS Digital · Marketplace" },
       {
         property: "og:description",
-        content:
-          "Marketplace HS Digital: compre de várias lojas com frete grátis e entrega rápida.",
+        content: "Marketplace HS Digital: compre de várias lojas com frete grátis e entrega rápida.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
