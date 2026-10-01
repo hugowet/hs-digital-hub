@@ -170,7 +170,7 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
       const images = [variant?.variantImage, product.bigImage, product.productImage, ...(product.productImageSet ?? [])]
         .filter((value): value is string => Boolean(value?.startsWith("https://")));
       const price = Math.round(cost * (1 + marginPercent / 100) * 100) / 100;
-      const { error } = await supabaseAdmin.from("products").upsert({
+      const productData = {
         store_id: storeId,
         title: title.slice(0, 160),
         description: "Produto popular da CJ Dropshipping, selecionado entre os mais vendidos da categoria.",
@@ -188,7 +188,17 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
         supplier_sku: variant.variantSku ?? null,
         supplier_cost: cost,
         supplier_last_synced_at: new Date().toISOString(),
-      }, { onConflict: "store_id,supplier,supplier_variant_id" });
+      };
+      const { data: existingProduct, error: lookupError } = await supabaseAdmin.from("products")
+        .select("id")
+        .eq("store_id", storeId)
+        .eq("supplier", "cj")
+        .eq("supplier_variant_id", vid)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+      const { error } = existingProduct
+        ? await supabaseAdmin.from("products").update(productData).eq("id", existingProduct.id)
+        : await supabaseAdmin.from("products").insert(productData);
       if (error) throw error;
       imported += 1;
     } catch (error) {
