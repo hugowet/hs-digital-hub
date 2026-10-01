@@ -293,14 +293,14 @@ function SellerSalesManager({ storeId, transactions }: { storeId: string; transa
 
   const sendWhatsAppReminder = (ord: any) => {
     const addr = ord.shipping_address as Record<string, any> | null;
-    const rawPhone = addr?.phone || "";
+    const rawPhone = addr?.["phone"] || "";
     const cleanPhone = rawPhone.replace(/\D/g, "");
     if (!cleanPhone) {
       toast.error("O cliente não informou telefone no cadastro.");
       return;
     }
     const targetPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
-    const buyerName = addr?.name || addr?.recipient_name || "Cliente";
+    const buyerName = addr?.["name"] || addr?.["recipient_name"] || "Cliente";
     const orderNum = ord.id.slice(0, 8).toUpperCase();
     const origin = typeof window !== "undefined" ? window.location.origin : "https://hs-digital-hub.lovable.app";
     const payUrl = `${origin}/pedido/${ord.id}`;
@@ -322,8 +322,8 @@ Se tiver qualquer dúvida ou precisar de ajuda para concluir, basta responder es
 
   const sendEmailReminder = (ord: any) => {
     const addr = ord.shipping_address as Record<string, any> | null;
-    const buyerEmail = addr?.email || "";
-    const buyerName = addr?.name || addr?.recipient_name || "Cliente";
+    const buyerEmail = addr?.["email"] || "";
+    const buyerName = addr?.["name"] || addr?.["recipient_name"] || "Cliente";
     const orderNum = ord.id.slice(0, 8).toUpperCase();
     const origin = typeof window !== "undefined" ? window.location.origin : "https://hs-digital-hub.lovable.app";
     const payUrl = `${origin}/pedido/${ord.id}`;
@@ -418,7 +418,7 @@ Equipe HS Digital`;
 
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                   <div>
-                    <p><strong>Cliente:</strong> {addr?.name || addr?.recipient_name || "Cliente"} {addr?.phone ? `· 📞 ${addr.phone}` : ""}</p>
+                    <p><strong>Cliente:</strong> {addr?.["name"] || addr?.["recipient_name"] || "Cliente"} {addr?.["phone"] ? `· 📞 ${addr["phone"]}` : ""}</p>
                     <p className="text-muted-foreground mt-0.5">
                       {ord.items.map((i: any) => `${i.quantity}x ${i.title}`).join(", ")}
                     </p>
@@ -537,7 +537,7 @@ Equipe HS Digital`;
                 </div>
 
                 <div className="text-xs text-muted-foreground flex justify-between">
-                  <span>Cliente: {addr?.name || addr?.recipient_name || "Cliente"}</span>
+                  <span>Cliente: {addr?.["name"] || addr?.["recipient_name"] || "Cliente"}</span>
                   <span className="text-emerald-600 font-medium">✓ Estoque estornado e disponível</span>
                 </div>
               </div>
@@ -621,6 +621,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        if (!file) continue;
         const ext = file.name.split(".").pop();
         const path = `${storeId}/${Date.now()}-${i}.${ext}`;
         const { error: uploadErr } = await supabase.storage.from("product-images").upload(path, file);
@@ -686,7 +687,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           className="w-full h-10 px-3 border rounded-md bg-background text-sm mt-1"
         >
           {CATEGORIES.map((c) => (
-            <option key={c.slug} value={c.slug}>{c.name}</option>
+            <option key={c.slug} value={c.slug}>{c.label}</option>
           ))}
         </select>
       </div>
@@ -818,7 +819,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
 
       {displayedOrders.map((ord) => {
         const addr = ord.shipping_address as Record<string, any> | null;
-        const lastEvent = ord.events.length > 0 ? ord.events[ord.events.length - 1].status : "confirmed";
+        const lastEvent = ord.events.at(-1)?.status ?? "confirmed";
 
         return (
           <div key={ord.id} className="surface-card p-5 border border-border rounded-xl space-y-4">
@@ -845,8 +846,8 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
             {addr && (
               <div className="bg-muted/40 p-3 rounded-lg text-xs space-y-1">
                 <p className="font-semibold text-foreground">📦 Endereço de Entrega do Cliente (para os Correios):</p>
-                <p><strong>Destinatário:</strong> {addr.name || addr.recipient_name || "Cliente"} · Tel: {addr.phone || "Não informado"}</p>
-                <p><strong>Endereço:</strong> {addr.address || addr.street_address}{addr.complement ? `, ${addr.complement}` : ""} - {addr.city}</p>
+                <p><strong>Destinatário:</strong> {addr["name"] || addr["recipient_name"] || "Cliente"} · Tel: {addr["phone"] || "Não informado"}</p>
+                <p><strong>Endereço:</strong> {addr["address"] || addr["street_address"]}{addr["complement"] ? `, ${addr["complement"]}` : ""} - {addr["city"]}</p>
               </div>
             )}
 
@@ -901,7 +902,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
 
                 <Button
                   size="sm"
-                  className="bg-success hover:bg-success/90 text-white"
+                  className="bg-success text-success-foreground hover:bg-success/90"
                   disabled={updatingId === ord.id}
                   onClick={() => addStatus(ord.id, "delivered", "Objeto entregue ao cliente")}
                 >
