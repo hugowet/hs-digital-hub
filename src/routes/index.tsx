@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Baby, Dumbbell, Files, Gamepad2, GraduationCap, Headphones, Keyboard,
-  LampDesk, ShieldCheck, Shirt, ShoppingBasket, Smartphone, Sofa, Sparkles,
-  Truck, Watch,
+  Baby, ChevronLeft, ChevronRight, Dumbbell, Files, Gamepad2, Gift, GraduationCap, Headphones, Keyboard,
+  LampDesk, Rocket, ShieldCheck, Shirt, ShoppingBasket, ShoppingCart, Smartphone, Sofa, Sparkles,
+  Store, Truck, Watch,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/product-card";
 import { SiteFooter } from "@/components/site-footer";
@@ -43,12 +43,26 @@ const PRICE_RANGES = [
   { id: "d", label: "Acima de R$ 200", min: 200, max: Infinity },
 ];
 
+const PROMOTIONS = [
+  { icon: Gift, eyebrow: "Ofertas da semana", title: "Promoções especiais em produtos selecionados", action: "Ver ofertas", target: "catalogo" },
+  { icon: Truck, eyebrow: "Economize na entrega", title: "Frete grátis nos produtos participantes", action: "Explorar agora", target: "catalogo" },
+  { icon: Rocket, eyebrow: "Missões HS", title: "Complete missões e aproveite novas oportunidades", action: "Começar missão", target: "categorias" },
+  { icon: Store, eyebrow: "Venda na HS Digital", title: "Cadastre sua loja e publique seus primeiros produtos", action: "Quero vender", target: "vendedor" },
+  { icon: ShoppingCart, eyebrow: "Primeira compra", title: "Encontre seu primeiro produto com compra protegida", action: "Comprar agora", target: "catalogo" },
+] as const;
+
 function Home() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [range, setRange] = useState("all");
   const [sort, setSort] = useState("popular");
+  const [promotionIndex, setPromotionIndex] = useState(0);
   const { data: products = [], isLoading } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setPromotionIndex((current) => (current + 1) % PROMOTIONS.length), 5000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const filtered = useMemo(() => {
     const selectedRange = PRICE_RANGES.find((item) => item.id === range) ?? {
@@ -66,18 +80,55 @@ function Home() {
   }, [products, query, category, range, sort]);
 
   const categoryLabel = category ? CATEGORIES.find((item) => item.slug === category)?.label : "Todas as ofertas";
+  const promotion = PROMOTIONS[promotionIndex] ?? PROMOTIONS[0];
+  const PromotionIcon = promotion.icon;
+
+  function movePromotion(direction: number) {
+    setPromotionIndex((current) => (current + direction + PROMOTIONS.length) % PROMOTIONS.length);
+  }
+
+  function followPromotion() {
+    if (promotion.target === "vendedor") {
+      window.location.assign("/vendedor");
+      return;
+    }
+    document.getElementById(promotion.target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader query={query} onQueryChange={setQuery} suggestions={products.map((p) => ({ id: p.id, title: p.title, category: CATEGORIES.find((c) => c.slug === p.category)?.label ?? p.category }))} />
       <main>
-        <section className="brand-gradient overflow-hidden text-primary-foreground">
-          <div className="mx-auto flex min-h-[250px] w-full max-w-7xl items-center px-4 py-10 md:min-h-[330px]">
-            <div className="max-w-3xl">
-              <p className="text-sm font-semibold text-primary-glow">Seu marketplace, mais inteligente</p>
-              <h1 className="mt-3 text-3xl font-bold leading-tight md:text-5xl">HS Digital Marketplace</h1>
-              <p className="mt-4 max-w-2xl text-sm text-primary-foreground/75 md:text-lg">Produtos digitais, tecnologia e soluções selecionadas para transformar sua rotina.</p>
+        <section className="brand-gradient relative overflow-hidden text-primary-foreground">
+          <div className="pointer-events-none absolute -right-20 -top-32 h-96 w-96 rounded-full bg-primary/20 blur-3xl" />
+          <div className="mx-auto flex min-h-[310px] w-full max-w-7xl items-center px-4 py-12 md:min-h-[390px] md:py-16">
+            <div className="relative max-w-4xl">
+              <p className="inline-flex rounded-full border border-primary-foreground/15 bg-primary-foreground/5 px-4 py-2 text-xs font-bold uppercase text-primary-glow">Marketplace oficial</p>
+              <h1 className="mt-6 text-4xl font-extrabold leading-none md:text-6xl">HS Digital <span className="whitespace-nowrap">🛒 Marketplace</span></h1>
+              <p className="mt-5 max-w-2xl text-base leading-relaxed text-primary-foreground/70 md:text-xl">Tecnologia, produtos digitais e soluções para comprar melhor, vender mais e transformar sua rotina.</p>
+              <Button size="lg" variant="secondary" className="mt-7" onClick={() => document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth" })}>
+                Explorar ofertas
+                <ShoppingCart className="h-4 w-4" />
+              </Button>
             </div>
+          </div>
+        </section>
+
+        <section className="border-b border-border bg-ink text-ink-foreground" aria-label="Avisos e oportunidades">
+          <div className="mx-auto flex min-h-20 w-full max-w-7xl items-center gap-3 px-4 py-3">
+            <Button type="button" size="icon" variant="ghost" className="shrink-0 text-ink-foreground hover:bg-primary-foreground/10 hover:text-ink-foreground" onClick={() => movePromotion(-1)} aria-label="Aviso anterior"><ChevronLeft className="h-4 w-4" /></Button>
+            <div key={promotionIndex} className="flex min-w-0 flex-1 animate-in items-center gap-4 fade-in slide-in-from-right-3 duration-500" aria-live="polite">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground"><PromotionIcon className="h-5 w-5" /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-bold uppercase text-primary-glow">{promotion.eyebrow}</p>
+                <p className="text-sm font-semibold sm:text-base">{promotion.title}</p>
+              </div>
+              <Button type="button" size="sm" variant="secondary" className="hidden shrink-0 sm:inline-flex" onClick={followPromotion}>{promotion.action}</Button>
+            </div>
+            <div className="hidden items-center gap-1 md:flex" aria-label={`Aviso ${promotionIndex + 1} de ${PROMOTIONS.length}`}>
+              {PROMOTIONS.map((item, index) => <span key={item.eyebrow} className={`h-1.5 rounded-full transition-all ${index === promotionIndex ? "w-6 bg-primary-glow" : "w-1.5 bg-primary-foreground/25"}`} />)}
+            </div>
+            <Button type="button" size="icon" variant="ghost" className="shrink-0 text-ink-foreground hover:bg-primary-foreground/10 hover:text-ink-foreground" onClick={() => movePromotion(1)} aria-label="Próximo aviso"><ChevronRight className="h-4 w-4" /></Button>
           </div>
         </section>
 
@@ -90,7 +141,7 @@ function Home() {
             ].map((item) => <div key={item.title} className="flex items-center gap-3 border-b border-border py-3"><item.icon className="h-5 w-5 text-primary" /><div><p className="text-sm font-semibold">{item.title}</p><p className="text-xs text-muted-foreground">{item.text}</p></div></div>)}
           </section>
 
-          <section className="pt-3">
+          <section id="categorias" className="scroll-mt-28 pt-3">
             <div className="border-y border-border py-5">
               <div className="mb-3 flex items-center justify-between"><h2 className="text-base font-bold">Explore por categoria</h2><Button variant="ghost" size="sm" onClick={() => setCategory(null)}>Ver todas</Button></div>
               <Carousel opts={{ align: "start", dragFree: true }} className="px-9">
@@ -102,7 +153,7 @@ function Home() {
               </Carousel>
             </div>
             <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Faixa de preço">{PRICE_RANGES.map((item) => <Button key={item.id} size="sm" variant={range === item.id ? "secondary" : "outline"} className="shrink-0" onClick={() => setRange(item.id)}>{item.label}</Button>)}</div>
-            <div className="mt-4 min-w-0">
+            <div id="catalogo" className="mt-4 min-w-0 scroll-mt-28">
               <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
                 <div><h2 className="text-xl font-bold">{categoryLabel}</h2><p className="text-sm text-muted-foreground">{filtered.length} produtos encontrados</p></div>
                 <Select value={sort} onValueChange={setSort}><SelectTrigger className="w-[190px]" aria-label="Ordenar produtos"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="popular">Mais vendidos</SelectItem><SelectItem value="price-asc">Menor preço</SelectItem><SelectItem value="price-desc">Maior preço</SelectItem></SelectContent></Select>

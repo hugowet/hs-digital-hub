@@ -95,10 +95,14 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.52 0.24 296);
 
-  --gradient-brand: linear-gradient(120deg, var(--ink) 0%, oklch(0.3 0.13 295) 45%, var(--primary) 100%);
+  --gradient-brand: linear-gradient(118deg, var(--ink) 0%, oklch(0.23 0.07 295) 52%, oklch(0.42 0.19 296) 100%);
   --gradient-primary: linear-gradient(135deg, var(--primary), var(--primary-glow));
   --shadow-card: 0 1px 2px oklch(0.16 0.02 290 / 6%), 0 8px 24px -12px oklch(0.16 0.02 290 / 18%);
   --shadow-hover: 0 12px 34px -12px oklch(0.52 0.24 296 / 38%);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 .dark {
