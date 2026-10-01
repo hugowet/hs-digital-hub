@@ -43,13 +43,20 @@ type CjPopularSearch = {
 
 const CJ_POPULAR_CATEGORIES = [
   "home decor",
-  "electronics",
+  "smart electronics",
+  "computer accessories",
   "beauty",
-  "sports",
+  "fitness sports",
   "fashion accessories",
+  "pet supplies",
+  "kids toys",
+  "kitchen gadgets",
+  "car accessories",
+  "garden tools",
+  "travel accessories",
 ] as const;
 
-const CJ_PRODUCTS_PER_CATEGORY = 3;
+const CJ_PRODUCTS_PER_CATEGORY = 5;
 let cjLastRequestAt = 0;
 
 async function waitForCjRateLimit() {
@@ -122,12 +129,13 @@ export async function getCjAccessToken(supabaseAdmin: any, storeId: string) {
 
 function categoryFor(name: string) {
   const normalized = name.toLowerCase();
-  if (normalized.includes("home") || normalized.includes("house") || normalized.includes("office")) return "casa-setup";
-  if (normalized.includes("keyboard") || normalized.includes("mouse") || normalized.includes("computer")) return "perifericos-acessorios";
-  if (normalized.includes("sport")) return "esportes";
-  if (normalized.includes("beauty")) return "beleza";
-  if (normalized.includes("kid") || normalized.includes("toy")) return "infantil";
-  if (normalized.includes("fashion") || normalized.includes("clothing")) return "moda";
+  if (["kid", "toy", "baby", "child"].some((term) => normalized.includes(term))) return "infantil";
+  if (["beauty", "makeup", "cosmetic", "skin care", "hair"].some((term) => normalized.includes(term))) return "beleza";
+  if (["fashion", "clothing", "jewelry", "necklace", "bracelet", "watch", "bag"].some((term) => normalized.includes(term))) return "moda";
+  if (["sport", "fitness", "gym", "outdoor", "camping"].some((term) => normalized.includes(term))) return "esportes";
+  if (["keyboard", "mouse", "computer", "laptop", "headset", "usb"].some((term) => normalized.includes(term))) return "perifericos-acessorios";
+  if (["home", "house", "office", "kitchen", "garden", "decor", "tool"].some((term) => normalized.includes(term))) return "casa-setup";
+  if (["pet", "dog", "cat", "travel"].some((term) => normalized.includes(term))) return "mercado";
   return "eletronicos-gadgets";
 }
 

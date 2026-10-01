@@ -52,6 +52,7 @@
 
 - [x] Integrar catálogo e estoque da CJ Dropshipping à loja JJ Kuster.
 - [x] Usar categorias populares da CJ como padrão e publicar os produtos importados na vitrine.
+- [x] Ampliar o catálogo CJ para doze linhas variadas com cinco produtos populares por linha.
 - [ ] Integrar catálogo automático do Dropi com margem percentual — aguardando credencial/API de parceiro do Dropi.
 - [x] Encaminhar pedidos pagos da CJ aos fornecedores com processamento idempotente.
 - [ ] Integrar rastreamento oficial dos Correios — aguardando contrato PJ e credenciais CWS; códigos do fornecedor já aparecem no acompanhamento.
