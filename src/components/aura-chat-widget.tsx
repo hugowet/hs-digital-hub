@@ -248,7 +248,7 @@ export function AuraChatWidget() {
         sender: "aura",
         text: responseText,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        link: linkAction,
+        ...(linkAction ? { link: linkAction } : {}),
         actionTag,
       };
 
