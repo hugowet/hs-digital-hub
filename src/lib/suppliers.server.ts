@@ -54,7 +54,7 @@ type CjCategoryTree = Array<{
 type QueuedCjProduct = { id: string; stock: number };
 
 const CJ_PRODUCTS_PER_CATEGORY = 20;
-const CJ_REQUESTS_PER_BATCH = 8;
+const CJ_REQUESTS_PER_BATCH = 21;
 const CJ_LOCK_MS = 45_000;
 let cjLastRequestAt = 0;
 
@@ -336,15 +336,27 @@ export async function processCjCatalogBatch(
   let skipped = 0;
   try {
     const token = await getCjAccessToken(supabaseAdmin, storeId);
-    const { data: category } = await supabaseAdmin
+    const { data: activeCategory } = await supabaseAdmin
       .from("supplier_catalog_categories")
       .select("id,category_id,product_ids,next_product_index,imported_count")
       .eq("store_id", storeId)
       .eq("provider", "cj")
-      .in("status", ["pending", "processing"])
+      .eq("status", "processing")
       .order("created_at")
       .limit(1)
       .maybeSingle();
+    const { data: pendingCategory } = activeCategory
+      ? { data: null }
+      : await supabaseAdmin
+          .from("supplier_catalog_categories")
+          .select("id,category_id,product_ids,next_product_index,imported_count")
+          .eq("store_id", storeId)
+          .eq("provider", "cj")
+          .eq("status", "pending")
+          .order("created_at")
+          .limit(1)
+          .maybeSingle();
+    const category = activeCategory ?? pendingCategory;
 
     if (!category) {
       await supabaseAdmin
