@@ -112,6 +112,19 @@ function SellerCenterPage() {
       return data ?? [];
     },
   });
+  const { data: cjImportJob } = useQuery({
+    enabled: !!store?.id,
+    queryKey: ["cj-import-job", store?.id],
+    refetchInterval: (query) => query.state.data?.status === "completed" ? false : 10_000,
+    queryFn: async () => {
+      if (!store?.id) return null;
+      const { data, error } = await supabase.from("supplier_import_jobs")
+        .select("status,total_categories,completed_categories,imported_products,skipped_products,pause_reason")
+        .eq("store_id", store.id).eq("provider", "cj").maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
   const [syncingCj, setSyncingCj] = useState(false);
 
   if (userId === undefined || (userId && storeLoading)) {
@@ -269,10 +282,13 @@ function SellerCenterPage() {
                 try {
                   setSyncingCj(true);
                   const result = await syncCj({ data: { storeId: store.id } });
-                  toast.success(`${result.imported} produtos e ${result.updated} estoques sincronizados.`);
+                   toast.success(result.done
+                     ? "Catálogo completo da CJ sincronizado."
+                     : `${result.imported} produtos importados neste lote. A fila continuará automaticamente.`);
                   await Promise.all([
                     qc.invalidateQueries({ queryKey: ["store-products", store.id] }),
                     qc.invalidateQueries({ queryKey: ["supplier-integrations", store.id] }),
+                     qc.invalidateQueries({ queryKey: ["cj-import-job", store.id] }),
                     qc.invalidateQueries({ queryKey: ["products"] }),
                   ]);
                 } catch (error) {
@@ -288,6 +304,11 @@ function SellerCenterPage() {
                 <p className="mt-2 text-xs text-muted-foreground">Margem aplicada: {Number(integration.margin_percent).toLocaleString("pt-BR")}%</p>
                 {integration.last_stock_sync_at && <p className="mt-1 text-xs text-muted-foreground">Estoque atualizado em {new Date(integration.last_stock_sync_at).toLocaleString("pt-BR")}</p>}
                 {integration.provider === "dropi" && <p className="mt-2 text-xs text-muted-foreground">A ativação depende das credenciais de parceiro fornecidas diretamente pelo Dropi.</p>}
+                {integration.provider === "cj" && cjImportJob && <div className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+                  <p>{cjImportJob.completed_categories} de {cjImportJob.total_categories} categorias concluídas</p>
+                  <p className="mt-1">{cjImportJob.imported_products} produtos processados · Estado: {cjImportJob.status === "completed" ? "concluído" : cjImportJob.status === "paused" ? "pausado" : "em andamento"}</p>
+                  {cjImportJob.pause_reason && <p className="mt-1 text-destructive">{cjImportJob.pause_reason}</p>}
+                </div>}
               </div>)}
             </div>
           </section>

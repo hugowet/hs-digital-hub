@@ -298,8 +298,10 @@ export async function processCjCatalogBatch(supabaseAdmin: any, storeId: string,
 
     let nextIndex = category.next_product_index;
     while (nextIndex < queued.length && requestCount < CJ_REQUESTS_PER_BATCH) {
+      const queuedProduct = queued[nextIndex];
+      if (!queuedProduct) break;
       try {
-        const wasImported = await importCjProduct(supabaseAdmin, storeId, marginPercent, token, queued[nextIndex]);
+        const wasImported = await importCjProduct(supabaseAdmin, storeId, marginPercent, token, queuedProduct);
         if (wasImported) imported += 1;
         else skipped += 1;
       } catch (error) {
