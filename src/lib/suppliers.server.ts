@@ -123,7 +123,7 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
       image_url: images[0] ?? null,
       gallery_urls: [...new Set(images)].slice(0, 10),
       product_type: "physical",
-      is_active: false,
+      is_active: true,
       supplier: "cj",
       supplier_product_id: pid,
       supplier_variant_id: vid,
@@ -156,7 +156,7 @@ export async function syncCjStock(supabaseAdmin: any, storeId: string) {
     const stock = rows.reduce((sum, row) => sum + Math.max(0, Number(row?.storageNum ?? row?.totalInventory ?? 0)), 0);
     await supabaseAdmin.from("products").update({
       stock,
-      is_active: stock > 0,
+      is_active: true,
       supplier_last_synced_at: new Date().toISOString(),
     }).eq("id", product.id);
     updated += 1;
