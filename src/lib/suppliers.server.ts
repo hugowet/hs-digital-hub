@@ -223,10 +223,10 @@ export async function syncCjStock(supabaseAdmin: any, storeId: string) {
     .eq("store_id", storeId).eq("supplier", "cj").not("supplier_variant_id", "is", null);
   let updated = 0;
   for (const product of products ?? []) {
-    const stockData = await cjRequest<any>("/product/stock/queryByVid", token, {
-      method: "POST",
-      body: JSON.stringify({ vid: product.supplier_variant_id }),
-    });
+    const stockData = await cjRequest<any>(
+      `/product/stock/queryByVid?vid=${encodeURIComponent(product.supplier_variant_id)}`,
+      token,
+    );
     const rows = Array.isArray(stockData) ? stockData : [stockData];
     const stock = rows.reduce((sum, row) => sum + Math.max(0, Number(row?.storageNum ?? row?.totalInventory ?? 0)), 0);
     await supabaseAdmin.from("products").update({
