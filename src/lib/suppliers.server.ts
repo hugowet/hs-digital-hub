@@ -53,28 +53,36 @@ const CJ_PRODUCTS_PER_CATEGORY = 3;
 let cjLastRequestAt = 0;
 
 async function waitForCjRateLimit() {
-  const waitMs = Math.max(0, 1_050 - (Date.now() - cjLastRequestAt));
+  const waitMs = Math.max(0, 1_250 - (Date.now() - cjLastRequestAt));
   if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
   cjLastRequestAt = Date.now();
 }
 
 async function cjRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  await waitForCjRateLimit();
-  const response = await fetch(`${CJ_API}${path}`, {
-    ...init,
-    headers: {
-      "CJ-Access-Token": token,
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  const text = await response.text();
-  const parsed = text ? JSON.parse(text) as CjEnvelope<T> : {};
-  if (!response.ok || parsed.result === false) {
-    throw new Error(`CJ Dropshipping recusou a operação: ${parsed.message ?? response.status}`);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await waitForCjRateLimit();
+    const response = await fetch(`${CJ_API}${path}`, {
+      ...init,
+      headers: {
+        "CJ-Access-Token": token,
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
+    const text = await response.text();
+    const parsed = text ? JSON.parse(text) as CjEnvelope<T> : {};
+    const rateLimited = response.status === 429 || parsed.message?.toLowerCase().includes("too many requests");
+    if (rateLimited && attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 1_500 * (attempt + 1)));
+      continue;
+    }
+    if (!response.ok || parsed.result === false) {
+      throw new Error(`CJ Dropshipping recusou a operação: ${parsed.message ?? response.status}`);
+    }
+    if (parsed.data === undefined) throw new Error("A CJ Dropshipping retornou uma resposta vazia.");
+    return parsed.data;
   }
-  if (parsed.data === undefined) throw new Error("A CJ Dropshipping retornou uma resposta vazia.");
-  return parsed.data;
+  throw new Error("A CJ Dropshipping limitou temporariamente a sincronização.");
 }
 
 export async function getCjAccessToken(supabaseAdmin: any, storeId: string) {
