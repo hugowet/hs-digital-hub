@@ -995,6 +995,7 @@ export type Database = {
       }
       supplier_integrations: {
         Row: {
+          access_token_encrypted: string | null
           auto_fulfill: boolean
           auto_sync: boolean
           created_at: string
@@ -1004,11 +1005,14 @@ export type Database = {
           last_stock_sync_at: string | null
           margin_percent: number
           provider: string
+          refresh_token_encrypted: string | null
           status: string
           store_id: string
+          token_expires_at: string | null
           updated_at: string
         }
         Insert: {
+          access_token_encrypted?: string | null
           auto_fulfill?: boolean
           auto_sync?: boolean
           created_at?: string
@@ -1018,11 +1022,14 @@ export type Database = {
           last_stock_sync_at?: string | null
           margin_percent?: number
           provider: string
+          refresh_token_encrypted?: string | null
           status?: string
           store_id: string
+          token_expires_at?: string | null
           updated_at?: string
         }
         Update: {
+          access_token_encrypted?: string | null
           auto_fulfill?: boolean
           auto_sync?: boolean
           created_at?: string
@@ -1032,8 +1039,10 @@ export type Database = {
           last_stock_sync_at?: string | null
           margin_percent?: number
           provider?: string
+          refresh_token_encrypted?: string | null
           status?: string
           store_id?: string
+          token_expires_at?: string | null
           updated_at?: string
         }
         Relationships: [
