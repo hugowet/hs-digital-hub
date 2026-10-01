@@ -918,6 +918,65 @@ export type Database = {
         }
         Relationships: []
       }
+      supplier_catalog_categories: {
+        Row: {
+          category_id: string
+          category_name: string
+          category_path: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          imported_count: number
+          last_error: string | null
+          next_product_index: number
+          product_ids: Json
+          provider: string
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          category_name: string
+          category_path: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          imported_count?: number
+          last_error?: string | null
+          next_product_index?: number
+          product_ids?: Json
+          provider: string
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          category_name?: string
+          category_path?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          imported_count?: number
+          last_error?: string | null
+          next_product_index?: number
+          product_ids?: Json
+          provider?: string
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_catalog_categories_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_fulfillments: {
         Row: {
           attempts: number
@@ -986,6 +1045,65 @@ export type Database = {
           },
           {
             foreignKeyName: "supplier_fulfillments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_import_jobs: {
+        Row: {
+          completed_at: string | null
+          completed_categories: number
+          created_at: string
+          id: string
+          imported_products: number
+          lock_expires_at: string | null
+          pause_reason: string | null
+          provider: string
+          skipped_products: number
+          started_at: string | null
+          status: string
+          store_id: string
+          total_categories: number
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_categories?: number
+          created_at?: string
+          id?: string
+          imported_products?: number
+          lock_expires_at?: string | null
+          pause_reason?: string | null
+          provider: string
+          skipped_products?: number
+          started_at?: string | null
+          status?: string
+          store_id: string
+          total_categories?: number
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_categories?: number
+          created_at?: string
+          id?: string
+          imported_products?: number
+          lock_expires_at?: string | null
+          pause_reason?: string | null
+          provider?: string
+          skipped_products?: number
+          started_at?: string | null
+          status?: string
+          store_id?: string
+          total_categories?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_import_jobs_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
