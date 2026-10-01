@@ -54,7 +54,7 @@ async function signProductMedia(product: Product, supabaseAdmin: any): Promise<P
   };
 }
 
-const projection = "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,stores(name,slug)";
+const projection = "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier,stores(name,slug)";
 
 export const fetchProducts = createServerFn({ method: "GET" }).handler(async () => {
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;

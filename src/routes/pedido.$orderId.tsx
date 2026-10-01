@@ -46,17 +46,18 @@ function OrderPaymentPage() {
     queryFn: async () => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return null;
-      const [{ data: order, error }, { data: items }, { data: transactions }, { data: deliveries }, { data: tracking }, { data: conversation }] = await Promise.all([
+      const [{ data: order, error }, { data: items }, { data: transactions }, { data: deliveries }, { data: tracking }, { data: conversation }, { data: fulfillments }] = await Promise.all([
         supabase.from("orders").select("*").eq("id", orderId).maybeSingle(),
         supabase.from("order_items").select("*").eq("order_id", orderId),
         supabase.from("payment_transactions").select("*,stores(name)").eq("order_id", orderId).order("created_at"),
         supabase.from("digital_deliveries").select("*").eq("order_id", orderId),
         supabase.from("order_tracking_events").select("*").eq("order_id", orderId).order("created_at"),
         supabase.from("order_conversations").select("id,order_messages(id,body,sender_id,created_at)").eq("order_id", orderId).maybeSingle(),
+        supabase.from("supplier_fulfillments").select("status,tracking_code,tracking_carrier,updated_at").eq("order_id", orderId),
       ]);
       if (error) throw error;
       if (!order) return null;
-      return { order, items: items ?? [], transactions: transactions ?? [], deliveries: deliveries ?? [], tracking: tracking ?? [], conversation };
+      return { order, items: items ?? [], transactions: transactions ?? [], deliveries: deliveries ?? [], tracking: tracking ?? [], conversation, fulfillments: fulfillments ?? [] };
     },
     refetchInterval: (query) => query.state.data?.order.payment_status === "approved" ? false : 5000,
   });
@@ -140,7 +141,7 @@ function OrderPaymentPage() {
           </section>;
         })}
         {data.deliveries.length > 0 && <section className="surface-card p-4"><h2 className="flex items-center gap-2 font-semibold"><Download className="h-5 w-5 text-success" />Acessos digitais liberados</h2><div className="mt-3 space-y-3">{data.deliveries.map((delivery) => <div key={delivery.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"><div><p className="font-medium">{delivery.title}</p>{delivery.delivery_instructions && <p className="text-sm text-muted-foreground">{delivery.delivery_instructions}</p>}</div><Button asChild><a href={delivery.delivery_url} target="_blank" rel="noreferrer">Acessar produto</a></Button></div>)}</div></section>}
-        <TrackingStepper events={data.tracking} paid={data.order.payment_status === "approved"} />
+        <TrackingStepper events={data.tracking} paid={data.order.payment_status === "approved"} fulfillments={data.fulfillments} />
         <section className="surface-card p-4"><h2 className="flex items-center gap-2 font-semibold"><MessageCircle className="h-5 w-5 text-primary" />Mensagem sobre a compra</h2><div className="mt-3 max-h-64 space-y-2 overflow-y-auto">{(data.conversation?.order_messages ?? []).sort((a, b) => a.created_at.localeCompare(b.created_at)).map((item) => <div key={item.id} className="rounded-lg bg-muted p-3 text-sm">{item.body}<p className="mt-1 text-[10px] text-muted-foreground">{new Date(item.created_at).toLocaleString("pt-BR")}</p></div>)}</div><form className="mt-3 flex gap-2" onSubmit={async (event) => { event.preventDefault(); const body = message.trim(); if (!body) return; const { data: user } = await supabase.auth.getUser(); if (!user.user) return; let conversationId = data.conversation?.id; if (!conversationId) { const { data: created, error } = await supabase.from("order_conversations").insert({ order_id: orderId, buyer_id: user.user.id }).select("id").single(); if (error) { toast.error(error.message); return; } conversationId = created.id; } const { error } = await supabase.from("order_messages").insert({ conversation_id: conversationId, sender_id: user.user.id, body }); if (error) toast.error(error.message); else { setMessage(""); await qc.invalidateQueries({ queryKey: ["buyer-order", orderId] }); } }}><Input value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} placeholder="Escreva para o atendimento sobre este pedido" /><Button type="submit" size="icon" aria-label="Enviar mensagem"><Send /></Button></form></section>
       </div>
       <aside className="surface-card h-fit p-4 lg:sticky lg:top-28"><h2 className="font-semibold">Resumo</h2><div className="mt-3 flex justify-between border-b border-border pb-3 text-sm"><span className="text-muted-foreground">{data.items.reduce((sum, item) => sum + item.quantity, 0)} itens</span><strong>{brl(Number(data.order.total))}</strong></div><p className="mt-3 text-xs text-muted-foreground">Em carrinhos com várias lojas, cada pagamento é confirmado separadamente. O pedido fica pago após todas as lojas receberem.</p><Button variant="outline" className="mt-4 w-full" onClick={() => navigate({ to: "/" })}>Continuar comprando</Button></aside>
@@ -159,12 +160,13 @@ const trackingSteps = [
   ["confirmed", "Pedido confirmado"], ["preparing", "Em separação"], ["shipped", "Enviado"], ["out_for_delivery", "Saiu para entrega"], ["delivered", "Entregue"],
 ] as const;
 
-function TrackingStepper({ events, paid }: { events: Array<{ status: string }>; paid: boolean }) {
+function TrackingStepper({ events, paid, fulfillments }: { events: Array<{ status: string }>; paid: boolean; fulfillments: Array<{ status: string; tracking_code: string | null; tracking_carrier: string | null }> }) {
   const reached = new Set(events.map((event) => event.status));
   if (paid) reached.add("confirmed");
   let lastReached = -1;
   trackingSteps.forEach(([status], index) => { if (reached.has(status)) lastReached = Math.max(lastReached, index); });
-  return <section className="surface-card p-4"><h2 className="font-semibold">Acompanhe a entrega</h2><div className="mt-4 grid gap-3 sm:grid-cols-5">{trackingSteps.map(([status, label], index) => <div key={status} className="flex items-center gap-2 sm:block"><span className={`grid h-7 w-7 place-items-center rounded-full text-xs font-bold ${index <= lastReached ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{index + 1}</span><p className="text-xs sm:mt-2">{label}</p></div>)}</div></section>;
+  const tracking = fulfillments.find((item) => item.tracking_code);
+  return <section className="surface-card p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Acompanhe a entrega</h2>{tracking && <span className="text-xs font-medium text-primary">{tracking.tracking_carrier ?? "Transportadora"}: {tracking.tracking_code}</span>}</div><div className="mt-4 grid gap-3 sm:grid-cols-5">{trackingSteps.map(([status, label], index) => <div key={status} className="flex items-center gap-2 sm:block"><span className={`grid h-7 w-7 place-items-center rounded-full text-xs font-bold ${index <= lastReached ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{index + 1}</span><p className="text-xs sm:mt-2">{label}</p></div>)}</div></section>;
 }
 
 function Shell({ children }: { children: React.ReactNode }) { return <div className="min-h-screen bg-background"><SiteHeader /><main className="mx-auto w-full max-w-6xl px-4 py-6">{children}</main></div>; }

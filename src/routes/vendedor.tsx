@@ -18,7 +18,9 @@ import {
   Truck, 
   Video, 
   WalletCards, 
-  XCircle 
+  XCircle,
+  RefreshCw,
+  Boxes,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -34,6 +36,7 @@ import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
 import { createSellerProduct } from "@/lib/products.functions";
+import { processSupplierFulfillment, syncCjProducts } from "@/lib/suppliers.functions";
 
 export const Route = createFileRoute("/vendedor")({
   ssr: false,
@@ -58,6 +61,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 function SellerCenterPage() {
   const qc = useQueryClient();
   const startConnection = useServerFn(startMercadoPagoConnection);
+  const syncCj = useServerFn(syncCjProducts);
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -95,6 +99,20 @@ function SellerCenterPage() {
       return data ?? [];
     },
   });
+
+  const { data: supplierIntegrations = [] } = useQuery({
+    enabled: !!store?.id,
+    queryKey: ["supplier-integrations", store?.id],
+    queryFn: async () => {
+      if (!store?.id) return [];
+      const { data, error } = await supabase.from("supplier_integrations")
+        .select("provider,status,margin_percent,last_catalog_sync_at,last_stock_sync_at,last_error")
+        .eq("store_id", store.id).order("provider");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const [syncingCj, setSyncingCj] = useState(false);
 
   if (userId === undefined || (userId && storeLoading)) {
     return (
@@ -189,6 +207,7 @@ function SellerCenterPage() {
           <TabsTrigger value="products">Meus produtos</TabsTrigger>
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e extrato</TabsTrigger>
+          <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
         </TabsList>
 
         {/* Aba de Pedidos e Rastreio */}
@@ -237,6 +256,41 @@ function SellerCenterPage() {
         {/* Aba de Vendas e Extrato com Separação e Lembretes */}
         <TabsContent value="sales" className="pt-4">
           <SellerSalesManager storeId={store.id} transactions={transactions} />
+        </TabsContent>
+
+        <TabsContent value="suppliers" className="pt-4">
+          <section className="surface-card p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
+              <div>
+                <h2 className="flex items-center gap-2 font-semibold"><Boxes className="h-5 w-5 text-primary" />Fornecedores conectados</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Produtos e estoque reais da sua operação de dropshipping.</p>
+              </div>
+              <Button disabled={syncingCj} onClick={async () => {
+                try {
+                  setSyncingCj(true);
+                  const result = await syncCj({ data: { storeId: store.id } });
+                  toast.success(`${result.imported} produtos e ${result.updated} estoques sincronizados.`);
+                  await Promise.all([
+                    qc.invalidateQueries({ queryKey: ["store-products", store.id] }),
+                    qc.invalidateQueries({ queryKey: ["supplier-integrations", store.id] }),
+                    qc.invalidateQueries({ queryKey: ["products"] }),
+                  ]);
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Não foi possível sincronizar a CJ.");
+                } finally {
+                  setSyncingCj(false);
+                }
+              }}><RefreshCw className={`h-4 w-4 ${syncingCj ? "animate-spin" : ""}`} />{syncingCj ? "Sincronizando…" : "Sincronizar CJ"}</Button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {supplierIntegrations.map((integration) => <div key={integration.provider} className="rounded-lg border border-border p-4">
+                <div className="flex items-center justify-between gap-2"><strong>{integration.provider === "cj" ? "CJ Dropshipping" : "Dropi Nacional"}</strong><span className={`rounded-md px-2 py-1 text-xs font-semibold ${integration.status === "active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>{integration.status === "active" ? "Ativo" : "Aguardando acesso"}</span></div>
+                <p className="mt-2 text-xs text-muted-foreground">Margem aplicada: {Number(integration.margin_percent).toLocaleString("pt-BR")}%</p>
+                {integration.last_stock_sync_at && <p className="mt-1 text-xs text-muted-foreground">Estoque atualizado em {new Date(integration.last_stock_sync_at).toLocaleString("pt-BR")}</p>}
+                {integration.provider === "dropi" && <p className="mt-2 text-xs text-muted-foreground">A ativação depende das credenciais de parceiro fornecidas diretamente pelo Dropi.</p>}
+              </div>)}
+            </div>
+          </section>
         </TabsContent>
       </Tabs>
     </Shell>
@@ -726,6 +780,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
 
 function SellerOrdersTab({ storeId }: { storeId: string }) {
   const qc = useQueryClient();
+  const processFulfillment = useServerFn(processSupplierFulfillment);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [trackingNote, setTrackingNote] = useState<Record<string, string>>({});
   const [orderFilter, setOrderFilter] = useState<"paid" | "pending" | "all">("paid");
@@ -741,15 +796,17 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
       if (!items || items.length === 0) return [];
 
       const orderIds = Array.from(new Set(items.map((i) => i.order_id)));
-      const [{ data: ordersData }, { data: trackingEvents }] = await Promise.all([
+      const [{ data: ordersData }, { data: trackingEvents }, { data: fulfillments }] = await Promise.all([
         supabase.from("orders").select("id,created_at,payment_status,total,shipping_address").in("id", orderIds).order("created_at", { ascending: false }),
         supabase.from("order_tracking_events").select("order_id,status,note,created_at").in("order_id", orderIds).order("created_at", { ascending: true }),
+        supabase.from("supplier_fulfillments").select("id,order_id,provider,status,external_order_id,tracking_code,last_error").eq("store_id", storeId).in("order_id", orderIds),
       ]);
 
       return (ordersData ?? []).map((ord) => ({
         ...ord,
         items: items.filter((i) => i.order_id === ord.id),
         events: (trackingEvents ?? []).filter((e) => e.order_id === ord.id),
+        fulfillments: (fulfillments ?? []).filter((item) => item.order_id === ord.id),
       }));
     },
   });
@@ -863,6 +920,18 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
             </div>
 
             {/* Atualização de etapas e código de rastreio */}
+            {ord.fulfillments.map((fulfillment) => <div key={fulfillment.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 text-xs">
+              <span><strong>{fulfillment.provider === "cj" ? "CJ Dropshipping" : "Dropi"}</strong> · {fulfillment.status === "submitted" ? "Pedido enviado" : fulfillment.status === "failed" ? "Falha no envio" : "Aguardando envio"}{fulfillment.tracking_code ? ` · Rastreio ${fulfillment.tracking_code}` : ""}</span>
+              {fulfillment.provider === "cj" && ["pending", "retry", "failed"].includes(fulfillment.status) && <Button size="sm" variant="outline" onClick={async () => {
+                try {
+                  await processFulfillment({ data: { fulfillmentId: fulfillment.id, storeId } });
+                  toast.success("Pedido encaminhado à CJ Dropshipping.");
+                  await qc.invalidateQueries({ queryKey: ["seller-orders", storeId] });
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Não foi possível encaminhar o pedido.");
+                }
+              }}>Enviar agora</Button>}
+            </div>)}
             <div className="border-t border-border pt-3 space-y-2">
               <p className="text-xs font-semibold text-muted-foreground">Atualizar envio nos Correios:</p>
               <div className="flex flex-wrap gap-2">

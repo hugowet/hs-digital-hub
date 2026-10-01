@@ -27,6 +27,7 @@ export type Product = {
   specifications: Record<string, string>;
   variations: Array<{ name: string; options: string[] }>;
   product_type: string;
+  supplier: string | null;
   media?: ProductMedia[];
 };
 

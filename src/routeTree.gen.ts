@@ -22,6 +22,8 @@ import { Route as PedidoOrderIdRouteImport } from './routes/pedido.$orderId'
 import { Route as ProdutoProductIdRouteImport } from './routes/produto.$productId'
 import { Route as ApiPublicMercadoPagoOauthCallbackRouteImport } from './routes/api/public/mercado-pago/oauth-callback'
 import { Route as ApiPublicMercadoPagoWebhookRouteImport } from './routes/api/public/mercado-pago/webhook'
+import { Route as ApiPublicSuppliersProcessRouteImport } from './routes/api/public/suppliers/process'
+import { Route as ApiPublicSuppliersSyncRouteImport } from './routes/api/public/suppliers/sync'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -90,6 +92,17 @@ const ApiPublicMercadoPagoWebhookRoute =
     path: '/api/public/mercado-pago/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicSuppliersProcessRoute =
+  ApiPublicSuppliersProcessRouteImport.update({
+    id: '/api/public/suppliers/process',
+    path: '/api/public/suppliers/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicSuppliersSyncRoute = ApiPublicSuppliersSyncRouteImport.update({
+  id: '/api/public/suppliers/sync',
+  path: '/api/public/suppliers/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -104,6 +117,8 @@ export interface FileRoutesByFullPath {
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
+  '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
+  '/api/public/suppliers/sync': typeof ApiPublicSuppliersSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,6 +133,8 @@ export interface FileRoutesByTo {
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
+  '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
+  '/api/public/suppliers/sync': typeof ApiPublicSuppliersSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +151,8 @@ export interface FileRoutesById {
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
+  '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
+  '/api/public/suppliers/sync': typeof ApiPublicSuppliersSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,6 +169,8 @@ export interface FileRouteTypes {
     | '/produto/$productId'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
+    | '/api/public/suppliers/process'
+    | '/api/public/suppliers/sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -164,6 +185,8 @@ export interface FileRouteTypes {
     | '/produto/$productId'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
+    | '/api/public/suppliers/process'
+    | '/api/public/suppliers/sync'
   id:
     | '__root__'
     | '/'
@@ -179,6 +202,8 @@ export interface FileRouteTypes {
     | '/produto/$productId'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
+    | '/api/public/suppliers/process'
+    | '/api/public/suppliers/sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -192,6 +217,8 @@ export interface RootRouteChildren {
   ProdutoProductIdRoute: typeof ProdutoProductIdRoute
   ApiPublicMercadoPagoOauthCallbackRoute: typeof ApiPublicMercadoPagoOauthCallbackRoute
   ApiPublicMercadoPagoWebhookRoute: typeof ApiPublicMercadoPagoWebhookRoute
+  ApiPublicSuppliersProcessRoute: typeof ApiPublicSuppliersProcessRoute
+  ApiPublicSuppliersSyncRoute: typeof ApiPublicSuppliersSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -287,6 +314,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMercadoPagoWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/suppliers/process': {
+      id: '/api/public/suppliers/process'
+      path: '/api/public/suppliers/process'
+      fullPath: '/api/public/suppliers/process'
+      preLoaderRoute: typeof ApiPublicSuppliersProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/suppliers/sync': {
+      id: '/api/public/suppliers/sync'
+      path: '/api/public/suppliers/sync'
+      fullPath: '/api/public/suppliers/sync'
+      preLoaderRoute: typeof ApiPublicSuppliersSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -317,6 +358,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMercadoPagoOauthCallbackRoute:
     ApiPublicMercadoPagoOauthCallbackRoute,
   ApiPublicMercadoPagoWebhookRoute: ApiPublicMercadoPagoWebhookRoute,
+  ApiPublicSuppliersProcessRoute: ApiPublicSuppliersProcessRoute,
+  ApiPublicSuppliersSyncRoute: ApiPublicSuppliersSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

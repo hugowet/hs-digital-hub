@@ -759,6 +759,12 @@ export type Database = {
           specifications: Json
           stock: number
           store_id: string
+          supplier: string | null
+          supplier_cost: number | null
+          supplier_last_synced_at: string | null
+          supplier_product_id: string | null
+          supplier_sku: string | null
+          supplier_variant_id: string | null
           title: string
           variations: Json
         }
@@ -781,6 +787,12 @@ export type Database = {
           specifications?: Json
           stock?: number
           store_id: string
+          supplier?: string | null
+          supplier_cost?: number | null
+          supplier_last_synced_at?: string | null
+          supplier_product_id?: string | null
+          supplier_sku?: string | null
+          supplier_variant_id?: string | null
           title: string
           variations?: Json
         }
@@ -803,6 +815,12 @@ export type Database = {
           specifications?: Json
           stock?: number
           store_id?: string
+          supplier?: string | null
+          supplier_cost?: number | null
+          supplier_last_synced_at?: string | null
+          supplier_product_id?: string | null
+          supplier_sku?: string | null
+          supplier_variant_id?: string | null
           title?: string
           variations?: Json
         }
@@ -899,6 +917,143 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      supplier_fulfillments: {
+        Row: {
+          attempts: number
+          created_at: string
+          external_order_id: string | null
+          id: string
+          last_checked_at: string | null
+          last_error: string | null
+          next_attempt_at: string
+          order_id: string
+          provider: string
+          provider_payload: Json | null
+          request_payload: Json | null
+          status: string
+          store_id: string
+          submitted_at: string | null
+          tracking_carrier: string | null
+          tracking_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          external_order_id?: string | null
+          id?: string
+          last_checked_at?: string | null
+          last_error?: string | null
+          next_attempt_at?: string
+          order_id: string
+          provider: string
+          provider_payload?: Json | null
+          request_payload?: Json | null
+          status?: string
+          store_id: string
+          submitted_at?: string | null
+          tracking_carrier?: string | null
+          tracking_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          external_order_id?: string | null
+          id?: string
+          last_checked_at?: string | null
+          last_error?: string | null
+          next_attempt_at?: string
+          order_id?: string
+          provider?: string
+          provider_payload?: Json | null
+          request_payload?: Json | null
+          status?: string
+          store_id?: string
+          submitted_at?: string | null
+          tracking_carrier?: string | null
+          tracking_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_fulfillments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_fulfillments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_integrations: {
+        Row: {
+          access_token_encrypted: string | null
+          auto_fulfill: boolean
+          auto_sync: boolean
+          created_at: string
+          id: string
+          last_catalog_sync_at: string | null
+          last_error: string | null
+          last_stock_sync_at: string | null
+          margin_percent: number
+          provider: string
+          refresh_token_encrypted: string | null
+          status: string
+          store_id: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          auto_fulfill?: boolean
+          auto_sync?: boolean
+          created_at?: string
+          id?: string
+          last_catalog_sync_at?: string | null
+          last_error?: string | null
+          last_stock_sync_at?: string | null
+          margin_percent?: number
+          provider: string
+          refresh_token_encrypted?: string | null
+          status?: string
+          store_id: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          auto_fulfill?: boolean
+          auto_sync?: boolean
+          created_at?: string
+          id?: string
+          last_catalog_sync_at?: string | null
+          last_error?: string | null
+          last_stock_sync_at?: string | null
+          margin_percent?: number
+          provider?: string
+          refresh_token_encrypted?: string | null
+          status?: string
+          store_id?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_integrations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_addresses: {
         Row: {
