@@ -19,10 +19,9 @@ export const syncCjProducts = createServerFn({ method: "POST" })
     const { data: integration } = await supabaseAdmin.from("supplier_integrations")
       .select("margin_percent,status").eq("store_id", data.storeId).eq("provider", "cj").maybeSingle();
     if (!integration || integration.status !== "active") throw new Error("A integração CJ não está ativa.");
-    const { syncCjCatalog, syncCjStock } = await import("@/lib/suppliers.server");
+    const { syncCjCatalog } = await import("@/lib/suppliers.server");
     const catalog = await syncCjCatalog(supabaseAdmin, data.storeId, Number(integration.margin_percent));
-    const stock = await syncCjStock(supabaseAdmin, data.storeId);
-    return { ...catalog, ...stock };
+    return catalog;
   });
 
 export const processSupplierFulfillment = createServerFn({ method: "POST" })

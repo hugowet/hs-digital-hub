@@ -35,28 +35,27 @@ type CjProduct = {
 
 type CjPopularProduct = {
   id?: string;
+  warehouseInventoryNum?: number;
+  totalVerifiedInventory?: number;
 };
 
 type CjPopularSearch = {
   content?: Array<{ productList?: CjPopularProduct[] }>;
 };
 
-const CJ_POPULAR_CATEGORIES = [
-  "home decor",
-  "smart electronics",
-  "computer accessories",
-  "beauty",
-  "fitness sports",
-  "fashion accessories",
-  "pet supplies",
-  "kids toys",
-  "kitchen gadgets",
-  "car accessories",
-  "garden tools",
-  "travel accessories",
-] as const;
+type CjCategoryTree = Array<{
+  categoryFirstName?: string;
+  categoryFirstList?: Array<{
+    categorySecondName?: string;
+    categorySecondList?: Array<{ categoryId?: string; categoryName?: string }>;
+  }>;
+}>;
 
-const CJ_PRODUCTS_PER_CATEGORY = 5;
+type QueuedCjProduct = { id: string; stock: number };
+
+const CJ_PRODUCTS_PER_CATEGORY = 20;
+const CJ_REQUESTS_PER_BATCH = 8;
+const CJ_LOCK_MS = 45_000;
 let cjLastRequestAt = 0;
 
 async function waitForCjRateLimit() {
@@ -139,89 +138,225 @@ function categoryFor(name: string) {
   return "eletronicos-gadgets";
 }
 
-export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginPercent: number) {
-  const token = await getCjAccessToken(supabaseAdmin, storeId);
-  const productIds = new Set<string>();
+function flattenCjCategories(tree: CjCategoryTree) {
+  return tree.flatMap((first) => (first.categoryFirstList ?? []).flatMap((second) =>
+    (second.categorySecondList ?? []).flatMap((third) => {
+      if (!third.categoryId || !third.categoryName) return [];
+      return [{
+        category_id: third.categoryId,
+        category_name: third.categoryName,
+        category_path: [first.categoryFirstName, second.categorySecondName, third.categoryName]
+          .filter(Boolean).join(" / "),
+      }];
+    }),
+  ));
+}
 
-  for (const keyword of CJ_POPULAR_CATEGORIES) {
+export async function startCjCatalogImport(supabaseAdmin: any, storeId: string) {
+  const token = await getCjAccessToken(supabaseAdmin, storeId);
+  const tree = await cjRequest<CjCategoryTree>("/product/getCategory", token);
+  const categories = flattenCjCategories(tree);
+  if (categories.length === 0) throw new Error("A CJ não retornou categorias para importar.");
+
+  const rows = categories.map((category) => ({
+    store_id: storeId,
+    provider: "cj",
+    ...category,
+    status: "pending",
+    product_ids: [],
+    next_product_index: 0,
+    imported_count: 0,
+    last_error: null,
+    completed_at: null,
+  }));
+  for (let index = 0; index < rows.length; index += 100) {
+    const { error } = await supabaseAdmin.from("supplier_catalog_categories")
+      .upsert(rows.slice(index, index + 100), { onConflict: "store_id,provider,category_id" });
+    if (error) throw error;
+  }
+
+  const { error } = await supabaseAdmin.from("supplier_import_jobs").upsert({
+    store_id: storeId,
+    provider: "cj",
+    status: "pending",
+    total_categories: categories.length,
+    completed_categories: 0,
+    imported_products: 0,
+    skipped_products: 0,
+    lock_expires_at: null,
+    pause_reason: null,
+    started_at: new Date().toISOString(),
+    completed_at: null,
+  }, { onConflict: "store_id,provider" });
+  if (error) throw error;
+  return { categories: categories.length };
+}
+
+async function queueCategoryProducts(token: string, categoryId: string) {
     const params = new URLSearchParams({
       page: "1",
       size: String(CJ_PRODUCTS_PER_CATEGORY),
-      keyWord: keyword,
+      categoryId,
       orderBy: "1",
       sort: "desc",
     });
     const search = await cjRequest<CjPopularSearch>(`/product/listV2?${params.toString()}`, token);
+    const products = new Map<string, QueuedCjProduct>();
     for (const group of search.content ?? []) {
       for (const product of group.productList ?? []) {
-        if (product.id) productIds.add(product.id);
+        if (product.id) products.set(product.id, {
+          id: product.id,
+          stock: Math.max(0, Number(product.warehouseInventoryNum ?? product.totalVerifiedInventory ?? 0)),
+        });
       }
     }
-  }
+    return [...products.values()].slice(0, CJ_PRODUCTS_PER_CATEGORY);
+}
+
+async function importCjProduct(
+  supabaseAdmin: any,
+  storeId: string,
+  marginPercent: number,
+  token: string,
+  queued: QueuedCjProduct,
+) {
+  const product = await cjRequest<CjProduct>(`/product/query?pid=${encodeURIComponent(queued.id)}`, token);
+  const variant = product.variants?.[0];
+  const pid = product.pid;
+  const vid = variant?.vid;
+  const title = (product.productNameEn ?? product.productName ?? "").trim();
+  const cost = Number(variant?.variantSellPrice ?? product.sellPrice);
+  if (!pid || !vid || !title || !Number.isFinite(cost) || cost <= 0) return false;
+  const images = [variant?.variantImage, product.bigImage, product.productImage, ...(product.productImageSet ?? [])]
+    .filter((value): value is string => Boolean(value?.startsWith("https://")));
+  const price = Math.round(cost * (1 + marginPercent / 100) * 100) / 100;
+  const productData = {
+    store_id: storeId,
+    title: title.slice(0, 160),
+    description: "Produto real da CJ Dropshipping, selecionado entre os mais procurados da categoria.",
+    description_long: "Produto real do catálogo CJ Dropshipping, com estoque sincronizado pelo fornecedor.",
+    price,
+    stock: queued.stock,
+    category: categoryFor(`${product.categoryName ?? ""} ${title}`),
+    image_url: images[0] ?? null,
+    gallery_urls: [...new Set(images)].slice(0, 10),
+    product_type: "physical",
+    is_active: true,
+    supplier: "cj",
+    supplier_product_id: pid,
+    supplier_variant_id: vid,
+    supplier_sku: variant.variantSku ?? null,
+    supplier_cost: cost,
+    supplier_last_synced_at: new Date().toISOString(),
+  };
+  const { data: existingProduct, error: lookupError } = await supabaseAdmin.from("products")
+    .select("id").eq("store_id", storeId).eq("supplier", "cj").eq("supplier_variant_id", vid).maybeSingle();
+  if (lookupError) throw lookupError;
+  const { error } = existingProduct
+    ? await supabaseAdmin.from("products").update(productData).eq("id", existingProduct.id)
+    : await supabaseAdmin.from("products").insert(productData);
+  if (error) throw error;
+  return true;
+}
+
+export async function processCjCatalogBatch(supabaseAdmin: any, storeId: string, marginPercent: number) {
+  const now = new Date();
+  const lockExpiresAt = new Date(now.getTime() + CJ_LOCK_MS).toISOString();
+  const { data: claimed } = await supabaseAdmin.from("supplier_import_jobs")
+    .update({ status: "running", lock_expires_at: lockExpiresAt, pause_reason: null })
+    .eq("store_id", storeId).eq("provider", "cj")
+    .in("status", ["pending", "running"])
+    .or(`lock_expires_at.is.null,lock_expires_at.lt.${now.toISOString()}`)
+    .select("id,total_categories,completed_categories,imported_products,skipped_products").maybeSingle();
+  if (!claimed) return { busy: true, done: false, imported: 0, skipped: 0 };
 
   let imported = 0;
   let skipped = 0;
-  const errors: string[] = [];
+  try {
+    const token = await getCjAccessToken(supabaseAdmin, storeId);
+    const { data: category } = await supabaseAdmin.from("supplier_catalog_categories")
+      .select("id,category_id,product_ids,next_product_index,imported_count")
+      .eq("store_id", storeId).eq("provider", "cj").in("status", ["pending", "processing"])
+      .order("created_at").limit(1).maybeSingle();
 
-  for (const productId of productIds) {
-    try {
-      const product = await cjRequest<CjProduct>(`/product/query?pid=${encodeURIComponent(productId)}`, token);
-      const variant = product.variants?.[0];
-      const pid = product.pid;
-      const vid = variant?.vid;
-      const title = (product.productNameEn ?? product.productName ?? "").trim();
-      const cost = Number(variant?.variantSellPrice ?? product.sellPrice);
-      if (!pid || !vid || !title || !Number.isFinite(cost) || cost <= 0) {
-        skipped += 1;
-        continue;
-      }
-      const images = [variant?.variantImage, product.bigImage, product.productImage, ...(product.productImageSet ?? [])]
-        .filter((value): value is string => Boolean(value?.startsWith("https://")));
-      const price = Math.round(cost * (1 + marginPercent / 100) * 100) / 100;
-      const productData = {
-        store_id: storeId,
-        title: title.slice(0, 160),
-        description: "Produto popular da CJ Dropshipping, selecionado entre os mais vendidos da categoria.",
-        description_long: "Produto real do catálogo CJ Dropshipping, com estoque sincronizado pelo fornecedor.",
-        price,
-        stock: 0,
-        category: categoryFor(`${product.categoryName ?? ""} ${title}`),
-        image_url: images[0] ?? null,
-        gallery_urls: [...new Set(images)].slice(0, 10),
-        product_type: "physical",
-        is_active: true,
-        supplier: "cj",
-        supplier_product_id: pid,
-        supplier_variant_id: vid,
-        supplier_sku: variant.variantSku ?? null,
-        supplier_cost: cost,
-        supplier_last_synced_at: new Date().toISOString(),
-      };
-      const { data: existingProduct, error: lookupError } = await supabaseAdmin.from("products")
-        .select("id")
-        .eq("store_id", storeId)
-        .eq("supplier", "cj")
-        .eq("supplier_variant_id", vid)
-        .maybeSingle();
-      if (lookupError) throw lookupError;
-      const { error } = existingProduct
-        ? await supabaseAdmin.from("products").update(productData).eq("id", existingProduct.id)
-        : await supabaseAdmin.from("products").insert(productData);
-      if (error) throw error;
-      imported += 1;
-    } catch (error) {
-      skipped += 1;
-      if (errors.length < 3) {
-        errors.push(error instanceof Error ? error.message : JSON.stringify(error));
-      }
+    if (!category) {
+      await supabaseAdmin.from("supplier_import_jobs").update({
+        status: "completed", completed_at: new Date().toISOString(), lock_expires_at: null,
+      }).eq("id", claimed.id);
+      return { busy: false, done: true, imported: 0, skipped: 0 };
     }
-  }
 
-  await supabaseAdmin.from("supplier_integrations").update({
-    last_catalog_sync_at: new Date().toISOString(),
-    last_error: null,
-  }).eq("store_id", storeId).eq("provider", "cj");
-  return { imported, skipped, categories: CJ_POPULAR_CATEGORIES.length, errors };
+    let queued = Array.isArray(category.product_ids) ? category.product_ids as QueuedCjProduct[] : [];
+    let requestCount = 0;
+    if (queued.length === 0) {
+      queued = await queueCategoryProducts(token, category.category_id);
+      requestCount += 1;
+      await supabaseAdmin.from("supplier_catalog_categories").update({
+        status: "processing", product_ids: queued, next_product_index: 0,
+      }).eq("id", category.id);
+    }
+
+    let nextIndex = category.next_product_index;
+    while (nextIndex < queued.length && requestCount < CJ_REQUESTS_PER_BATCH) {
+      try {
+        const wasImported = await importCjProduct(supabaseAdmin, storeId, marginPercent, token, queued[nextIndex]);
+        if (wasImported) imported += 1;
+        else skipped += 1;
+      } catch (error) {
+        skipped += 1;
+        await supabaseAdmin.from("supplier_catalog_categories").update({
+          last_error: (error instanceof Error ? error.message : "Falha ao importar produto.").slice(0, 1000),
+        }).eq("id", category.id);
+      }
+      requestCount += 1;
+      nextIndex += 1;
+      await supabaseAdmin.from("supplier_catalog_categories").update({
+        next_product_index: nextIndex,
+        imported_count: category.imported_count + imported,
+      }).eq("id", category.id);
+    }
+
+    let completedCategories = claimed.completed_categories;
+    if (nextIndex >= queued.length) {
+      completedCategories += 1;
+      await supabaseAdmin.from("supplier_catalog_categories").update({
+        status: "completed", completed_at: new Date().toISOString(), last_error: null,
+      }).eq("id", category.id);
+    }
+    const done = completedCategories >= claimed.total_categories;
+    await supabaseAdmin.from("supplier_import_jobs").update({
+      status: done ? "completed" : "pending",
+      completed_categories: completedCategories,
+      imported_products: claimed.imported_products + imported,
+      skipped_products: claimed.skipped_products + skipped,
+      lock_expires_at: null,
+      completed_at: done ? new Date().toISOString() : null,
+    }).eq("id", claimed.id);
+    await supabaseAdmin.from("supplier_integrations").update({
+      last_catalog_sync_at: new Date().toISOString(), last_error: null,
+    }).eq("store_id", storeId).eq("provider", "cj");
+    return { busy: false, done, imported, skipped, completedCategories, totalCategories: claimed.total_categories };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Falha na sincronização da CJ.";
+    await supabaseAdmin.from("supplier_import_jobs").update({
+      status: "paused", pause_reason: message.slice(0, 1000), lock_expires_at: null,
+    }).eq("id", claimed.id);
+    await supabaseAdmin.from("supplier_integrations").update({ last_error: message.slice(0, 1000) })
+      .eq("store_id", storeId).eq("provider", "cj");
+    throw error;
+  }
+}
+
+export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginPercent: number) {
+  const { data: job } = await supabaseAdmin.from("supplier_import_jobs")
+    .select("id,status").eq("store_id", storeId).eq("provider", "cj").maybeSingle();
+  if (!job || job.status === "completed" || job.status === "failed") {
+    await startCjCatalogImport(supabaseAdmin, storeId);
+  } else if (job.status === "paused") {
+    await supabaseAdmin.from("supplier_import_jobs").update({ status: "pending", pause_reason: null })
+      .eq("id", job.id);
+  }
+  return processCjCatalogBatch(supabaseAdmin, storeId, marginPercent);
 }
 
 export async function syncCjStock(supabaseAdmin: any, storeId: string) {

@@ -11,13 +11,12 @@ export const Route = createFileRoute("/api/public/suppliers/sync")({
         const { data: integrations, error } = await supabaseAdmin.from("supplier_integrations")
           .select("store_id,margin_percent,provider").eq("status", "active").eq("auto_sync", true);
         if (error) throw error;
-        const { syncCjCatalog, syncCjStock } = await import("@/lib/suppliers.server");
+        const { syncCjCatalog } = await import("@/lib/suppliers.server");
         const results = [];
         for (const integration of integrations ?? []) {
           if (integration.provider !== "cj") continue;
           const catalog = await syncCjCatalog(supabaseAdmin, integration.store_id, Number(integration.margin_percent));
-          const stock = await syncCjStock(supabaseAdmin, integration.store_id);
-          results.push({ provider: "cj", storeId: integration.store_id, ...catalog, ...stock });
+          results.push({ provider: "cj", storeId: integration.store_id, ...catalog });
         }
         return Response.json({ results });
       },

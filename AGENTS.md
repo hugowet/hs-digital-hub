@@ -21,4 +21,4 @@
 - A geração de Pix exige CPF do pagador e bloqueia autopagamento quando comprador e recebedor usam a mesma conta Mercado Pago.
 - Pedidos só podem ser cancelados antes de iniciar uma cobrança; o cancelamento é feito no servidor, devolve estoque e preserva o histórico financeiro.
 - Pagamentos iniciados são reconciliados com o Mercado Pago pela página do pedido, além do webhook assinado, para recuperar avisos atrasados.
-- Supplier products use stable provider variant IDs; CJ imports use a broad set of popular category searches with automatic deduplication, paid orders enter an idempotent fulfillment queue, and all supplier credentials stay server-only.
+- Supplier products use stable provider variant IDs; CJ full-catalog imports use a persistent, bounded, single-flight category queue with automatic deduplication, paid orders enter an idempotent fulfillment queue, and all supplier credentials stay server-only.
