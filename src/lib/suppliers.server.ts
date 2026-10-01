@@ -193,7 +193,9 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
       imported += 1;
     } catch (error) {
       skipped += 1;
-      if (errors.length < 3) errors.push(error instanceof Error ? error.message : "Falha desconhecida da CJ.");
+      if (errors.length < 3) {
+        errors.push(error instanceof Error ? error.message : JSON.stringify(error));
+      }
     }
   }
 
