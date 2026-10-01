@@ -1,23 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { 
+import {
   AlertCircle,
-  CheckCircle2, 
-  Clock, 
-  DollarSign, 
-  ExternalLink, 
-  Image, 
-  Mail, 
-  MessageCircle, 
-  Package, 
-  Plus, 
-  ShoppingBag, 
-  Trash2, 
-  TrendingUp, 
-  Truck, 
-  Video, 
-  WalletCards, 
+  CheckCircle2,
+  Clock,
+  DollarSign,
+  ExternalLink,
+  Image,
+  Mail,
+  MessageCircle,
+  Package,
+  Plus,
+  ShoppingBag,
+  Trash2,
+  TrendingUp,
+  Truck,
+  Video,
+  WalletCards,
   XCircle,
   RefreshCw,
   Boxes,
@@ -43,7 +43,10 @@ export const Route = createFileRoute("/vendedor")({
   head: () => ({
     meta: [
       { title: "Seller Center · HS Digital" },
-      { name: "description", content: "Gerencie sua loja, produtos, vendas e pedidos na HS Digital." },
+      {
+        name: "description",
+        content: "Gerencie sua loja, produtos, vendas e pedidos na HS Digital.",
+      },
     ],
   }),
   component: SellerCenterPage,
@@ -73,7 +76,11 @@ function SellerCenterPage() {
     queryKey: ["seller-store", userId],
     queryFn: async () => {
       if (!userId) return null;
-      const { data } = await supabase.from("stores").select("*").eq("owner_id", userId).maybeSingle();
+      const { data } = await supabase
+        .from("stores")
+        .select("*")
+        .eq("owner_id", userId)
+        .maybeSingle();
       return data;
     },
   });
@@ -83,7 +90,11 @@ function SellerCenterPage() {
     queryKey: ["store-products", store?.id],
     queryFn: async () => {
       if (!store?.id) return [];
-      const { data, error } = await supabase.from("products").select("*, product_media(*)").eq("store_id", store.id).order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("products")
+        .select("*, product_media(*)")
+        .eq("store_id", store.id)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -94,7 +105,11 @@ function SellerCenterPage() {
     queryKey: ["store-transactions", store?.id],
     queryFn: async () => {
       if (!store?.id) return [];
-      const { data, error } = await supabase.from("payment_transactions").select("*").eq("store_id", store.id).order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("payment_transactions")
+        .select("*")
+        .eq("store_id", store.id)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -105,9 +120,11 @@ function SellerCenterPage() {
     queryKey: ["supplier-integrations", store?.id],
     queryFn: async () => {
       if (!store?.id) return [];
-      const { data, error } = await supabase.from("supplier_integrations")
+      const { data, error } = await supabase
+        .from("supplier_integrations")
         .select("provider,status,margin_percent,last_catalog_sync_at,last_stock_sync_at,last_error")
-        .eq("store_id", store.id).order("provider");
+        .eq("store_id", store.id)
+        .order("provider");
       if (error) throw error;
       return data ?? [];
     },
@@ -115,12 +132,17 @@ function SellerCenterPage() {
   const { data: cjImportJob } = useQuery({
     enabled: !!store?.id,
     queryKey: ["cj-import-job", store?.id],
-    refetchInterval: (query) => query.state.data?.status === "completed" ? false : 10_000,
+    refetchInterval: (query) => (query.state.data?.status === "completed" ? false : 10_000),
     queryFn: async () => {
       if (!store?.id) return null;
-      const { data, error } = await supabase.from("supplier_import_jobs")
-        .select("status,total_categories,completed_categories,imported_products,skipped_products,pause_reason")
-        .eq("store_id", store.id).eq("provider", "cj").maybeSingle();
+      const { data, error } = await supabase
+        .from("supplier_import_jobs")
+        .select(
+          "status,total_categories,completed_categories,imported_products,skipped_products,pause_reason",
+        )
+        .eq("store_id", store.id)
+        .eq("provider", "cj")
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -153,7 +175,10 @@ function SellerCenterPage() {
     return (
       <Shell>
         <div className="surface-card mx-auto max-w-md p-8 text-center">
-          <StoreSetupForm userId={userId} onCreated={() => qc.invalidateQueries({ queryKey: ["seller-store"] })} />
+          <StoreSetupForm
+            userId={userId}
+            onCreated={() => qc.invalidateQueries({ queryKey: ["seller-store"] })}
+          />
         </div>
       </Shell>
     );
@@ -171,15 +196,21 @@ function SellerCenterPage() {
         </div>
         <div className="flex gap-2">
           {store.mercado_pago_status === "connected" ? (
-            <span className="rounded-md bg-success/10 px-3 py-2 text-sm font-semibold text-success">Mercado Pago Conectado</span>
+            <span className="rounded-md bg-success/10 px-3 py-2 text-sm font-semibold text-success">
+              Mercado Pago Conectado
+            </span>
           ) : (
             <Button
               onClick={async () => {
                 try {
-                  const result = await startConnection({ data: { storeId: store.id, origin: window.location.origin } });
+                  const result = await startConnection({
+                    data: { storeId: store.id, origin: window.location.origin },
+                  });
                   window.location.assign(result.url);
                 } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Não foi possível conectar.");
+                  toast.error(
+                    error instanceof Error ? error.message : "Não foi possível conectar.",
+                  );
                 }
               }}
             >
@@ -192,21 +223,27 @@ function SellerCenterPage() {
       {/* Métricas rápidas */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
         <div className="surface-card p-4 flex items-center gap-4">
-          <div className="p-3 bg-primary/10 rounded-lg text-primary"><DollarSign className="h-6 w-6" /></div>
+          <div className="p-3 bg-primary/10 rounded-lg text-primary">
+            <DollarSign className="h-6 w-6" />
+          </div>
           <div>
             <p className="text-xs text-muted-foreground">Saldo Líquido</p>
             <p className="text-xl font-bold text-success">{brl(totalNet)}</p>
           </div>
         </div>
         <div className="surface-card p-4 flex items-center gap-4">
-          <div className="p-3 bg-primary/10 rounded-lg text-primary"><TrendingUp className="h-6 w-6" /></div>
+          <div className="p-3 bg-primary/10 rounded-lg text-primary">
+            <TrendingUp className="h-6 w-6" />
+          </div>
           <div>
             <p className="text-xs text-muted-foreground">Vendas Aprovadas</p>
             <p className="text-xl font-bold">{approvedSales.length}</p>
           </div>
         </div>
         <div className="surface-card p-4 flex items-center gap-4">
-          <div className="p-3 bg-primary/10 rounded-lg text-primary"><Package className="h-6 w-6" /></div>
+          <div className="p-3 bg-primary/10 rounded-lg text-primary">
+            <Package className="h-6 w-6" />
+          </div>
           <div>
             <p className="text-xs text-muted-foreground">Produtos Ativos</p>
             <p className="text-xl font-bold">{products.length}</p>
@@ -234,10 +271,15 @@ function SellerCenterPage() {
             <h2 className="text-base font-semibold mb-4">Meus produtos ({products.length})</h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {products.map((p) => (
-                <div key={p.id} className="border border-border p-3 rounded-lg flex justify-between items-center">
+                <div
+                  key={p.id}
+                  className="border border-border p-3 rounded-lg flex justify-between items-center"
+                >
                   <div>
                     <p className="font-medium text-sm line-clamp-1">{p.title}</p>
-                    <p className="text-xs text-muted-foreground">{brl(Number(p.price))} · Estoque: {p.stock}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {brl(Number(p.price))} · Estoque: {p.stock}
+                    </p>
                   </div>
                   <Button
                     size="sm"
@@ -253,7 +295,9 @@ function SellerCenterPage() {
                   </Button>
                 </div>
               ))}
-              {products.length === 0 && <p className="text-sm text-muted-foreground">Nenhum produto cadastrado.</p>}
+              {products.length === 0 && (
+                <p className="text-sm text-muted-foreground">Nenhum produto cadastrado.</p>
+              )}
             </div>
           </section>
         </TabsContent>
@@ -261,7 +305,10 @@ function SellerCenterPage() {
         {/* Aba Cadastrar Produto */}
         <TabsContent value="create" className="pt-4">
           <div className="max-w-xl">
-            <ProductForm storeId={store.id} onCreated={() => qc.invalidateQueries({ queryKey: ["store-products"] })} />
+            <ProductForm
+              storeId={store.id}
+              onCreated={() => qc.invalidateQueries({ queryKey: ["store-products"] })}
+            />
           </div>
         </TabsContent>
 
@@ -275,41 +322,93 @@ function SellerCenterPage() {
           <section className="surface-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
               <div>
-                <h2 className="flex items-center gap-2 font-semibold"><Boxes className="h-5 w-5 text-primary" />Fornecedores conectados</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Produtos e estoque reais da sua operação de dropshipping.</p>
+                <h2 className="flex items-center gap-2 font-semibold">
+                  <Boxes className="h-5 w-5 text-primary" />
+                  Fornecedores conectados
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Produtos e estoque reais da sua operação de dropshipping.
+                </p>
               </div>
-              <Button disabled={syncingCj} onClick={async () => {
-                try {
-                  setSyncingCj(true);
-                  const result = await syncCj({ data: { storeId: store.id } });
-                   toast.success(result.done
-                     ? "Catálogo completo da CJ sincronizado."
-                     : `${result.imported} produtos importados neste lote. A fila continuará automaticamente.`);
-                  await Promise.all([
-                    qc.invalidateQueries({ queryKey: ["store-products", store.id] }),
-                    qc.invalidateQueries({ queryKey: ["supplier-integrations", store.id] }),
-                     qc.invalidateQueries({ queryKey: ["cj-import-job", store.id] }),
-                    qc.invalidateQueries({ queryKey: ["products"] }),
-                  ]);
-                } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Não foi possível sincronizar a CJ.");
-                } finally {
-                  setSyncingCj(false);
-                }
-              }}><RefreshCw className={`h-4 w-4 ${syncingCj ? "animate-spin" : ""}`} />{syncingCj ? "Sincronizando…" : "Sincronizar CJ"}</Button>
+              <Button
+                disabled={syncingCj}
+                onClick={async () => {
+                  try {
+                    setSyncingCj(true);
+                    const result = await syncCj({ data: { storeId: store.id } });
+                    toast.success(
+                      result.done
+                        ? "Catálogo completo da CJ sincronizado."
+                        : `${result.imported} produtos importados neste lote. A fila continuará automaticamente.`,
+                    );
+                    await Promise.all([
+                      qc.invalidateQueries({ queryKey: ["store-products", store.id] }),
+                      qc.invalidateQueries({ queryKey: ["supplier-integrations", store.id] }),
+                      qc.invalidateQueries({ queryKey: ["cj-import-job", store.id] }),
+                      qc.invalidateQueries({ queryKey: ["products"] }),
+                    ]);
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error ? error.message : "Não foi possível sincronizar a CJ.",
+                    );
+                  } finally {
+                    setSyncingCj(false);
+                  }
+                }}
+              >
+                <RefreshCw className={`h-4 w-4 ${syncingCj ? "animate-spin" : ""}`} />
+                {syncingCj ? "Sincronizando…" : "Sincronizar CJ"}
+              </Button>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {supplierIntegrations.map((integration) => <div key={integration.provider} className="rounded-lg border border-border p-4">
-                <div className="flex items-center justify-between gap-2"><strong>{integration.provider === "cj" ? "CJ Dropshipping" : "Dropi Nacional"}</strong><span className={`rounded-md px-2 py-1 text-xs font-semibold ${integration.status === "active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>{integration.status === "active" ? "Ativo" : "Aguardando acesso"}</span></div>
-                <p className="mt-2 text-xs text-muted-foreground">Margem aplicada: {Number(integration.margin_percent).toLocaleString("pt-BR")}%</p>
-                {integration.last_stock_sync_at && <p className="mt-1 text-xs text-muted-foreground">Estoque atualizado em {new Date(integration.last_stock_sync_at).toLocaleString("pt-BR")}</p>}
-                {integration.provider === "dropi" && <p className="mt-2 text-xs text-muted-foreground">A ativação depende das credenciais de parceiro fornecidas diretamente pelo Dropi.</p>}
-                {integration.provider === "cj" && cjImportJob && <div className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
-                  <p>{cjImportJob.completed_categories} de {cjImportJob.total_categories} categorias concluídas</p>
-                  <p className="mt-1">{cjImportJob.imported_products} produtos processados · Estado: {cjImportJob.status === "completed" ? "concluído" : cjImportJob.status === "paused" ? "pausado" : "em andamento"}</p>
-                  {cjImportJob.pause_reason && <p className="mt-1 text-destructive">{cjImportJob.pause_reason}</p>}
-                </div>}
-              </div>)}
+              {supplierIntegrations.map((integration) => (
+                <div key={integration.provider} className="rounded-lg border border-border p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <strong>
+                      {integration.provider === "cj" ? "CJ Dropshipping" : "Dropi Nacional"}
+                    </strong>
+                    <span
+                      className={`rounded-md px-2 py-1 text-xs font-semibold ${integration.status === "active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}
+                    >
+                      {integration.status === "active" ? "Ativo" : "Aguardando acesso"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Margem aplicada: {Number(integration.margin_percent).toLocaleString("pt-BR")}%
+                  </p>
+                  {integration.last_stock_sync_at && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Estoque atualizado em{" "}
+                      {new Date(integration.last_stock_sync_at).toLocaleString("pt-BR")}
+                    </p>
+                  )}
+                  {integration.provider === "dropi" && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      A ativação depende das credenciais de parceiro fornecidas diretamente pelo
+                      Dropi.
+                    </p>
+                  )}
+                  {integration.provider === "cj" && cjImportJob && (
+                    <div className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+                      <p>
+                        {cjImportJob.completed_categories} de {cjImportJob.total_categories}{" "}
+                        categorias concluídas
+                      </p>
+                      <p className="mt-1">
+                        {cjImportJob.imported_products} produtos processados · Estado:{" "}
+                        {cjImportJob.status === "completed"
+                          ? "concluído"
+                          : cjImportJob.status === "paused"
+                            ? "pausado"
+                            : "em andamento"}
+                      </p>
+                      {cjImportJob.pause_reason && (
+                        <p className="mt-1 text-destructive">{cjImportJob.pause_reason}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </section>
         </TabsContent>
@@ -356,7 +455,9 @@ function SellerSalesManager({ storeId, transactions }: { storeId: string; transa
     return !isPaid && !isCancelled && hoursOld < 72;
   });
 
-  const approvedOrders = salesOrders.filter((o) => o.payment_status === "approved" || o.status === "paid");
+  const approvedOrders = salesOrders.filter(
+    (o) => o.payment_status === "approved" || o.status === "paid",
+  );
 
   const cancelledOrders = salesOrders.filter((o) => {
     const isPaid = o.payment_status === "approved" || o.status === "paid";
@@ -377,7 +478,8 @@ function SellerSalesManager({ storeId, transactions }: { storeId: string; transa
     const targetPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
     const buyerName = addr?.["name"] || addr?.["recipient_name"] || "Cliente";
     const orderNum = ord.id.slice(0, 8).toUpperCase();
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://hs-digital-hub.lovable.app";
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "https://hs-digital-hub.lovable.app";
     const payUrl = `${origin}/pedido/${ord.id}`;
 
     const text = `Olá, ${buyerName}! Tudo bem? 😃
@@ -400,7 +502,8 @@ Se tiver qualquer dúvida ou precisar de ajuda para concluir, basta responder es
     const buyerEmail = addr?.["email"] || "";
     const buyerName = addr?.["name"] || addr?.["recipient_name"] || "Cliente";
     const orderNum = ord.id.slice(0, 8).toUpperCase();
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://hs-digital-hub.lovable.app";
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "https://hs-digital-hub.lovable.app";
     const payUrl = `${origin}/pedido/${ord.id}`;
 
     const subject = `Lembrete de Pagamento Pix - Pedido #${orderNum} - HS Digital`;
@@ -453,7 +556,9 @@ Equipe HS Digital`;
         </Button>
       </div>
 
-      {isLoading && <p className="py-8 text-center text-sm text-muted-foreground">Carregando transações...</p>}
+      {isLoading && (
+        <p className="py-8 text-center text-sm text-muted-foreground">Carregando transações...</p>
+      )}
 
       {/* 1. ABA AGUARDANDO PAGAMENTO */}
       {salesSubTab === "pending" && !isLoading && (
@@ -461,7 +566,8 @@ Equipe HS Digital`;
           <div className="rounded-lg bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200 flex items-center gap-2">
             <Clock className="h-4 w-4 shrink-0" />
             <span>
-              Clientes que geraram o código Pix. O estoque fica reservado por até <strong>72 horas</strong>. Envie um lembrete para recuperar a venda antes de expirar!
+              Clientes que geraram o código Pix. O estoque fica reservado por até{" "}
+              <strong>72 horas</strong>. Envie um lembrete para recuperar a venda antes de expirar!
             </span>
           </div>
 
@@ -471,11 +577,18 @@ Equipe HS Digital`;
             const hoursLeft = Math.max(0, Math.ceil(72 - hoursOld));
 
             return (
-              <div key={ord.id} className="surface-card p-4 border border-border rounded-xl space-y-3">
+              <div
+                key={ord.id}
+                className="surface-card p-4 border border-border rounded-xl space-y-3"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
                   <div>
-                    <span className="text-xs text-muted-foreground">Pedido #{ord.id.slice(0, 8).toUpperCase()}</span>
-                    <p className="text-sm font-semibold">{new Date(ord.created_at).toLocaleString("pt-BR")}</p>
+                    <span className="text-xs text-muted-foreground">
+                      Pedido #{ord.id.slice(0, 8).toUpperCase()}
+                    </span>
+                    <p className="text-sm font-semibold">
+                      {new Date(ord.created_at).toLocaleString("pt-BR")}
+                    </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {hoursOld >= 1 && (
@@ -487,13 +600,19 @@ Equipe HS Digital`;
                       <Clock className="h-3 w-3" />
                       Expira em {hoursLeft}h
                     </span>
-                    <span className="text-sm font-bold text-foreground">{brl(Number(ord.total))}</span>
+                    <span className="text-sm font-bold text-foreground">
+                      {brl(Number(ord.total))}
+                    </span>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                   <div>
-                    <p><strong>Cliente:</strong> {addr?.["name"] || addr?.["recipient_name"] || "Cliente"} {addr?.["phone"] ? `· 📞 ${addr["phone"]}` : ""}</p>
+                    <p>
+                      <strong>Cliente:</strong>{" "}
+                      {addr?.["name"] || addr?.["recipient_name"] || "Cliente"}{" "}
+                      {addr?.["phone"] ? `· 📞 ${addr["phone"]}` : ""}
+                    </p>
                     <p className="text-muted-foreground mt-0.5">
                       {ord.items.map((i: any) => `${i.quantity}x ${i.title}`).join(", ")}
                     </p>
@@ -555,7 +674,9 @@ Equipe HS Digital`;
                   return (
                     <tr key={ord.id}>
                       <td className="p-3 font-medium">#{ord.id.slice(0, 8).toUpperCase()}</td>
-                      <td className="p-3">{new Date(ord.created_at).toLocaleDateString("pt-BR")}</td>
+                      <td className="p-3">
+                        {new Date(ord.created_at).toLocaleDateString("pt-BR")}
+                      </td>
                       <td className="p-3">
                         <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 className="h-3 w-3" />
@@ -564,7 +685,9 @@ Equipe HS Digital`;
                       </td>
                       <td className="p-3 text-right">{brl(gross)}</td>
                       <td className="p-3 text-right text-muted-foreground">-{brl(fee)}</td>
-                      <td className="p-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">{brl(net)}</td>
+                      <td className="p-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                        {brl(net)}
+                      </td>
                     </tr>
                   );
                 })}
@@ -587,7 +710,8 @@ Equipe HS Digital`;
           <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>
-              Pedidos cancelados pelo cliente ou cujo Pix expirou após 72 horas sem pagamento. O estoque reservado foi liberado novamente para venda.
+              Pedidos cancelados pelo cliente ou cujo Pix expirou após 72 horas sem pagamento. O
+              estoque reservado foi liberado novamente para venda.
             </span>
           </div>
 
@@ -596,24 +720,37 @@ Equipe HS Digital`;
             const hoursOld = (now - new Date(ord.created_at).getTime()) / (1000 * 60 * 60);
 
             return (
-              <div key={ord.id} className="surface-card p-4 border border-border rounded-xl space-y-2 opacity-80">
+              <div
+                key={ord.id}
+                className="surface-card p-4 border border-border rounded-xl space-y-2 opacity-80"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
                   <div>
-                    <span className="text-xs text-muted-foreground">Pedido #{ord.id.slice(0, 8).toUpperCase()}</span>
-                    <p className="text-sm font-semibold">{new Date(ord.created_at).toLocaleString("pt-BR")}</p>
+                    <span className="text-xs text-muted-foreground">
+                      Pedido #{ord.id.slice(0, 8).toUpperCase()}
+                    </span>
+                    <p className="text-sm font-semibold">
+                      {new Date(ord.created_at).toLocaleString("pt-BR")}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
                       <XCircle className="h-3 w-3" />
-                      {hoursOld >= 72 && ord.status !== "cancelled" ? "Expirado (+72h)" : "Cancelado"}
+                      {hoursOld >= 72 && ord.status !== "cancelled"
+                        ? "Expirado (+72h)"
+                        : "Cancelado"}
                     </span>
-                    <span className="text-sm font-bold line-through text-muted-foreground">{brl(Number(ord.total))}</span>
+                    <span className="text-sm font-bold line-through text-muted-foreground">
+                      {brl(Number(ord.total))}
+                    </span>
                   </div>
                 </div>
 
                 <div className="text-xs text-muted-foreground flex justify-between">
                   <span>Cliente: {addr?.["name"] || addr?.["recipient_name"] || "Cliente"}</span>
-                  <span className="text-emerald-600 font-medium">✓ Estoque estornado e disponível</span>
+                  <span className="text-emerald-600 font-medium">
+                    ✓ Estoque estornado e disponível
+                  </span>
                 </div>
               </div>
             );
@@ -639,7 +776,10 @@ function StoreSetupForm({ userId, onCreated }: { userId: string; onCreated: () =
     if (!name.trim()) return;
     setLoading(true);
     try {
-      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
       const { error } = await supabase.from("stores").insert({
         owner_id: userId,
         name: name.trim(),
@@ -661,11 +801,22 @@ function StoreSetupForm({ userId, onCreated }: { userId: string; onCreated: () =
       <h2 className="text-lg font-bold">Criar minha Loja</h2>
       <div>
         <Label htmlFor="s-name">Nome da Loja</Label>
-        <Input id="s-name" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Ex: Minha Loja Tech" />
+        <Input
+          id="s-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          placeholder="Ex: Minha Loja Tech"
+        />
       </div>
       <div>
         <Label htmlFor="s-desc">Descrição</Label>
-        <Input id="s-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Breve resumo da loja" />
+        <Input
+          id="s-desc"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Breve resumo da loja"
+        />
       </div>
       <Button type="submit" disabled={loading} className="w-full">
         {loading ? "Criando..." : "Começar a Vender"}
@@ -699,7 +850,9 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         if (!file) continue;
         const ext = file.name.split(".").pop();
         const path = `${storeId}/${Date.now()}-${i}.${ext}`;
-        const { error: uploadErr } = await supabase.storage.from("product-images").upload(path, file);
+        const { error: uploadErr } = await supabase.storage
+          .from("product-images")
+          .upload(path, file);
         if (uploadErr) throw uploadErr;
         uploaded.push({
           storagePath: path,
@@ -746,11 +899,23 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="p-price">Preço (R$)</Label>
-          <Input id="p-price" value={price} onChange={(e) => setPrice(e.target.value)} required placeholder="0,00" />
+          <Input
+            id="p-price"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            required
+            placeholder="0,00"
+          />
         </div>
         <div>
           <Label htmlFor="p-stock">Estoque</Label>
-          <Input id="p-stock" type="number" value={stock} onChange={(e) => setStock(e.target.value)} required />
+          <Input
+            id="p-stock"
+            type="number"
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            required
+          />
         </div>
       </div>
       <div>
@@ -762,13 +927,21 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           className="w-full h-10 px-3 border rounded-md bg-background text-sm mt-1"
         >
           {CATEGORIES.map((c) => (
-            <option key={c.slug} value={c.slug}>{c.label}</option>
+            <option key={c.slug} value={c.slug}>
+              {c.label}
+            </option>
           ))}
         </select>
       </div>
       <div>
         <Label htmlFor="p-desc">Descrição</Label>
-        <Textarea id="p-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Detalhes do produto" />
+        <Textarea
+          id="p-desc"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={4}
+          placeholder="Detalhes do produto"
+        />
       </div>
       <div>
         <Label htmlFor="p-type">Tipo de Produto</Label>
@@ -785,12 +958,25 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       {productType === "digital" && (
         <div>
           <Label htmlFor="p-url">Link de Entrega / Download</Label>
-          <Input id="p-url" value={deliveryUrl} onChange={(e) => setDeliveryUrl(e.target.value)} placeholder="https://..." required />
+          <Input
+            id="p-url"
+            value={deliveryUrl}
+            onChange={(e) => setDeliveryUrl(e.target.value)}
+            placeholder="https://..."
+            required
+          />
         </div>
       )}
       <div>
         <Label htmlFor="p-files">Fotos (até 10)</Label>
-        <Input id="p-files" type="file" multiple accept="image/*,video/*" onChange={(e) => setFiles(Array.from(e.target.files || []))} className="mt-1" />
+        <Input
+          id="p-files"
+          type="file"
+          multiple
+          accept="image/*,video/*"
+          onChange={(e) => setFiles(Array.from(e.target.files || []))}
+          className="mt-1"
+        />
       </div>
       <Button type="submit" disabled={submitting} className="w-full">
         {submitting ? "Cadastrando..." : "Publicar Produto"}
@@ -817,11 +1003,24 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
       if (!items || items.length === 0) return [];
 
       const orderIds = Array.from(new Set(items.map((i) => i.order_id)));
-      const [{ data: ordersData }, { data: trackingEvents }, { data: fulfillments }] = await Promise.all([
-        supabase.from("orders").select("id,created_at,payment_status,total,shipping_address").in("id", orderIds).order("created_at", { ascending: false }),
-        supabase.from("order_tracking_events").select("order_id,status,note,created_at").in("order_id", orderIds).order("created_at", { ascending: true }),
-        supabase.from("supplier_fulfillments").select("id,order_id,provider,status,external_order_id,tracking_code,last_error").eq("store_id", storeId).in("order_id", orderIds),
-      ]);
+      const [{ data: ordersData }, { data: trackingEvents }, { data: fulfillments }] =
+        await Promise.all([
+          supabase
+            .from("orders")
+            .select("id,created_at,payment_status,total,shipping_address")
+            .in("id", orderIds)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("order_tracking_events")
+            .select("order_id,status,note,created_at")
+            .in("order_id", orderIds)
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("supplier_fulfillments")
+            .select("id,order_id,provider,status,external_order_id,tracking_code,last_error")
+            .eq("store_id", storeId)
+            .in("order_id", orderIds),
+        ]);
 
       return (ordersData ?? []).map((ord) => ({
         ...ord,
@@ -861,7 +1060,8 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
 
   const paidOrders = orders.filter((o) => o.payment_status === "approved");
   const pendingOrders = orders.filter((o) => o.payment_status !== "approved");
-  const displayedOrders = orderFilter === "paid" ? paidOrders : orderFilter === "pending" ? pendingOrders : orders;
+  const displayedOrders =
+    orderFilter === "paid" ? paidOrders : orderFilter === "pending" ? pendingOrders : orders;
 
   return (
     <div className="space-y-4">
@@ -903,11 +1103,17 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
           <div key={ord.id} className="surface-card p-5 border border-border rounded-xl space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
               <div>
-                <span className="text-xs text-muted-foreground">Pedido #{ord.id.slice(0, 8).toUpperCase()}</span>
-                <p className="text-sm font-semibold">{new Date(ord.created_at).toLocaleString("pt-BR")}</p>
+                <span className="text-xs text-muted-foreground">
+                  Pedido #{ord.id.slice(0, 8).toUpperCase()}
+                </span>
+                <p className="text-sm font-semibold">
+                  {new Date(ord.created_at).toLocaleString("pt-BR")}
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`px-2.5 py-1 text-xs rounded-full font-semibold ${ord.payment_status === "approved" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}>
+                <span
+                  className={`px-2.5 py-1 text-xs rounded-full font-semibold ${ord.payment_status === "approved" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}
+                >
                   {ord.payment_status === "approved" ? "PAGO" : "AGUARDANDO PAGAMENTO"}
                 </span>
                 <span className="px-2.5 py-1 text-xs rounded-full bg-muted font-medium capitalize">
@@ -923,9 +1129,18 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
             {/* Endereço completo para postagem nos Correios */}
             {addr && (
               <div className="bg-muted/40 p-3 rounded-lg text-xs space-y-1">
-                <p className="font-semibold text-foreground">📦 Endereço de Entrega do Cliente (para os Correios):</p>
-                <p><strong>Destinatário:</strong> {addr["name"] || addr["recipient_name"] || "Cliente"} · Tel: {addr["phone"] || "Não informado"}</p>
-                <p><strong>Endereço:</strong> {addr["address"] || addr["street_address"]}{addr["complement"] ? `, ${addr["complement"]}` : ""} - {addr["city"]}</p>
+                <p className="font-semibold text-foreground">
+                  📦 Endereço de Entrega do Cliente (para os Correios):
+                </p>
+                <p>
+                  <strong>Destinatário:</strong>{" "}
+                  {addr["name"] || addr["recipient_name"] || "Cliente"} · Tel:{" "}
+                  {addr["phone"] || "Não informado"}
+                </p>
+                <p>
+                  <strong>Endereço:</strong> {addr["address"] || addr["street_address"]}
+                  {addr["complement"] ? `, ${addr["complement"]}` : ""} - {addr["city"]}
+                </p>
               </div>
             )}
 
@@ -934,27 +1149,59 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
               <p className="text-xs font-semibold text-muted-foreground uppercase">Itens:</p>
               {ord.items.map((i, idx) => (
                 <div key={idx} className="flex justify-between text-xs">
-                  <span>{i.quantity}x {i.title}</span>
+                  <span>
+                    {i.quantity}x {i.title}
+                  </span>
                   <span className="font-semibold text-success">{brl(Number(i.seller_amount))}</span>
                 </div>
               ))}
             </div>
 
             {/* Atualização de etapas e código de rastreio */}
-            {ord.fulfillments.map((fulfillment) => <div key={fulfillment.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 text-xs">
-              <span><strong>{fulfillment.provider === "cj" ? "CJ Dropshipping" : "Dropi"}</strong> · {fulfillment.status === "submitted" ? "Pedido enviado" : fulfillment.status === "failed" ? "Falha no envio" : "Aguardando envio"}{fulfillment.tracking_code ? ` · Rastreio ${fulfillment.tracking_code}` : ""}</span>
-              {fulfillment.provider === "cj" && ["pending", "retry", "failed"].includes(fulfillment.status) && <Button size="sm" variant="outline" onClick={async () => {
-                try {
-                  await processFulfillment({ data: { fulfillmentId: fulfillment.id, storeId } });
-                  toast.success("Pedido encaminhado à CJ Dropshipping.");
-                  await qc.invalidateQueries({ queryKey: ["seller-orders", storeId] });
-                } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Não foi possível encaminhar o pedido.");
-                }
-              }}>Enviar agora</Button>}
-            </div>)}
+            {ord.fulfillments.map((fulfillment) => (
+              <div
+                key={fulfillment.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 text-xs"
+              >
+                <span>
+                  <strong>{fulfillment.provider === "cj" ? "CJ Dropshipping" : "Dropi"}</strong> ·{" "}
+                  {fulfillment.status === "submitted"
+                    ? "Pedido enviado"
+                    : fulfillment.status === "failed"
+                      ? "Falha no envio"
+                      : "Aguardando envio"}
+                  {fulfillment.tracking_code ? ` · Rastreio ${fulfillment.tracking_code}` : ""}
+                </span>
+                {fulfillment.provider === "cj" &&
+                  ["pending", "retry", "failed"].includes(fulfillment.status) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await processFulfillment({
+                            data: { fulfillmentId: fulfillment.id, storeId },
+                          });
+                          toast.success("Pedido encaminhado à CJ Dropshipping.");
+                          await qc.invalidateQueries({ queryKey: ["seller-orders", storeId] });
+                        } catch (error) {
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : "Não foi possível encaminhar o pedido.",
+                          );
+                        }
+                      }}
+                    >
+                      Enviar agora
+                    </Button>
+                  )}
+              </div>
+            ))}
             <div className="border-t border-border pt-3 space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">Atualizar envio nos Correios:</p>
+              <p className="text-xs font-semibold text-muted-foreground">
+                Atualizar envio nos Correios:
+              </p>
               <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
@@ -975,7 +1222,15 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
                   <Button
                     size="sm"
                     disabled={updatingId === ord.id}
-                    onClick={() => addStatus(ord.id, "shipped", trackingNote[ord.id] ? `Rastreio Correios: ${trackingNote[ord.id]}` : "Objeto postado nos Correios")}
+                    onClick={() =>
+                      addStatus(
+                        ord.id,
+                        "shipped",
+                        trackingNote[ord.id]
+                          ? `Rastreio Correios: ${trackingNote[ord.id]}`
+                          : "Objeto postado nos Correios",
+                      )
+                    }
                   >
                     Marcar Enviado
                   </Button>
@@ -985,7 +1240,13 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
                   size="sm"
                   variant="outline"
                   disabled={updatingId === ord.id}
-                  onClick={() => addStatus(ord.id, "out_for_delivery", "Objeto saiu para entrega ao destinatário")}
+                  onClick={() =>
+                    addStatus(
+                      ord.id,
+                      "out_for_delivery",
+                      "Objeto saiu para entrega ao destinatário",
+                    )
+                  }
                 >
                   Saiu para entrega
                 </Button>
@@ -1006,7 +1267,11 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
 
       {displayedOrders.length === 0 && (
         <div className="surface-card p-8 text-center text-sm text-muted-foreground">
-          {orderFilter === "paid" ? "Nenhum pedido pago aguardando envio no momento." : orderFilter === "pending" ? "Nenhum pedido aguardando pagamento no momento." : "Nenhum pedido registrado nesta loja."}
+          {orderFilter === "paid"
+            ? "Nenhum pedido pago aguardando envio no momento."
+            : orderFilter === "pending"
+              ? "Nenhum pedido aguardando pagamento no momento."
+              : "Nenhum pedido registrado nesta loja."}
         </div>
       )}
     </div>

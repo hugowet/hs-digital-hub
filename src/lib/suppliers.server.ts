@@ -76,8 +76,9 @@ async function cjRequest<T>(path: string, token: string, init?: RequestInit): Pr
       },
     });
     const text = await response.text();
-    const parsed = text ? JSON.parse(text) as CjEnvelope<T> : {};
-    const rateLimited = response.status === 429 || parsed.message?.toLowerCase().includes("too many requests");
+    const parsed = text ? (JSON.parse(text) as CjEnvelope<T>) : {};
+    const rateLimited =
+      response.status === 429 || parsed.message?.toLowerCase().includes("too many requests");
     if (rateLimited && attempt < 2) {
       await new Promise((resolve) => setTimeout(resolve, 1_500 * (attempt + 1)));
       continue;
@@ -85,7 +86,8 @@ async function cjRequest<T>(path: string, token: string, init?: RequestInit): Pr
     if (!response.ok || parsed.result === false) {
       throw new Error(`CJ Dropshipping recusou a operação: ${parsed.message ?? response.status}`);
     }
-    if (parsed.data === undefined) throw new Error("A CJ Dropshipping retornou uma resposta vazia.");
+    if (parsed.data === undefined)
+      throw new Error("A CJ Dropshipping retornou uma resposta vazia.");
     return parsed.data;
   }
   throw new Error("A CJ Dropshipping limitou temporariamente a sincronização.");
@@ -99,8 +101,11 @@ export async function getCjAccessToken(supabaseAdmin: any, storeId: string) {
     .eq("provider", "cj")
     .maybeSingle();
 
-  if (integration?.access_token_encrypted && integration.token_expires_at
-      && new Date(integration.token_expires_at).getTime() > Date.now() + 5 * 60_000) {
+  if (
+    integration?.access_token_encrypted &&
+    integration.token_expires_at &&
+    new Date(integration.token_expires_at).getTime() > Date.now() + 5 * 60_000
+  ) {
     return decryptSecret(integration.access_token_encrypted);
   }
 
@@ -116,40 +121,68 @@ export async function getCjAccessToken(supabaseAdmin: any, storeId: string) {
   const expiresAt = token.accessTokenExpiryDate
     ? new Date(token.accessTokenExpiryDate).toISOString()
     : new Date(Date.now() + 179 * 24 * 60 * 60_000).toISOString();
-  await supabaseAdmin.from("supplier_integrations").update({
-    access_token_encrypted: await encryptSecret(token.accessToken),
-    refresh_token_encrypted: token.refreshToken ? await encryptSecret(token.refreshToken) : null,
-    token_expires_at: expiresAt,
-    status: "active",
-    last_error: null,
-  }).eq("store_id", storeId).eq("provider", "cj");
+  await supabaseAdmin
+    .from("supplier_integrations")
+    .update({
+      access_token_encrypted: await encryptSecret(token.accessToken),
+      refresh_token_encrypted: token.refreshToken ? await encryptSecret(token.refreshToken) : null,
+      token_expires_at: expiresAt,
+      status: "active",
+      last_error: null,
+    })
+    .eq("store_id", storeId)
+    .eq("provider", "cj");
   return token.accessToken;
 }
 
 function categoryFor(name: string) {
   const normalized = name.toLowerCase();
   if (["kid", "toy", "baby", "child"].some((term) => normalized.includes(term))) return "infantil";
-  if (["beauty", "makeup", "cosmetic", "skin care", "hair"].some((term) => normalized.includes(term))) return "beleza";
-  if (["fashion", "clothing", "jewelry", "necklace", "bracelet", "watch", "bag"].some((term) => normalized.includes(term))) return "moda";
-  if (["sport", "fitness", "gym", "outdoor", "camping"].some((term) => normalized.includes(term))) return "esportes";
-  if (["keyboard", "mouse", "computer", "laptop", "headset", "usb"].some((term) => normalized.includes(term))) return "perifericos-acessorios";
-  if (["home", "house", "office", "kitchen", "garden", "decor", "tool"].some((term) => normalized.includes(term))) return "casa-setup";
+  if (
+    ["beauty", "makeup", "cosmetic", "skin care", "hair"].some((term) => normalized.includes(term))
+  )
+    return "beleza";
+  if (
+    ["fashion", "clothing", "jewelry", "necklace", "bracelet", "watch", "bag"].some((term) =>
+      normalized.includes(term),
+    )
+  )
+    return "moda";
+  if (["sport", "fitness", "gym", "outdoor", "camping"].some((term) => normalized.includes(term)))
+    return "esportes";
+  if (
+    ["keyboard", "mouse", "computer", "laptop", "headset", "usb"].some((term) =>
+      normalized.includes(term),
+    )
+  )
+    return "perifericos-acessorios";
+  if (
+    ["home", "house", "office", "kitchen", "garden", "decor", "tool"].some((term) =>
+      normalized.includes(term),
+    )
+  )
+    return "casa-setup";
   if (["pet", "dog", "cat", "travel"].some((term) => normalized.includes(term))) return "mercado";
   return "eletronicos-gadgets";
 }
 
 function flattenCjCategories(tree: CjCategoryTree) {
-  return tree.flatMap((first) => (first.categoryFirstList ?? []).flatMap((second) =>
-    (second.categorySecondList ?? []).flatMap((third) => {
-      if (!third.categoryId || !third.categoryName) return [];
-      return [{
-        category_id: third.categoryId,
-        category_name: third.categoryName,
-        category_path: [first.categoryFirstName, second.categorySecondName, third.categoryName]
-          .filter(Boolean).join(" / "),
-      }];
-    }),
-  ));
+  return tree.flatMap((first) =>
+    (first.categoryFirstList ?? []).flatMap((second) =>
+      (second.categorySecondList ?? []).flatMap((third) => {
+        if (!third.categoryId || !third.categoryName) return [];
+        return [
+          {
+            category_id: third.categoryId,
+            category_name: third.categoryName,
+            category_path: [first.categoryFirstName, second.categorySecondName, third.categoryName]
+              .filter(Boolean)
+              .join(" / "),
+          },
+        ];
+      }),
+    ),
+  );
 }
 
 export async function startCjCatalogImport(supabaseAdmin: any, storeId: string) {
@@ -170,47 +203,55 @@ export async function startCjCatalogImport(supabaseAdmin: any, storeId: string) 
     completed_at: null,
   }));
   for (let index = 0; index < rows.length; index += 100) {
-    const { error } = await supabaseAdmin.from("supplier_catalog_categories")
+    const { error } = await supabaseAdmin
+      .from("supplier_catalog_categories")
       .upsert(rows.slice(index, index + 100), { onConflict: "store_id,provider,category_id" });
     if (error) throw error;
   }
 
-  const { error } = await supabaseAdmin.from("supplier_import_jobs").upsert({
-    store_id: storeId,
-    provider: "cj",
-    status: "pending",
-    total_categories: categories.length,
-    completed_categories: 0,
-    imported_products: 0,
-    skipped_products: 0,
-    lock_expires_at: null,
-    pause_reason: null,
-    started_at: new Date().toISOString(),
-    completed_at: null,
-  }, { onConflict: "store_id,provider" });
+  const { error } = await supabaseAdmin.from("supplier_import_jobs").upsert(
+    {
+      store_id: storeId,
+      provider: "cj",
+      status: "pending",
+      total_categories: categories.length,
+      completed_categories: 0,
+      imported_products: 0,
+      skipped_products: 0,
+      lock_expires_at: null,
+      pause_reason: null,
+      started_at: new Date().toISOString(),
+      completed_at: null,
+    },
+    { onConflict: "store_id,provider" },
+  );
   if (error) throw error;
   return { categories: categories.length };
 }
 
 async function queueCategoryProducts(token: string, categoryId: string) {
-    const params = new URLSearchParams({
-      page: "1",
-      size: String(CJ_PRODUCTS_PER_CATEGORY),
-      categoryId,
-      orderBy: "1",
-      sort: "desc",
-    });
-    const search = await cjRequest<CjPopularSearch>(`/product/listV2?${params.toString()}`, token);
-    const products = new Map<string, QueuedCjProduct>();
-    for (const group of search.content ?? []) {
-      for (const product of group.productList ?? []) {
-        if (product.id) products.set(product.id, {
+  const params = new URLSearchParams({
+    page: "1",
+    size: String(CJ_PRODUCTS_PER_CATEGORY),
+    categoryId,
+    orderBy: "1",
+    sort: "desc",
+  });
+  const search = await cjRequest<CjPopularSearch>(`/product/listV2?${params.toString()}`, token);
+  const products = new Map<string, QueuedCjProduct>();
+  for (const group of search.content ?? []) {
+    for (const product of group.productList ?? []) {
+      if (product.id)
+        products.set(product.id, {
           id: product.id,
-          stock: Math.max(0, Number(product.warehouseInventoryNum ?? product.totalVerifiedInventory ?? 0)),
+          stock: Math.max(
+            0,
+            Number(product.warehouseInventoryNum ?? product.totalVerifiedInventory ?? 0),
+          ),
         });
-      }
     }
-    return [...products.values()].slice(0, CJ_PRODUCTS_PER_CATEGORY);
+  }
+  return [...products.values()].slice(0, CJ_PRODUCTS_PER_CATEGORY);
 }
 
 async function importCjProduct(
@@ -220,21 +261,30 @@ async function importCjProduct(
   token: string,
   queued: QueuedCjProduct,
 ) {
-  const product = await cjRequest<CjProduct>(`/product/query?pid=${encodeURIComponent(queued.id)}`, token);
+  const product = await cjRequest<CjProduct>(
+    `/product/query?pid=${encodeURIComponent(queued.id)}`,
+    token,
+  );
   const variant = product.variants?.[0];
   const pid = product.pid;
   const vid = variant?.vid;
   const title = (product.productNameEn ?? product.productName ?? "").trim();
   const cost = Number(variant?.variantSellPrice ?? product.sellPrice);
   if (!pid || !vid || !title || !Number.isFinite(cost) || cost <= 0) return false;
-  const images = [variant?.variantImage, product.bigImage, product.productImage, ...(product.productImageSet ?? [])]
-    .filter((value): value is string => Boolean(value?.startsWith("https://")));
+  const images = [
+    variant?.variantImage,
+    product.bigImage,
+    product.productImage,
+    ...(product.productImageSet ?? []),
+  ].filter((value): value is string => Boolean(value?.startsWith("https://")));
   const price = Math.round(cost * (1 + marginPercent / 100) * 100) / 100;
   const productData = {
     store_id: storeId,
     title: title.slice(0, 160),
-    description: "Produto real da CJ Dropshipping, selecionado entre os mais procurados da categoria.",
-    description_long: "Produto real do catálogo CJ Dropshipping, com estoque sincronizado pelo fornecedor.",
+    description:
+      "Produto real da CJ Dropshipping, selecionado entre os mais procurados da categoria.",
+    description_long:
+      "Produto real do catálogo CJ Dropshipping, com estoque sincronizado pelo fornecedor.",
     price,
     stock: queued.stock,
     category: categoryFor(`${product.categoryName ?? ""} ${title}`),
@@ -249,8 +299,13 @@ async function importCjProduct(
     supplier_cost: cost,
     supplier_last_synced_at: new Date().toISOString(),
   };
-  const { data: existingProduct, error: lookupError } = await supabaseAdmin.from("products")
-    .select("id").eq("store_id", storeId).eq("supplier", "cj").eq("supplier_variant_id", vid).maybeSingle();
+  const { data: existingProduct, error: lookupError } = await supabaseAdmin
+    .from("products")
+    .select("id")
+    .eq("store_id", storeId)
+    .eq("supplier", "cj")
+    .eq("supplier_variant_id", vid)
+    .maybeSingle();
   if (lookupError) throw lookupError;
   const { error } = existingProduct
     ? await supabaseAdmin.from("products").update(productData).eq("id", existingProduct.id)
@@ -259,41 +314,65 @@ async function importCjProduct(
   return true;
 }
 
-export async function processCjCatalogBatch(supabaseAdmin: any, storeId: string, marginPercent: number) {
+export async function processCjCatalogBatch(
+  supabaseAdmin: any,
+  storeId: string,
+  marginPercent: number,
+) {
   const now = new Date();
   const lockExpiresAt = new Date(now.getTime() + CJ_LOCK_MS).toISOString();
-  const { data: claimed } = await supabaseAdmin.from("supplier_import_jobs")
+  const { data: claimed } = await supabaseAdmin
+    .from("supplier_import_jobs")
     .update({ status: "running", lock_expires_at: lockExpiresAt, pause_reason: null })
-    .eq("store_id", storeId).eq("provider", "cj")
+    .eq("store_id", storeId)
+    .eq("provider", "cj")
     .in("status", ["pending", "running"])
     .or(`lock_expires_at.is.null,lock_expires_at.lt.${now.toISOString()}`)
-    .select("id,total_categories,completed_categories,imported_products,skipped_products").maybeSingle();
+    .select("id,total_categories,completed_categories,imported_products,skipped_products")
+    .maybeSingle();
   if (!claimed) return { busy: true, done: false, imported: 0, skipped: 0 };
 
   let imported = 0;
   let skipped = 0;
   try {
     const token = await getCjAccessToken(supabaseAdmin, storeId);
-    const { data: category } = await supabaseAdmin.from("supplier_catalog_categories")
+    const { data: category } = await supabaseAdmin
+      .from("supplier_catalog_categories")
       .select("id,category_id,product_ids,next_product_index,imported_count")
-      .eq("store_id", storeId).eq("provider", "cj").in("status", ["pending", "processing"])
-      .order("created_at").limit(1).maybeSingle();
+      .eq("store_id", storeId)
+      .eq("provider", "cj")
+      .in("status", ["pending", "processing"])
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
 
     if (!category) {
-      await supabaseAdmin.from("supplier_import_jobs").update({
-        status: "completed", completed_at: new Date().toISOString(), lock_expires_at: null,
-      }).eq("id", claimed.id);
+      await supabaseAdmin
+        .from("supplier_import_jobs")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          lock_expires_at: null,
+        })
+        .eq("id", claimed.id);
       return { busy: false, done: true, imported: 0, skipped: 0 };
     }
 
-    let queued = Array.isArray(category.product_ids) ? category.product_ids as QueuedCjProduct[] : [];
+    let queued = Array.isArray(category.product_ids)
+      ? (category.product_ids as QueuedCjProduct[])
+      : [];
     let requestCount = 0;
     if (queued.length === 0) {
       queued = await queueCategoryProducts(token, category.category_id);
       requestCount += 1;
-      await supabaseAdmin.from("supplier_catalog_categories").update({
-        status: "processing", product_ids: queued, next_product_index: 0,
-      }).eq("id", category.id);
+      await supabaseAdmin
+        .from("supplier_catalog_categories")
+        .update({
+          status: "processing",
+          product_ids: queued,
+          next_product_index: 0,
+        })
+        .eq("id", category.id);
     }
 
     let nextIndex = category.next_product_index;
@@ -301,61 +380,110 @@ export async function processCjCatalogBatch(supabaseAdmin: any, storeId: string,
       const queuedProduct = queued[nextIndex];
       if (!queuedProduct) break;
       try {
-        const wasImported = await importCjProduct(supabaseAdmin, storeId, marginPercent, token, queuedProduct);
+        const wasImported = await importCjProduct(
+          supabaseAdmin,
+          storeId,
+          marginPercent,
+          token,
+          queuedProduct,
+        );
         if (wasImported) imported += 1;
         else skipped += 1;
       } catch (error) {
         skipped += 1;
-        await supabaseAdmin.from("supplier_catalog_categories").update({
-          last_error: (error instanceof Error ? error.message : "Falha ao importar produto.").slice(0, 1000),
-        }).eq("id", category.id);
+        await supabaseAdmin
+          .from("supplier_catalog_categories")
+          .update({
+            last_error: (error instanceof Error
+              ? error.message
+              : "Falha ao importar produto."
+            ).slice(0, 1000),
+          })
+          .eq("id", category.id);
       }
       requestCount += 1;
       nextIndex += 1;
-      await supabaseAdmin.from("supplier_catalog_categories").update({
-        next_product_index: nextIndex,
-        imported_count: category.imported_count + imported,
-      }).eq("id", category.id);
+      await supabaseAdmin
+        .from("supplier_catalog_categories")
+        .update({
+          next_product_index: nextIndex,
+          imported_count: category.imported_count + imported,
+        })
+        .eq("id", category.id);
     }
 
     let completedCategories = claimed.completed_categories;
     if (nextIndex >= queued.length) {
       completedCategories += 1;
-      await supabaseAdmin.from("supplier_catalog_categories").update({
-        status: "completed", completed_at: new Date().toISOString(), last_error: null,
-      }).eq("id", category.id);
+      await supabaseAdmin
+        .from("supplier_catalog_categories")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          last_error: null,
+        })
+        .eq("id", category.id);
     }
     const done = completedCategories >= claimed.total_categories;
-    await supabaseAdmin.from("supplier_import_jobs").update({
-      status: done ? "completed" : "pending",
-      completed_categories: completedCategories,
-      imported_products: claimed.imported_products + imported,
-      skipped_products: claimed.skipped_products + skipped,
-      lock_expires_at: null,
-      completed_at: done ? new Date().toISOString() : null,
-    }).eq("id", claimed.id);
-    await supabaseAdmin.from("supplier_integrations").update({
-      last_catalog_sync_at: new Date().toISOString(), last_error: null,
-    }).eq("store_id", storeId).eq("provider", "cj");
-    return { busy: false, done, imported, skipped, completedCategories, totalCategories: claimed.total_categories };
+    await supabaseAdmin
+      .from("supplier_import_jobs")
+      .update({
+        status: done ? "completed" : "pending",
+        completed_categories: completedCategories,
+        imported_products: claimed.imported_products + imported,
+        skipped_products: claimed.skipped_products + skipped,
+        lock_expires_at: null,
+        completed_at: done ? new Date().toISOString() : null,
+      })
+      .eq("id", claimed.id);
+    await supabaseAdmin
+      .from("supplier_integrations")
+      .update({
+        last_catalog_sync_at: new Date().toISOString(),
+        last_error: null,
+      })
+      .eq("store_id", storeId)
+      .eq("provider", "cj");
+    return {
+      busy: false,
+      done,
+      imported,
+      skipped,
+      completedCategories,
+      totalCategories: claimed.total_categories,
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha na sincronização da CJ.";
-    await supabaseAdmin.from("supplier_import_jobs").update({
-      status: "paused", pause_reason: message.slice(0, 1000), lock_expires_at: null,
-    }).eq("id", claimed.id);
-    await supabaseAdmin.from("supplier_integrations").update({ last_error: message.slice(0, 1000) })
-      .eq("store_id", storeId).eq("provider", "cj");
+    await supabaseAdmin
+      .from("supplier_import_jobs")
+      .update({
+        status: "paused",
+        pause_reason: message.slice(0, 1000),
+        lock_expires_at: null,
+      })
+      .eq("id", claimed.id);
+    await supabaseAdmin
+      .from("supplier_integrations")
+      .update({ last_error: message.slice(0, 1000) })
+      .eq("store_id", storeId)
+      .eq("provider", "cj");
     throw error;
   }
 }
 
 export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginPercent: number) {
-  const { data: job } = await supabaseAdmin.from("supplier_import_jobs")
-    .select("id,status").eq("store_id", storeId).eq("provider", "cj").maybeSingle();
+  const { data: job } = await supabaseAdmin
+    .from("supplier_import_jobs")
+    .select("id,status")
+    .eq("store_id", storeId)
+    .eq("provider", "cj")
+    .maybeSingle();
   if (!job || job.status === "completed" || job.status === "failed") {
     await startCjCatalogImport(supabaseAdmin, storeId);
   } else if (job.status === "paused") {
-    await supabaseAdmin.from("supplier_import_jobs").update({ status: "pending", pause_reason: null })
+    await supabaseAdmin
+      .from("supplier_import_jobs")
+      .update({ status: "pending", pause_reason: null })
       .eq("id", job.id);
   }
   return processCjCatalogBatch(supabaseAdmin, storeId, marginPercent);
@@ -363,9 +491,12 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
 
 export async function syncCjStock(supabaseAdmin: any, storeId: string) {
   const token = await getCjAccessToken(supabaseAdmin, storeId);
-  const { data: products } = await supabaseAdmin.from("products")
+  const { data: products } = await supabaseAdmin
+    .from("products")
     .select("id,supplier_variant_id")
-    .eq("store_id", storeId).eq("supplier", "cj").not("supplier_variant_id", "is", null);
+    .eq("store_id", storeId)
+    .eq("supplier", "cj")
+    .not("supplier_variant_id", "is", null);
   let updated = 0;
   for (const product of products ?? []) {
     const stockData = await cjRequest<any>(
@@ -373,17 +504,28 @@ export async function syncCjStock(supabaseAdmin: any, storeId: string) {
       token,
     );
     const rows = Array.isArray(stockData) ? stockData : [stockData];
-    const stock = rows.reduce((sum, row) => sum + Math.max(0, Number(row?.storageNum ?? row?.totalInventory ?? 0)), 0);
-    await supabaseAdmin.from("products").update({
-      stock,
-      is_active: true,
-      supplier_last_synced_at: new Date().toISOString(),
-    }).eq("id", product.id);
+    const stock = rows.reduce(
+      (sum, row) => sum + Math.max(0, Number(row?.storageNum ?? row?.totalInventory ?? 0)),
+      0,
+    );
+    await supabaseAdmin
+      .from("products")
+      .update({
+        stock,
+        is_active: true,
+        supplier_last_synced_at: new Date().toISOString(),
+      })
+      .eq("id", product.id);
     updated += 1;
   }
-  await supabaseAdmin.from("supplier_integrations").update({
-    last_stock_sync_at: new Date().toISOString(), last_error: null,
-  }).eq("store_id", storeId).eq("provider", "cj");
+  await supabaseAdmin
+    .from("supplier_integrations")
+    .update({
+      last_stock_sync_at: new Date().toISOString(),
+      last_error: null,
+    })
+    .eq("store_id", storeId)
+    .eq("provider", "cj");
   return { updated };
 }
 
@@ -396,22 +538,35 @@ function addressValue(address: Record<string, unknown>, ...keys: string[]) {
 }
 
 export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: string) {
-  const { data: fulfillment } = await supabaseAdmin.from("supplier_fulfillments")
+  const { data: fulfillment } = await supabaseAdmin
+    .from("supplier_fulfillments")
     .select("id,order_id,store_id,status,external_order_id")
-    .eq("id", fulfillmentId).eq("provider", "cj").maybeSingle();
+    .eq("id", fulfillmentId)
+    .eq("provider", "cj")
+    .maybeSingle();
   if (!fulfillment) throw new Error("Envio CJ não encontrado.");
-  if (fulfillment.external_order_id || ["submitted", "shipped", "delivered"].includes(fulfillment.status)) return fulfillment;
+  if (
+    fulfillment.external_order_id ||
+    ["submitted", "shipped", "delivered"].includes(fulfillment.status)
+  )
+    return fulfillment;
 
   const [{ data: order }, { data: items }] = await Promise.all([
     supabaseAdmin.from("orders").select("shipping_address").eq("id", fulfillment.order_id).single(),
-    supabaseAdmin.from("order_items").select("quantity,products!inner(supplier_variant_id)")
-      .eq("order_id", fulfillment.order_id).eq("store_id", fulfillment.store_id).eq("products.supplier", "cj"),
+    supabaseAdmin
+      .from("order_items")
+      .select("quantity,products!inner(supplier_variant_id)")
+      .eq("order_id", fulfillment.order_id)
+      .eq("store_id", fulfillment.store_id)
+      .eq("products.supplier", "cj"),
   ]);
   const address = (order?.shipping_address ?? {}) as Record<string, unknown>;
-  const products = (items ?? []).map((item: any) => ({
-    vid: item.products?.supplier_variant_id,
-    quantity: item.quantity,
-  })).filter((item: any) => item.vid);
+  const products = (items ?? [])
+    .map((item: any) => ({
+      vid: item.products?.supplier_variant_id,
+      quantity: item.quantity,
+    }))
+    .filter((item: any) => item.vid);
   if (products.length === 0) throw new Error("O pedido não possui variantes CJ válidas.");
 
   const payload = {
@@ -428,7 +583,13 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
     logisticName: "CJPacket Ordinary",
     products,
   };
-  if (!payload.shippingName || !payload.shippingCity || !payload.shippingAddress || !payload.shippingZip || !payload.shippingPhone) {
+  if (
+    !payload.shippingName ||
+    !payload.shippingCity ||
+    !payload.shippingAddress ||
+    !payload.shippingZip ||
+    !payload.shippingPhone
+  ) {
     throw new Error("O endereço do comprador está incompleto para envio pela CJ.");
   }
 
@@ -439,15 +600,21 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
   });
   const externalOrderId = String(result?.orderId ?? result?.id ?? result?.orderNumber ?? "");
   if (!externalOrderId) throw new Error("A CJ não retornou o identificador do pedido.");
-  const { data: updated, error } = await supabaseAdmin.from("supplier_fulfillments").update({
-    status: "submitted",
-    external_order_id: externalOrderId,
-    request_payload: payload,
-    provider_payload: result,
-    submitted_at: new Date().toISOString(),
-    attempts: 1,
-    last_error: null,
-  }).eq("id", fulfillment.id).is("external_order_id", null).select().maybeSingle();
+  const { data: updated, error } = await supabaseAdmin
+    .from("supplier_fulfillments")
+    .update({
+      status: "submitted",
+      external_order_id: externalOrderId,
+      request_payload: payload,
+      provider_payload: result,
+      submitted_at: new Date().toISOString(),
+      attempts: 1,
+      last_error: null,
+    })
+    .eq("id", fulfillment.id)
+    .is("external_order_id", null)
+    .select()
+    .maybeSingle();
   if (error) throw error;
   return updated ?? fulfillment;
 }
