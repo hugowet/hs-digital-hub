@@ -29,24 +29,32 @@ function AuraAvatar() {
 
 export function AuraChatWidget() {
   const navigate = useNavigate();
+  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      sender: "aura",
-      text: "Olá! Sou a Aura, sua assistente virtual no HS Digital. Como posso te orientar hoje?",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+    setMessages([
+      {
+        id: "welcome",
+        sender: "aura",
+        text: "Olá! Sou a Aura, sua assistente virtual no HS Digital. Como posso te orientar hoje?",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      },
+    ]);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isOpen]);
+
+  if (!mounted) return null;
 
   const handleSend = (textToSend?: string) => {
     const query = (textToSend || input).trim();
@@ -55,7 +63,7 @@ export function AuraChatWidget() {
     const userTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     const userMsg: Message = {
-      id: crypto.randomUUID(),
+      id: String(Date.now()),
       sender: "user",
       text: query,
       time: userTime,
@@ -69,7 +77,6 @@ export function AuraChatWidget() {
       let responseText = "";
       let linkAction: { label: string; url: string } | undefined;
 
-      // Responde sobre o criador apenas se perguntado
       if (
         q.includes("fundador") ||
         q.includes("criador") ||
@@ -99,7 +106,7 @@ export function AuraChatWidget() {
       }
 
       const botMsg: Message = {
-        id: crypto.randomUUID(),
+        id: String(Date.now() + 1),
         sender: "aura",
         text: responseText,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
