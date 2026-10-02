@@ -137,6 +137,20 @@ export async function getCjAccessToken(supabaseAdmin: any, storeId: string) {
 
 function categoryFor(name: string) {
   const normalized = name.toLowerCase();
+  if (
+    [
+      "smart watch",
+      "smartwatch",
+      "earphone",
+      "headphone",
+      "headset",
+      "bluetooth",
+      "speaker",
+      "portable audio",
+      "wearable",
+    ].some((term) => normalized.includes(term))
+  )
+    return "eletronicos-gadgets";
   if (["kid", "toy", "baby", "child"].some((term) => normalized.includes(term))) return "infantil";
   if (
     ["beauty", "makeup", "cosmetic", "skin care", "hair"].some((term) => normalized.includes(term))
@@ -353,6 +367,7 @@ export async function processCjCatalogBatch(
           .eq("store_id", storeId)
           .eq("provider", "cj")
           .eq("status", "pending")
+          .order("priority", { ascending: false })
           .order("created_at")
           .limit(1)
           .maybeSingle();

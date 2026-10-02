@@ -54,6 +54,7 @@
 - [x] Usar categorias populares da CJ como padrão e publicar os produtos importados na vitrine.
 - [x] Ampliar o catálogo CJ para doze linhas variadas com cinco produtos populares por linha.
 - [ ] Importar gradualmente até 20 produtos reais de todas as categorias oficiais da CJ (fila iniciada; conclusão depende dos limites diários do fornecedor).
+- [x] Priorizar na fila da CJ fones, Bluetooth, smartwatches, caixas de som e eletrônicos de consumo.
 - [ ] Integrar catálogo automático do Dropi com margem percentual — aguardando credencial/API de parceiro do Dropi.
 - [x] Encaminhar pedidos pagos da CJ aos fornecedores com processamento idempotente.
 - [ ] Integrar rastreamento oficial dos Correios — aguardando contrato PJ e credenciais CWS; códigos do fornecedor já aparecem no acompanhamento.
