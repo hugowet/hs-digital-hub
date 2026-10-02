@@ -144,6 +144,11 @@ function categoryFor(name: string) {
       "smartphone",
       "television",
       "smart tv",
+    ].some((term) => normalized.includes(term))
+  )
+    return "celulares-tv";
+  if (
+    [
       "smart watch",
       "smartwatch",
       "earphone",
@@ -187,6 +192,19 @@ function categoryFor(name: string) {
     return "perifericos-acessorios";
   if (
     [
+      "automobile",
+      "automotive",
+      "motorcycle",
+      "motorbike",
+      "car part",
+      "auto part",
+      "vehicle",
+      "car accessory",
+    ].some((term) => normalized.includes(term))
+  )
+    return "autos-motos";
+  if (
+    [
       "power tool",
       "hand tool",
       "electric drill",
@@ -197,6 +215,11 @@ function categoryFor(name: string) {
       "grinder",
       "saw",
       "tool",
+    ].some((term) => normalized.includes(term))
+  )
+    return "ferramentas";
+  if (
+    [
       "home",
       "house",
       "office",
@@ -208,14 +231,6 @@ function categoryFor(name: string) {
     return "casa-setup";
   if (
     [
-      "automobile",
-      "automotive",
-      "motorcycle",
-      "motorbike",
-      "car part",
-      "auto part",
-      "vehicle",
-      "car accessory",
       "pet",
       "dog",
       "cat",
