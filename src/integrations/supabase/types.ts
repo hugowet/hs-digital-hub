@@ -929,6 +929,7 @@ export type Database = {
           imported_count: number
           last_error: string | null
           next_product_index: number
+          priority: number
           product_ids: Json
           provider: string
           status: string
@@ -945,6 +946,7 @@ export type Database = {
           imported_count?: number
           last_error?: string | null
           next_product_index?: number
+          priority?: number
           product_ids?: Json
           provider: string
           status?: string
@@ -961,6 +963,7 @@ export type Database = {
           imported_count?: number
           last_error?: string | null
           next_product_index?: number
+          priority?: number
           product_ids?: Json
           provider?: string
           status?: string
