@@ -139,6 +139,11 @@ function categoryFor(name: string) {
   const normalized = name.toLowerCase();
   if (
     [
+      "cell phone",
+      "mobile phone",
+      "smartphone",
+      "television",
+      "smart tv",
       "smart watch",
       "smartwatch",
       "earphone",
@@ -165,19 +170,103 @@ function categoryFor(name: string) {
   if (["sport", "fitness", "gym", "outdoor", "camping"].some((term) => normalized.includes(term)))
     return "esportes";
   if (
-    ["keyboard", "mouse", "computer", "laptop", "headset", "usb"].some((term) =>
-      normalized.includes(term),
-    )
+    [
+      "keyboard",
+      "mouse",
+      "computer",
+      "laptop",
+      "headset",
+      "usb",
+      "phone accessory",
+      "phone case",
+      "screen protector",
+      "charger",
+      "power bank",
+    ].some((term) => normalized.includes(term))
   )
     return "perifericos-acessorios";
   if (
-    ["home", "house", "office", "kitchen", "garden", "decor", "tool"].some((term) =>
-      normalized.includes(term),
-    )
+    [
+      "power tool",
+      "hand tool",
+      "electric drill",
+      "hammer drill",
+      "rotary hammer",
+      "impact drill",
+      "screwdriver",
+      "grinder",
+      "saw",
+      "tool",
+      "home",
+      "house",
+      "office",
+      "kitchen",
+      "garden",
+      "decor",
+    ].some((term) => normalized.includes(term))
   )
     return "casa-setup";
-  if (["pet", "dog", "cat", "travel"].some((term) => normalized.includes(term))) return "mercado";
+  if (
+    [
+      "automobile",
+      "automotive",
+      "motorcycle",
+      "motorbike",
+      "car part",
+      "auto part",
+      "vehicle",
+      "car accessory",
+      "pet",
+      "dog",
+      "cat",
+      "travel",
+    ].some((term) => normalized.includes(term))
+  )
+    return "mercado";
   return "eletronicos-gadgets";
+}
+
+function priorityForCjCategory(path: string) {
+  const normalized = path.toLowerCase();
+  if (
+    [
+      "power tool",
+      "hand tool",
+      "electric drill",
+      "hammer drill",
+      "rotary hammer",
+      "cell phone",
+      "mobile phone",
+      "smartphone",
+      "television",
+      "automobiles & motorcycles",
+      "auto replacement parts",
+      "motorcycle accessories & parts",
+      "car electronics",
+    ].some((term) => normalized.includes(term))
+  )
+    return 120;
+  if (
+    [
+      "earphone",
+      "headphone",
+      "headset",
+      "bluetooth",
+      "smart watch",
+      "smartwatch",
+      "speaker",
+      "portable audio",
+      "wearable",
+    ].some((term) => normalized.includes(term))
+  )
+    return 100;
+  if (
+    ["consumer electronics", "phone accessories", "computer accessories", "electronic"].some(
+      (term) => normalized.includes(term),
+    )
+  )
+    return 50;
+  return 0;
 }
 
 function flattenCjCategories(tree: CjCategoryTree) {
@@ -209,6 +298,7 @@ export async function startCjCatalogImport(supabaseAdmin: any, storeId: string) 
     store_id: storeId,
     provider: "cj",
     ...category,
+    priority: priorityForCjCategory(category.category_path),
     status: "pending",
     product_ids: [],
     next_product_index: 0,
