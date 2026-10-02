@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { createServerFn, useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import { z } from "zod";
 import { 
   CheckCircle2, 
   CreditCard, 
@@ -26,6 +27,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { getMercadoPagoConfiguration, saveMercadoPagoConfiguration } from "@/lib/payments.functions";
+
+// Funções de servidor que salvam direto no banco com permissão total de administrador (sem travar no RLS)
+const setProductShippingAdmin = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ productId: z.string().uuid(), freeShipping: z.boolean() }).parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("products")
+      .update({ free_shipping: data.freeShipping })
+      .eq("id", data.productId);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  });
+
+const setAllProductsShippingAdmin = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ freeShipping: z.boolean() }).parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("products")
+      .update({ free_shipping: data.freeShipping })
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+    if (error) throw new Error(error.message);
+    return { success: true };
+  });
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -52,6 +78,8 @@ function AdminPage() {
   const qc = useQueryClient();
   const getMpConfiguration = useServerFn(getMercadoPagoConfiguration);
   const saveMpConfiguration = useServerFn(saveMercadoPagoConfiguration);
+  const setProductShipping = useServerFn(setProductShippingAdmin);
+  const setAllProductsShipping = useServerFn(setAllProductsShippingAdmin);
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -95,7 +123,6 @@ function AdminPage() {
     },
   });
 
-  // Produtos para a gestão de frete grátis pelo Admin
   const { data: allProducts = [], isLoading: productsLoading } = useQuery({
     enabled: !!isAdmin,
     queryKey: ["admin-products-shipping"],
@@ -263,11 +290,12 @@ function AdminPage() {
                       size="sm"
                       onClick={async () => {
                         if (!window.confirm("Deseja conceder frete grátis para TODOS os produtos da lista?")) return;
-                        const { error } = await supabase.from("products").update({ free_shipping: true }).neq("id", "00000000-0000-0000-0000-000000000000");
-                        if (error) toast.error("Erro ao aplicar frete grátis global.");
-                        else {
+                        try {
+                          await setAllProductsShipping({ data: { freeShipping: true } });
                           toast.success("Frete grátis concedido a todos os produtos!");
                           qc.invalidateQueries({ queryKey: ["admin-products-shipping"] });
+                        } catch {
+                          toast.error("Erro ao aplicar frete grátis global.");
                         }
                       }}
                     >
@@ -278,11 +306,12 @@ function AdminPage() {
                       size="sm"
                       onClick={async () => {
                         if (!window.confirm("Deseja remover o frete grátis de todos os produtos?")) return;
-                        const { error } = await supabase.from("products").update({ free_shipping: false }).neq("id", "00000000-0000-0000-0000-000000000000");
-                        if (error) toast.error("Erro ao remover frete grátis.");
-                        else {
+                        try {
+                          await setAllProductsShipping({ data: { freeShipping: false } });
                           toast.success("Frete grátis removido de todos.");
                           qc.invalidateQueries({ queryKey: ["admin-products-shipping"] });
+                        } catch {
+                          toast.error("Erro ao remover frete grátis.");
                         }
                       }}
                     >
@@ -346,16 +375,12 @@ function AdminPage() {
                                 className={p.free_shipping ? "border-destructive/30 text-destructive hover:bg-destructive/10" : "bg-emerald-600 hover:bg-emerald-700 text-white"}
                                 onClick={async () => {
                                   const novoStatus = !p.free_shipping;
-                                  const { error } = await supabase
-                                    .from("products")
-                                    .update({ free_shipping: novoStatus })
-                                    .eq("id", p.id);
-
-                                  if (error) {
-                                    toast.error(error.message || "Erro ao alterar frete do produto.");
-                                  } else {
+                                  try {
+                                    await setProductShipping({ data: { productId: p.id, freeShipping: novoStatus } });
                                     toast.success(novoStatus ? `Frete grátis ativado para ${p.title}!` : `Frete grátis removido de ${p.title}.`);
                                     qc.invalidateQueries({ queryKey: ["admin-products-shipping"] });
+                                  } catch (err: any) {
+                                    toast.error(err?.message || "Erro ao alterar frete do produto.");
                                   }
                                 }}
                               >
