@@ -12,7 +12,7 @@ function isStoredMediaPath(value: string) {
 }
 
 async function signProductMedia(product: Product, supabaseAdmin: any): Promise<Product> {
-  // Se a imagem principal já for URL externa (ex: CJ Dropshipping), retorna direto sem consultar o Storage
+  // Ignora o Storage se a imagem já for uma URL externa direta (produtos da CJ Dropshipping)
   if (product.image_url && !isStoredMediaPath(product.image_url)) {
     return {
       ...product,
@@ -65,7 +65,17 @@ async function signProductMedia(product: Product, supabaseAdmin: any): Promise<P
 
 const projection = "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier,stores(name,slug)";
 
+// Cache em memória de 5 minutos
+let cachedProducts: Product[] | null = null;
+let lastCacheTime = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 export const fetchProducts = createServerFn({ method: "GET" }).handler(async () => {
+  const now = Date.now();
+  if (cachedProducts && now - lastCacheTime < CACHE_TTL_MS) {
+    return cachedProducts;
+  }
+
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
   const supabasePublic = createClient<Database>(process.env["SUPABASE_URL"]!, key, {
     auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
@@ -76,15 +86,22 @@ export const fetchProducts = createServerFn({ method: "GET" }).handler(async () 
       return fetch(input, { ...init, headers });
     } },
   });
+
   const { data, error } = await supabasePublic
     .from("products")
     .select(projection)
     .eq("is_active", true)
     .order("sold_count", { ascending: false })
-    .limit(48); // Limite de 48 produtos para carregamento imediato
+    .limit(48);
+
   if (error) throw error;
+
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return Promise.all(((data ?? []) as unknown as Product[]).map((product) => signProductMedia(product, supabaseAdmin)));
+  const result = await Promise.all(((data ?? []) as unknown as Product[]).map((product) => signProductMedia(product, supabaseAdmin)));
+
+  cachedProducts = result;
+  lastCacheTime = now;
+  return result;
 });
 
 export const fetchProduct = createServerFn({ method: "GET" })
