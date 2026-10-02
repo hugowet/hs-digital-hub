@@ -65,7 +65,7 @@ async function signProductMedia(product: Product, supabaseAdmin: any): Promise<P
 
 const projection = "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier,stores(name,slug)";
 
-// Cache em memória de 5 minutos
+// Cache em memória de 5 minutos para carregar instantaneamente sem travar
 let cachedProducts: Product[] | null = null;
 let lastCacheTime = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -87,12 +87,12 @@ export const fetchProducts = createServerFn({ method: "GET" }).handler(async () 
     } },
   });
 
+  // Busca todos os produtos ativos sem limitar a 48
   const { data, error } = await supabasePublic
     .from("products")
     .select(projection)
     .eq("is_active", true)
-    .order("sold_count", { ascending: false })
-    .limit(48);
+    .order("sold_count", { ascending: false });
 
   if (error) throw error;
 
