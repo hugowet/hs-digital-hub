@@ -12,6 +12,15 @@ function isStoredMediaPath(value: string) {
 }
 
 async function signProductMedia(product: Product, supabaseAdmin: any): Promise<Product> {
+  // Se a imagem principal já for URL externa (ex: CJ Dropshipping), retorna direto sem consultar o Storage
+  if (product.image_url && !isStoredMediaPath(product.image_url)) {
+    return {
+      ...product,
+      gallery_urls: (product.gallery_urls ?? []).filter(Boolean),
+      media: [],
+    };
+  }
+
   const { data: mediaRows, error } = await supabaseAdmin
     .from("product_media")
     .select("id,storage_path,media_type,mime_type,position")
@@ -71,7 +80,8 @@ export const fetchProducts = createServerFn({ method: "GET" }).handler(async () 
     .from("products")
     .select(projection)
     .eq("is_active", true)
-    .order("sold_count", { ascending: false });
+    .order("sold_count", { ascending: false })
+    .limit(48); // Limite de 48 produtos para carregamento imediato
   if (error) throw error;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return Promise.all(((data ?? []) as unknown as Product[]).map((product) => signProductMedia(product, supabaseAdmin)));
