@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Baby, ChevronLeft, ChevronRight, Dumbbell, Files, Gamepad2, Gift, GraduationCap, Headphones, Keyboard,
+  Baby, CarFront, ChevronLeft, ChevronRight, Drill, Dumbbell, Files, Gamepad2, Gift, GraduationCap, Headphones, Keyboard,
   LampDesk, Rocket, ShieldCheck, Shirt, ShoppingBasket, ShoppingCart, Smartphone, Sofa, Sparkles,
-  Store, Truck, Watch,
+  Store, Truck, Tv, Watch,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/")({
 
 const ICONS: Record<string, typeof Smartphone> = {
   Files, GraduationCap, Watch, Keyboard, LampDesk, Smartphone, Shirt, Sofa,
-  Sparkles, Gamepad2, Dumbbell, Baby, ShoppingBasket,
+  Sparkles, Gamepad2, Dumbbell, Baby, ShoppingBasket, Tv, Drill, CarFront,
 };
 
 const PRICE_RANGES = [
