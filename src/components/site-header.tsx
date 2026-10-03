@@ -2,24 +2,15 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Bell,
   ChevronRight,
-  Gift,
-  HelpCircle,
   LogOut,
   MapPin,
-  Menu,
   Package,
-  Rocket,
   Search,
-  ShieldCheck,
   ShoppingCart,
   Store,
-  Tag,
-  Truck,
   User,
-  Zap,
 } from "lucide-react";
 import { useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,35 +21,30 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useCart } from "@/lib/cart";
 import { useAuthSession } from "@/lib/auth";
 
 interface SiteHeaderProps {
   query?: string;
   onQueryChange?: (value: string) => void;
-  suggestions?: { id: string; title: string; category?: string }[];
 }
 
-export function SiteHeader({ query = "", onQueryChange, suggestions = [] }: SiteHeaderProps) {
+export function SiteHeader({ query = "", onQueryChange }: SiteHeaderProps) {
   const navigate = useNavigate();
   const { count } = useCart();
   const { session, signOut } = useAuthSession();
-  const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"comprador" | "vendedor">("comprador");
-
   const signedIn = Boolean(session?.user);
 
   return (
     <header className="sticky top-0 z-40 w-full shadow-sm">
-      
-      {/* PAINEL PERSUASIVO DE PROMOÇÕES (COMPRADOR VS VENDEDOR) */}
+      {/* PAINEL DE PROMOÇÕES (COMPRADOR VS VENDEDOR) */}
       <div className="bg-gradient-to-r from-gray-900 via-indigo-950 to-gray-900 text-white text-xs py-1.5 px-3 border-b border-white/10">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2">
-          
           {/* Alternador de Modo */}
           <div className="flex items-center gap-1.5">
             <button
+              type="button"
               onClick={() => setActiveTab("comprador")}
               className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
                 activeTab === "comprador"
@@ -69,6 +55,7 @@ export function SiteHeader({ query = "", onQueryChange, suggestions = [] }: Site
               Comprador
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("vendedor")}
               className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
                 activeTab === "vendedor"
@@ -80,7 +67,7 @@ export function SiteHeader({ query = "", onQueryChange, suggestions = [] }: Site
             </button>
           </div>
 
-          {/* Mensagem Persuasiva Dinâmica */}
+          {/* Mensagem Dinâmica */}
           <div className="truncate text-center flex-1 hidden sm:block">
             {activeTab === "comprador" ? (
               <span className="text-gray-200">
@@ -117,7 +104,6 @@ export function SiteHeader({ query = "", onQueryChange, suggestions = [] }: Site
       {/* BARRA PRINCIPAL */}
       <div className="bg-[#3483fa] text-white">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-3 sm:px-4">
-          
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 font-black text-xl sm:text-2xl tracking-tight text-white shrink-0">
             <span>HS Digital</span>
@@ -134,6 +120,7 @@ export function SiteHeader({ query = "", onQueryChange, suggestions = [] }: Site
                 className="h-10 w-full rounded-md bg-white pr-10 text-xs text-gray-900 placeholder:text-gray-400 shadow-inner border-0"
               />
               <button
+                type="button"
                 className="absolute right-0 top-0 h-10 w-10 flex items-center justify-center text-gray-500 hover:text-gray-800"
                 aria-label="Buscar"
               >
@@ -142,10 +129,8 @@ export function SiteHeader({ query = "", onQueryChange, suggestions = [] }: Site
             </div>
           </div>
 
-          {/* Ações Rápidas à Direita */}
+          {/* Ações Rápidas */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            
-            {/* Notificações */}
             {signedIn && (
               <Button asChild variant="ghost" size="icon" className="text-white hover:bg-white/10" title="Notificações">
                 <Link to="/notificacoes">
@@ -154,7 +139,6 @@ export function SiteHeader({ query = "", onQueryChange, suggestions = [] }: Site
               </Button>
             )}
 
-            {/* Menu da Conta */}
             {signedIn ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
