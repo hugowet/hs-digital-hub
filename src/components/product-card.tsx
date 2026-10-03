@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { ShoppingCart, Star } from "lucide-react";
+import { Check, ShoppingCart, Star } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { trackAbandonedCart } from "@/lib/abandoned-cart";
@@ -26,13 +27,36 @@ function Stars({ rating }: { rating: number }) {
 
 export function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
-  // Título original mantido para facilitar buscas
   const originalTitle = product.title;
 
   const discount =
     product.compare_at_price && product.compare_at_price > product.price
       ? Math.round((1 - product.price / product.compare_at_price) * 100)
       : 0;
+
+  const handleAddToCart = () => {
+    add(
+      {
+        productId: product.id,
+        title: originalTitle,
+        price: Number(product.price),
+        imageUrl: product.image_url,
+        storeId: product.store_id,
+        storeName: product.stores?.name ?? "Loja parceira",
+        freeShipping: product.free_shipping,
+        productType: product.product_type,
+        stock: product.stock,
+      },
+      1,
+    );
+    void trackAbandonedCart(product.id, 1);
+    
+    // Notificação visual temporária que some automaticamente após 2.5 segundos
+    toast.success("Produto adicionado ao carrinho!", {
+      duration: 2500,
+      icon: <Check className="h-4 w-4 text-[#00a650]" />,
+    });
+  };
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:-translate-y-0.5 hover:shadow-md">
@@ -88,32 +112,16 @@ export function ProductCard({ product }: { product: Product }) {
 
           <div className="mt-2 flex items-center justify-between gap-1 text-[11px] text-gray-500">
             <div className="flex items-center gap-1">
-              <Stars rating={product.rating_average ?? 4.8} />
-              <span>({compact(product.rating_count ?? 120)})</span>
+              <Stars rating={product.rating ?? 4.8} />
+              <span>({compact(product.reviews_count ?? 120)})</span>
             </div>
             <span>{compact(product.sold_count ?? 45)} vendidos</span>
           </div>
 
           <Button
             size="sm"
-            onClick={() => {
-              add(
-                {
-                  productId: product.id,
-                  title: originalTitle,
-                  price: Number(product.price),
-                  imageUrl: product.image_url,
-                  storeId: product.store_id,
-                  storeName: product.stores?.name ?? "Loja parceira",
-                  freeShipping: product.free_shipping,
-                  productType: product.product_type,
-                  stock: product.stock,
-                },
-                1,
-              );
-              void trackAbandonedCart(product.id, 1);
-            }}
-            className="mt-3 w-full gap-1.5 bg-[#3483fa] hover:bg-[#2968c8] text-white text-xs font-semibold py-1.5"
+            onClick={handleAddToCart}
+            className="mt-3 w-full gap-1.5 bg-[#3483fa] hover:bg-[#2968c8] text-white text-xs font-semibold py-1.5 transition-colors"
           >
             <ShoppingCart className="h-3.5 w-3.5" />
             Adicionar
