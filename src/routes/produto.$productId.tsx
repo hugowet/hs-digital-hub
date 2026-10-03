@@ -142,7 +142,7 @@ export function ProductDetailPage() {
     );
   }
 
-  // Mantemos o título original intacto
+  // Título original mantido
   const originalTitle = product.title;
   const rawDescription = product.description_long || product.description || "";
 
@@ -176,7 +176,7 @@ export function ProductDetailPage() {
       ...questions,
     ]);
     setNewQuestion("");
-    toast.success("Pergunta enviada com sucesso!");
+    toast.success("Pergunta enviada com sucesso!", { duration: 2500 });
   };
 
   const relatedProducts = allProducts.filter((p) => p.id !== product.id).slice(0, 6);
@@ -218,7 +218,7 @@ export function ProductDetailPage() {
 
                 <div className="relative aspect-square w-full max-w-[420px] rounded-lg border border-gray-100 bg-white p-4 flex items-center justify-center">
                   <img
-                    src={media[selectedImage]?.url || product.image_url}
+                    src={media[selectedImage]?.url || product.image_url || ""}
                     alt={originalTitle}
                     className="max-h-[380px] w-full object-contain"
                   />
@@ -231,331 +231,210 @@ export function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* Informações Principais do Produto */}
+              {/* Informações Centrais */}
               <div className="flex flex-col">
-                <div className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
-                  <span>Novo</span>
-                  <span>|</span>
-                  <span>+{compact(product.sold_count ?? 150)} vendidos</span>
+                <div className="text-xs text-gray-400">
+                  Novo | +{compact(product.sold_count ?? 100)} vendidos
                 </div>
-
-                {/* Título Oficial */}
-                <h1 className="text-lg sm:text-xl font-bold text-gray-900 leading-snug">
+                <h1 className="mt-1 text-xl sm:text-2xl font-bold text-gray-900 leading-snug">
                   {originalTitle}
                 </h1>
 
-                {/* Avaliações */}
+                {/* Avaliação e Vendas */}
                 <div className="mt-2 flex items-center gap-2 text-xs">
-                  <div className="flex text-[#3483fa]">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Star key={i} className="h-4 w-4 fill-[#3483fa]" />
-                    ))}
+                  <div className="flex items-center text-[#3483fa]">
+                    <Star className="h-4 w-4 fill-[#3483fa]" />
                   </div>
-                  <span className="font-semibold text-gray-700">{product.rating_average ?? 4.9}</span>
-                  <span className="text-gray-400">({compact(product.rating_count ?? 328)} avaliações)</span>
+                  <span className="font-semibold text-gray-700">{product.rating ?? 4.9}</span>
+                  <span className="text-gray-400">({compact(product.reviews_count ?? 328)} avaliações)</span>
                 </div>
 
-                {/* Preço e Parcelamento */}
+                {/* Preço */}
                 <div className="mt-4 border-t pt-4">
                   {product.compare_at_price && product.compare_at_price > product.price && (
-                    <span className="text-xs text-gray-400 line-through">
+                    <span className="text-sm text-gray-400 line-through">
                       {brl(product.compare_at_price)}
                     </span>
                   )}
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl sm:text-3xl font-light text-gray-900">
-                      {brl(product.price)}
-                    </span>
+                    <span className="text-3xl font-light text-gray-900">{brl(product.price)}</span>
                     {product.compare_at_price && product.compare_at_price > product.price && (
-                      <span className="text-sm font-bold text-[#00a650]">
+                      <span className="text-xs font-bold text-[#00a650]">
                         {Math.round((1 - product.price / product.compare_at_price) * 100)}% OFF
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 text-xs text-gray-600">
-                    em <span className="font-semibold text-[#00a650]">10x de {brl(Number(product.price) / 10)}</span> sem juros
-                  </p>
+                  <p className="mt-0.5 text-xs text-[#00a650] font-medium">em 10x sem juros</p>
                 </div>
 
-                {/* Destaque de Envio e Frete */}
-                <div className="mt-4 space-y-2 rounded-lg bg-[#f5f9ff] p-3 text-xs text-gray-700 border border-blue-100">
-                  <div className="flex items-center gap-2 font-semibold text-[#00a650]">
-                    <Truck className="h-4 w-4" />
-                    <span>{product.free_shipping || Number(product.price) >= 79 ? "Frete grátis para todo o Brasil" : "Envio rápido com rastreamento"}</span>
-                  </div>
-                  <p className="text-[11px] text-gray-500">
-                    Chegará rapidamente no seu endereço com código de rastreio oficial.
-                  </p>
-                </div>
-
-                {/* O que você precisa saber sobre este produto */}
-                <div className="mt-5 border-t pt-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
-                    O que você precisa saber sobre este produto:
-                  </h3>
-                  <ul className="space-y-1.5 text-xs text-gray-600 list-disc pl-4">
-                    <li>Produto 100% original, novo e testado antes do despacho.</li>
-                    <li>Compatível com as principais especificações e voltagens descritas.</li>
-                    <li>Garantia total de 30 dias contra qualquer defeito de fabricação.</li>
-                    <li>Acompanha suporte pós-venda direto com o vendedor.</li>
+                {/* Destaques Técnicos Rápidos */}
+                <div className="mt-6 rounded-md bg-gray-50 p-3 text-xs text-gray-700 space-y-1.5 border border-gray-100">
+                  <p className="font-bold text-gray-900">O que você precisa saber sobre este produto:</p>
+                  <ul className="list-disc pl-4 space-y-1 text-gray-600">
+                    <li>Produto original com envio rápido e código de rastreio oficial.</li>
+                    <li>Garantia incondicional de 30 dias com devolução grátis.</li>
+                    <li>Compatível com padrões nacionais e suporte do vendedor.</li>
                   </ul>
                 </div>
               </div>
             </div>
 
-            {/* LADO DIREITO: BUY BOX (CAIXA DE COMPRA MERCADO LIVRE) */}
-            <div className="h-fit rounded-lg border border-gray-200 p-4 sm:p-5 shadow-sm">
-              <div className="text-xs text-[#00a650] font-semibold flex items-center gap-1.5">
-                <Truck className="h-4 w-4" /> Envio rápido garantido
-              </div>
-              <p className="text-[11px] text-gray-500 mt-1">
-                Compre com tranquilidade: Compra Protegida pela HS Digital.
-              </p>
+            {/* LADO DIREITO: BUY BOX (MERCADO LIVRE STYLE) */}
+            <div className="rounded-lg border border-gray-200 p-5 bg-white shadow-xs flex flex-col justify-between">
+              <div>
+                {/* Benefícios de Envio */}
+                <div className="space-y-3 border-b pb-4 text-xs">
+                  <div className="flex items-start gap-2.5">
+                    <Truck className="h-5 w-5 text-[#00a650] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-[#00a650]">Frete grátis na sua 1ª compra</p>
+                      <p className="text-gray-500">Envio para todo o Brasil com código de rastreio</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <RotateCcw className="h-5 w-5 text-[#3483fa] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-gray-800">Devolução grátis</p>
+                      <p className="text-gray-500">Você tem 30 dias a partir da data de recebimento.</p>
+                    </div>
+                  </div>
+                </div>
 
-              {/* Quantidade */}
-              <div className="mt-5 flex items-center justify-between border-y py-3 text-xs">
-                <span className="font-medium text-gray-700">Quantidade:</span>
-                <div className="flex items-center gap-2">
+                {/* Quantidade */}
+                <div className="mt-4 flex items-center justify-between text-xs">
+                  <span className="font-medium text-gray-700">Quantidade:</span>
+                  <div className="flex items-center gap-1.5 border rounded-md p-1">
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7"
+                      disabled={quantity <= 1}
+                      onClick={() => setQuantity(quantity - 1)}
+                    >
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                    <span className="w-6 text-center font-bold text-gray-900">{quantity}</span>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7"
+                      disabled={quantity >= (product.stock || 50)}
+                      onClick={() => setQuantity(quantity + 1)}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <span className="text-[11px] text-gray-400">({product.stock || 50} em estoque)</span>
+                </div>
+
+                {/* Botões de Ação com aviso temporário */}
+                <div className="mt-5 space-y-2">
                   <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-7 w-7"
-                    disabled={quantity <= 1}
-                    onClick={() => setQuantity(quantity - 1)}
+                    onClick={() => {
+                      addProductToCart();
+                      navigate({ to: "/carrinho" });
+                    }}
+                    className="w-full bg-[#3483fa] hover:bg-[#2968c8] text-white font-semibold py-5 text-sm rounded-md shadow-sm"
                   >
-                    <Minus className="h-3 w-3" />
+                    Comprar agora
                   </Button>
-                  <span className="w-6 text-center font-bold text-gray-900">{quantity}</span>
                   <Button
-                    size="icon"
+                    onClick={() => {
+                      addProductToCart();
+                      toast.success("Produto adicionado ao carrinho!", {
+                        duration: 2500,
+                        icon: <Check className="h-4 w-4 text-[#00a650]" />,
+                      });
+                    }}
                     variant="outline"
-                    className="h-7 w-7"
-                    disabled={quantity >= (product.stock || 50)}
-                    onClick={() => setQuantity(quantity + 1)}
+                    className="w-full bg-[#e3edfb] hover:bg-[#d5e4f7] text-[#3483fa] border-transparent font-semibold py-5 text-sm rounded-md"
                   >
-                    <Plus className="h-3 w-3" />
+                    Adicionar ao carrinho
                   </Button>
                 </div>
-                <span className="text-[11px] text-gray-400">({product.stock || 50} em estoque)</span>
-              </div>
 
-              {/* Botões de Ação */}
-              <div className="mt-5 space-y-2">
-                <Button
-                  onClick={() => {
-                    addProductToCart();
-                    navigate({ to: "/carrinho" });
-                  }}
-                  className="w-full bg-[#3483fa] hover:bg-[#2968c8] text-white font-semibold py-5 text-sm rounded-md shadow-sm"
-                >
-                  Comprar agora
-                </Button>
-                <Button
-                  onClick={() => {
-                    addProductToCart();
-                    toast.success("Produto adicionado ao carrinho!");
-                  }}
-                  variant="outline"
-                  className="w-full bg-[#e3edfb] hover:bg-[#d5e4f7] text-[#3483fa] border-transparent font-semibold py-5 text-sm rounded-md"
-                >
-                  Adicionar ao carrinho
-                </Button>
-              </div>
-
-              {/* Loja e Garantias */}
-              <div className="mt-5 border-t pt-4 text-xs">
-                <div className="flex items-center gap-2">
-                  <Store className="h-4 w-4 text-gray-500" />
-                  <span className="text-gray-500">Loja oficial: <strong className="text-gray-900">{product.stores?.name ?? "HS Digital"}</strong></span>
-                </div>
-                <p className="text-[11px] text-[#00a650] font-medium mt-1">+10 mil vendas concretizadas</p>
-              </div>
-
-              <div className="mt-4 space-y-2 text-[11px] text-gray-500 border-t pt-3">
-                <div className="flex items-start gap-1.5">
-                  <RotateCcw className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
-                  <span><strong className="text-gray-700">Devolução grátis.</strong> Você tem 30 dias a partir da data de recebimento.</span>
-                </div>
-                <div className="flex items-start gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
-                  <span><strong className="text-gray-700">Compra Garantida.</strong> Receba o produto que está esperando ou devolvemos seu dinheiro.</span>
+                {/* Loja e Garantias */}
+                <div className="mt-6 space-y-2.5 text-xs text-gray-500 border-t pt-4">
+                  <div className="flex items-center gap-2">
+                    <Store className="h-4 w-4 text-gray-400" />
+                    <span>Vendido por <strong className="text-gray-800">{product.stores?.name ?? "Loja Parceira HS"}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-[#00a650]" />
+                    <span><strong>Compra Garantida:</strong> receba o produto ou seu dinheiro de volta.</span>
+                  </div>
                 </div>
               </div>
             </div>
+
           </div>
+        </div>
 
-          {/* SEÇÃO 2: DESCRIÇÃO COMPLETA ESTILO MERCADO LIVRE */}
-          <section className="mt-12 border-t pt-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Descrição do produto</h2>
+        {/* DESCRIÇÃO COMPLETA */}
+        <section className="mt-6 rounded-lg bg-white p-5 sm:p-8 shadow-sm">
+          <h2 className="text-xl font-bold text-gray-900 border-b pb-3">Descrição Detalhada</h2>
+          <div className="mt-4 text-sm text-gray-700 leading-relaxed whitespace-pre-line space-y-4">
+            {rawDescription ? (
+              rawDescription
+            ) : (
+              <p className="text-gray-500 italic">
+                Este produto conta com qualidade assegurada, inspeção direta do fornecedor parceiro e suporte total pós-venda.
+              </p>
+            )}
+          </div>
+        </section>
 
-            <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
-              
-              {/* CORPO DA DESCRIÇÃO ESTRUTURADA */}
-              <div className="space-y-6">
-                
-                {/* 1. Caixa de Avisos Importantes */}
-                <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-4 text-xs text-amber-900">
-                  <div className="flex items-center gap-2 font-bold text-amber-800 text-sm mb-2">
-                    <AlertCircle className="h-4 w-4" />
-                    O que devo prestar atenção antes de comprar?
-                  </div>
-                  <ul className="space-y-1 list-disc pl-5 leading-relaxed">
-                    <li>Verifique a compatibilidade do modelo com seu uso pretendido antes de finalizar o pedido.</li>
-                    <li>Produto inspecionado, testado e embalado em conformidade com o padrão original de fábrica.</li>
-                    <li>Acompanha todos os acessórios e manuais oficiais descritos no anúncio.</li>
-                    <li>Suporte e atendimento ao cliente à disposição no chat e nas perguntas.</li>
-                  </ul>
-                </div>
+        {/* PERGUNTAS E RESPOSTAS */}
+        <section className="mt-6 rounded-lg bg-white p-5 sm:p-8 shadow-sm">
+          <h2 className="text-xl font-bold text-gray-900">Perguntas e Respostas</h2>
+          <p className="text-xs text-gray-500 mt-1">Tire suas dúvidas diretamente com o vendedor</p>
 
-                {/* 2. Conteúdo da Descrição */}
-                <div className="rounded-lg border bg-white p-5 text-sm leading-relaxed text-gray-700 whitespace-pre-line shadow-xs">
-                  <h3 className="text-base font-bold text-gray-900 mb-3 border-b pb-2">
-                    Apresentação e Recursos do Produto
-                  </h3>
-                  {rawDescription ? (
-                    rawDescription
-                  ) : (
-                    <div>
-                      <p>
-                        Se você está procurando um produto de alta qualidade, confiabilidade e excelente custo-benefício, este item é a escolha ideal.
+          <form onSubmit={handleAskQuestion} className="mt-4 flex gap-2">
+            <Input
+              value={newQuestion}
+              onChange={(e) => setNewQuestion(e.target.value)}
+              placeholder="Escreva sua pergunta para o vendedor..."
+              className="text-sm"
+            />
+            <Button type="submit" className="bg-[#3483fa] hover:bg-[#2968c8] text-white">
+              <Send className="h-4 w-4 mr-1.5" /> Perguntar
+            </Button>
+          </form>
+
+          <div className="mt-6 space-y-4 divide-y">
+            {questions.map((q) => (
+              <div key={q.id} className="pt-4 first:pt-0">
+                <div className="flex items-start gap-2">
+                  <MessageSquare className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{q.question}</p>
+                    {q.answer ? (
+                      <p className="mt-1 text-xs text-gray-600 bg-gray-50 p-2.5 rounded border border-gray-100">
+                        {q.answer}
                       </p>
-                      <h4 className="font-bold text-gray-800 mt-4 mb-2">Principais Funções & Vantagens:</h4>
-                      <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm text-gray-600">
-                        <li>Alta durabilidade com acabamento premium e materiais de primeira linha.</li>
-                        <li>Fácil de instalar e usar: tecnologia plug and play intuitiva.</li>
-                        <li>Excelente desempenho com eficiência energética e testes rigorosos de qualidade.</li>
-                        <li>Ideal tanto para uso pessoal quanto para profissionais que buscam praticidade.</li>
-                      </ul>
-                    </div>
-                  )}
-                </div>
-
-                {/* 3. Tabela de Especificações Técnicas */}
-                <div>
-                  <h3 className="text-sm font-bold text-gray-800 mb-2">Especificações Técnicas</h3>
-                  <div className="rounded-lg border overflow-hidden text-xs divide-y">
-                    <div className="grid grid-cols-2 bg-[#f5f5f5] p-3 font-medium">
-                      <span className="text-gray-500">Marca / Fornecedor</span>
-                      <span className="text-gray-800 font-semibold">{product.stores?.name ?? "Importado Oficial"}</span>
-                    </div>
-                    <div className="grid grid-cols-2 bg-white p-3">
-                      <span className="text-gray-500">Condição do item</span>
-                      <span className="text-gray-800">Novo e Lacrado</span>
-                    </div>
-                    <div className="grid grid-cols-2 bg-[#f5f5f5] p-3">
-                      <span className="text-gray-500">Tipo de envio</span>
-                      <span className="text-gray-800">Rastreamento oficial Correios / Transportadora</span>
-                    </div>
-                    <div className="grid grid-cols-2 bg-white p-3">
-                      <span className="text-gray-500">Garantia do vendedor</span>
-                      <span className="text-gray-800 font-bold text-[#00a650]">30 dias corridos</span>
-                    </div>
-
-                    {product.specifications &&
-                      Object.entries(product.specifications).map(([key, val], idx) => (
-                        <div key={key} className={`grid grid-cols-2 p-3 ${idx % 2 === 0 ? "bg-white" : "bg-[#f5f5f5]"}`}>
-                          <span className="text-gray-500 capitalize">{key}</span>
-                          <span className="text-gray-800">{String(val)}</span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-
-                {/* 4. Garantia do Vendedor */}
-                <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-xs text-green-900 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <ShieldCheck className="h-6 w-6 text-[#00a650] shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-sm text-green-900">Garantia do vendedor: 30 dias</h4>
-                      <p className="text-green-700">Se o produto apresentar qualquer inconformidade, você recebe outro ou o reembolso total.</p>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* LADO DIREITO: MEIOS DE PAGAMENTO */}
-              <div className="space-y-4">
-                <div className="rounded-lg border border-gray-200 p-4 bg-white text-xs shadow-xs">
-                  <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-[#3483fa]" /> Meios de pagamento aceitos
-                  </h4>
-
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-[11px] font-semibold text-gray-700">Cartões de crédito</p>
-                      <p className="text-[10px] text-gray-500">Pague em até 10x ou 12x</p>
-                      <div className="flex gap-2 mt-1">
-                        <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px] font-bold text-blue-900">VISA</span>
-                        <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px] font-bold text-red-600">Mastercard</span>
-                        <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px] font-bold text-black">ELO</span>
-                        <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px] font-bold text-orange-600">Hiper</span>
-                      </div>
-                    </div>
-
-                    <div className="border-t pt-2">
-                      <p className="text-[11px] font-semibold text-[#00a650]">Pix com aprovação imediata</p>
-                      <p className="text-[10px] text-gray-500">Seu pedido entra em separação na mesma hora.</p>
-                    </div>
-
-                    <div className="border-t pt-2">
-                      <p className="text-[11px] font-semibold text-gray-700">Boleto bancário</p>
-                      <p className="text-[10px] text-gray-500">Compensação em 1 a 2 dias úteis.</p>
-                    </div>
+                    ) : (
+                      <p className="mt-1 text-xs text-amber-600 italic">Aguardando resposta do vendedor...</p>
+                    )}
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
 
-            </div>
-          </section>
-
-          {/* SEÇÃO 3: PERGUNTAS E RESPOSTAS */}
-          <section className="mt-12 border-t pt-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Perguntas e respostas</h2>
-
-            <form onSubmit={handleAskQuestion} className="flex gap-2 max-w-2xl mb-6">
-              <Input
-                value={newQuestion}
-                onChange={(e) => setNewQuestion(e.target.value)}
-                placeholder="Escreva uma pergunta ao vendedor..."
-                className="bg-white text-xs"
-              />
-              <Button type="submit" className="bg-[#3483fa] hover:bg-[#2968c8] text-white text-xs font-semibold px-6">
-                <Send className="h-3.5 w-3.5 mr-1" /> Perguntar
-              </Button>
-            </form>
-
-            <div className="space-y-3 max-w-2xl">
-              <h3 className="text-xs font-semibold uppercase text-gray-500 tracking-wider">Últimas perguntas respondidas</h3>
-              {questions.map((q) => (
-                <div key={q.id} className="text-xs border-b pb-3">
-                  <p className="font-medium text-gray-900 flex items-start gap-1.5">
-                    <span className="text-gray-400">P:</span> {q.question}
-                  </p>
-                  {q.answer && (
-                    <p className="mt-1 text-gray-600 pl-4 border-l-2 border-gray-200">
-                      <span className="text-gray-400 font-semibold">R:</span> {q.answer}
-                    </p>
-                  )}
-                </div>
+        {/* PRODUTOS RELACIONADOS */}
+        {relatedProducts.length > 0 && (
+          <section className="mt-6 rounded-lg bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Quem comprou este produto também comprou</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {relatedProducts.map((p) => (
+                <ProductCard key={p.id} product={p} />
               ))}
             </div>
           </section>
-
-          {/* SEÇÃO 4: PRODUTOS RELACIONADOS */}
-          {relatedProducts.length > 0 && (
-            <section className="mt-12 border-t pt-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Quem comprou este produto também viu</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {relatedProducts.map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
-              </div>
-            </section>
-          )}
-
-        </div>
+        )}
       </main>
+
       <SiteFooter />
     </div>
   );
