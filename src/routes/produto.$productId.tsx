@@ -38,10 +38,7 @@ export const Route = createFileRoute("/produto/$productId")({
   head: () => ({
     meta: [
       { title: "Produto · HS Digital Marketplace" },
-      {
-        name: "description",
-        content: "Confira todos os detalhes deste produto na HS Digital com envio rápido e compra protegida.",
-      },
+      { name: "description", content: "Confira todos os detalhes deste produto na HS Digital com envio rápido e compra protegida." },
     ],
   }),
   component: ProductDetailPage,
@@ -81,8 +78,7 @@ export function ProductDetailPage() {
       {
         id: "q2",
         question: "Qual o prazo para envio após o pagamento?",
-        answer:
-          "O envio é realizado em até 24h úteis após a confirmação. O código de rastreamento é enviado por e-mail.",
+        answer: "O envio é realizado em até 24h úteis após a confirmação. O código de rastreamento é enviado por e-mail.",
         created_at: "há 3 dias",
       },
     ];
@@ -198,9 +194,7 @@ export function ProductDetailPage() {
       <main className="mx-auto max-w-7xl px-2 sm:px-4 py-4">
         {/* BREADCRUMB */}
         <nav className="mb-3 flex items-center gap-1.5 text-xs text-gray-500">
-          <Link to="/" className="text-[#3483fa] hover:underline">
-            Voltar à lista
-          </Link>
+          <Link to="/" className="text-[#3483fa] hover:underline">Voltar à lista</Link>
           <span>|</span>
           <span className="capitalize">{product.category || "Variedades"}</span>
           <ChevronRight className="h-3 w-3" />
@@ -210,6 +204,7 @@ export function ProductDetailPage() {
         {/* CONTAINER PRINCIPAL DO PRODUTO */}
         <div className="rounded-lg bg-white p-4 sm:p-6 shadow-sm">
           <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+            
             {/* LADO ESQUERDO: FOTOS + INFORMAÇÕES CENTRAIS */}
             <div className="grid gap-6 md:grid-cols-[1fr_1.1fr]">
               {/* Fotos */}
@@ -245,8 +240,12 @@ export function ProductDetailPage() {
 
               {/* Informações Centrais */}
               <div className="flex flex-col">
-                <div className="text-xs text-gray-400">Novo | +{compact(product.sold_count ?? 100)} vendidos</div>
-                <h1 className="mt-1 text-xl sm:text-2xl font-bold text-gray-900 leading-snug">{originalTitle}</h1>
+                <div className="text-xs text-gray-400">
+                  Novo | +{compact(product.sold_count ?? 100)} vendidos
+                </div>
+                <h1 className="mt-1 text-xl sm:text-2xl font-bold text-gray-900 leading-snug">
+                  {originalTitle}
+                </h1>
 
                 {/* Avaliação e Vendas */}
                 <div className="mt-2 flex items-center gap-2 text-xs">
@@ -260,7 +259,9 @@ export function ProductDetailPage() {
                 {/* Preço e Parcelamento */}
                 <div className="mt-4">
                   {product.compare_at_price && product.compare_at_price > product.price && (
-                    <span className="text-sm text-gray-400 line-through">{brl(product.compare_at_price)}</span>
+                    <span className="text-sm text-gray-400 line-through">
+                      {brl(product.compare_at_price)}
+                    </span>
                   )}
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-light text-gray-900">{brl(product.price)}</span>
@@ -281,9 +282,7 @@ export function ProductDetailPage() {
                     <Truck className="h-4 w-4 text-[#00a650] shrink-0 mt-0.5" />
                     <div>
                       <p className="font-bold text-[#00a650]">
-                        {product.free_shipping || Number(product.price) >= 79
-                          ? "Frete grátis nacional"
-                          : "Envio rápido para todo o Brasil"}
+                        {product.free_shipping || Number(product.price) >= 79 ? "Frete grátis nacional" : "Envio rápido para todo o Brasil"}
                       </p>
                       <p className="text-gray-500">Saiba os prazos de entrega calculando no checkout</p>
                     </div>
@@ -309,9 +308,7 @@ export function ProductDetailPage() {
             {/* LADO DIREITO: BUY BOX (CAIXA DE COMPRA) */}
             <div className="rounded-lg border border-gray-200 p-4 shadow-xs h-fit space-y-4">
               <div className="text-xs text-[#00a650] font-bold">
-                {product.free_shipping || Number(product.price) >= 79
-                  ? "Chegará grátis com envio prioritário"
-                  : "Envio para todo o Brasil"}
+                {product.free_shipping || Number(product.price) >= 79 ? "Chegará grátis com envio prioritário" : "Envio para todo o Brasil"}
               </div>
 
               <div>
@@ -325,11 +322,17 @@ export function ProductDetailPage() {
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-600">Quantidade:</span>
                 <div className="flex items-center rounded border border-gray-300">
-                  <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="p-1 hover:bg-gray-100">
+                  <button
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="p-1 hover:bg-gray-100"
+                  >
                     <Minus className="h-3 w-3" />
                   </button>
                   <span className="w-8 text-center text-xs font-bold">{quantity}</span>
-                  <button onClick={() => setQuantity((q) => q + 1)} className="p-1 hover:bg-gray-100">
+                  <button
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="p-1 hover:bg-gray-100"
+                  >
                     <Plus className="h-3 w-3" />
                   </button>
                 </div>
@@ -359,9 +362,7 @@ export function ProductDetailPage() {
               <div className="border-t pt-3 text-[11px] text-gray-500 space-y-2">
                 <div className="flex items-center gap-1.5">
                   <Store className="h-3.5 w-3.5 text-gray-400" />
-                  <span>
-                    Vendido e entregue por <strong>{product.stores?.name ?? "Loja Parceira Oficial"}</strong>
-                  </span>
+                  <span>Vendido e entregue por <strong>{product.stores?.name ?? "Loja Parceira Oficial"}</strong></span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <ShieldCheck className="h-3.5 w-3.5 text-gray-400" />
@@ -397,9 +398,7 @@ export function ProductDetailPage() {
           {/* PERGUNTAS E RESPOSTAS */}
           <div className="mt-10 border-t pt-8">
             <h2 className="text-xl font-bold text-gray-900 mb-2">Perguntas e respostas</h2>
-            <p className="text-xs text-gray-500 mb-4">
-              Tire suas dúvidas diretamente com o vendedor ou confira as perguntas frequentes.
-            </p>
+            <p className="text-xs text-gray-500 mb-4">Tire suas dúvidas diretamente com o vendedor ou confira as perguntas frequentes.</p>
 
             <form onSubmit={handleAskQuestion} className="flex gap-2 max-w-2xl mb-6">
               <Input
@@ -443,6 +442,7 @@ export function ProductDetailPage() {
               </div>
             </div>
           )}
+
         </div>
       </main>
       <SiteFooter />
