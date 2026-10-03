@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Baby, CarFront, ChevronLeft, ChevronRight, Drill, Dumbbell, Files, Gamepad2, Gift, GraduationCap,
-  Keyboard, LampDesk, Rocket, ShieldCheck, Shirt, ShoppingBasket, ShoppingCart, Smartphone, Sofa,
-  Sparkles, Store, Tag, Truck, Tv, Watch, Zap
+  Baby, CarFront, ChevronLeft, ChevronRight, Drill, Dumbbell, Files, Gamepad2, Gift, GraduationCap, Headphones, Keyboard,
+  LampDesk, Rocket, ShieldCheck, Shirt, ShoppingBasket, ShoppingCart, Smartphone, Sofa, Sparkles,
+  Store, Tag, Truck, Tv, Watch, Zap
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -47,13 +47,12 @@ export function Home() {
   const [category, setCategory] = useState<string | null>(null);
   const [range, setRange] = useState("all");
   const [sort, setSort] = useState("popular");
-  const [onlyFreeShipping, setOnlyFreeShipping] = useState(false);
 
   const { data: products = [], isLoading } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
 
-  // Ofertas imperdíveis
+  // Produtos em oferta (com desconto ou mais vendidos)
   const promoProducts = useMemo(() => {
-    return products.filter((p) => (p.compare_at_price && p.compare_at_price > p.price) || (p.sold_count ?? 0) > 10);
+    return products.filter((p) => (p.compare_at_price && p.compare_at_price > p.price) || p.sold_count > 10);
   }, [products]);
 
   // Produtos com frete grátis
@@ -61,7 +60,7 @@ export function Home() {
     return products.filter((p) => p.free_shipping || Number(p.price) >= 79);
   }, [products]);
 
-  // Filtro principal da vitrine
+  // Filtro geral da vitrine
   const filtered = useMemo(() => {
     const selectedRange = PRICE_RANGES.find((item) => item.id === range) ?? {
       id: "all", label: "Todos os preços", min: 0, max: Infinity,
@@ -69,35 +68,24 @@ export function Home() {
     const result = products.filter((product) => {
       const price = Number(product.price);
       const search = `${product.title} ${product.stores?.name ?? ""} ${product.category}`.toLowerCase();
-      const matchesQuery = search.includes(query.trim().toLowerCase());
-      const matchesCategory = !category || product.category === category;
-      const matchesRange = price >= selectedRange.min && price <= selectedRange.max;
-      const matchesFreeShipping = !onlyFreeShipping || product.free_shipping || price >= 79;
-
-      return matchesQuery && matchesCategory && matchesRange && matchesFreeShipping;
+      return search.includes(query.trim().toLowerCase()) && (!category || product.category === category)
+        && price >= selectedRange.min && price <= selectedRange.max;
     });
+    return [...result].sort((a, b) => sort === "price-asc"
+      ? Number(a.price) - Number(b.price)
+      : sort === "price-desc" ? Number(b.price) - Number(a.price) : b.sold_count - a.sold_count);
+  }, [products, query, category, range, sort]);
 
-    return [...result].sort((a, b) => {
-      if (sort === "price-asc") return Number(a.price) - Number(b.price);
-      if (sort === "price-desc") return Number(b.price) - Number(a.price);
-      return (b.sold_count ?? 0) - (a.sold_count ?? 0);
-    });
-  }, [products, query, category, range, sort, onlyFreeShipping]);
-
-  const categoryLabel = onlyFreeShipping 
-    ? "Produtos com Frete Grátis" 
-    : category 
-    ? CATEGORIES.find((item) => item.slug === category)?.label 
-    : "Todas as ofertas";
+  const categoryLabel = category ? CATEGORIES.find((item) => item.slug === category)?.label : "Todas as ofertas";
 
   return (
     <div className="min-h-screen bg-[#ebebeb] text-gray-900">
       <SiteHeader query={query} onQueryChange={setQuery} suggestions={products.map((p) => ({ id: p.id, title: p.title, category: CATEGORIES.find((c) => c.slug === p.category)?.label ?? p.category }))} />
       
       <main>
-        {/* BANNER PRINCIPAL */}
+        {/* BANNER PRINCIPAL COM FRASE AUTOMATIZADA */}
         <section className="bg-gradient-to-r from-[#2968c8] via-[#3483fa] to-[#1d52a8] text-white">
-          <div className="mx-auto flex min-h-[210px] w-full max-w-7xl items-center px-4 py-8 md:min-h-[260px]">
+          <div className="mx-auto flex min-h-[200px] w-full max-w-7xl items-center px-4 py-8 md:min-h-[250px]">
             <div className="relative max-w-3xl">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
                 <ShieldCheck className="h-4 w-4" /> HS Digital Marketplace
@@ -108,12 +96,6 @@ export function Home() {
               <p className="mt-2 text-sm text-blue-100 sm:text-base md:text-lg">
                 Milhares de produtos nacionais e importados com frete grátis e compra protegida.
               </p>
-              
-              {/* Badge de Primeira Compra */}
-              <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
-                <Gift className="h-4 w-4" />
-                <span>FRETE GRÁTIS NA SUA 1ª COMPRA • Use o cupom <strong>PRIMEIRACOMPRA</strong></span>
-              </div>
             </div>
           </div>
         </section>
@@ -142,78 +124,35 @@ export function Home() {
 
         <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-6 space-y-8">
           
-          {/* CATEGORIAS EM DESTAQUE COM VISUAL MELHORADO */}
-          <section id="categorias" className="rounded-lg bg-white p-4 sm:p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
+          {/* CATEGORIAS EM CARROSSEL */}
+          <section id="categorias" className="rounded-lg bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700">Categorias em destaque</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-[#3483fa] hover:bg-blue-50 font-semibold"
-                onClick={() => { setCategory(null); setOnlyFreeShipping(false); }}
-              >
-                Ver todas
-              </Button>
+              <Button variant="ghost" size="sm" className="text-xs text-[#3483fa]" onClick={() => setCategory(null)}>Ver todas</Button>
             </div>
-
-            <div className="relative px-3 sm:px-6">
-              <Carousel opts={{ align: "start", dragFree: true }}>
-                <CarouselContent className="-ml-2 sm:-ml-3">
-                  {/* Categoria Todas */}
-                  <CarouselItem className="pl-2 sm:pl-3 basis-[88px] sm:basis-[100px] md:basis-[110px] shrink-0">
-                    <button
-                      onClick={() => { setCategory(null); setOnlyFreeShipping(false); }}
-                      className="group flex w-full flex-col items-center gap-2 text-center focus:outline-none"
-                    >
-                      <div
-                        className={`flex h-13 w-13 sm:h-14 sm:w-14 items-center justify-center rounded-2xl transition-all shadow-xs ${
-                          category === null && !onlyFreeShipping
-                            ? "bg-[#3483fa] text-white ring-2 ring-[#3483fa] ring-offset-2"
-                            : "bg-gray-100 text-[#3483fa] group-hover:bg-blue-50 group-hover:scale-105"
-                        }`}
-                      >
-                        <ShoppingBasket className="h-6 w-6" />
-                      </div>
-                      <span className="text-[11px] sm:text-xs font-semibold text-gray-700 leading-tight">
-                        Todas
-                      </span>
-                    </button>
-                  </CarouselItem>
-
-                  {/* Lista de Categorias */}
-                  {CATEGORIES.map((item) => {
-                    const Icon = ICONS[item.icon] ?? Smartphone;
-                    const isActive = category === item.slug;
-                    return (
-                      <CarouselItem key={item.slug} className="pl-2 sm:pl-3 basis-[88px] sm:basis-[100px] md:basis-[110px] shrink-0">
-                        <button
-                          onClick={() => { setCategory(item.slug); setOnlyFreeShipping(false); }}
-                          className="group flex w-full flex-col items-center gap-2 text-center focus:outline-none"
-                        >
-                          <div
-                            className={`flex h-13 w-13 sm:h-14 sm:w-14 items-center justify-center rounded-2xl transition-all shadow-xs ${
-                              isActive
-                                ? "bg-[#3483fa] text-white ring-2 ring-[#3483fa] ring-offset-2"
-                                : "bg-gray-100 text-[#3483fa] group-hover:bg-blue-50 group-hover:scale-105"
-                            }`}
-                          >
-                            <Icon className="h-6 w-6" />
-                          </div>
-                          <span
-                            title={item.label}
-                            className="text-[11px] sm:text-xs font-medium text-gray-700 leading-snug line-clamp-2 max-w-[84px] break-words"
-                          >
-                            {item.label}
-                          </span>
-                        </button>
-                      </CarouselItem>
-                    );
-                  })}
-                </CarouselContent>
-                <CarouselPrevious className="-left-3 bg-white text-gray-700 shadow-md hover:bg-gray-100" />
-                <CarouselNext className="-right-3 bg-white text-gray-700 shadow-md hover:bg-gray-100" />
-              </Carousel>
-            </div>
+            <Carousel opts={{ align: "start", dragFree: true }} className="px-6">
+              <CarouselContent>
+                <CarouselItem className="basis-1/4 sm:basis-1/6 lg:basis-1/8">
+                  <Button variant={category === null ? "secondary" : "ghost"} onClick={() => setCategory(null)} className="h-20 w-full flex-col gap-1.5 p-2">
+                    <ShoppingBasket className="h-5 w-5 text-[#3483fa]" />
+                    <span className="text-[11px] font-medium text-gray-700">Todas</span>
+                  </Button>
+                </CarouselItem>
+                {CATEGORIES.map((item) => {
+                  const Icon = ICONS[item.icon] ?? Smartphone;
+                  return (
+                    <CarouselItem key={item.slug} className="basis-1/4 sm:basis-1/6 lg:basis-1/8">
+                      <Button variant={category === item.slug ? "secondary" : "ghost"} onClick={() => setCategory(item.slug)} className="h-20 w-full flex-col gap-1.5 p-2 text-center">
+                        <Icon className="h-5 w-5 text-[#3483fa]" />
+                        <span className="line-clamp-1 text-[11px] font-medium text-gray-700">{item.label}</span>
+                      </Button>
+                    </CarouselItem>
+                  );
+                })}
+              </CarouselContent>
+              <CarouselPrevious className="-left-3" />
+              <CarouselNext className="-right-3" />
+            </Carousel>
           </section>
 
           {/* 1º CARROSSEL COM SETAS: OFERTAS IMPERDÍVEIS */}
@@ -253,24 +192,16 @@ export function Home() {
                   <span className="p-1.5 bg-green-50 text-[#00a650] rounded-md"><Truck className="h-4 w-4" /></span>
                   <div>
                     <h2 className="text-base sm:text-lg font-bold text-gray-900">Produtos com frete grátis</h2>
-                    <p className="text-xs text-gray-500">Milhares de produtos nacionais e importados sem custo de frete</p>
+                    <p className="text-xs text-gray-500">Milhares de produtos nacionais e importados sem custo de envio</p>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setOnlyFreeShipping(true)}
-                  className="text-xs text-[#00a650] border-[#00a650] hover:bg-green-50"
-                >
-                  Ver todos com Frete Grátis
-                </Button>
               </div>
 
               <div className="relative px-6">
                 <Carousel opts={{ align: "start", dragFree: true }}>
                   <CarouselContent className="-ml-3">
                     {freeShippingProducts.map((product) => (
-                      <CarouselItem key={`free-${product.id}`} className="pl-3 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/6">
+                      <CarouselItem key={`ship-${product.id}`} className="pl-3 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/6">
                         <ProductCard product={product} />
                       </CarouselItem>
                     ))}
@@ -282,84 +213,52 @@ export function Home() {
             </section>
           )}
 
-          {/* VITRINE PRINCIPAL COMPLETA */}
-          <section className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-lg shadow-sm">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">{categoryLabel}</h2>
-                <p className="text-xs text-gray-500">{filtered.length} produtos encontrados</p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  size="sm"
-                  variant={onlyFreeShipping ? "default" : "outline"}
-                  onClick={() => setOnlyFreeShipping(!onlyFreeShipping)}
-                  className={`text-xs gap-1.5 ${
-                    onlyFreeShipping 
-                      ? "bg-[#00a650] hover:bg-[#008f45] text-white" 
-                      : "text-gray-700 border-gray-300"
-                  }`}
-                >
-                  <Truck className="h-3.5 w-3.5" />
-                  Frete Grátis
+          {/* GRADE COMPLETA DA VITRINE: 2 NO CELULAR, 3/4 NO TABLET, 6 NO COMPUTADOR */}
+          <section id="catalogo">
+            {/* Filtros de Preço */}
+            <div className="flex gap-2 overflow-x-auto pb-3 mb-4">
+              {PRICE_RANGES.map((item) => (
+                <Button key={item.id} size="sm" variant={range === item.id ? "default" : "outline"} className={`rounded-full text-xs shrink-0 ${range === item.id ? "bg-[#3483fa] text-white" : "bg-white text-gray-700"}`} onClick={() => setRange(item.id)}>
+                  {item.label}
                 </Button>
-
-                <Select value={range} onValueChange={setRange}>
-                  <SelectTrigger className="w-[140px] text-xs h-9">
-                    <SelectValue placeholder="Preço" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRICE_RANGES.map((r) => (
-                      <SelectItem key={r.id} value={r.id} className="text-xs">{r.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={sort} onValueChange={setSort}>
-                  <SelectTrigger className="w-[140px] text-xs h-9">
-                    <SelectValue placeholder="Ordenar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="popular" className="text-xs">Mais populares</SelectItem>
-                    <SelectItem value="price-asc" className="text-xs">Menor preço</SelectItem>
-                    <SelectItem value="price-desc" className="text-xs">Maior preço</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              ))}
             </div>
 
-            {/* GRADE RESPONSIVA: 2 COLUNAS NO CELULAR, 6 NO COMPUTADOR */}
+            <div className="flex flex-wrap items-center justify-between border-b pb-3 mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">{categoryLabel}</h2>
+                <p className="text-xs text-gray-500">{filtered.length} produtos disponíveis</p>
+              </div>
+              <Select value={sort} onValueChange={setSort}>
+                <SelectTrigger className="w-[180px] bg-white text-xs h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="popular">Mais vendidos</SelectItem>
+                  <SelectItem value="price-asc">Menor preço</SelectItem>
+                  <SelectItem value="price-desc">Maior preço</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {isLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <div key={i} className="h-64 rounded-lg bg-gray-200 animate-pulse" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-72 rounded-lg bg-white p-3 shadow-sm animate-pulse" />
                 ))}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="rounded-lg bg-white p-12 text-center shadow-sm">
-                <p className="text-sm font-semibold text-gray-600">Nenhum produto encontrado para estes filtros.</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="mt-3 text-xs"
-                  onClick={() => { setCategory(null); setRange("all"); setQuery(""); setOnlyFreeShipping(false); }}
-                >
-                  Limpar filtros
-                </Button>
+              <div className="rounded-lg bg-white p-12 text-center text-sm text-gray-500 shadow-sm">
+                Nenhum produto encontrado para este filtro.
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {filtered.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
             )}
           </section>
-
         </div>
       </main>
-
       <SiteFooter />
     </div>
   );
