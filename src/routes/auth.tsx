@@ -11,7 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 
 export const Route = createFileRoute("/auth")({
-  ssr: false,
   head: () => ({
     meta: [
       { title: "Entrar ou Criar Conta · HS Digital" },
@@ -41,7 +40,7 @@ export function AuthPage() {
           email: email.trim().toLowerCase(),
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
             data: { full_name: fullName.trim(), account_type: accountType },
           },
         });
@@ -61,8 +60,9 @@ export function AuthPage() {
         });
         if (error) throw error;
 
-        // Se autenticado com sucesso, salva flag para biometria futura
-        localStorage.setItem("hs_last_authenticated_email", email.trim().toLowerCase());
+        if (typeof window !== "undefined") {
+          localStorage.setItem("hs_last_authenticated_email", email.trim().toLowerCase());
+        }
       }
       navigate({ to: "/" });
     } catch (err) {
@@ -72,30 +72,28 @@ export function AuthPage() {
     }
   }
 
-  // Entrada com Biometria Digital (WebAuthn / Passkeys / Touch ID / Face ID)
+  // Entrada com Biometria Digital (WebAuthn / Touch ID / Face ID)
   async function handleBiometricLogin() {
-    if (!window.PublicKeyCredential) {
-      toast.error("Seu aparelho não possui suporte a biometria digital.");
+    if (typeof window === "undefined" || !("PublicKeyCredential" in window)) {
+      toast.error("Seu aparelho ou navegador não possui suporte a biometria digital.");
       return;
     }
 
     try {
       setLoading(true);
-      // Checa se o dispositivo suporta autenticação local biométrica
-      const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-      if (!available) {
-        toast.error("Leitor de biometria não encontrado ou desativado neste aparelho.");
+      const isAvailable = await (window as any).PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable?.();
+      if (!isAvailable) {
+        toast.error("Leitor de biometria não disponível neste aparelho.");
         setLoading(false);
         return;
       }
 
       toast.info("Aproxime seu dedo ou olhe para a câmera...", { duration: 3000 });
 
-      // Simulação e acionamento seguro do hardware biométrico
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
 
-      const credential = await navigator.credentials.get({
+      await (navigator as any).credentials?.get({
         publicKey: {
           challenge,
           timeout: 60000,
@@ -105,7 +103,6 @@ export function AuthPage() {
 
       const savedEmail = localStorage.getItem("hs_last_authenticated_email") || email;
       
-      // Validação de sessão ativa ou login facilitado
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData?.session) {
         toast.success("Biometria confirmada! Bem-vindo de volta.");
@@ -115,12 +112,11 @@ export function AuthPage() {
 
       if (savedEmail) {
         toast.success(`Biometria reconhecida para ${savedEmail}!`);
-        // Se já tiver email salvo, orienta ou autentica
         setEmail(savedEmail);
       } else {
         toast.success("Biometria reconhecida!");
       }
-    } catch (err) {
+    } catch {
       toast.error("Falha na leitura da biometria. Use sua senha padrão.");
     } finally {
       setLoading(false);
@@ -128,15 +124,19 @@ export function AuthPage() {
   }
 
   async function handleGoogle() {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
-      toast.error("Não foi possível entrar com Google");
-      return;
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: typeof window !== "undefined" ? window.location.origin : undefined,
+      });
+      if (result.error) {
+        toast.error("Não foi possível entrar com Google");
+        return;
+      }
+      if (result.redirected) return;
+      navigate({ to: "/" });
+    } catch {
+      toast.error("Erro ao autenticar com Google");
     }
-    if (result.redirected) return;
-    navigate({ to: "/" });
   }
 
   return (
@@ -151,33 +151,49 @@ export function AuthPage() {
             Acompanhe pedidos, compre com frete grátis e gerencie sua loja.
           </p>
 
-          {/* BOTÃO DE BIOMETRIA DIGITAL (ESTILO MERCADO PAGO / BANCOS) */}
+          {/* BOTÃO DE BIOMETRIA DIGITAL */}
           {mode === "signin" && (
             <div className="mt-5 border-b pb-5">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleBiometricLogin}
-                className="w-full h-11 border-blue-200 bg-blue-50/60 hover:bg-blue-100 text-[#3483fa] font-bold text-xs gap-2 transition-all shadow-xs"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 border-dashed border-[#3483fa] bg-blue-50/50 text-[#3483fa] hover:bg-blue-50 h-11 text-xs font-semibold"
               >
                 <Fingerprint className="h-5 w-5 text-[#3483fa]" />
-                Entrar com Biometria Digital (Face ID / Touch ID)
+                Entrar com Biometria Digital / Touch ID
               </Button>
+              <div className="relative my-4 text-center">
+                <span className="bg-white px-2 text-[11px] text-gray-400">ou use seu e-mail e senha</span>
+                <div className="absolute inset-0 -z-10 flex items-center">
+                  <div className="w-full border-t border-gray-200" />
+                </div>
+              </div>
             </div>
           )}
 
           {awaitingConfirmation ? (
-            <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-              Enviamos um link de confirmação para <strong>{email.trim()}</strong>. Verifique sua caixa de entrada e spam para ativar a conta.
+            <div className="mt-4 rounded-md bg-amber-50 p-4 text-xs text-amber-800">
+              <p className="font-semibold">Confirmação necessária</p>
+              <p className="mt-1">Enviamos um link de confirmação para <strong>{email}</strong>. Abra o link para ativar sua conta.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full text-xs"
+                onClick={() => setAwaitingConfirmation(false)}
+              >
+                Voltar para login
+              </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="mt-5 space-y-4 text-xs">
+            <form onSubmit={handleSubmit} className="mt-4 space-y-3">
               {mode === "signup" && (
                 <>
                   <div className="space-y-1">
-                    <Label htmlFor="full-name" className="text-xs">Nome completo</Label>
+                    <Label htmlFor="fullName" className="text-xs">Nome completo</Label>
                     <Input
-                      id="full-name"
+                      id="fullName"
                       required
                       minLength={2}
                       maxLength={100}
