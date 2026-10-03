@@ -1,44 +1,31 @@
-import {
-  ArrowRight,
-  Gift,
-  Mic,
-  MicOff,
-  Send,
-  ShieldCheck,
-  Sparkles,
-  Truck,
-  X,
-} from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { ArrowRight, CircleHelp, Mic, MicOff, Package, Send, ShoppingBag, Sparkles, Store, Tag, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 interface Message {
   id: string;
   sender: "aura" | "user";
   text: string;
   time: string;
-  url?: string;
-  urlLabel?: string;
+  link?: { label: string; url: string };
   actionTag?: string;
-  couponCode?: string;
 }
 
 function AuraAvatar() {
   return (
     <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-purple-700 via-indigo-600 to-pink-500 text-white shadow-md">
-      <Sparkles className="h-4 w-4 text-amber-200" />
-      <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#00a650] shadow-sm" />
+      <Sparkles className="h-4 w-4 animate-pulse text-amber-200" />
+      <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-emerald-500 shadow-sm" />
     </div>
   );
 }
 
 export function AuraChatWidget() {
+  const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -51,9 +38,8 @@ export function AuraChatWidget() {
       {
         id: "welcome",
         sender: "aura",
-        text: "Oi, tudo bem? Meu nome é Aura! 😊 Sou sua consultora na HS Digital. Como posso te ajudar hoje? Posso te passar cupons de frete grátis, rastrear seu pedido ou tirar dúvidas sobre qualquer produto!",
+        text: "Olá! Sou a Aura, sua consultora inteligente no HS Digital ✨ Estou aqui para encontrar as melhores ofertas, orientar suas compras e te levar direto ao que você precisa. O que você procura hoje?",
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        actionTag: "Atendente Oficial",
       },
     ]);
   }, []);
@@ -62,32 +48,25 @@ export function AuraChatWidget() {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isOpen, isTyping]);
+  }, [messages, isOpen]);
 
-  // Navegação segura sem quebrar o TanStack Router
-  const handleNavigate = (targetUrl: string) => {
-    setIsOpen(false);
-    window.location.assign(targetUrl);
-  };
-
+  // Função do Microfone (Web Speech API)
   const toggleListening = () => {
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    if (!SpeechRec) {
-      toast.error("Reconhecimento de voz não suportado neste navegador.");
+    if (!SpeechRecognition) {
+      toast.error("Seu navegador não suporta reconhecimento de voz direto. Digite sua dúvida!");
       return;
     }
 
     if (isListening) {
-      try {
-        recognitionRef.current?.stop();
-      } catch {}
+      recognitionRef.current?.stop();
       setIsListening(false);
       return;
     }
 
     try {
-      const recognition = new SpeechRec();
+      const recognition = new SpeechRecognition();
       recognition.lang = "pt-BR";
       recognition.continuous = false;
       recognition.interimResults = false;
@@ -98,19 +77,27 @@ export function AuraChatWidget() {
       };
 
       recognition.onresult = (event: any) => {
-        const transcript = event.results?.[0]?.[0]?.transcript;
+        const transcript = event.results[0][0].transcript;
         if (transcript) {
           setInput(transcript);
+          // Opcional: dispara automaticamente a busca por voz
           handleSend(transcript);
         }
       };
 
-      recognition.onerror = () => setIsListening(false);
-      recognition.onend = () => setIsListening(false);
+      recognition.onerror = (event: any) => {
+        console.error("Erro no reconhecimento de voz:", event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
 
       recognitionRef.current = recognition;
       recognition.start();
-    } catch {
+    } catch (err) {
+      console.error(err);
       setIsListening(false);
     }
   };
@@ -132,74 +119,128 @@ export function AuraChatWidget() {
 
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInput("");
-    setIsTyping(true);
 
     setTimeout(() => {
-      setIsTyping(false);
       const q = query.toLowerCase();
       let responseText = "";
-      let url: string | undefined;
-      let urlLabel: string | undefined;
+      let linkAction: { label: string; url: string } | undefined;
       let actionTag: string | undefined;
-      let couponCode: string | undefined;
 
-      // 1. Cupons e Frete Grátis
+      // Respostas sobre Criador / Fundador / Criação da IA e da HS Digital
       if (
-        q.includes("cupom") ||
-        q.includes("desconto") ||
-        q.includes("frete gratis") ||
-        q.includes("frete grátis") ||
-        q.includes("primeira compra")
+        q.includes("fundador") ||
+        q.includes("criador") ||
+        q.includes("quem criou") ||
+        q.includes("quem te criou") ||
+        q.includes("quem fez você") ||
+        q.includes("quem fez voce") ||
+        q.includes("quem fez a aura") ||
+        q.includes("quem inventou") ||
+        q.includes("dono") ||
+        q.includes("proprietario") ||
+        q.includes("hugo")
       ) {
         responseText =
-          "Você tem direito ao cupom oficial PRIMEIRACOMPRA para zerar o frete no seu carrinho hoje mesmo! 🎉";
-        url = "/carrinho";
-        urlLabel = "Ir para o Carrinho com Frete Grátis";
-        actionTag = "Benefício Exclusivo";
-        couponCode = "PRIMEIRACOMPRA";
+          "Tanto a plataforma HS Digital quanto eu, a Aura, fomos idealizados e criados por Hugo Rogerio! Ele projetou cada detalhe desse ecossistema para oferecer tecnologia de ponta, segurança máxima e a melhor experiência de compras e vendas online.";
+        actionTag = "Fundador & Idealizador";
       }
-      // 2. Rastreio e Compras
+      // Dúvidas de Compras / Rastreio / Pedidos
       else if (
-        q.includes("rastrear") ||
-        q.includes("meu pedido") ||
+        q.includes("meus pedidos") ||
         q.includes("minhas compras") ||
-        q.includes("onde esta")
+        q.includes("rastrear") ||
+        q.includes("onde esta meu pedido") ||
+        q.includes("pedido")
       ) {
         responseText =
-          "Você pode acompanhar todos os detalhes e o código dos Correios na sua área de pedidos:";
-        url = "/compras";
-        urlLabel = "Ver Minhas Compras & Rastreio";
+          "Você tem total controle! Na sua aba 'Minhas Compras', você acompanha a aprovação, o código de rastreio e acessa downloads imediatos caso tenha comprado itens digitais. Vamos até lá?";
+        linkAction = { label: "Acessar Minhas Compras", url: "/compras" };
         actionTag = "Área do Cliente";
       }
-      // 3. Minha Conta e Perfil
-      else if (q.includes("perfil") || q.includes("cpf") || q.includes("minha conta") || q.includes("endereco")) {
+      // Carrinho e Checkout
+      else if (
+        q.includes("carrinho") ||
+        q.includes("finalizar") ||
+        q.includes("checkout") ||
+        q.includes("comprar agora")
+      ) {
         responseText =
-          "Você pode editar sua foto, validar seu CPF oficial e cadastrar seus endereços na sua página de perfil:";
-        url = "/conta";
-        urlLabel = "Acessar Minha Conta";
-        actionTag = "Configurações";
+          "Seus produtos selecionados estão salvos! Não deixe para depois, pois as ofertas da semana têm estoque limitado e garantem frete especial por loja. Vamos fechar seu pedido com compra 100% protegida?";
+        linkAction = { label: "Ir para o Carrinho", url: "/carrinho" };
+        actionTag = "Finalizar Pedido";
       }
-      // 4. Vender na Loja
-      else if (q.includes("vender") || q.includes("abrir loja") || q.includes("fornecedor")) {
+      // Vender na HS Digital
+      else if (
+        q.includes("vender") ||
+        q.includes("vendedor") ||
+        q.includes("abrir loja") ||
+        q.includes("anunciar") ||
+        q.includes("cadastrar produto")
+      ) {
         responseText =
-          "Quer vender no HS Digital? Você pode cadastrar produtos, sincronizar com fornecedores e receber via Pix com taxa zero no 1º mês!";
-        url = "/vendedor";
-        urlLabel = "Abrir Painel do Vendedor";
-        actionTag = "Parceria & Vendas";
+          "Quer faturar na HS Digital? É uma oportunidade incrível! Você pode cadastrar produtos físicos ou digitais, receber via Mercado Pago e alcançar milhares de compradores com taxas super competitivas.";
+        linkAction = { label: "Abrir Painel do Vendedor", url: "/vendedor" };
+        actionTag = "Ganhe Dinheiro Conosco";
       }
-      // 5. Garantia e Confiança
-      else if (q.includes("garantia") || q.includes("seguro") || q.includes("confiavel") || q.includes("reembolso")) {
+      // Formas de Pagamento e Segurança
+      else if (
+        q.includes("pagamento") ||
+        q.includes("pix") ||
+        q.includes("cartao") ||
+        q.includes("parcelar") ||
+        q.includes("seguro") ||
+        q.includes("confiavel")
+      ) {
         responseText =
-          "Comprar aqui é 100% seguro! Seus pagamentos são processados pelo Mercado Pago e você tem 30 dias de garantia com devolução grátis.";
-        actionTag = "Compra Protegida";
+          "Sua compra é totalmente segura e blindada! Aceitamos Pix com liberação imediata e cartão de crédito em até 12x via Mercado Pago. Seus dados são criptografados e o pagamento só é repassado ao vendedor com garantia de entrega!";
+        actionTag = "Compra 100% Protegida";
       }
-      // 6. Resposta Padrão Fluida
+      // Cursos e Infoprodutos
+      else if (q.includes("curso") || q.includes("infoproduto") || q.includes("aprender") || q.includes("aula")) {
+        responseText =
+          "Temos uma seleção imperdível de cursos e infoprodutos práticos para acelerar seus conhecimentos com acesso imediato após a confirmação. Dê uma olhada nos mais recomendados!";
+        linkAction = { label: "Ver Cursos & Infoprodutos", url: "/?category=cursos-infoprodutos" };
+        actionTag = "Educação & Alta Performance";
+      }
+      // Produtos Digitais e Templates
+      else if (
+        q.includes("digital") ||
+        q.includes("ebook") ||
+        q.includes("template") ||
+        q.includes("planilha") ||
+        q.includes("download")
+      ) {
+        responseText =
+          "Praticidade máxima! Nossos produtos digitais e templates têm entrega automática em segundos. Você adquire e já começa a usar na hora sem pagar nada de frete!";
+        linkAction = { label: "Explorar Produtos Digitais", url: "/?category=digitais-templates" };
+        actionTag = "Download Imediato";
+      }
+      // Eletrônicos, Gadgets e Acessórios
+      else if (
+        q.includes("celular") ||
+        q.includes("eletronico") ||
+        q.includes("gadget") ||
+        q.includes("teclado") ||
+        q.includes("fone") ||
+        q.includes("computador")
+      ) {
+        responseText =
+          "Temos gadgets modernos e periféricos de alta performance com ótimas condições de frete e procedência garantida. Confira os destaques tecnológicos!";
+        linkAction = { label: "Ver Eletrônicos & Periféricos", url: "/?category=eletronicos-gadgets" };
+        actionTag = "Tecnologia de Ponta";
+      }
+      // Login e Conta
+      else if (q.includes("login") || q.includes("entrar") || q.includes("minha conta") || q.includes("cadastro")) {
+        responseText =
+          "Acesse sua conta para conferir seus cupons exclusivos, histórico de transações e promoções personalizadas:";
+        linkAction = { label: "Fazer Login / Cadastrar", url: "/entrar" };
+        actionTag = "Acesso Rápido";
+      }
+      // Resposta persuasiva padrão
       else {
-        responseText =
-          `Com certeza posso te ajudar com "${query}"! Como sua atendente pessoal, estou pronta para te orientar nas melhores ofertas e cupons da loja.`;
-        url = "/";
-        urlLabel = "Ver Ofertas em Destaque";
-        actionTag = "Atendimento HS";
+        responseText = `Com certeza posso te ajudar com "${query}"! No HS Digital você encontra as melhores ofertas, frete ágil e produtos exclusivos. Quer que eu te direcione para as promoções da semana ou prefere ver categorias específicas?`;
+        linkAction = { label: "Explorar Melhores Ofertas", url: "/" };
+        actionTag = "Oportunidade";
       }
 
       const botMsg: Message = {
@@ -207,23 +248,21 @@ export function AuraChatWidget() {
         sender: "aura",
         text: responseText,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        url,
-        urlLabel,
+        ...(linkAction ? { link: linkAction } : {}),
         actionTag,
-        couponCode,
       };
 
       setMessages((prev) => [...prev, botMsg]);
-    }, 450);
+    }, 400);
   };
 
   return (
     <>
-      {/* Botão Flutuante (Posicionamento Seguro bottom-20) */}
+      {/* Botão Flutuante da Aura */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Abrir consultora Aura"
-        className="fixed bottom-20 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-[#3483fa] text-white shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95"
+        className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-primary text-white shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95"
       >
         {isOpen ? (
           <X className="h-6 w-6" />
@@ -232,169 +271,151 @@ export function AuraChatWidget() {
             <Sparkles className="h-6 w-6 text-amber-200" />
             <span className="absolute -top-1 -right-1 flex h-3 w-3">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pink-400 opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-[#00a650]" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-pink-500" />
             </span>
           </div>
         )}
       </button>
 
-      {/* Janela de Atendimento Aura (bottom-24 fixa para nunca sobrepor) */}
+      {/* Janela de Atendimento Aura */}
       {isOpen && (
-        <div className="fixed bottom-24 right-4 sm:right-6 z-50 flex h-[520px] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl transition-all sm:w-[390px]">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b bg-gradient-to-r from-indigo-900 via-purple-800 to-indigo-950 px-4 py-3 text-white">
+        <div className="fixed bottom-22 right-5 z-50 flex h-[520px] w-[360px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-border/80 bg-background/95 shadow-2xl backdrop-blur-md transition-all sm:w-[390px]">
+          {/* Topo do Chat */}
+          <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-purple-950/30 via-muted/40 to-background px-4 py-3">
             <div className="flex items-center gap-3">
               <AuraAvatar />
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-bold">Aura</h3>
-                  <span className="rounded bg-white/20 px-1.5 py-0.2 text-[10px] font-semibold text-amber-200">
-                    Atendente Oficial
+                  <h3 className="text-sm font-bold text-foreground">Aura</h3>
+                  <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-semibold text-purple-400">
+                    Consultora IA
                   </span>
                 </div>
-                <p className="text-[11px] text-gray-200 flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-[#00a650] inline-block animate-pulse" />
-                  Online agora
-                </p>
+                <p className="text-[11px] text-muted-foreground">Especialista HS Digital</p>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="rounded-full p-1 text-gray-300 hover:bg-white/10 hover:text-white"
+              className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
+          </div>
+
+          {/* Atalhos Rápidos com persuasão de vendas */}
+          <div className="border-b border-border/60 bg-muted/20 px-3 py-2">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 text-[11px] scrollbar-none">
+              <button
+                onClick={() => handleSend("Quais as melhores ofertas?")}
+                className="flex shrink-0 items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 font-medium text-purple-300 hover:bg-purple-500/20"
+              >
+                <Tag className="h-3 w-3" />
+                Ofertas da Semana
+              </button>
+              <button
+                onClick={() => handleSend("Onde vejo minhas compras?")}
+                className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+              >
+                <Package className="h-3 w-3 text-purple-400" />
+                Minhas Compras
+              </button>
+              <button
+                onClick={() => handleSend("Como posso vender no site?")}
+                className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+              >
+                <Store className="h-3 w-3 text-indigo-400" />
+                Seja Vendedor
+              </button>
+              <button
+                onClick={() => handleSend("Como funciona o pagamento?")}
+                className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+              >
+                <CircleHelp className="h-3 w-3 text-pink-400" />
+                Pagamento Seguro
+              </button>
+            </div>
           </div>
 
           {/* Área de Mensagens */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f8f9fa] text-xs">
+          <div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">
             {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`flex flex-col ${m.sender === "user" ? "items-end" : "items-start"}`}
-              >
-                {m.actionTag && (
-                  <span className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#3483fa]">
-                    {m.actionTag}
-                  </span>
-                )}
-                
+              <div key={m.id} className={`flex flex-col ${m.sender === "user" ? "items-end" : "items-start"}`}>
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed shadow-xs ${
+                  className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 shadow-sm leading-relaxed ${
                     m.sender === "user"
-                      ? "bg-[#3483fa] text-white rounded-br-none"
-                      : "bg-white text-gray-800 border border-gray-100 rounded-bl-none"
+                      ? "bg-primary text-primary-foreground rounded-br-none font-medium"
+                      : "bg-muted/90 text-foreground border border-border/60 rounded-bl-none"
                   }`}
                 >
-                  <p className="whitespace-pre-line">{m.text}</p>
-
-                  {/* Cupom Integrado */}
-                  {m.couponCode && (
-                    <div className="mt-2 flex items-center justify-between rounded-lg bg-green-50 border border-green-200 p-2 text-xs">
-                      <div className="flex items-center gap-1 text-[#00a650] font-bold">
-                        <Gift className="h-4 w-4" />
-                        <span>{m.couponCode}</span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(m.couponCode!);
-                          toast.success("Cupom copiado!");
-                        }}
-                        className="text-[10px] bg-[#00a650] text-white font-bold px-2 py-1 rounded hover:bg-[#008f45]"
-                      >
-                        Copiar
-                      </button>
-                    </div>
+                  {m.actionTag && (
+                    <span className="mb-1 inline-block rounded bg-purple-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-300">
+                      {m.actionTag}
+                    </span>
                   )}
-
-                  {/* Botão de Redirecionamento Seguro */}
-                  {m.url && m.urlLabel && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleNavigate(m.url!)}
-                      className="mt-2.5 w-full bg-[#3483fa] hover:bg-[#2968c8] text-white text-[11px] font-semibold h-7"
+                  <p>{m.text}</p>
+                  {m.link && (
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate({ to: m.link!.url as any });
+                      }}
+                      className="mt-2.5 flex w-full items-center justify-between rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-2 text-[11px] font-semibold text-white shadow transition hover:from-purple-700 hover:to-indigo-700 active:scale-[0.98]"
                     >
-                      {m.urlLabel} <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
+                      <span className="flex items-center gap-1.5">
+                        <ShoppingBag className="h-3.5 w-3.5" />
+                        {m.link.label}
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
                   )}
                 </div>
-                <span className="mt-1 text-[10px] text-gray-400 px-1">{m.time}</span>
+                <span className="mt-1 px-1 text-[10px] text-muted-foreground">{m.time}</span>
               </div>
             ))}
-
-            {isTyping && (
-              <div className="flex items-center gap-1.5 text-gray-400 text-xs italic">
-                <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" />
-                <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce [animation-delay:0.2s]" />
-                <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce [animation-delay:0.4s]" />
-                <span>Aura digitando...</span>
-              </div>
-            )}
-
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Atalhos Rápidos */}
-          <div className="flex gap-1.5 overflow-x-auto border-t bg-white px-3 py-2 text-[11px]">
-            <button
-              onClick={() => handleSend("Quero um cupom de frete grátis")}
-              className="shrink-0 rounded-full border border-green-300 bg-green-50 px-2.5 py-1 text-[#00a650] font-semibold hover:bg-green-100"
-            >
-              🎁 Cupom Frete Grátis
-            </button>
-            <button
-              onClick={() => handleSend("Como rastrear meu pedido?")}
-              className="shrink-0 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-gray-600 hover:bg-gray-100"
-            >
-              🚚 Rastrear Pedido
-            </button>
-            <button
-              onClick={() => handleSend("Quero validar meu CPF")}
-              className="shrink-0 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-gray-600 hover:bg-gray-100"
-            >
-              🛡️ Validar CPF
-            </button>
-          </div>
+          {/* Campo de Envio com Microfone */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            className="flex items-center gap-2 border-t border-border bg-background p-2.5"
+          >
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={isListening ? "Ouvindo você..." : "Pergunte ou use o microfone..."}
+              className={`flex-1 rounded-xl border border-input px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
+                isListening ? "bg-red-500/10 border-red-500/50 animate-pulse" : "bg-muted/40"
+              }`}
+            />
 
-          {/* Campo de Entrada */}
-          <div className="border-t bg-white p-3">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSend();
-              }}
-              className="flex items-center gap-2"
+            {/* Botão de Microfone */}
+            <button
+              type="button"
+              onClick={toggleListening}
+              title={isListening ? "Parar de ouvir" : "Falar no microfone"}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${
+                isListening
+                  ? "bg-red-600 text-white animate-bounce shadow-md shadow-red-500/50"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+              }`}
             >
-              <button
-                type="button"
-                onClick={toggleListening}
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-all ${
-                  isListening
-                    ? "border-red-500 bg-red-50 text-red-500 animate-pulse"
-                    : "border-gray-200 text-gray-500 hover:bg-gray-50"
-                }`}
-                title="Falar por voz"
-              >
-                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              </button>
+              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </button>
 
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Fale com a Aura ou tire sua dúvida..."
-                className="h-9 text-xs bg-gray-50 border-gray-200"
-              />
-
-              <Button
-                type="submit"
-                size="icon"
-                disabled={!input.trim()}
-                className="h-9 w-9 shrink-0 bg-[#3483fa] hover:bg-[#2968c8] text-white"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
-          </div>
+            {/* Botão de Enviar */}
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
+            >
+              <Send className="h-3.5 w-3.5" />
+            </button>
+          </form>
         </div>
       )}
     </>
