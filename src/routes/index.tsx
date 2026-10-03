@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Baby, CarFront, ChevronLeft, ChevronRight, Drill, Dumbbell, Files, Gamepad2, Gift, GraduationCap, Headphones, Keyboard,
-  LampDesk, Rocket, ShieldCheck, Shirt, ShoppingBasket, ShoppingCart, Smartphone, Sofa, Sparkles,
-  Store, Tag, Truck, Tv, Watch, Zap
+  Baby, CarFront, ChevronLeft, ChevronRight, Drill, Dumbbell, Files, Gamepad2, Gift, GraduationCap,
+  Keyboard, LampDesk, Rocket, ShieldCheck, Shirt, ShoppingBasket, ShoppingCart, Smartphone, Sofa,
+  Sparkles, Store, Tag, Truck, Tv, Watch, Zap
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -47,12 +47,13 @@ export function Home() {
   const [category, setCategory] = useState<string | null>(null);
   const [range, setRange] = useState("all");
   const [sort, setSort] = useState("popular");
+  const [onlyFreeShipping, setOnlyFreeShipping] = useState(false);
 
   const { data: products = [], isLoading } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
 
-  // Produtos em oferta (com desconto ou mais vendidos)
+  // Ofertas imperdíveis
   const promoProducts = useMemo(() => {
-    return products.filter((p) => (p.compare_at_price && p.compare_at_price > p.price) || p.sold_count > 10);
+    return products.filter((p) => (p.compare_at_price && p.compare_at_price > p.price) || (p.sold_count ?? 0) > 10);
   }, [products]);
 
   // Produtos com frete grátis
@@ -60,7 +61,7 @@ export function Home() {
     return products.filter((p) => p.free_shipping || Number(p.price) >= 79);
   }, [products]);
 
-  // Filtro geral da vitrine
+  // Filtro principal da vitrine com suporte à aba de Frete Grátis
   const filtered = useMemo(() => {
     const selectedRange = PRICE_RANGES.find((item) => item.id === range) ?? {
       id: "all", label: "Todos os preços", min: 0, max: Infinity,
@@ -68,24 +69,35 @@ export function Home() {
     const result = products.filter((product) => {
       const price = Number(product.price);
       const search = `${product.title} ${product.stores?.name ?? ""} ${product.category}`.toLowerCase();
-      return search.includes(query.trim().toLowerCase()) && (!category || product.category === category)
-        && price >= selectedRange.min && price <= selectedRange.max;
-    });
-    return [...result].sort((a, b) => sort === "price-asc"
-      ? Number(a.price) - Number(b.price)
-      : sort === "price-desc" ? Number(b.price) - Number(a.price) : b.sold_count - a.sold_count);
-  }, [products, query, category, range, sort]);
+      const matchesQuery = search.includes(query.trim().toLowerCase());
+      const matchesCategory = !category || product.category === category;
+      const matchesRange = price >= selectedRange.min && price <= selectedRange.max;
+      const matchesFreeShipping = !onlyFreeShipping || product.free_shipping || price >= 79;
 
-  const categoryLabel = category ? CATEGORIES.find((item) => item.slug === category)?.label : "Todas as ofertas";
+      return matchesQuery && matchesCategory && matchesRange && matchesFreeShipping;
+    });
+
+    return [...result].sort((a, b) => {
+      if (sort === "price-asc") return Number(a.price) - Number(b.price);
+      if (sort === "price-desc") return Number(b.price) - Number(a.price);
+      return (b.sold_count ?? 0) - (a.sold_count ?? 0);
+    });
+  }, [products, query, category, range, sort, onlyFreeShipping]);
+
+  const categoryLabel = onlyFreeShipping 
+    ? "Produtos com Frete Grátis" 
+    : category 
+    ? CATEGORIES.find((item) => item.slug === category)?.label 
+    : "Todas as ofertas";
 
   return (
     <div className="min-h-screen bg-[#ebebeb] text-gray-900">
       <SiteHeader query={query} onQueryChange={setQuery} suggestions={products.map((p) => ({ id: p.id, title: p.title, category: CATEGORIES.find((c) => c.slug === p.category)?.label ?? p.category }))} />
       
       <main>
-        {/* BANNER PRINCIPAL COM FRASE AUTOMATIZADA */}
+        {/* BANNER PRINCIPAL */}
         <section className="bg-gradient-to-r from-[#2968c8] via-[#3483fa] to-[#1d52a8] text-white">
-          <div className="mx-auto flex min-h-[200px] w-full max-w-7xl items-center px-4 py-8 md:min-h-[250px]">
+          <div className="mx-auto flex min-h-[210px] w-full max-w-7xl items-center px-4 py-8 md:min-h-[260px]">
             <div className="relative max-w-3xl">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
                 <ShieldCheck className="h-4 w-4" /> HS Digital Marketplace
@@ -96,6 +108,12 @@ export function Home() {
               <p className="mt-2 text-sm text-blue-100 sm:text-base md:text-lg">
                 Milhares de produtos nacionais e importados com frete grátis e compra protegida.
               </p>
+              
+              {/* Badge de Primeira Compra */}
+              <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
+                <Gift className="h-4 w-4" />
+                <span>FRETE GRÁTIS NA SUA 1ª COMPRA • Use o cupom <strong>PRIMEIRACOMPRA</strong></span>
+              </div>
             </div>
           </div>
         </section>
@@ -128,12 +146,12 @@ export function Home() {
           <section id="categorias" className="rounded-lg bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700">Categorias em destaque</h2>
-              <Button variant="ghost" size="sm" className="text-xs text-[#3483fa]" onClick={() => setCategory(null)}>Ver todas</Button>
+              <Button variant="ghost" size="sm" className="text-xs text-[#3483fa]" onClick={() => { setCategory(null); setOnlyFreeShipping(false); }}>Ver todas</Button>
             </div>
             <Carousel opts={{ align: "start", dragFree: true }} className="px-6">
               <CarouselContent>
                 <CarouselItem className="basis-1/4 sm:basis-1/6 lg:basis-1/8">
-                  <Button variant={category === null ? "secondary" : "ghost"} onClick={() => setCategory(null)} className="h-20 w-full flex-col gap-1.5 p-2">
+                  <Button variant={category === null && !onlyFreeShipping ? "secondary" : "ghost"} onClick={() => { setCategory(null); setOnlyFreeShipping(false); }} className="h-20 w-full flex-col gap-1.5 p-2">
                     <ShoppingBasket className="h-5 w-5 text-[#3483fa]" />
                     <span className="text-[11px] font-medium text-gray-700">Todas</span>
                   </Button>
@@ -142,7 +160,7 @@ export function Home() {
                   const Icon = ICONS[item.icon] ?? Smartphone;
                   return (
                     <CarouselItem key={item.slug} className="basis-1/4 sm:basis-1/6 lg:basis-1/8">
-                      <Button variant={category === item.slug ? "secondary" : "ghost"} onClick={() => setCategory(item.slug)} className="h-20 w-full flex-col gap-1.5 p-2 text-center">
+                      <Button variant={category === item.slug ? "secondary" : "ghost"} onClick={() => { setCategory(item.slug); setOnlyFreeShipping(false); }} className="h-20 w-full flex-col gap-1.5 p-2 text-center">
                         <Icon className="h-5 w-5 text-[#3483fa]" />
                         <span className="line-clamp-1 text-[11px] font-medium text-gray-700">{item.label}</span>
                       </Button>
@@ -192,9 +210,17 @@ export function Home() {
                   <span className="p-1.5 bg-green-50 text-[#00a650] rounded-md"><Truck className="h-4 w-4" /></span>
                   <div>
                     <h2 className="text-base sm:text-lg font-bold text-gray-900">Produtos com frete grátis</h2>
-                    <p className="text-xs text-gray-500">Milhares de produtos nacionais e importados sem custo de envio</p>
+                    <p className="text-xs text-gray-500">Milhares de produtos nacionais e importados sem custo de frete</p>
                   </div>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setOnlyFreeShipping(true)}
+                  className="text-xs text-[#00a650] border-[#00a650] hover:bg-green-50"
+                >
+                  Ver todos com frete grátis
+                </Button>
               </div>
 
               <div className="relative px-6">
@@ -213,12 +239,35 @@ export function Home() {
             </section>
           )}
 
-          {/* GRADE COMPLETA DA VITRINE: 2 NO CELULAR, 3/4 NO TABLET, 6 NO COMPUTADOR */}
+          {/* CATÁLOGO GERAL COM ABA EXCLUSIVA DE FRETE GRÁTIS */}
           <section id="catalogo">
-            {/* Filtros de Preço */}
-            <div className="flex gap-2 overflow-x-auto pb-3 mb-4">
+            {/* Abas e Filtros Rápidos */}
+            <div className="flex flex-wrap items-center gap-2 pb-3 mb-4">
+              {/* Botão de Aba Exclusiva: Só Frete Grátis */}
+              <Button
+                size="sm"
+                variant={onlyFreeShipping ? "default" : "outline"}
+                className={`rounded-full text-xs font-bold gap-1.5 transition-all ${
+                  onlyFreeShipping 
+                    ? "bg-[#00a650] hover:bg-[#008f45] text-white shadow-sm" 
+                    : "bg-white text-[#00a650] border-[#00a650] hover:bg-green-50"
+                }`}
+                onClick={() => setOnlyFreeShipping(!onlyFreeShipping)}
+              >
+                <Truck className="h-3.5 w-3.5" />
+                {onlyFreeShipping ? "✓ Exibindo só Frete Grátis" : "Filtrar: Só Frete Grátis"}
+              </Button>
+
               {PRICE_RANGES.map((item) => (
-                <Button key={item.id} size="sm" variant={range === item.id ? "default" : "outline"} className={`rounded-full text-xs shrink-0 ${range === item.id ? "bg-[#3483fa] text-white" : "bg-white text-gray-700"}`} onClick={() => setRange(item.id)}>
+                <Button
+                  key={item.id}
+                  size="sm"
+                  variant={range === item.id ? "default" : "outline"}
+                  className={`rounded-full text-xs shrink-0 ${
+                    range === item.id ? "bg-[#3483fa] text-white" : "bg-white text-gray-700"
+                  }`}
+                  onClick={() => setRange(item.id)}
+                >
                   {item.label}
                 </Button>
               ))}
