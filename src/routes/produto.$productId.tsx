@@ -40,8 +40,7 @@ export const Route = createFileRoute("/produto/$productId")({
       { title: "Produto · HS Digital Marketplace" },
       {
         name: "description",
-content: "Confira todos os detalhes deste produto na HS Digital com envio rápido e compra protegida.",
-
+        content: "Confira todos os detalhes deste produto na HS Digital com envio rápido e compra protegida.",
       },
     ],
   }),
@@ -83,8 +82,7 @@ export function ProductDetailPage() {
         id: "q2",
         question: "Qual o prazo para envio após o pagamento?",
         answer:
-answer: "O envio é realizado em até 24h úteis após a confirmação. O código de rastreamento é enviado por e-mail.",
-
+          "O envio é realizado em até 24h úteis após a confirmação. O código de rastreamento é enviado por e-mail.",
         created_at: "há 3 dias",
       },
     ];
