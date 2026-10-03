@@ -59,7 +59,11 @@ export function ProductDetailPage() {
   const { productId } = Route.useParams();
   const navigate = useNavigate();
   const { add } = useCart();
-    // Perguntas e Respostas com proteção de SSR para evitar erro no build
+  const [quantity, setQuantity] = useState(1);
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  // Perguntas e Respostas com proteção de SSR para evitar erro no build
   const [newQuestion, setNewQuestion] = useState("");
   const [questions, setQuestions] = useState<QuestionItem[]>(() => {
     try {
@@ -76,14 +80,6 @@ export function ProductDetailPage() {
         created_at: "há 2 dias",
       },
       {
-        id: "q2",
-        question: "Qual o prazo para envio após o pagamento?",
-        answer: "O envio é realizado em até 24h úteis após a confirmação. O código de rastreamento é enviado por e-mail.",
-        created_at: "há 3 dias",
-      },
-    ];
-  });
-
         id: "q2",
         question: "Qual o prazo para envio após o pagamento?",
         answer:
