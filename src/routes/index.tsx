@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Baby, CarFront, ChevronLeft, ChevronRight, Drill, Dumbbell, Files, Gamepad2, Gift, GraduationCap, Headphones, Keyboard,
   LampDesk, Rocket, ShieldCheck, Shirt, ShoppingBasket, ShoppingCart, Smartphone, Sofa, Sparkles,
-  Store, Truck, Tv, Watch,
+  Store, Tag, Truck, Tv, Watch, Zap
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -20,11 +20,10 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "HS Digital · Marketplace de produtos e soluções digitais" },
-      { name: "description", content: "Encontre produtos digitais, cursos, tecnologia e acessórios na HS Digital." },
+      { name: "description", content: "Ofertas imperdíveis com envio rápido. Milhares de produtos nacionais e importados com frete grátis e compra protegida." },
       { property: "og:title", content: "HS Digital · Marketplace" },
       { property: "og:description", content: "Produtos selecionados, compra rápida e entrega segura na HS Digital." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Home,
@@ -43,27 +42,25 @@ const PRICE_RANGES = [
   { id: "d", label: "Acima de R$ 200", min: 200, max: Infinity },
 ];
 
-const PROMOTIONS = [
-  { icon: Gift, eyebrow: "Ofertas da semana", title: "Promoções especiais em produtos selecionados", action: "Ver ofertas", target: "catalogo" },
-  { icon: Truck, eyebrow: "Economize na entrega", title: "Frete grátis nos produtos participantes", action: "Explorar agora", target: "catalogo" },
-  { icon: Rocket, eyebrow: "Missões HS", title: "Complete missões e aproveite novas oportunidades", action: "Começar missão", target: "categorias" },
-  { icon: Store, eyebrow: "Venda na HS Digital", title: "Cadastre sua loja e publique seus primeiros produtos", action: "Quero vender", target: "vendedor" },
-  { icon: ShoppingCart, eyebrow: "Primeira compra", title: "Encontre seu primeiro produto com compra protegida", action: "Comprar agora", target: "catalogo" },
-] as const;
-
-function Home() {
+export function Home() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [range, setRange] = useState("all");
   const [sort, setSort] = useState("popular");
-  const [promotionIndex, setPromotionIndex] = useState(0);
+
   const { data: products = [], isLoading } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setPromotionIndex((current) => (current + 1) % PROMOTIONS.length), 5000);
-    return () => window.clearInterval(timer);
-  }, []);
+  // Produtos em oferta (com desconto ou mais vendidos)
+  const promoProducts = useMemo(() => {
+    return products.filter((p) => (p.compare_at_price && p.compare_at_price > p.price) || p.sold_count > 10);
+  }, [products]);
 
+  // Produtos com frete grátis
+  const freeShippingProducts = useMemo(() => {
+    return products.filter((p) => p.free_shipping || Number(p.price) >= 79);
+  }, [products]);
+
+  // Filtro geral da vitrine
   const filtered = useMemo(() => {
     const selectedRange = PRICE_RANGES.find((item) => item.id === range) ?? {
       id: "all", label: "Todos os preços", min: 0, max: Infinity,
@@ -80,53 +77,55 @@ function Home() {
   }, [products, query, category, range, sort]);
 
   const categoryLabel = category ? CATEGORIES.find((item) => item.slug === category)?.label : "Todas as ofertas";
-  const promotion = PROMOTIONS[promotionIndex] ?? PROMOTIONS[0];
-  const PromotionIcon = promotion.icon;
-
-  function movePromotion(direction: number) {
-    setPromotionIndex((current) => (current + direction + PROMOTIONS.length) % PROMOTIONS.length);
-  }
-
-  function followPromotion() {
-    if (promotion.target === "vendedor") {
-      window.location.assign("/vendedor");
-      return;
-    }
-    document.getElementById(promotion.target)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
 
   return (
-    <div className="min-h-screen bg-[#ebebeb]">
+    <div className="min-h-screen bg-[#ebebeb] text-gray-900">
       <SiteHeader query={query} onQueryChange={setQuery} suggestions={products.map((p) => ({ id: p.id, title: p.title, category: CATEGORIES.find((c) => c.slug === p.category)?.label ?? p.category }))} />
+      
       <main>
-        {/* Banner principal */}
-        <section className="brand-gradient relative overflow-hidden text-primary-foreground">
-          <div className="mx-auto flex min-h-[220px] w-full max-w-7xl items-center px-4 py-8 md:min-h-[280px]">
+        {/* BANNER PRINCIPAL COM FRASE AUTOMATIZADA */}
+        <section className="bg-gradient-to-r from-[#2968c8] via-[#3483fa] to-[#1d52a8] text-white">
+          <div className="mx-auto flex min-h-[200px] w-full max-w-7xl items-center px-4 py-8 md:min-h-[250px]">
             <div className="relative max-w-3xl">
-              <span className="inline-block rounded-full bg-primary-foreground/15 px-3 py-1 text-xs font-bold uppercase tracking-wider">HS Digital Marketplace</span>
-              <h1 className="mt-3 text-3xl font-extrabold md:text-5xl">Ofertas imperdíveis com envio rápido</h1>
-              <p className="mt-2 text-sm text-primary-foreground/80 md:text-base">Milhares de produtos nacionais e importados com frete grátis e compra protegida.</p>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
+                <ShieldCheck className="h-4 w-4" /> HS Digital Marketplace
+              </span>
+              <h1 className="mt-3 text-2xl font-black sm:text-4xl md:text-5xl tracking-tight leading-tight">
+                Ofertas imperdíveis com envio rápido
+              </h1>
+              <p className="mt-2 text-sm text-blue-100 sm:text-base md:text-lg">
+                Milhares de produtos nacionais e importados com frete grátis e compra protegida.
+              </p>
             </div>
           </div>
         </section>
 
-        {/* Faixa de Destaques Mercado Livre */}
+        {/* FAIXA DE BENEFÍCIOS */}
         <section className="bg-white border-b shadow-sm">
-          <div className="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between px-4 py-2">
-            <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-blue-50 text-[#3483fa]"><PromotionIcon className="h-5 w-5" /></span>
-              <div>
-                <p className="text-[11px] font-bold uppercase text-[#00a650]">{promotion.eyebrow}</p>
-                <p className="text-xs sm:text-sm font-semibold text-gray-800">{promotion.title}</p>
-              </div>
+          <div className="mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl px-4 py-3 text-xs text-gray-600">
+            <div className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-[#3483fa] shrink-0" />
+              <span><strong>Frete rápido</strong> em todo o Brasil</span>
             </div>
-            <Button size="sm" variant="outline" className="text-xs text-[#3483fa] border-[#3483fa]" onClick={followPromotion}>{promotion.action}</Button>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-[#00a650] shrink-0" />
+              <span><strong>Compra Garantida</strong> receba ou seu dinheiro volta</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500 shrink-0" />
+              <span><strong>Ofertas diárias</strong> com até 50% OFF</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Store className="h-5 w-5 text-purple-600 shrink-0" />
+              <span><strong>Lojas oficiais</strong> nacionais e internacionais</span>
+            </div>
           </div>
         </section>
 
-        <div className="mx-auto w-full max-w-7xl px-4 py-6">
-          {/* Categorias em carrossel */}
-          <section id="categorias" className="rounded-lg bg-white p-4 shadow-sm mb-6">
+        <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-6 space-y-8">
+          
+          {/* CATEGORIAS EM CARROSSEL */}
+          <section id="categorias" className="rounded-lg bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700">Categorias em destaque</h2>
               <Button variant="ghost" size="sm" className="text-xs text-[#3483fa]" onClick={() => setCategory(null)}>Ver todas</Button>
@@ -156,17 +155,75 @@ function Home() {
             </Carousel>
           </section>
 
-          {/* Filtros de Preço */}
-          <div className="flex gap-2 overflow-x-auto pb-3 mb-4">
-            {PRICE_RANGES.map((item) => (
-              <Button key={item.id} size="sm" variant={range === item.id ? "default" : "outline"} className={`rounded-full text-xs shrink-0 ${range === item.id ? "bg-[#3483fa] text-white" : "bg-white text-gray-700"}`} onClick={() => setRange(item.id)}>
-                {item.label}
-              </Button>
-            ))}
-          </div>
+          {/* 1º CARROSSEL COM SETAS: OFERTAS IMPERDÍVEIS */}
+          {promoProducts.length > 0 && (
+            <section className="rounded-lg bg-white p-4 sm:p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-red-50 text-red-600 rounded-md"><Zap className="h-4 w-4" /></span>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-gray-900">Ofertas imperdíveis com envio rápido</h2>
+                    <p className="text-xs text-gray-500">Descontos especiais selecionados para você</p>
+                  </div>
+                </div>
+              </div>
 
-          {/* Grade da Vitrine: 2 no celular, 3/4 no tablet e 6 no computador */}
+              <div className="relative px-6">
+                <Carousel opts={{ align: "start", dragFree: true }}>
+                  <CarouselContent className="-ml-3">
+                    {promoProducts.map((product) => (
+                      <CarouselItem key={`promo-${product.id}`} className="pl-3 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/6">
+                        <ProductCard product={product} />
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="-left-3 bg-white text-gray-700 shadow-md hover:bg-gray-100" />
+                  <CarouselNext className="-right-3 bg-white text-gray-700 shadow-md hover:bg-gray-100" />
+                </Carousel>
+              </div>
+            </section>
+          )}
+
+          {/* 2º CARROSSEL COM SETAS: PRODUTOS COM FRETE GRÁTIS */}
+          {freeShippingProducts.length > 0 && (
+            <section className="rounded-lg bg-white p-4 sm:p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-green-50 text-[#00a650] rounded-md"><Truck className="h-4 w-4" /></span>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-gray-900">Produtos com frete grátis</h2>
+                    <p className="text-xs text-gray-500">Milhares de produtos nacionais e importados sem custo de envio</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative px-6">
+                <Carousel opts={{ align: "start", dragFree: true }}>
+                  <CarouselContent className="-ml-3">
+                    {freeShippingProducts.map((product) => (
+                      <CarouselItem key={`ship-${product.id}`} className="pl-3 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/6">
+                        <ProductCard product={product} />
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="-left-3 bg-white text-gray-700 shadow-md hover:bg-gray-100" />
+                  <CarouselNext className="-right-3 bg-white text-gray-700 shadow-md hover:bg-gray-100" />
+                </Carousel>
+              </div>
+            </section>
+          )}
+
+          {/* GRADE COMPLETA DA VITRINE: 2 NO CELULAR, 3/4 NO TABLET, 6 NO COMPUTADOR */}
           <section id="catalogo">
+            {/* Filtros de Preço */}
+            <div className="flex gap-2 overflow-x-auto pb-3 mb-4">
+              {PRICE_RANGES.map((item) => (
+                <Button key={item.id} size="sm" variant={range === item.id ? "default" : "outline"} className={`rounded-full text-xs shrink-0 ${range === item.id ? "bg-[#3483fa] text-white" : "bg-white text-gray-700"}`} onClick={() => setRange(item.id)}>
+                  {item.label}
+                </Button>
+              ))}
+            </div>
+
             <div className="flex flex-wrap items-center justify-between border-b pb-3 mb-4">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">{categoryLabel}</h2>
