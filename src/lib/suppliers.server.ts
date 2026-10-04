@@ -60,6 +60,84 @@ let cjLastRequestAt = 0;
 
 type BrlExchangeRate = { rate: number; quotedAt: string };
 
+type TranslationResponse = {
+  choices?: Array<{ message?: { content?: string } }>;
+};
+
+function parseTranslations(content: string, expected: number) {
+  const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  const parsed = JSON.parse(cleaned) as { translations?: unknown };
+  if (!Array.isArray(parsed.translations) || parsed.translations.length !== expected)
+    throw new Error("A tradução retornou uma quantidade inesperada de títulos.");
+  return parsed.translations.map((value) => String(value).trim().slice(0, 160));
+}
+
+async function translateProductTitles(titles: string[]) {
+  if (titles.length === 0) return [];
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  if (!apiKey) throw new Error("A tradução automática ainda não está disponível.");
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(30_000),
+    body: JSON.stringify({
+      model: "google/gemini-3-flash-preview",
+      temperature: 0.1,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "Traduza títulos de produtos de e-commerce do inglês para português do Brasil. Preserve marcas, modelos, medidas e siglas. Não invente características. Responda somente JSON no formato {\"translations\":[\"...\"]}, mantendo exatamente a ordem e a quantidade.",
+        },
+        { role: "user", content: JSON.stringify(titles) },
+      ],
+    }),
+  });
+  if (!response.ok) throw new Error(`A tradução automática recusou a operação: ${response.status}.`);
+  const payload = (await response.json()) as TranslationResponse;
+  const content = payload.choices?.[0]?.message?.content;
+  if (!content) throw new Error("A tradução automática retornou uma resposta vazia.");
+  return parseTranslations(content, titles.length);
+}
+
+export async function translateCjProductBatch(supabaseAdmin: any, batchSize = 50) {
+  const safeBatchSize = Math.min(50, Math.max(1, Math.trunc(batchSize)));
+  const { data: products, error } = await supabaseAdmin
+    .from("products")
+    .select("id,title,supplier_title_original")
+    .eq("supplier", "cj")
+    .neq("supplier_locale", "pt-BR")
+    .order("created_at")
+    .limit(safeBatchSize);
+  if (error) throw error;
+  if (!products?.length) return { translated: 0, remaining: 0 };
+  const originals = products.map((product: any) =>
+    String(product.supplier_title_original ?? product.title).trim(),
+  );
+  const translated = await translateProductTitles(originals);
+  for (let index = 0; index < products.length; index += 1) {
+    const product = products[index];
+    const title = translated[index];
+    if (!product || !title) continue;
+    const { error: updateError } = await supabaseAdmin
+      .from("products")
+      .update({
+        title,
+        supplier_title_original: product.supplier_title_original ?? product.title,
+        supplier_locale: "pt-BR",
+      })
+      .eq("id", product.id);
+    if (updateError) throw updateError;
+  }
+  const { count } = await supabaseAdmin
+    .from("products")
+    .select("id", { count: "exact", head: true })
+    .eq("supplier", "cj")
+    .neq("supplier_locale", "pt-BR");
+  return { translated: translated.length, remaining: count ?? 0 };
+}
+
 function bcbDate(date: Date) {
   return `${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}-${date.getUTCFullYear()}`;
 }
@@ -456,6 +534,8 @@ async function importCjProduct(
   const productData = {
     store_id: storeId,
     title: title.slice(0, 160),
+    supplier_title_original: title.slice(0, 160),
+    supplier_locale: "en",
     description:
       "Produto real da CJ Dropshipping, selecionado entre os mais procurados da categoria.",
     description_long:
