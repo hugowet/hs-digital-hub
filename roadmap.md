@@ -50,7 +50,8 @@
 
 ## Integração de fornecedores e logística
 
-- [ ] Fazer a vitrine abrir com produtos atuais já carregados, sem baixar nem renderizar todo o catálogo de uma vez.
+- [x] Fazer a vitrine abrir com produtos atuais já carregados, sem baixar nem renderizar todo o catálogo de uma vez.
+- [x] Traduzir para português os títulos e descrições dos produtos CJ já importados e das próximas sincronizações.
 - [x] Integrar catálogo e estoque da CJ Dropshipping à loja JJ Kuster.
 - [x] Usar categorias populares da CJ como padrão e publicar os produtos importados na vitrine.
 - [x] Ampliar o catálogo CJ para doze linhas variadas com cinco produtos populares por linha.

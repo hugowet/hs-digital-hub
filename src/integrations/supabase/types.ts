@@ -765,8 +765,10 @@ export type Database = {
           supplier_exchange_rate: number | null
           supplier_exchange_rate_at: string | null
           supplier_last_synced_at: string | null
+          supplier_locale: string | null
           supplier_product_id: string | null
           supplier_sku: string | null
+          supplier_title_original: string | null
           supplier_variant_id: string | null
           title: string
           variations: Json
@@ -796,8 +798,10 @@ export type Database = {
           supplier_exchange_rate?: number | null
           supplier_exchange_rate_at?: string | null
           supplier_last_synced_at?: string | null
+          supplier_locale?: string | null
           supplier_product_id?: string | null
           supplier_sku?: string | null
+          supplier_title_original?: string | null
           supplier_variant_id?: string | null
           title: string
           variations?: Json
@@ -827,8 +831,10 @@ export type Database = {
           supplier_exchange_rate?: number | null
           supplier_exchange_rate_at?: string | null
           supplier_last_synced_at?: string | null
+          supplier_locale?: string | null
           supplier_product_id?: string | null
           supplier_sku?: string | null
+          supplier_title_original?: string | null
           supplier_variant_id?: string | null
           title?: string
           variations?: Json

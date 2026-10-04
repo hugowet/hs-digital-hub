@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { infiniteQueryOptions, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import {
   Baby, CarFront, ChevronLeft, ChevronRight, Drill, Dumbbell, Files, Gamepad2, Gift, GraduationCap,
   Keyboard, LampDesk, Rocket, ShieldCheck, Shirt, ShoppingBasket, ShoppingCart, Smartphone, Sofa,
   Sparkles, Store, Tag, Truck, Tv, Watch, Zap
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { ProductCard } from "@/components/product-card";
 import { SiteFooter } from "@/components/site-footer";
@@ -14,9 +14,63 @@ import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CATEGORIES } from "@/lib/catalog";
-import { fetchProducts } from "@/lib/catalog.functions";
+import { fetchCatalogPage } from "@/lib/catalog.functions";
+
+type HomeSearch = {
+  q?: string | undefined;
+  category?: string | undefined;
+  range?: "a" | "b" | "c" | "d" | undefined;
+  sort?: "price-asc" | "price-desc" | undefined;
+  free?: true | undefined;
+};
+
+type HomeSearchUpdate = {
+  q?: string | undefined;
+  category?: string | null | undefined;
+  range?: HomeSearch["range"] | "all";
+  sort?: HomeSearch["sort"] | "popular";
+  free?: boolean | undefined;
+};
+
+const normalizeSearch = (search: Record<string, unknown>): HomeSearch => ({
+  ...(typeof search["q"] === "string" && search["q"] ? { q: search["q"].slice(0, 100) } : {}),
+  ...(typeof search["category"] === "string" && search["category"] ? { category: search["category"] } : {}),
+  ...(["a", "b", "c", "d"].includes(String(search["range"])) ? { range: search["range"] as HomeSearch["range"] } : {}),
+  ...(["price-asc", "price-desc"].includes(String(search["sort"])) ? { sort: search["sort"] as HomeSearch["sort"] } : {}),
+  ...(search["free"] === true || search["free"] === "true" ? { free: true as const } : {}),
+});
+
+const resolveSearch = (search: HomeSearch) => ({
+  q: search.q ?? "",
+  category: search.category ?? null,
+  range: search.range ?? "all" as const,
+  sort: search.sort ?? "popular" as const,
+  free: search.free ?? false,
+});
+
+const catalogQueryOptions = (search: HomeSearch) => infiniteQueryOptions({
+  queryKey: ["catalog", search],
+  queryFn: ({ pageParam }) => {
+    const resolved = resolveSearch(search);
+    return fetchCatalogPage({ data: {
+      page: pageParam,
+      pageSize: 48,
+      query: resolved.q,
+      category: resolved.category,
+      range: resolved.range,
+      sort: resolved.sort,
+      onlyFreeShipping: resolved.free,
+    } });
+  },
+  initialPageParam: 0,
+  getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
+  staleTime: 60_000,
+});
 
 export const Route = createFileRoute("/")({
+  validateSearch: normalizeSearch,
+  loaderDeps: ({ search }) => search,
+  loader: ({ context, deps }) => context.queryClient.ensureInfiniteQueryData(catalogQueryOptions(deps)),
   head: () => ({
     meta: [
       { title: "HS Digital · Marketplace de produtos e soluções digitais" },
@@ -24,6 +78,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "HS Digital · Marketplace" },
       { property: "og:description", content: "Produtos selecionados, compra rápida e entrega segura na HS Digital." },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Home,
@@ -43,13 +98,23 @@ const PRICE_RANGES = [
 ];
 
 export function Home() {
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string | null>(null);
-  const [range, setRange] = useState("all");
-  const [sort, setSort] = useState("popular");
-  const [onlyFreeShipping, setOnlyFreeShipping] = useState(false);
-
-  const { data: products = [], isLoading } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
+  const routeSearch = Route.useSearch();
+  const search = resolveSearch(routeSearch);
+  const navigate = Route.useNavigate();
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(catalogQueryOptions(routeSearch));
+  const products = data.pages.flatMap((page) => page.products);
+  const total = data.pages[0]?.total ?? 0;
+  const setSearch = (changes: HomeSearchUpdate) => navigate({
+    search: (previous) => {
+      const next = { ...previous, ...changes } as Record<string, unknown>;
+      if (!next["q"]) delete next["q"];
+      if (!next["category"]) delete next["category"];
+      if (next["range"] === "all") delete next["range"];
+      if (next["sort"] === "popular") delete next["sort"];
+      if (!next["free"]) delete next["free"];
+      return next as HomeSearch;
+    },
+  });
 
   // Ofertas imperdíveis
   const promoProducts = useMemo(() => {
@@ -63,36 +128,30 @@ export function Home() {
 
   // Filtro principal da vitrine com suporte à aba de Frete Grátis
   const filtered = useMemo(() => {
-    const selectedRange = PRICE_RANGES.find((item) => item.id === range) ?? {
+    const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
       id: "all", label: "Todos os preços", min: 0, max: Infinity,
     };
     const result = products.filter((product) => {
       const price = Number(product.price);
-      const search = `${product.title} ${product.stores?.name ?? ""} ${product.category}`.toLowerCase();
-      const matchesQuery = search.includes(query.trim().toLowerCase());
-      const matchesCategory = !category || product.category === category;
-      const matchesRange = price >= selectedRange.min && price <= selectedRange.max;
-      const matchesFreeShipping = !onlyFreeShipping || product.free_shipping || price >= 79;
-
-      return matchesQuery && matchesCategory && matchesRange && matchesFreeShipping;
+      return price >= selectedRange.min && price <= selectedRange.max;
     });
 
     return [...result].sort((a, b) => {
-      if (sort === "price-asc") return Number(a.price) - Number(b.price);
-      if (sort === "price-desc") return Number(b.price) - Number(a.price);
+      if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
+      if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
       return (b.sold_count ?? 0) - (a.sold_count ?? 0);
     });
-  }, [products, query, category, range, sort, onlyFreeShipping]);
+  }, [products, search.range, search.sort]);
 
-  const categoryLabel = onlyFreeShipping 
+  const categoryLabel = search.free 
     ? "Produtos com Frete Grátis" 
-    : category 
-    ? CATEGORIES.find((item) => item.slug === category)?.label 
+    : search.category 
+    ? CATEGORIES.find((item) => item.slug === search.category)?.label 
     : "Todas as ofertas";
 
   return (
     <div className="min-h-screen bg-[#ebebeb] text-gray-900">
-      <SiteHeader query={query} onQueryChange={setQuery} suggestions={products.map((p) => ({ id: p.id, title: p.title, category: CATEGORIES.find((c) => c.slug === p.category)?.label ?? p.category }))} />
+      <SiteHeader query={search.q} onQueryChange={(q) => setSearch({ q })} suggestions={products.map((p) => ({ id: p.id, title: p.title, category: CATEGORIES.find((c) => c.slug === p.category)?.label ?? p.category }))} />
       
       <main>
         {/* BANNER PRINCIPAL */}
@@ -146,12 +205,12 @@ export function Home() {
           <section id="categorias" className="rounded-lg bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700">Categorias em destaque</h2>
-              <Button variant="ghost" size="sm" className="text-xs text-[#3483fa]" onClick={() => { setCategory(null); setOnlyFreeShipping(false); }}>Ver todas</Button>
+              <Button variant="ghost" size="sm" className="text-xs text-[#3483fa]" onClick={() => setSearch({ category: null, free: false })}>Ver todas</Button>
             </div>
             <Carousel opts={{ align: "start", dragFree: true }} className="px-6">
               <CarouselContent>
                 <CarouselItem className="basis-1/4 sm:basis-1/6 lg:basis-1/8">
-                  <Button variant={category === null && !onlyFreeShipping ? "secondary" : "ghost"} onClick={() => { setCategory(null); setOnlyFreeShipping(false); }} className="h-20 w-full flex-col gap-1.5 p-2">
+                  <Button variant={search.category === null && !search.free ? "secondary" : "ghost"} onClick={() => setSearch({ category: null, free: false })} className="h-20 w-full flex-col gap-1.5 p-2">
                     <ShoppingBasket className="h-5 w-5 text-[#3483fa]" />
                     <span className="text-[11px] font-medium text-gray-700">Todas</span>
                   </Button>
@@ -160,7 +219,7 @@ export function Home() {
                   const Icon = ICONS[item.icon] ?? Smartphone;
                   return (
                     <CarouselItem key={item.slug} className="basis-1/4 sm:basis-1/6 lg:basis-1/8">
-                      <Button variant={category === item.slug ? "secondary" : "ghost"} onClick={() => { setCategory(item.slug); setOnlyFreeShipping(false); }} className="h-20 w-full flex-col gap-1.5 p-2 text-center">
+                      <Button variant={search.category === item.slug ? "secondary" : "ghost"} onClick={() => setSearch({ category: item.slug, free: false })} className="h-20 w-full flex-col gap-1.5 p-2 text-center">
                         <Icon className="h-5 w-5 text-[#3483fa]" />
                         <span className="line-clamp-1 text-[11px] font-medium text-gray-700">{item.label}</span>
                       </Button>
@@ -216,7 +275,7 @@ export function Home() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setOnlyFreeShipping(true)}
+                  onClick={() => setSearch({ free: true, category: null })}
                   className="text-xs text-[#00a650] border-[#00a650] hover:bg-green-50"
                 >
                   Ver todos com frete grátis
@@ -246,27 +305,27 @@ export function Home() {
               {/* Botão de Aba Exclusiva: Só Frete Grátis */}
               <Button
                 size="sm"
-                variant={onlyFreeShipping ? "default" : "outline"}
+                variant={search.free ? "default" : "outline"}
                 className={`rounded-full text-xs font-bold gap-1.5 transition-all ${
-                  onlyFreeShipping 
+                  search.free 
                     ? "bg-[#00a650] hover:bg-[#008f45] text-white shadow-sm" 
                     : "bg-white text-[#00a650] border-[#00a650] hover:bg-green-50"
                 }`}
-                onClick={() => setOnlyFreeShipping(!onlyFreeShipping)}
+                onClick={() => setSearch({ free: !search.free })}
               >
                 <Truck className="h-3.5 w-3.5" />
-                {onlyFreeShipping ? "✓ Exibindo só Frete Grátis" : "Filtrar: Só Frete Grátis"}
+                {search.free ? "✓ Exibindo só Frete Grátis" : "Filtrar: Só Frete Grátis"}
               </Button>
 
               {PRICE_RANGES.map((item) => (
                 <Button
                   key={item.id}
                   size="sm"
-                  variant={range === item.id ? "default" : "outline"}
+                  variant={search.range === item.id ? "default" : "outline"}
                   className={`rounded-full text-xs shrink-0 ${
-                    range === item.id ? "bg-[#3483fa] text-white" : "bg-white text-gray-700"
+                    search.range === item.id ? "bg-[#3483fa] text-white" : "bg-white text-gray-700"
                   }`}
-                  onClick={() => setRange(item.id)}
+                  onClick={() => setSearch({ range: item.id as HomeSearch["range"] })}
                 >
                   {item.label}
                 </Button>
@@ -276,9 +335,9 @@ export function Home() {
             <div className="flex flex-wrap items-center justify-between border-b pb-3 mb-4">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">{categoryLabel}</h2>
-                <p className="text-xs text-gray-500">{filtered.length} produtos disponíveis</p>
+                <p className="text-xs text-gray-500">{total} produtos disponíveis</p>
               </div>
-              <Select value={sort} onValueChange={setSort}>
+              <Select value={search.sort} onValueChange={(sort) => setSearch({ sort: sort as HomeSearch["sort"] })}>
                 <SelectTrigger className="w-[180px] bg-white text-xs h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="popular">Mais vendidos</SelectItem>
@@ -288,13 +347,7 @@ export function Home() {
               </Select>
             </div>
 
-            {isLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-72 rounded-lg bg-white p-3 shadow-sm animate-pulse" />
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
+            {filtered.length === 0 ? (
               <div className="rounded-lg bg-white p-12 text-center text-sm text-gray-500 shadow-sm">
                 Nenhum produto encontrado para este filtro.
               </div>
@@ -303,6 +356,13 @@ export function Home() {
                 {filtered.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
+              </div>
+            )}
+            {hasNextPage && (
+              <div className="mt-6 flex justify-center">
+                <Button variant="outline" disabled={isFetchingNextPage} onClick={() => void fetchNextPage()}>
+                  {isFetchingNextPage ? "Carregando…" : "Mostrar mais produtos"}
+                </Button>
               </div>
             )}
           </section>
