@@ -58,6 +58,61 @@ const CJ_REQUESTS_PER_BATCH = 21;
 const CJ_LOCK_MS = 45_000;
 let cjLastRequestAt = 0;
 
+type BrlExchangeRate = { rate: number; quotedAt: string };
+
+function bcbDate(date: Date) {
+  return `${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}-${date.getUTCFullYear()}`;
+}
+
+async function getUsdBrlRate(supabaseAdmin: any, storeId: string): Promise<BrlExchangeRate> {
+  const end = new Date();
+  const start = new Date(end.getTime() - 10 * 24 * 60 * 60_000);
+  const params = new URLSearchParams({
+    "@dataInicial": `'${bcbDate(start)}'`,
+    "@dataFinalCotacao": `'${bcbDate(end)}'`,
+    "$top": "1",
+    "$orderby": "dataHoraCotacao desc",
+    "$format": "json",
+  });
+
+  try {
+    const response = await fetch(
+      `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarPeriodo(dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)?${params.toString()}`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = (await response.json()) as {
+      value?: Array<{ cotacaoVenda?: number; dataHoraCotacao?: string }>;
+    };
+    const quote = payload.value?.[0];
+    const rate = Number(quote?.cotacaoVenda);
+    if (!Number.isFinite(rate) || rate < 2 || rate > 15)
+      throw new Error("Cotação fora da faixa segura.");
+    return {
+      rate,
+      quotedAt: quote?.dataHoraCotacao
+        ? new Date(`${quote.dataHoraCotacao.replace(" ", "T")}Z`).toISOString()
+        : new Date().toISOString(),
+    };
+  } catch {
+    const { data: previous } = await supabaseAdmin
+      .from("products")
+      .select("supplier_exchange_rate,supplier_exchange_rate_at")
+      .eq("store_id", storeId)
+      .eq("supplier", "cj")
+      .not("supplier_exchange_rate", "is", null)
+      .order("supplier_exchange_rate_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const rate = Number(previous?.supplier_exchange_rate);
+    const quotedAt = previous?.supplier_exchange_rate_at;
+    const age = quotedAt ? Date.now() - new Date(quotedAt).getTime() : Number.POSITIVE_INFINITY;
+    if (Number.isFinite(rate) && rate >= 2 && rate <= 15 && age <= 7 * 24 * 60 * 60_000)
+      return { rate, quotedAt };
+    throw new Error("Não foi possível obter uma cotação USD/BRL segura no Banco Central.");
+  }
+}
+
 async function waitForCjRateLimit() {
   const waitMs = Math.max(0, 1_250 - (Date.now() - cjLastRequestAt));
   if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
@@ -377,6 +432,7 @@ async function importCjProduct(
   supabaseAdmin: any,
   storeId: string,
   marginPercent: number,
+  exchange: BrlExchangeRate,
   token: string,
   queued: QueuedCjProduct,
 ) {
@@ -396,7 +452,7 @@ async function importCjProduct(
     product.productImage,
     ...(product.productImageSet ?? []),
   ].filter((value): value is string => Boolean(value?.startsWith("https://")));
-  const price = Math.round(cost * (1 + marginPercent / 100) * 100) / 100;
+  const price = Math.round(cost * exchange.rate * (1 + marginPercent / 100) * 100) / 100;
   const productData = {
     store_id: storeId,
     title: title.slice(0, 160),
@@ -416,6 +472,9 @@ async function importCjProduct(
     supplier_variant_id: vid,
     supplier_sku: variant.variantSku ?? null,
     supplier_cost: cost,
+    supplier_cost_currency: "USD",
+    supplier_exchange_rate: exchange.rate,
+    supplier_exchange_rate_at: exchange.quotedAt,
     supplier_last_synced_at: new Date().toISOString(),
   };
   const { data: existingProduct, error: lookupError } = await supabaseAdmin
@@ -437,6 +496,7 @@ export async function processCjCatalogBatch(
   supabaseAdmin: any,
   storeId: string,
   marginPercent: number,
+  exchange: BrlExchangeRate,
 ) {
   const now = new Date();
   const lockExpiresAt = new Date(now.getTime() + CJ_LOCK_MS).toISOString();
@@ -516,6 +576,7 @@ export async function processCjCatalogBatch(
           supabaseAdmin,
           storeId,
           marginPercent,
+          exchange,
           token,
           queuedProduct,
         );
@@ -604,6 +665,16 @@ export async function processCjCatalogBatch(
 }
 
 export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginPercent: number) {
+  const exchange = await getUsdBrlRate(supabaseAdmin, storeId);
+  const { data: repriced, error: repriceError } = await supabaseAdmin.rpc(
+    "reprice_cj_products_brl",
+    {
+      _store_id: storeId,
+      _usd_brl_rate: exchange.rate,
+      _margin_percent: marginPercent,
+    },
+  );
+  if (repriceError) throw repriceError;
   const { data: job } = await supabaseAdmin
     .from("supplier_import_jobs")
     .select("id,status")
@@ -618,7 +689,8 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
       .update({ status: "pending", pause_reason: null })
       .eq("id", job.id);
   }
-  return processCjCatalogBatch(supabaseAdmin, storeId, marginPercent);
+  const batch = await processCjCatalogBatch(supabaseAdmin, storeId, marginPercent, exchange);
+  return { ...batch, repriced: Number(repriced ?? 0), usdBrlRate: exchange.rate };
 }
 
 export async function syncCjStock(supabaseAdmin: any, storeId: string) {

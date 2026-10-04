@@ -54,6 +54,7 @@
 - [x] Usar categorias populares da CJ como padrão e publicar os produtos importados na vitrine.
 - [x] Ampliar o catálogo CJ para doze linhas variadas com cinco produtos populares por linha.
 - [ ] Importar gradualmente até 20 produtos reais de todas as categorias oficiais da CJ (fila iniciada; conclusão depende dos limites diários do fornecedor).
+- [x] Converter custos em USD da CJ pela cotação de venda USD/BRL do Banco Central antes de aplicar a margem e corrigir os produtos já importados.
 - [x] Priorizar na fila da CJ fones, Bluetooth, smartwatches, caixas de som e eletrônicos de consumo.
 - [x] Priorizar ferramentas, celulares, televisores e peças/acessórios automotivos e de motos, preservando a margem da loja.
 - [ ] Conectar o fornecedor Dropi Nacional com a credencial fornecida e importar seus produtos reais para a vitrine (tela administrativa, teste e importador implementados; aguardando contrato válido da API para concluir a importação).
