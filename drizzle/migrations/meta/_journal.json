@@ -22,6 +22,13 @@
       "when": 1791145907905,
       "tag": "0002_add_cj_brl_repricing_function",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791147210534,
+      "tag": "0003_track_supplier_product_locale",
+      "breakpoints": true
     }
   ]
 }
