@@ -135,7 +135,7 @@ export async function getCjAccessToken(supabaseAdmin: any, storeId: string) {
   return token.accessToken;
 }
 
-function categoryFor(name: string) {
+export function categoryFor(name: string) {
   const normalized = name.toLowerCase();
   if (
     [
