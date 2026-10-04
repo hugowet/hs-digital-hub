@@ -11,7 +11,19 @@ export const Route = createFileRoute("/api/public/suppliers/translate")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { translateCjProductBatch } = await import("@/lib/suppliers.server");
         try {
-          return Response.json(await translateCjProductBatch(supabaseAdmin, 200));
+          const body = (await request.json().catch(() => ({}))) as {
+            start?: unknown;
+            end?: unknown;
+          };
+          const isUuidBoundary = (value: unknown) =>
+            typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value);
+          const range = isUuidBoundary(body.start)
+            ? {
+                start: body.start as string,
+                ...(isUuidBoundary(body.end) ? { end: body.end as string } : {}),
+              }
+            : undefined;
+          return Response.json(await translateCjProductBatch(supabaseAdmin, 50, range));
         } catch (error) {
           const message = error instanceof Error ? error.message : "Falha na tradução do catálogo.";
           return Response.json({ error: message }, { status: 502 });

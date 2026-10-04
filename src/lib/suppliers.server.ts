@@ -101,15 +101,24 @@ async function translateProductTitles(titles: string[]) {
   return parseTranslations(content, titles.length);
 }
 
-export async function translateCjProductBatch(supabaseAdmin: any, batchSize = 50) {
-  const safeBatchSize = Math.min(200, Math.max(1, Math.trunc(batchSize)));
-  const { data: products, error } = await supabaseAdmin
+export async function translateCjProductBatch(
+  supabaseAdmin: any,
+  batchSize = 50,
+  idRange?: { start: string; end?: string },
+) {
+  const safeBatchSize = Math.min(50, Math.max(1, Math.trunc(batchSize)));
+  let query = supabaseAdmin
     .from("products")
     .select("id,title,supplier_title_original")
     .eq("supplier", "cj")
     .neq("supplier_locale", "pt-BR")
-    .order("created_at")
+    .order("id")
     .limit(safeBatchSize);
+  if (idRange) {
+    query = query.gte("id", idRange.start);
+    if (idRange.end) query = query.lt("id", idRange.end);
+  }
+  const { data: products, error } = await query;
   if (error) throw error;
   if (!products?.length) return { translated: 0, remaining: 0 };
   const originals = products.map((product: any) =>
@@ -130,11 +139,16 @@ export async function translateCjProductBatch(supabaseAdmin: any, batchSize = 50
       .eq("id", product.id);
     if (updateError) throw updateError;
   }
-  const { count } = await supabaseAdmin
+  let countQuery = supabaseAdmin
     .from("products")
     .select("id", { count: "exact", head: true })
     .eq("supplier", "cj")
     .neq("supplier_locale", "pt-BR");
+  if (idRange) {
+    countQuery = countQuery.gte("id", idRange.start);
+    if (idRange.end) countQuery = countQuery.lt("id", idRange.end);
+  }
+  const { count } = await countQuery;
   return { translated: translated.length, remaining: count ?? 0 };
 }
 
