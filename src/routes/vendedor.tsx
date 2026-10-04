@@ -149,6 +149,7 @@ function SellerCenterPage() {
     },
   });
   const [syncingCj, setSyncingCj] = useState(false);
+  const [activeTab, setActiveTab] = useState("orders");
 
   const continueCjImport = useCallback(
     async (showResult = false) => {
@@ -292,7 +293,7 @@ function SellerCenterPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="orders" className="mt-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <TabsList className="h-auto w-full justify-start overflow-x-auto border-b">
           <TabsTrigger value="orders">Pedidos e Envios</TabsTrigger>
           <TabsTrigger value="products">Meus produtos</TabsTrigger>
@@ -321,6 +322,9 @@ function SellerCenterPage() {
                     <p className="text-xs text-muted-foreground">
                       {brl(Number(p.price))} · Estoque: {p.stock}
                     </p>
+                    <span className="mt-1 inline-flex rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      {p.supplier ? "Dropshipping" : "Produto próprio"}
+                    </span>
                   </div>
                   <Button
                     size="sm"
@@ -346,6 +350,12 @@ function SellerCenterPage() {
         {/* Aba Cadastrar Produto */}
         <TabsContent value="create" className="pt-4">
           <div className="max-w-xl">
+            <div className="mb-4 rounded-md border border-border bg-muted/40 p-4">
+              <h2 className="font-semibold">Venda com estoque próprio</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Cadastre normalmente seus produtos, defina preço e estoque e cuide do envio após a venda. Nenhum fornecedor de dropshipping é necessário.
+              </p>
+            </div>
             <ProductForm
               storeId={store.id}
               onCreated={() => qc.invalidateQueries({ queryKey: ["store-products"] })}
@@ -360,15 +370,27 @@ function SellerCenterPage() {
         </TabsContent>
 
         <TabsContent value="suppliers" className="pt-4">
-          <section className="surface-card p-5">
+          <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+            <section className="surface-card p-5">
+              <Package className="h-6 w-6 text-primary" />
+              <h2 className="mt-3 font-semibold">Venda seus produtos</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Use seu próprio estoque, suas fotos e seu envio. Esta opção continua disponível para qualquer lojista.
+              </p>
+              <Button className="mt-4 w-full" onClick={() => setActiveTab("create")}>
+                <Plus className="h-4 w-4" />
+                Cadastrar produto próprio
+              </Button>
+            </section>
+            <section className="surface-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
               <div>
                 <h2 className="flex items-center gap-2 font-semibold">
                   <Boxes className="h-5 w-5 text-primary" />
-                  Fornecedores conectados
+                  Dropshipping opcional
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Produtos e estoque reais da sua operação de dropshipping.
+                  Conecte um fornecedor somente se quiser vender sem manter estoque próprio.
                 </p>
               </div>
               <Button disabled={syncingCj} onClick={() => void continueCjImport(true)}>
@@ -425,8 +447,14 @@ function SellerCenterPage() {
                   )}
                 </div>
               ))}
+              {supplierIntegrations.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum fornecedor conectado. Você pode continuar vendendo normalmente com estoque próprio.
+                </p>
+              )}
             </div>
-          </section>
+            </section>
+          </div>
         </TabsContent>
       </Tabs>
     </Shell>
