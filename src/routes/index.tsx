@@ -17,11 +17,19 @@ import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 
 type HomeSearch = {
-  q?: string;
-  category?: string;
-  range?: "a" | "b" | "c" | "d";
-  sort?: "price-asc" | "price-desc";
-  free?: true;
+  q?: string | undefined;
+  category?: string | undefined;
+  range?: "a" | "b" | "c" | "d" | undefined;
+  sort?: "price-asc" | "price-desc" | undefined;
+  free?: true | undefined;
+};
+
+type HomeSearchUpdate = {
+  q?: string | undefined;
+  category?: string | null | undefined;
+  range?: HomeSearch["range"] | "all";
+  sort?: HomeSearch["sort"] | "popular";
+  free?: boolean | undefined;
 };
 
 const normalizeSearch = (search: Record<string, unknown>): HomeSearch => ({
@@ -96,7 +104,7 @@ export function Home() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(catalogQueryOptions(routeSearch));
   const products = data.pages.flatMap((page) => page.products);
   const total = data.pages[0]?.total ?? 0;
-  const setSearch = (changes: Partial<HomeSearch> & { category?: string | null; range?: HomeSearch["range"] | "all"; sort?: HomeSearch["sort"] | "popular"; free?: boolean }) => navigate({
+  const setSearch = (changes: HomeSearchUpdate) => navigate({
     search: (previous) => {
       const next = { ...previous, ...changes } as Record<string, unknown>;
       if (!next["q"]) delete next["q"];
