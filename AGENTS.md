@@ -22,3 +22,4 @@
 - Pedidos só podem ser cancelados antes de iniciar uma cobrança; o cancelamento é feito no servidor, devolve estoque e preserva o histórico financeiro.
 - Pagamentos iniciados são reconciliados com o Mercado Pago pela página do pedido, além do webhook assinado, para recuperar avisos atrasados.
 - Supplier products use stable provider variant IDs; CJ USD costs are converted with the latest validated BCB USD/BRL selling rate before applying margin; CJ full-catalog imports use a persistent bounded queue; Dropi catalog contracts use admin-configured server-only mappings with SSRF-safe URLs; paid orders enter an idempotent fulfillment queue; all supplier credentials stay server-only.
+- The public catalog is server-prefetched and paginated; supplier synchronization writes durable rows and never runs during a shopper page load, so large catalogs do not block the storefront.

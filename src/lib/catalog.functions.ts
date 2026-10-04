@@ -65,19 +65,21 @@ async function signProductMedia(product: Product, supabaseAdmin: any): Promise<P
 
 const projection = "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier,stores(name,slug)";
 
-// Cache em memória de 5 minutos para carregar instantaneamente sem travar
-let cachedProducts: Product[] | null = null;
-let lastCacheTime = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const catalogInput = z.object({
+  page: z.number().int().min(0).max(1_000).default(0),
+  pageSize: z.number().int().min(12).max(60).default(48),
+  query: z.string().trim().max(100).default(""),
+  category: z.string().trim().max(80).nullable().default(null),
+  range: z.enum(["all", "a", "b", "c", "d"]).default("all"),
+  sort: z.enum(["popular", "price-asc", "price-desc"]).default("popular"),
+  onlyFreeShipping: z.boolean().default(false),
+});
 
-export const fetchProducts = createServerFn({ method: "GET" }).handler(async () => {
-  const now = Date.now();
-  if (cachedProducts && now - lastCacheTime < CACHE_TTL_MS) {
-    return cachedProducts;
-  }
+type CatalogInput = z.infer<typeof catalogInput>;
 
+async function createPublicClient() {
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-  const supabasePublic = createClient<Database>(process.env["SUPABASE_URL"]!, key, {
+  return createClient<Database>(process.env["SUPABASE_URL"]!, key, {
     auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
     global: { fetch: (input, init) => {
       const headers = new Headers(init?.headers);
@@ -86,22 +88,88 @@ export const fetchProducts = createServerFn({ method: "GET" }).handler(async () 
       return fetch(input, { ...init, headers });
     } },
   });
+}
 
-  // Busca todos os produtos ativos sem limitar a 48
-  const { data, error } = await supabasePublic
-    .from("products")
-    .select(projection)
-    .eq("is_active", true)
-    .order("sold_count", { ascending: false });
-
-  if (error) throw error;
+async function signProductBatch(products: Product[]) {
+  const storedProducts = products.filter((product) => {
+    const urls = [product.image_url, ...(product.gallery_urls ?? [])].filter((value): value is string => Boolean(value));
+    return urls.some(isStoredMediaPath);
+  });
+  if (storedProducts.length === 0) return products.map((product) => ({ ...product, media: [] }));
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const result = await Promise.all(((data ?? []) as unknown as Product[]).map((product) => signProductMedia(product, supabaseAdmin)));
+  const ids = storedProducts.map((product) => product.id);
+  const { data: mediaRows, error } = await supabaseAdmin
+    .from("product_media")
+    .select("id,product_id,storage_path,media_type,mime_type,position")
+    .in("product_id", ids)
+    .order("position");
+  if (error) throw error;
 
-  cachedProducts = result;
-  lastCacheTime = now;
-  return result;
+  const paths = [...new Set((mediaRows ?? []).map((item) => item.storage_path))];
+  const { data: signed, error: signError } = paths.length
+    ? await supabaseAdmin.storage.from(MEDIA_BUCKET).createSignedUrls(paths, 60 * 60)
+    : { data: [], error: null };
+  if (signError) throw signError;
+  const signedByPath = new Map(paths.map((path, index) => [path, signed?.[index]?.signedUrl ?? path]));
+
+  return products.map((product) => {
+    if (!storedProducts.some((stored) => stored.id === product.id)) return { ...product, media: [] };
+    const rows = (mediaRows ?? []).filter((item) => item.product_id === product.id);
+    if (rows.length > 0) {
+      const media = rows.map(({ product_id: _productId, ...item }) => ({
+        ...item,
+        url: signedByPath.get(item.storage_path) ?? item.storage_path,
+      })) as ProductMedia[];
+      return {
+        ...product,
+        image_url: media.find((item) => item.media_type === "image")?.url ?? media[0]?.url ?? null,
+        gallery_urls: media.map((item) => item.url),
+        media,
+      };
+    }
+    const signLegacy = (value: string) => isStoredMediaPath(value) ? signedByPath.get(value) ?? value : value;
+    return {
+      ...product,
+      image_url: product.image_url ? signLegacy(product.image_url) : null,
+      gallery_urls: (product.gallery_urls ?? []).map(signLegacy),
+      media: [],
+    };
+  });
+}
+
+async function queryCatalog(input: CatalogInput) {
+  const supabasePublic = await createPublicClient();
+  let query = supabasePublic.from("products").select(projection, { count: "exact" }).eq("is_active", true);
+  if (input.query) query = query.ilike("title", `%${input.query.replace(/[%_,]/g, " ")}%`);
+  if (input.category) query = query.eq("category", input.category);
+  if (input.range === "a") query = query.lte("price", 50);
+  if (input.range === "b") query = query.gte("price", 50).lte("price", 100);
+  if (input.range === "c") query = query.gte("price", 100).lte("price", 200);
+  if (input.range === "d") query = query.gte("price", 200);
+  if (input.onlyFreeShipping) query = query.or("free_shipping.eq.true,price.gte.79");
+  query = input.sort === "price-asc"
+    ? query.order("price", { ascending: true })
+    : input.sort === "price-desc"
+      ? query.order("price", { ascending: false })
+      : query.order("sold_count", { ascending: false }).order("created_at", { ascending: false });
+  const from = input.page * input.pageSize;
+  const { data, error, count } = await query.range(from, from + input.pageSize - 1);
+  if (error) throw error;
+  const products = await signProductBatch((data ?? []) as unknown as Product[]);
+  const total = count ?? products.length;
+  return { products, total, nextPage: from + products.length < total ? input.page + 1 : null };
+}
+
+export const fetchCatalogPage = createServerFn({ method: "GET" })
+  .inputValidator((input) => catalogInput.parse(input))
+  .handler(async ({ data }) => queryCatalog(data));
+
+export const fetchProducts = createServerFn({ method: "GET" }).handler(async () => {
+  const result = await queryCatalog({
+    page: 0, pageSize: 48, query: "", category: null, range: "all", sort: "popular", onlyFreeShipping: false,
+  });
+  return result.products;
 });
 
 export const fetchProduct = createServerFn({ method: "GET" })
