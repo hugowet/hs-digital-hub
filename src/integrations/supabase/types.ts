@@ -955,6 +955,62 @@ export type Database = {
         }
         Relationships: []
       }
+      seller_shipping_integrations: {
+        Row: {
+          access_token_encrypted: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          oauth_state_expires_at: string | null
+          oauth_state_hash: string | null
+          provider: string
+          redirect_origin: string | null
+          refresh_token_encrypted: string | null
+          status: string
+          store_id: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          oauth_state_expires_at?: string | null
+          oauth_state_hash?: string | null
+          provider: string
+          redirect_origin?: string | null
+          refresh_token_encrypted?: string | null
+          status?: string
+          store_id: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          oauth_state_expires_at?: string | null
+          oauth_state_hash?: string | null
+          provider?: string
+          redirect_origin?: string | null
+          refresh_token_encrypted?: string | null
+          status?: string
+          store_id?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_shipping_integrations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shipping_quotes: {
         Row: {
           amount: number
@@ -1168,6 +1224,9 @@ export type Database = {
           provider: string
           provider_payload: Json | null
           request_payload: Json | null
+          shipping_amount: number | null
+          shipping_service_code: string | null
+          shipping_service_name: string | null
           status: string
           store_id: string
           submitted_at: string | null
@@ -1187,6 +1246,9 @@ export type Database = {
           provider: string
           provider_payload?: Json | null
           request_payload?: Json | null
+          shipping_amount?: number | null
+          shipping_service_code?: string | null
+          shipping_service_name?: string | null
           status?: string
           store_id: string
           submitted_at?: string | null
@@ -1206,6 +1268,9 @@ export type Database = {
           provider?: string
           provider_payload?: Json | null
           request_payload?: Json | null
+          shipping_amount?: number | null
+          shipping_service_code?: string | null
+          shipping_service_name?: string | null
           status?: string
           store_id?: string
           submitted_at?: string | null
