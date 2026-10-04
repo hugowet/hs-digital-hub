@@ -102,7 +102,7 @@ async function translateProductTitles(titles: string[]) {
 }
 
 export async function translateCjProductBatch(supabaseAdmin: any, batchSize = 50) {
-  const safeBatchSize = Math.min(50, Math.max(1, Math.trunc(batchSize)));
+  const safeBatchSize = Math.min(200, Math.max(1, Math.trunc(batchSize)));
   const { data: products, error } = await supabaseAdmin
     .from("products")
     .select("id,title,supplier_title_original")

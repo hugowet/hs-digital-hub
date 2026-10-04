@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/public/suppliers/sync")({
           .eq("status", "active")
           .eq("auto_sync", true);
         if (error) throw error;
-        const { syncCjCatalog } = await import("@/lib/suppliers.server");
+        const { syncCjCatalog, translateCjProductBatch } = await import("@/lib/suppliers.server");
         const { syncDropiCatalog } = await import("@/lib/dropi.server");
         const results = [];
         for (const integration of integrations ?? []) {
@@ -26,7 +26,8 @@ export const Route = createFileRoute("/api/public/suppliers/sync")({
               integration.store_id,
               Number(integration.margin_percent),
             );
-            results.push({ provider: "cj", storeId: integration.store_id, ...catalog });
+            const translation = await translateCjProductBatch(supabaseAdmin, 50);
+            results.push({ provider: "cj", storeId: integration.store_id, ...catalog, translation });
             continue;
           }
           if (integration.provider === "dropi") {

@@ -11,7 +11,7 @@ export const Route = createFileRoute("/api/public/suppliers/translate")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { translateCjProductBatch } = await import("@/lib/suppliers.server");
         try {
-          return Response.json(await translateCjProductBatch(supabaseAdmin, 50));
+          return Response.json(await translateCjProductBatch(supabaseAdmin, 200));
         } catch (error) {
           const message = error instanceof Error ? error.message : "Falha na tradução do catálogo.";
           return Response.json({ error: message }, { status: 502 });
