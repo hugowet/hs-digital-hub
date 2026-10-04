@@ -1326,6 +1326,14 @@ export type Database = {
         Returns: boolean
       }
       release_expired_marketplace_orders: { Args: never; Returns: number }
+      reprice_cj_products_brl: {
+        Args: {
+          _margin_percent: number
+          _store_id: string
+          _usd_brl_rate: number
+        }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "seller" | "buyer"

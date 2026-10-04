@@ -15,6 +15,13 @@
       "when": 1791145885527,
       "tag": "0001_track_supplier_currency_conversion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791145907905,
+      "tag": "0002_add_cj_brl_repricing_function",
+      "breakpoints": true
     }
   ]
 }
