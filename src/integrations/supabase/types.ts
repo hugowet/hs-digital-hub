@@ -1117,14 +1117,18 @@ export type Database = {
       supplier_integrations: {
         Row: {
           access_token_encrypted: string | null
+          api_base_url: string | null
           auto_fulfill: boolean
           auto_sync: boolean
           created_at: string
           id: string
+          integrator_id: string | null
           last_catalog_sync_at: string | null
           last_error: string | null
           last_stock_sync_at: string | null
           margin_percent: number
+          product_endpoint: string
+          product_mapping: Json
           provider: string
           refresh_token_encrypted: string | null
           status: string
@@ -1134,14 +1138,18 @@ export type Database = {
         }
         Insert: {
           access_token_encrypted?: string | null
+          api_base_url?: string | null
           auto_fulfill?: boolean
           auto_sync?: boolean
           created_at?: string
           id?: string
+          integrator_id?: string | null
           last_catalog_sync_at?: string | null
           last_error?: string | null
           last_stock_sync_at?: string | null
           margin_percent?: number
+          product_endpoint?: string
+          product_mapping?: Json
           provider: string
           refresh_token_encrypted?: string | null
           status?: string
@@ -1151,14 +1159,18 @@ export type Database = {
         }
         Update: {
           access_token_encrypted?: string | null
+          api_base_url?: string | null
           auto_fulfill?: boolean
           auto_sync?: boolean
           created_at?: string
           id?: string
+          integrator_id?: string | null
           last_catalog_sync_at?: string | null
           last_error?: string | null
           last_stock_sync_at?: string | null
           margin_percent?: number
+          product_endpoint?: string
+          product_mapping?: Json
           provider?: string
           refresh_token_encrypted?: string | null
           status?: string
