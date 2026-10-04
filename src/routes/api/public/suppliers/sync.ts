@@ -16,15 +16,36 @@ export const Route = createFileRoute("/api/public/suppliers/sync")({
           .eq("auto_sync", true);
         if (error) throw error;
         const { syncCjCatalog } = await import("@/lib/suppliers.server");
+        const { syncDropiCatalog } = await import("@/lib/dropi.server");
         const results = [];
         for (const integration of integrations ?? []) {
-          if (integration.provider !== "cj") continue;
-          const catalog = await syncCjCatalog(
-            supabaseAdmin,
-            integration.store_id,
-            Number(integration.margin_percent),
-          );
-          results.push({ provider: "cj", storeId: integration.store_id, ...catalog });
+          if (integration.provider === "cj") {
+            const catalog = await syncCjCatalog(
+              supabaseAdmin,
+              integration.store_id,
+              Number(integration.margin_percent),
+            );
+            results.push({ provider: "cj", storeId: integration.store_id, ...catalog });
+            continue;
+          }
+          if (integration.provider === "dropi") {
+            const { data: dropi } = await supabaseAdmin
+              .from("supplier_integrations")
+              .select("api_base_url,integrator_id,product_endpoint,product_mapping")
+              .eq("store_id", integration.store_id)
+              .eq("provider", "dropi")
+              .single();
+            if (!dropi?.api_base_url || !dropi.integrator_id) continue;
+            const catalog = await syncDropiCatalog(supabaseAdmin, {
+              storeId: integration.store_id,
+              apiBaseUrl: dropi.api_base_url,
+              integratorId: dropi.integrator_id,
+              productEndpoint: dropi.product_endpoint,
+              marginPercent: Number(integration.margin_percent),
+              mapping: dropi.product_mapping,
+            });
+            results.push({ provider: "dropi", storeId: integration.store_id, ...catalog });
+          }
         }
         return Response.json({ results });
       },
