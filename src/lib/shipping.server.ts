@@ -115,18 +115,18 @@ async function melhorEnvioQuotes(
     throw new Error(`O Melhor Envio não conseguiu calcular o frete: ${Array.isArray(body) ? response.status : body.message ?? response.status}`);
   }
   return body.flatMap<QuoteOption>((entry) => {
-    const amount = Number(entry.price ?? entry.custom_price);
-    if (entry.error || !Number.isFinite(amount) || amount < 0) return [];
-    const days = Number(entry.delivery_time ?? entry.custom_delivery_time);
+    const amount = Number(entry["price"] ?? entry["custom_price"]);
+    if (entry["error"] || !Number.isFinite(amount) || amount < 0) return [];
+    const days = Number(entry["delivery_time"] ?? entry["custom_delivery_time"]);
     return [{
       provider: "melhor_envio",
-      serviceCode: String(entry.id),
-      serviceName: String(entry.name ?? "Entrega"),
-      carrierName: String(entry.company?.name ?? "Transportadora"),
+      serviceCode: String(entry["id"]),
+      serviceName: String(entry["name"] ?? "Entrega"),
+      carrierName: String(entry["company"]?.name ?? "Transportadora"),
       amount,
       deliveryDaysMin: Number.isFinite(days) ? days : null,
       deliveryDaysMax: Number.isFinite(days) ? days : null,
-      providerPayload: { serviceId: entry.id },
+      providerPayload: { serviceId: entry["id"] },
     }];
   });
 }

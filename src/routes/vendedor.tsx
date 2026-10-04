@@ -891,6 +891,10 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
   const [category, setCategory] = useState<string>(CATEGORIES[0].slug);
   const [productType, setProductType] = useState<"physical" | "digital">("physical");
   const [deliveryUrl, setDeliveryUrl] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [heightCm, setHeightCm] = useState("");
+  const [widthCm, setWidthCm] = useState("");
+  const [lengthCm, setLengthCm] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -930,6 +934,10 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           productType,
           deliveryUrl: deliveryUrl.trim(),
           media: uploaded,
+          weightKg: productType === "physical" ? Number(weightKg.replace(",", ".")) : null,
+          heightCm: productType === "physical" ? Number(heightCm.replace(",", ".")) : null,
+          widthCm: productType === "physical" ? Number(widthCm.replace(",", ".")) : null,
+          lengthCm: productType === "physical" ? Number(lengthCm.replace(",", ".")) : null,
         },
       });
 
@@ -938,6 +946,10 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       setDescription("");
       setPrice("");
       setFiles([]);
+      setWeightKg("");
+      setHeightCm("");
+      setWidthCm("");
+      setLengthCm("");
       onCreated();
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar produto");
@@ -1022,6 +1034,18 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
             placeholder="https://..."
             required
           />
+        </div>
+      )}
+      {productType === "physical" && (
+        <div>
+          <Label>Peso e dimensões da embalagem *</Label>
+          <div className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Input aria-label="Peso em kg" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder="Peso kg" required />
+            <Input aria-label="Altura em cm" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} placeholder="Altura cm" required />
+            <Input aria-label="Largura em cm" value={widthCm} onChange={(e) => setWidthCm(e.target.value)} placeholder="Largura cm" required />
+            <Input aria-label="Comprimento em cm" value={lengthCm} onChange={(e) => setLengthCm(e.target.value)} placeholder="Comp. cm" required />
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Usados pelo Melhor Envio para calcular Correios e transportadoras.</p>
         </div>
       )}
       <div>
