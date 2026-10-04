@@ -17,32 +17,43 @@ import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 
 type HomeSearch = {
-  q: string;
-  category: string | null;
-  range: "all" | "a" | "b" | "c" | "d";
-  sort: "popular" | "price-asc" | "price-desc";
-  free: boolean;
+  q?: string;
+  category?: string;
+  range?: "a" | "b" | "c" | "d";
+  sort?: "price-asc" | "price-desc";
+  free?: true;
 };
 
 const normalizeSearch = (search: Record<string, unknown>): HomeSearch => ({
-  q: typeof search.q === "string" ? search.q.slice(0, 100) : "",
-  category: typeof search.category === "string" ? search.category : null,
-  range: ["a", "b", "c", "d"].includes(String(search.range)) ? search.range as HomeSearch["range"] : "all",
-  sort: ["price-asc", "price-desc"].includes(String(search.sort)) ? search.sort as HomeSearch["sort"] : "popular",
-  free: search.free === true || search.free === "true",
+  ...(typeof search["q"] === "string" && search["q"] ? { q: search["q"].slice(0, 100) } : {}),
+  ...(typeof search["category"] === "string" && search["category"] ? { category: search["category"] } : {}),
+  ...(["a", "b", "c", "d"].includes(String(search["range"])) ? { range: search["range"] as HomeSearch["range"] } : {}),
+  ...(["price-asc", "price-desc"].includes(String(search["sort"])) ? { sort: search["sort"] as HomeSearch["sort"] } : {}),
+  ...(search["free"] === true || search["free"] === "true" ? { free: true as const } : {}),
+});
+
+const resolveSearch = (search: HomeSearch) => ({
+  q: search.q ?? "",
+  category: search.category ?? null,
+  range: search.range ?? "all" as const,
+  sort: search.sort ?? "popular" as const,
+  free: search.free ?? false,
 });
 
 const catalogQueryOptions = (search: HomeSearch) => infiniteQueryOptions({
   queryKey: ["catalog", search],
-  queryFn: ({ pageParam }) => fetchCatalogPage({ data: {
-    page: pageParam,
-    pageSize: 48,
-    query: search.q,
-    category: search.category,
-    range: search.range,
-    sort: search.sort,
-    onlyFreeShipping: search.free,
-  } }),
+  queryFn: ({ pageParam }) => {
+    const resolved = resolveSearch(search);
+    return fetchCatalogPage({ data: {
+      page: pageParam,
+      pageSize: 48,
+      query: resolved.q,
+      category: resolved.category,
+      range: resolved.range,
+      sort: resolved.sort,
+      onlyFreeShipping: resolved.free,
+    } });
+  },
   initialPageParam: 0,
   getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
   staleTime: 60_000,
@@ -79,12 +90,23 @@ const PRICE_RANGES = [
 ];
 
 export function Home() {
-  const search = Route.useSearch();
+  const routeSearch = Route.useSearch();
+  const search = resolveSearch(routeSearch);
   const navigate = Route.useNavigate();
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(catalogQueryOptions(search));
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(catalogQueryOptions(routeSearch));
   const products = data.pages.flatMap((page) => page.products);
   const total = data.pages[0]?.total ?? 0;
-  const setSearch = (changes: Partial<HomeSearch>) => navigate({ search: (previous) => ({ ...previous, ...changes }) });
+  const setSearch = (changes: Partial<HomeSearch> & { category?: string | null; range?: HomeSearch["range"] | "all"; sort?: HomeSearch["sort"] | "popular"; free?: boolean }) => navigate({
+    search: (previous) => {
+      const next = { ...previous, ...changes } as Record<string, unknown>;
+      if (!next["q"]) delete next["q"];
+      if (!next["category"]) delete next["category"];
+      if (next["range"] === "all") delete next["range"];
+      if (next["sort"] === "popular") delete next["sort"];
+      if (!next["free"]) delete next["free"];
+      return next as HomeSearch;
+    },
+  });
 
   // Ofertas imperdíveis
   const promoProducts = useMemo(() => {
@@ -98,18 +120,17 @@ export function Home() {
 
   // Filtro principal da vitrine com suporte à aba de Frete Grátis
   const filtered = useMemo(() => {
-    const selectedRange = PRICE_RANGES.find((item) => item.id === range) ?? {
+    const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
       id: "all", label: "Todos os preços", min: 0, max: Infinity,
     };
     const result = products.filter((product) => {
       const price = Number(product.price);
-      const search = `${product.title} ${product.stores?.name ?? ""} ${product.category}`.toLowerCase();
       return price >= selectedRange.min && price <= selectedRange.max;
     });
 
     return [...result].sort((a, b) => {
-      if (sort === "price-asc") return Number(a.price) - Number(b.price);
-      if (sort === "price-desc") return Number(b.price) - Number(a.price);
+      if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
+      if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
       return (b.sold_count ?? 0) - (a.sold_count ?? 0);
     });
   }, [products, search.range, search.sort]);
