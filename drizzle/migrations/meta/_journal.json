@@ -8,6 +8,20 @@
       "when": 1791134594693,
       "tag": "0000_add_dropi_admin_configuration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791145885527,
+      "tag": "0001_track_supplier_currency_conversion",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791145907905,
+      "tag": "0002_add_cj_brl_repricing_function",
+      "breakpoints": true
     }
   ]
 }

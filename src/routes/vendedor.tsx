@@ -150,6 +150,9 @@ function SellerCenterPage() {
   });
   const [syncingCj, setSyncingCj] = useState(false);
   const [activeTab, setActiveTab] = useState("orders");
+  const cjPricedProduct = products.find(
+    (product) => product.supplier === "cj" && product.supplier_exchange_rate,
+  );
 
   const continueCjImport = useCallback(
     async (showResult = false) => {
@@ -414,6 +417,16 @@ function SellerCenterPage() {
                   <p className="mt-2 text-xs text-muted-foreground">
                     Margem aplicada: {Number(integration.margin_percent).toLocaleString("pt-BR")}%
                   </p>
+                  {integration.provider === "cj" && cjPricedProduct && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Custo em USD convertido pela cotação de R${" "}
+                      {Number(cjPricedProduct.supplier_exchange_rate).toLocaleString("pt-BR", {
+                        minimumFractionDigits: 4,
+                        maximumFractionDigits: 4,
+                      })}
+                      ; depois é aplicada a margem.
+                    </p>
+                  )}
                   {integration.last_stock_sync_at && (
                     <p className="mt-1 text-xs text-muted-foreground">
                       Estoque atualizado em{" "}
@@ -422,8 +435,8 @@ function SellerCenterPage() {
                   )}
                   {integration.provider === "dropi" && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      A ativação depende das credenciais de parceiro fornecidas diretamente pelo
-                      Dropi.
+                      Aguardando a URL oficial da API e o identificador do integrador fornecidos
+                      pelo Dropi. O token já está protegido no servidor.
                     </p>
                   )}
                   {integration.provider === "cj" && cjImportJob && (

@@ -761,6 +761,9 @@ export type Database = {
           store_id: string
           supplier: string | null
           supplier_cost: number | null
+          supplier_cost_currency: string | null
+          supplier_exchange_rate: number | null
+          supplier_exchange_rate_at: string | null
           supplier_last_synced_at: string | null
           supplier_product_id: string | null
           supplier_sku: string | null
@@ -789,6 +792,9 @@ export type Database = {
           store_id: string
           supplier?: string | null
           supplier_cost?: number | null
+          supplier_cost_currency?: string | null
+          supplier_exchange_rate?: number | null
+          supplier_exchange_rate_at?: string | null
           supplier_last_synced_at?: string | null
           supplier_product_id?: string | null
           supplier_sku?: string | null
@@ -817,6 +823,9 @@ export type Database = {
           store_id?: string
           supplier?: string | null
           supplier_cost?: number | null
+          supplier_cost_currency?: string | null
+          supplier_exchange_rate?: number | null
+          supplier_exchange_rate_at?: string | null
           supplier_last_synced_at?: string | null
           supplier_product_id?: string | null
           supplier_sku?: string | null
@@ -1317,6 +1326,14 @@ export type Database = {
         Returns: boolean
       }
       release_expired_marketplace_orders: { Args: never; Returns: number }
+      reprice_cj_products_brl: {
+        Args: {
+          _margin_percent: number
+          _store_id: string
+          _usd_brl_rate: number
+        }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "seller" | "buyer"
