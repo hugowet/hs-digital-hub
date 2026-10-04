@@ -24,8 +24,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  getDropiAdminConfiguration,
+  importDropiAdminProducts,
+  saveDropiAdminConfiguration,
+  testDropiAdminConnection,
+} from "@/lib/dropi.functions";
 import { getMercadoPagoConfiguration, saveMercadoPagoConfiguration } from "@/lib/payments.functions";
 
 // Funções de servidor que salvam direto no banco com permissão total de administrador (sem travar no RLS)
@@ -80,6 +87,10 @@ function AdminPage() {
   const saveMpConfiguration = useServerFn(saveMercadoPagoConfiguration);
   const setProductShipping = useServerFn(setProductShippingAdmin);
   const setAllProductsShipping = useServerFn(setAllProductsShippingAdmin);
+  const getDropiConfiguration = useServerFn(getDropiAdminConfiguration);
+  const saveDropiConfiguration = useServerFn(saveDropiAdminConfiguration);
+  const testDropiConnection = useServerFn(testDropiAdminConnection);
+  const importDropiProducts = useServerFn(importDropiAdminProducts);
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -154,6 +165,12 @@ function AdminPage() {
     queryFn: () => getMpConfiguration(),
   });
 
+  const { data: dropiConfigurations = [] } = useQuery({
+    enabled: !!isAdmin,
+    queryKey: ["admin-dropi-config"],
+    queryFn: () => getDropiConfiguration(),
+  });
+
   const [rate, setRate] = useState("");
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const [reply, setReply] = useState("");
@@ -211,6 +228,7 @@ function AdminPage() {
               <TabsTrigger value="sellers">Vendedores</TabsTrigger>
               <TabsTrigger value="messages">Mensagens</TabsTrigger>
               <TabsTrigger value="payments">Mercado Pago</TabsTrigger>
+              <TabsTrigger value="dropi">Dropi Nacional</TabsTrigger>
               <TabsTrigger value="transactions">Transações</TabsTrigger>
             </TabsList>
 
@@ -514,6 +532,31 @@ function AdminPage() {
               />
             </TabsContent>
 
+            <TabsContent value="dropi" className="pt-4">
+              {dropiConfigurations.length > 0 ? (
+                <DropiSettings
+                  configurations={dropiConfigurations}
+                  onSave={async (values) => {
+                    await saveDropiConfiguration({ data: values });
+                    await qc.invalidateQueries({ queryKey: ["admin-dropi-config"] });
+                  }}
+                  onTest={(values) => testDropiConnection({ data: values })}
+                  onImport={async (storeId) => {
+                    const result = await importDropiProducts({ data: { storeId } });
+                    await Promise.all([
+                      qc.invalidateQueries({ queryKey: ["admin-dropi-config"] }),
+                      qc.invalidateQueries({ queryKey: ["catalog"] }),
+                    ]);
+                    return result;
+                  }}
+                />
+              ) : (
+                <section className="surface-card p-6 text-sm text-muted-foreground">
+                  Nenhuma loja possui integração Dropi preparada.
+                </section>
+              )}
+            </TabsContent>
+
             {/* ABA: TRANSAÇÕES */}
             <TabsContent value="transactions" className="pt-4">
               <section className="surface-card overflow-hidden">
@@ -589,5 +632,125 @@ function MercadoPagoSettings({ configured, publicKey, onSave }: { configured: bo
       </div>
       <Button type="submit" className="mt-4" disabled={saving}>{saving ? "Validando…" : "Validar e salvar produção"}</Button>
     </form>
+  );
+}
+
+type DropiValues = {
+  storeId: string;
+  storeName: string;
+  apiBaseUrl: string;
+  integratorId: string;
+  productEndpoint: string;
+  marginPercent: number;
+  mapping: {
+    items: string;
+    id: string;
+    variantId: string;
+    sku: string;
+    title: string;
+    description: string;
+    price: string;
+    stock: string;
+    category: string;
+    image: string;
+    images: string;
+  };
+  configured: boolean;
+  status: string;
+  lastCatalogSyncAt: string | null;
+  lastError: string | null;
+};
+
+const dropiMappingLabels: Array<[keyof DropiValues["mapping"], string, string]> = [
+  ["items", "Lista de produtos", "data.products"],
+  ["id", "ID do produto", "id"],
+  ["variantId", "ID da variação", "variant.id"],
+  ["sku", "SKU", "sku"],
+  ["title", "Nome", "name"],
+  ["description", "Descrição", "description"],
+  ["price", "Preço de custo", "price"],
+  ["stock", "Estoque", "stock"],
+  ["category", "Categoria", "category.name"],
+  ["image", "Foto principal", "image"],
+  ["images", "Galeria de fotos", "images"],
+];
+
+function DropiSettings({ configurations, onSave, onTest, onImport }: {
+  configurations: DropiValues[];
+  onSave: (values: Omit<DropiValues, "storeName" | "configured" | "status" | "lastCatalogSyncAt" | "lastError">) => Promise<void>;
+  onTest: (values: Omit<DropiValues, "storeName" | "configured" | "status" | "lastCatalogSyncAt" | "lastError">) => Promise<{ received: number; valid: number; sampleTitle: string | null }>;
+  onImport: (storeId: string) => Promise<{ imported: number; skipped: number; received: number }>;
+}) {
+  const [selectedStoreId, setSelectedStoreId] = useState(configurations[0]?.storeId ?? "");
+  const selected = configurations.find((item) => item.storeId === selectedStoreId) ?? configurations[0];
+  const [values, setValues] = useState<DropiValues | null>(selected ?? null);
+  const [working, setWorking] = useState<"save" | "test" | "import" | null>(null);
+
+  useEffect(() => {
+    const next = configurations.find((item) => item.storeId === selectedStoreId) ?? configurations[0];
+    if (next) setValues(next);
+  }, [configurations, selectedStoreId]);
+
+  if (!values) return null;
+  const requestValues = {
+    storeId: values.storeId,
+    apiBaseUrl: values.apiBaseUrl.trim(),
+    integratorId: values.integratorId.trim(),
+    productEndpoint: values.productEndpoint.trim(),
+    marginPercent: Number(values.marginPercent),
+    mapping: values.mapping,
+  };
+  const update = (key: "apiBaseUrl" | "integratorId" | "productEndpoint") =>
+    (event: React.ChangeEvent<HTMLInputElement>) => setValues((current) => current ? { ...current, [key]: event.target.value } : current);
+  const updateMapping = (key: keyof DropiValues["mapping"]) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => setValues((current) => current ? { ...current, mapping: { ...current.mapping, [key]: event.target.value } } : current);
+
+  return (
+    <section className="surface-card p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
+        <div>
+          <h2 className="flex items-center gap-2 font-semibold"><Package className="h-5 w-5 text-primary" />Dropi Nacional</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Configure o contrato fornecido pelo Dropi, valide a resposta e publique produtos reais com a margem da loja.</p>
+        </div>
+        <span className={`rounded-md px-3 py-1 text-sm font-semibold ${values.configured ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+          {values.configured ? "Credencial disponível" : "Configuração pendente"}
+        </span>
+      </div>
+
+      {configurations.length > 1 && (
+        <div className="mt-4 max-w-sm">
+          <Label htmlFor="dropi-store">Loja</Label>
+          <select id="dropi-store" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={selectedStoreId} onChange={(event) => setSelectedStoreId(event.target.value)}>
+            {configurations.map((item) => <option key={item.storeId} value={item.storeId}>{item.storeName}</option>)}
+          </select>
+        </div>
+      )}
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2"><Label htmlFor="dropi-url">URL da API</Label><Input id="dropi-url" type="url" required value={values.apiBaseUrl} onChange={update("apiBaseUrl")} placeholder="https://api.fornecedor.com" className="mt-1" /><p className="mt-1 text-xs text-muted-foreground">Use somente a URL HTTPS oficial informada pelo Dropi.</p></div>
+        <div><Label htmlFor="dropi-integrator">Identificador do integrador</Label><Input id="dropi-integrator" required value={values.integratorId} onChange={update("integratorId")} autoComplete="off" className="mt-1" /></div>
+        <div><Label htmlFor="dropi-endpoint">Caminho dos produtos</Label><Input id="dropi-endpoint" required value={values.productEndpoint} onChange={update("productEndpoint")} placeholder="/products" className="mt-1 font-mono" /></div>
+        <div><Label htmlFor="dropi-margin">Margem sobre o custo (%)</Label><Input id="dropi-margin" type="number" min="0" max="1000" step="0.01" value={values.marginPercent} onChange={(event) => setValues((current) => current ? { ...current, marginPercent: Number(event.target.value) } : current)} className="mt-1" /></div>
+        <div className="flex items-end"><p className="pb-2 text-xs text-muted-foreground">O token permanece protegido no servidor e nunca aparece nesta tela.</p></div>
+      </div>
+
+      <div className="mt-6">
+        <h3 className="font-semibold">Mapeamento dos produtos</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Informe o caminho de cada campo no JSON, usando pontos para níveis internos.</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {dropiMappingLabels.map(([key, label, placeholder]) => (
+            <div key={key}><Label htmlFor={`dropi-map-${key}`}>{label}</Label><Input id={`dropi-map-${key}`} value={values.mapping[key]} onChange={updateMapping(key)} placeholder={placeholder} className="mt-1 font-mono text-xs" /></div>
+          ))}
+        </div>
+      </div>
+
+      {values.lastError && <Textarea readOnly value={values.lastError} aria-label="Último erro do Dropi" className="mt-5 min-h-20 border-destructive/40 text-xs" />}
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Button disabled={working !== null} onClick={async () => { try { setWorking("save"); await onSave(requestValues); toast.success("Configuração do Dropi salva."); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível salvar."); } finally { setWorking(null); } }}>{working === "save" ? "Salvando…" : "Salvar configuração"}</Button>
+        <Button variant="outline" disabled={working !== null} onClick={async () => { try { setWorking("test"); const result = await onTest(requestValues); toast.success(`Conexão validada: ${result.valid} de ${result.received} produtos reconhecidos${result.sampleTitle ? `, incluindo ${result.sampleTitle}` : ""}.`); } catch (error) { toast.error(error instanceof Error ? error.message : "A conexão falhou."); } finally { setWorking(null); } }}>{working === "test" ? "Testando…" : "Testar conexão"}</Button>
+        <Button variant="secondary" disabled={working !== null || !values.configured} onClick={async () => { try { setWorking("import"); const result = await onImport(values.storeId); toast.success(`${result.imported} produtos publicados; ${result.skipped} ignorados.`); } catch (error) { toast.error(error instanceof Error ? error.message : "A importação falhou."); } finally { setWorking(null); } }}>{working === "import" ? "Importando…" : "Importar para a vitrine"}</Button>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Última importação: {values.lastCatalogSyncAt ? new Date(values.lastCatalogSyncAt).toLocaleString("pt-BR") : "ainda não realizada"}.</p>
+    </section>
   );
 }
