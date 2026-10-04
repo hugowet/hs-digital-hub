@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import type { DropiFieldMapping } from "@/lib/dropi.server";
 
 export const Route = createFileRoute("/api/public/suppliers/sync")({
   server: {
@@ -42,7 +43,7 @@ export const Route = createFileRoute("/api/public/suppliers/sync")({
               integratorId: dropi.integrator_id,
               productEndpoint: dropi.product_endpoint,
               marginPercent: Number(integration.margin_percent),
-              mapping: dropi.product_mapping,
+              mapping: dropi.product_mapping as unknown as DropiFieldMapping,
             });
             results.push({ provider: "dropi", storeId: integration.store_id, ...catalog });
           }

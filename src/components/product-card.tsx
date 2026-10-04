@@ -88,8 +88,8 @@ export function ProductCard({ product }: { product: Product }) {
 
           <div className="mt-2 flex items-center justify-between gap-1 text-[11px] text-gray-500">
             <div className="flex items-center gap-1">
-              <Stars rating={product.rating_average ?? 4.8} />
-              <span>({compact(product.rating_count ?? 120)})</span>
+              <Stars rating={product.rating ?? 4.8} />
+              <span>({compact(product.reviews_count ?? 120)})</span>
             </div>
             <span>{compact(product.sold_count ?? 45)} vendidos</span>
           </div>
