@@ -419,6 +419,76 @@ export type Database = {
           },
         ]
       }
+      order_shipments: {
+        Row: {
+          amount: number
+          carrier_name: string
+          created_at: string
+          delivery_days_max: number | null
+          delivery_days_min: number | null
+          destination_postal_code: string
+          id: string
+          order_id: string
+          provider: string
+          quote_id: string | null
+          service_code: string
+          service_name: string
+          store_id: string
+        }
+        Insert: {
+          amount: number
+          carrier_name: string
+          created_at?: string
+          delivery_days_max?: number | null
+          delivery_days_min?: number | null
+          destination_postal_code: string
+          id?: string
+          order_id: string
+          provider: string
+          quote_id?: string | null
+          service_code: string
+          service_name: string
+          store_id: string
+        }
+        Update: {
+          amount?: number
+          carrier_name?: string
+          created_at?: string
+          delivery_days_max?: number | null
+          delivery_days_min?: number | null
+          destination_postal_code?: string
+          id?: string
+          order_id?: string
+          provider?: string
+          quote_id?: string | null
+          service_code?: string
+          service_name?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_shipments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_shipments_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_tracking_events: {
         Row: {
           created_at: string
@@ -748,9 +818,11 @@ export type Database = {
           description_long: string | null
           free_shipping: boolean
           gallery_urls: string[]
+          height_cm: number | null
           id: string
           image_url: string | null
           is_active: boolean
+          length_cm: number | null
           price: number
           product_type: string
           rating: number
@@ -772,6 +844,8 @@ export type Database = {
           supplier_variant_id: string | null
           title: string
           variations: Json
+          weight_kg: number | null
+          width_cm: number | null
         }
         Insert: {
           category?: string
@@ -781,9 +855,11 @@ export type Database = {
           description_long?: string | null
           free_shipping?: boolean
           gallery_urls?: string[]
+          height_cm?: number | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          length_cm?: number | null
           price: number
           product_type?: string
           rating?: number
@@ -805,6 +881,8 @@ export type Database = {
           supplier_variant_id?: string | null
           title: string
           variations?: Json
+          weight_kg?: number | null
+          width_cm?: number | null
         }
         Update: {
           category?: string
@@ -814,9 +892,11 @@ export type Database = {
           description_long?: string | null
           free_shipping?: boolean
           gallery_urls?: string[]
+          height_cm?: number | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          length_cm?: number | null
           price?: number
           product_type?: string
           rating?: number
@@ -838,6 +918,8 @@ export type Database = {
           supplier_variant_id?: string | null
           title?: string
           variations?: Json
+          weight_kg?: number | null
+          width_cm?: number | null
         }
         Relationships: [
           {
@@ -873,6 +955,81 @@ export type Database = {
         }
         Relationships: []
       }
+      shipping_quotes: {
+        Row: {
+          amount: number
+          buyer_id: string
+          carrier_name: string
+          consumed_order_id: string | null
+          created_at: string
+          currency: string
+          delivery_days_max: number | null
+          delivery_days_min: number | null
+          destination_postal_code: string
+          expires_at: string
+          id: string
+          items: Json
+          provider: string
+          provider_payload: Json
+          service_code: string
+          service_name: string
+          store_id: string
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          carrier_name: string
+          consumed_order_id?: string | null
+          created_at?: string
+          currency?: string
+          delivery_days_max?: number | null
+          delivery_days_min?: number | null
+          destination_postal_code: string
+          expires_at: string
+          id?: string
+          items: Json
+          provider: string
+          provider_payload?: Json
+          service_code: string
+          service_name: string
+          store_id: string
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          carrier_name?: string
+          consumed_order_id?: string | null
+          created_at?: string
+          currency?: string
+          delivery_days_max?: number | null
+          delivery_days_min?: number | null
+          destination_postal_code?: string
+          expires_at?: string
+          id?: string
+          items?: Json
+          provider?: string
+          provider_payload?: Json
+          service_code?: string
+          service_name?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_quotes_consumed_order_id_fkey"
+            columns: ["consumed_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_quotes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           balance: number
@@ -886,6 +1043,7 @@ export type Database = {
           mercado_pago_token_expires_at: string | null
           mercado_pago_user_id: string | null
           name: string
+          origin_postal_code: string | null
           owner_id: string | null
           pix_key: string | null
           pix_key_type: string | null
@@ -905,6 +1063,7 @@ export type Database = {
           mercado_pago_token_expires_at?: string | null
           mercado_pago_user_id?: string | null
           name: string
+          origin_postal_code?: string | null
           owner_id?: string | null
           pix_key?: string | null
           pix_key_type?: string | null
@@ -924,6 +1083,7 @@ export type Database = {
           mercado_pago_token_expires_at?: string | null
           mercado_pago_user_id?: string | null
           name?: string
+          origin_postal_code?: string | null
           owner_id?: string | null
           pix_key?: string | null
           pix_key_type?: string | null
@@ -1297,6 +1457,14 @@ export type Database = {
       }
       create_marketplace_order: {
         Args: { _items: Json; _shipping_address: Json }
+        Returns: string
+      }
+      create_marketplace_order_v2: {
+        Args: {
+          _items: Json
+          _shipping_address: Json
+          _shipping_quote_ids: Json
+        }
         Returns: string
       }
       create_seller_product: {
