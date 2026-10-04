@@ -43,6 +43,13 @@
       "when": 1791156895707,
       "tag": "0005_seller_shipping_integrations",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791157180956,
+      "tag": "0006_seller_product_shipping_dimensions",
+      "breakpoints": true
     }
   ]
 }

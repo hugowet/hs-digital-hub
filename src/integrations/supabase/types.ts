@@ -1557,6 +1557,23 @@ export type Database = {
         }
         Returns: string
       }
+      create_seller_product_v3: {
+        Args: {
+          _category: string
+          _delivery_url: string
+          _description: string
+          _height_cm: number
+          _length_cm: number
+          _media: Json
+          _price: number
+          _product_type: string
+          _stock: number
+          _title: string
+          _weight_kg: number
+          _width_cm: number
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
