@@ -849,7 +849,7 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
   )
     return fulfillment;
 
-  const [{ data: order }, { data: items }] = await Promise.all([
+  const [{ data: order }, { data: items }, { data: shipment }] = await Promise.all([
     supabaseAdmin.from("orders").select("shipping_address").eq("id", fulfillment.order_id).single(),
     supabaseAdmin
       .from("order_items")
@@ -857,6 +857,12 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
       .eq("order_id", fulfillment.order_id)
       .eq("store_id", fulfillment.store_id)
       .eq("products.supplier", "cj"),
+    supabaseAdmin
+      .from("order_shipments")
+      .select("service_code,service_name,amount")
+      .eq("order_id", fulfillment.order_id)
+      .eq("store_id", fulfillment.store_id)
+      .maybeSingle(),
   ]);
   const address = (order?.shipping_address ?? {}) as Record<string, unknown>;
   const products = (items ?? [])
@@ -869,7 +875,7 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
 
   const payload = {
     orderNumber: `HS-${fulfillment.order_id}-${fulfillment.store_id}`,
-    shippingName: addressValue(address, "name", "recipient_name"),
+    shippingCustomerName: addressValue(address, "name", "recipient_name"),
     shippingCountryCode: "BR",
     shippingCountry: "Brazil",
     shippingProvince: addressValue(address, "state"),
@@ -878,21 +884,24 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
     shippingZip: addressValue(address, "postal_code", "zip").replace(/\D/g, ""),
     shippingPhone: addressValue(address, "phone").replace(/\D/g, ""),
     fromCountryCode: "CN",
-    logisticName: "CJPacket Ordinary",
+    logisticName: shipment?.service_code ?? "",
+    payType: 2,
+    platform: "other",
     products,
   };
   if (
-    !payload.shippingName ||
+    !payload.shippingCustomerName ||
     !payload.shippingCity ||
     !payload.shippingAddress ||
     !payload.shippingZip ||
-    !payload.shippingPhone
+    !payload.shippingPhone ||
+    !payload.logisticName
   ) {
     throw new Error("O endereço do comprador está incompleto para envio pela CJ.");
   }
 
   const token = await getCjAccessToken(supabaseAdmin, fulfillment.store_id);
-  const result = await cjRequest<any>("/shopping/order/createOrder", token, {
+  const result = await cjRequest<any>("/shopping/order/createOrderV2", token, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -906,6 +915,9 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
       request_payload: payload,
       provider_payload: result,
       submitted_at: new Date().toISOString(),
+      shipping_service_code: shipment?.service_code ?? null,
+      shipping_service_name: shipment?.service_name ?? null,
+      shipping_amount: shipment?.amount ?? null,
       attempts: 1,
       last_error: null,
     })
@@ -915,4 +927,30 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
     .maybeSingle();
   if (error) throw error;
   return updated ?? fulfillment;
+}
+
+export async function dispatchPaidCjFulfillments(supabaseAdmin: any, orderId: string) {
+  const { data: fulfillments, error } = await supabaseAdmin
+    .from("supplier_fulfillments")
+    .select("id")
+    .eq("order_id", orderId)
+    .eq("provider", "cj")
+    .in("status", ["pending", "retry"]);
+  if (error) throw error;
+  const results = [];
+  for (const fulfillment of fulfillments ?? []) {
+    try {
+      await submitCjFulfillment(supabaseAdmin, fulfillment.id);
+      results.push({ id: fulfillment.id, ok: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao enviar pedido à CJ.";
+      await supabaseAdmin.from("supplier_fulfillments").update({
+        status: "retry",
+        last_error: message,
+        next_attempt_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+      }).eq("id", fulfillment.id);
+      results.push({ id: fulfillment.id, ok: false });
+    }
+  }
+  return results;
 }

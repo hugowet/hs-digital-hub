@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CreditCard, Minus, Plus, Store, Trash2 } from "lucide-react";
+import { CreditCard, Loader2, Minus, Plus, Store, Trash2, Truck } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { groupByStore, useCart } from "@/lib/cart";
 import { trackCheckoutAbandonment } from "@/lib/abandoned-cart";
 import { brl } from "@/lib/format";
 import { createMarketplaceCheckout } from "@/lib/payments.functions";
+import { quoteMarketplaceShipping } from "@/lib/shipping.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/carrinho")({
@@ -39,19 +40,29 @@ function CartPage() {
   const { items, setQuantity, remove, subtotal, clear } = useCart();
   const navigate = useNavigate();
   const createCheckout = useServerFn(createMarketplaceCheckout);
+  const quoteShipping = useServerFn(quoteMarketplaceShipping);
   const groups = groupByStore(items);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [quoting, setQuoting] = useState(false);
+  const [quotes, setQuotes] = useState<Array<{
+    storeId: string;
+    storeName: string;
+    options: Array<{ id: string; serviceName: string; carrierName: string; amount: number; deliveryDaysMin: number | null; deliveryDaysMax: number | null }>;
+  }>>([]);
+  const [selectedQuotes, setSelectedQuotes] = useState<Record<string, string>>({});
 
-  const shipping = groups.reduce(
-    (sum, g) => sum + (g.items.every((i) => i.freeShipping || i.productType === "digital") ? 0 : 19.9),
-    0,
-  );
+  const shipping = quotes.reduce((sum, group) => {
+    const selected = group.options.find((option) => option.id === selectedQuotes[group.storeId]);
+    return sum + (selected?.amount ?? 0);
+  }, 0);
   const total = subtotal + shipping;
 
   useEffect(() => {
@@ -59,18 +70,55 @@ function CartPage() {
   }, [items]);
 
   useEffect(() => {
-    supabase.from("user_addresses").select("recipient_name,phone,street_address,city,state,complement").eq("is_default", true).maybeSingle().then(({ data }) => {
+    supabase.from("user_addresses").select("recipient_name,phone,street_address,city,state,postal_code,complement").eq("is_default", true).maybeSingle().then(({ data }) => {
       if (!data) return;
       setName(data.recipient_name);
       setPhone(data.phone);
       setAddress(`${data.street_address}${data.complement ? `, ${data.complement}` : ""}`);
-      setCity(`${data.city}/${data.state}`);
+      setCity(data.city);
+      setState(data.state);
+      setPostalCode(data.postal_code ?? "");
     });
   }, []);
 
+  const cartSignature = items.map((item) => `${item.productId}:${item.quantity}`).sort().join("|");
+  useEffect(() => {
+    setQuotes([]);
+    setSelectedQuotes({});
+  }, [cartSignature, postalCode]);
+
+  const calculateShipping = async () => {
+    const normalized = postalCode.replace(/\D/g, "");
+    if (normalized.length !== 8) {
+      toast.error("Informe um CEP válido com 8 números.");
+      return;
+    }
+    setQuoting(true);
+    try {
+      const result = await quoteShipping({ data: {
+        postalCode: normalized,
+        items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+      } });
+      setQuotes(result);
+      setSelectedQuotes(Object.fromEntries(result.map((group) => {
+        const cheapest = [...group.options].sort((a, b) => a.amount - b.amount)[0];
+        return [group.storeId, cheapest?.id ?? ""];
+      })));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível calcular o frete.");
+    } finally {
+      setQuoting(false);
+    }
+  };
+
   const checkout = async () => {
-    if (!name.trim() || !address.trim() || !city.trim()) {
-      toast.error("Preencha nome, endereço e cidade para entrega.");
+    const physicalStoreIds = groups.filter((group) => group.items.some((item) => item.productType !== "digital")).map((group) => group.storeId);
+    if (!name.trim() || !address.trim() || !city.trim() || state.trim().length !== 2 || postalCode.replace(/\D/g, "").length !== 8) {
+      toast.error("Preencha nome, endereço, cidade, UF e CEP para entrega.");
+      return;
+    }
+    if (physicalStoreIds.some((storeId) => !selectedQuotes[storeId])) {
+      toast.error("Calcule e escolha o frete de cada loja antes de continuar.");
       return;
     }
 
@@ -83,8 +131,11 @@ function CartPage() {
         phone: phone.trim(),
         address: address.trim(),
         city: city.trim(),
+        state: state.trim().toUpperCase(),
+        postalCode: postalCode.replace(/\D/g, ""),
         note: note.trim(),
         },
+        shippingQuoteIds: selectedQuotes,
       } });
       setSubmitting(false);
       navigate({ to: "/pedido/$orderId", params: { orderId } });
@@ -135,9 +186,9 @@ function CartPage() {
                           <p className="mt-1 font-display font-bold text-primary">
                             {brl(item.price)}
                           </p>
-                          {(item.freeShipping || item.productType === "digital") && (
+                          {item.productType === "digital" && (
                             <span className="mt-1 inline-block rounded bg-success/10 px-1.5 py-0.5 text-[11px] font-semibold text-success">
-                              {item.productType === "digital" ? "Entrega digital" : "Frete Grátis"}
+                              Entrega digital
                             </span>
                           )}
                         </div>
@@ -193,7 +244,7 @@ function CartPage() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Frete</dt>
-                  <dd>{shipping === 0 ? "Grátis" : brl(shipping)}</dd>
+                  <dd>{quotes.length === 0 ? "Calcule pelo CEP" : shipping === 0 ? "Grátis" : brl(shipping)}</dd>
                 </div>
                 <div className="flex justify-between border-t border-border pt-2 font-display text-lg font-bold">
                   <dt>Total</dt>
@@ -203,6 +254,21 @@ function CartPage() {
 
               <div className="mt-4 space-y-3 border-t border-border pt-4">
                 <p className="text-sm font-semibold">Dados de entrega</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="postalCode">CEP *</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="postalCode"
+                      inputMode="numeric"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                      placeholder="00000000"
+                    />
+                    <Button type="button" variant="outline" onClick={() => void calculateShipping()} disabled={quoting}>
+                      {quoting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Calcular"}
+                    </Button>
+                  </div>
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="name">Nome completo *</Label>
                   <Input
@@ -233,15 +299,15 @@ function CartPage() {
                     placeholder="Rua, número, bairro"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="city">Cidade/UF *</Label>
-                  <Input
-                    id="city"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    maxLength={100}
-                    placeholder="Manaus/AM"
-                  />
+                <div className="grid grid-cols-[1fr_72px] gap-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="city">Cidade *</Label>
+                    <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} maxLength={100} placeholder="Manaus" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="state">UF *</Label>
+                    <Input id="state" value={state} onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))} maxLength={2} placeholder="AM" />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="note">Observações</Label>
@@ -254,6 +320,24 @@ function CartPage() {
                   />
                 </div>
               </div>
+
+              {quotes.length > 0 && (
+                <div className="mt-4 space-y-3 border-t border-border pt-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold"><Truck className="h-4 w-4 text-primary" /> Escolha a entrega</p>
+                  {quotes.map((group) => (
+                    <div key={group.storeId} className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground">{group.storeName}</p>
+                      {group.options.map((option) => (
+                        <label key={option.id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm ${selectedQuotes[group.storeId] === option.id ? "border-primary bg-primary/5" : "border-border"}`}>
+                          <input type="radio" name={`shipping-${group.storeId}`} checked={selectedQuotes[group.storeId] === option.id} onChange={() => setSelectedQuotes((current) => ({ ...current, [group.storeId]: option.id }))} />
+                          <span className="min-w-0 flex-1"><strong className="block">{option.serviceName}</strong><span className="text-xs text-muted-foreground">{option.carrierName}{option.deliveryDaysMax !== null ? ` · até ${option.deliveryDaysMax} dias` : ""}</span></span>
+                          <strong>{brl(option.amount)}</strong>
+                        </label>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <Button
                 className="mt-4 w-full"

@@ -26,6 +26,10 @@ const productSchema = z.object({
   productType: z.enum(["physical", "digital"]),
   deliveryUrl: z.string().url().max(2_000).or(z.literal("")),
   media: z.array(mediaSchema).max(10),
+  weightKg: z.number().positive().max(1_000).nullable(),
+  heightCm: z.number().positive().max(1_000).nullable(),
+  widthCm: z.number().positive().max(1_000).nullable(),
+  lengthCm: z.number().positive().max(1_000).nullable(),
 }).superRefine((data, context) => {
   if (data.productType === "digital" && !data.deliveryUrl.startsWith("https://")) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["deliveryUrl"], message: "Informe um link HTTPS de entrega válido." });
@@ -39,13 +43,16 @@ const productSchema = z.object({
   if (data.media.length > 0 && !data.media.some((item) => item.mediaType === "image")) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["media"], message: "Inclua ao menos uma foto para usar como capa." });
   }
+  if (data.productType === "physical" && [data.weightKg, data.heightCm, data.widthCm, data.lengthCm].some((value) => value === null)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["weightKg"], message: "Informe peso e dimensões do produto físico para calcular o frete." });
+  }
 });
 
 export const createSellerProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => productSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: productId, error } = await context.supabase.rpc("create_seller_product_v2", {
+    const { data: productId, error } = await context.supabase.rpc("create_seller_product_v3", {
       _title: data.title,
       _description: data.description,
       _price: data.price,
@@ -54,6 +61,10 @@ export const createSellerProduct = createServerFn({ method: "POST" })
       _product_type: data.productType,
       _delivery_url: data.deliveryUrl,
       _media: data.media,
+      _weight_kg: data.weightKg,
+      _height_cm: data.heightCm,
+      _width_cm: data.widthCm,
+      _length_cm: data.lengthCm,
     });
     if (error || !productId) throw new Error(error?.message ?? "Não foi possível cadastrar o produto.");
     return { productId };

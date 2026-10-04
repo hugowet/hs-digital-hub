@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
 
         const { data: transaction } = await supabaseAdmin
           .from("payment_transactions")
-          .select("id,store_id")
+          .select("id,store_id,order_id")
           .eq("provider_payment_id", dataId)
           .maybeSingle();
         if (!transaction) return new Response("Transaction not found", { status: 202 });
@@ -78,6 +78,10 @@ export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
           _provider_payload: { status_detail: payment.status_detail ?? null },
         });
         if (error) throw error;
+        if (payment.status === "approved") {
+          const { dispatchPaidCjFulfillments } = await import("@/lib/suppliers.server");
+          await dispatchPaidCjFulfillments(supabaseAdmin, transaction.order_id);
+        }
         await supabaseAdmin.from("payment_events").update({ processed_at: new Date().toISOString() })
           .eq("provider", "mercadopago").eq("provider_event_id", providerEventId);
         return new Response("ok");
