@@ -56,7 +56,7 @@
 - [ ] Importar gradualmente até 20 produtos reais de todas as categorias oficiais da CJ (fila iniciada; conclusão depende dos limites diários do fornecedor).
 - [x] Priorizar na fila da CJ fones, Bluetooth, smartwatches, caixas de som e eletrônicos de consumo.
 - [x] Priorizar ferramentas, celulares, televisores e peças/acessórios automotivos e de motos, preservando a margem da loja.
-- [ ] Conectar o fornecedor Dropi Nacional com a credencial fornecida e importar seus produtos reais para a vitrine.
+- [ ] Conectar o fornecedor Dropi Nacional com a credencial fornecida e importar seus produtos reais para a vitrine (tela administrativa, teste e importador implementados; aguardando contrato válido da API para concluir a importação).
 - [x] Encaminhar pedidos pagos da CJ aos fornecedores com processamento idempotente.
 - [ ] Integrar rastreamento oficial dos Correios — aguardando contrato PJ e credenciais CWS; códigos do fornecedor já aparecem no acompanhamento.
 - [x] Remover apenas produtos fictícios, preservando cadastros reais.

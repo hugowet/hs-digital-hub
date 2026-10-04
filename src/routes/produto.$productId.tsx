@@ -218,7 +218,7 @@ export function ProductDetailPage() {
 
                 <div className="relative aspect-square w-full max-w-[420px] rounded-lg border border-gray-100 bg-white p-4 flex items-center justify-center">
                   <img
-                    src={media[selectedImage]?.url || product.image_url}
+                    src={media[selectedImage]?.url || product.image_url || undefined}
                     alt={originalTitle}
                     className="max-h-[380px] w-full object-contain"
                   />
@@ -251,8 +251,8 @@ export function ProductDetailPage() {
                       <Star key={i} className="h-4 w-4 fill-[#3483fa]" />
                     ))}
                   </div>
-                  <span className="font-semibold text-gray-700">{product.rating_average ?? 4.9}</span>
-                  <span className="text-gray-400">({compact(product.rating_count ?? 328)} avaliações)</span>
+                  <span className="font-semibold text-gray-700">{product.rating ?? 4.9}</span>
+                  <span className="text-gray-400">({compact(product.reviews_count ?? 328)} avaliações)</span>
                 </div>
 
                 {/* Preço e Parcelamento */}
