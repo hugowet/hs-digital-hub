@@ -17,7 +17,7 @@ import { quoteMarketplaceShipping } from "@/lib/shipping.functions";
 import { getMyCoupons } from "@/lib/games.functions";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/carrinho")({
+export const Route = createFileRoute("/_authenticated/carrinho")({
   head: () => ({
     meta: [
       { title: "Carrinho · HS Digital" },

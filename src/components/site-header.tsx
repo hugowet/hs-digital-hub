@@ -40,7 +40,7 @@ export function SiteHeader({
   onQueryChange?: (value: string) => void;
   suggestions?: Array<{ id: string; title: string; category: string }>;
 }) {
-  const { count } = useCart();
+  const { count, clear } = useCart();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -105,6 +105,8 @@ export function SiteHeader({
         if (!session?.user) {
           setIsAdmin(false);
           setIsBuyer(false);
+          setUnreadMessages(0);
+          clear();
         }
       }
     });
@@ -114,6 +116,7 @@ export function SiteHeader({
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
+    clear();
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
@@ -213,18 +216,20 @@ export function SiteHeader({
           </div>
 
           <nav className="flex items-center gap-1">
-            <Link
-              to="/carrinho"
-              className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10"
-              aria-label="Carrinho"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {count > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-primary-glow px-1 text-[11px] font-bold">
-                  {count}
-                </span>
-              )}
-            </Link>
+            {signedIn && (
+              <Link
+                to="/carrinho"
+                className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10"
+                aria-label="Carrinho"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {count > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-primary-glow px-1 text-[11px] font-bold">
+                    {count}
+                  </span>
+                )}
+              </Link>
+            )}
             {signedIn ? (
               <>
                 <Link
@@ -320,7 +325,7 @@ export function SiteHeader({
           </nav>
         </div>
 
-        <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
+        {signedIn && <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
           <Link to="/" className="hover:text-white">
             Início
           </Link>
@@ -346,7 +351,7 @@ export function SiteHeader({
               Venda na HS Digital
             </Link>
           </span>
-        </div>
+        </div>}
 
         {open && (
           <div className="mt-3 grid gap-1 rounded-lg border border-primary-foreground/10 bg-black/80 p-2 text-sm shadow-xl backdrop-blur sm:hidden">
@@ -406,22 +411,26 @@ export function SiteHeader({
                 Jogos & Prêmios
               </Link>
             )}
-            <Link
-              to="/carrinho"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              Carrinho {count > 0 ? `(${count})` : ""}
-            </Link>
-            <Link
-              to="/vendedor"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
-            >
-              <Store className="h-4 w-4" />
-              Seller Center
-            </Link>
+            {signedIn && (
+              <>
+                <Link
+                  to="/carrinho"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  Carrinho {count > 0 ? `(${count})` : ""}
+                </Link>
+                <Link
+                  to="/vendedor"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <Store className="h-4 w-4" />
+                  Seller Center
+                </Link>
+              </>
+            )}
             {isAdmin && (
               <Link
                 to="/admin"

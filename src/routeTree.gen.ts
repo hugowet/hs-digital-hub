@@ -11,17 +11,17 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as CarrinhoRouteImport } from './routes/carrinho'
-import { Route as JogosRouteImport } from './routes/jogos'
-import { Route as VendedorRouteImport } from './routes/vendedor'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedCarrinhoRouteImport } from './routes/_authenticated/carrinho'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
 import { Route as AuthenticatedContaRouteImport } from './routes/_authenticated/conta'
 import { Route as AuthenticatedCuponsRouteImport } from './routes/_authenticated/cupons'
+import { Route as AuthenticatedJogosRouteImport } from './routes/_authenticated/jogos'
 import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
-import { Route as PedidoOrderIdRouteImport } from './routes/pedido.$orderId'
+import { Route as AuthenticatedVendedorRouteImport } from './routes/_authenticated/vendedor'
 import { Route as ProdutoProductIdRouteImport } from './routes/produto.$productId'
+import { Route as AuthenticatedPedidoOrderIdRouteImport } from './routes/_authenticated/pedido.$orderId'
 import { Route as ApiPublicMelhorEnvioOauthCallbackRouteImport } from './routes/api/public/melhor-envio/oauth-callback'
 import { Route as ApiPublicMercadoPagoOauthCallbackRouteImport } from './routes/api/public/mercado-pago/oauth-callback'
 import { Route as ApiPublicMercadoPagoWebhookRouteImport } from './routes/api/public/mercado-pago/webhook'
@@ -38,30 +38,20 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CarrinhoRoute = CarrinhoRouteImport.update({
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCarrinhoRoute = AuthenticatedCarrinhoRouteImport.update({
   id: '/carrinho',
   path: '/carrinho',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JogosRoute = JogosRouteImport.update({
-  id: '/jogos',
-  path: '/jogos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const VendedorRoute = VendedorRouteImport.update({
-  id: '/vendedor',
-  path: '/vendedor',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedComprasRoute = AuthenticatedComprasRouteImport.update({
   id: '/compras',
@@ -78,22 +68,33 @@ const AuthenticatedCuponsRoute = AuthenticatedCuponsRouteImport.update({
   path: '/cupons',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedJogosRoute = AuthenticatedJogosRouteImport.update({
+  id: '/jogos',
+  path: '/jogos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedNotificacoesRoute =
   AuthenticatedNotificacoesRouteImport.update({
     id: '/notificacoes',
     path: '/notificacoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const PedidoOrderIdRoute = PedidoOrderIdRouteImport.update({
-  id: '/pedido/$orderId',
-  path: '/pedido/$orderId',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedVendedorRoute = AuthenticatedVendedorRouteImport.update({
+  id: '/vendedor',
+  path: '/vendedor',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ProdutoProductIdRoute = ProdutoProductIdRouteImport.update({
   id: '/produto/$productId',
   path: '/produto/$productId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedPedidoOrderIdRoute =
+  AuthenticatedPedidoOrderIdRouteImport.update({
+    id: '/pedido/$orderId',
+    path: '/pedido/$orderId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicMelhorEnvioOauthCallbackRoute =
   ApiPublicMelhorEnvioOauthCallbackRouteImport.update({
     id: '/api/public/melhor-envio/oauth-callback',
@@ -132,17 +133,17 @@ const ApiPublicSuppliersTranslateRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/carrinho': typeof CarrinhoRoute
-  '/jogos': typeof JogosRoute
-  '/vendedor': typeof VendedorRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/carrinho': typeof AuthenticatedCarrinhoRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/conta': typeof AuthenticatedContaRoute
   '/cupons': typeof AuthenticatedCuponsRoute
+  '/jogos': typeof AuthenticatedJogosRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
-  '/pedido/$orderId': typeof PedidoOrderIdRoute
+  '/vendedor': typeof AuthenticatedVendedorRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
+  '/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
@@ -152,17 +153,17 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/carrinho': typeof CarrinhoRoute
-  '/jogos': typeof JogosRoute
-  '/vendedor': typeof VendedorRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/carrinho': typeof AuthenticatedCarrinhoRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/conta': typeof AuthenticatedContaRoute
   '/cupons': typeof AuthenticatedCuponsRoute
+  '/jogos': typeof AuthenticatedJogosRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
-  '/pedido/$orderId': typeof PedidoOrderIdRoute
+  '/vendedor': typeof AuthenticatedVendedorRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
+  '/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
@@ -174,17 +175,17 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/carrinho': typeof CarrinhoRoute
-  '/jogos': typeof JogosRoute
-  '/vendedor': typeof VendedorRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/carrinho': typeof AuthenticatedCarrinhoRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
   '/_authenticated/conta': typeof AuthenticatedContaRoute
   '/_authenticated/cupons': typeof AuthenticatedCuponsRoute
+  '/_authenticated/jogos': typeof AuthenticatedJogosRoute
   '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
-  '/pedido/$orderId': typeof PedidoOrderIdRoute
+  '/_authenticated/vendedor': typeof AuthenticatedVendedorRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
+  '/_authenticated/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
@@ -196,17 +197,17 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/auth'
+    | '/admin'
     | '/carrinho'
-    | '/jogos'
-    | '/vendedor'
     | '/compras'
     | '/conta'
     | '/cupons'
+    | '/jogos'
     | '/notificacoes'
-    | '/pedido/$orderId'
+    | '/vendedor'
     | '/produto/$productId'
+    | '/pedido/$orderId'
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
@@ -216,17 +217,17 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/auth'
+    | '/admin'
     | '/carrinho'
-    | '/jogos'
-    | '/vendedor'
     | '/compras'
     | '/conta'
     | '/cupons'
+    | '/jogos'
     | '/notificacoes'
-    | '/pedido/$orderId'
+    | '/vendedor'
     | '/produto/$productId'
+    | '/pedido/$orderId'
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
@@ -237,17 +238,17 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/admin'
     | '/auth'
-    | '/carrinho'
-    | '/jogos'
-    | '/vendedor'
+    | '/_authenticated/admin'
+    | '/_authenticated/carrinho'
     | '/_authenticated/compras'
     | '/_authenticated/conta'
     | '/_authenticated/cupons'
+    | '/_authenticated/jogos'
     | '/_authenticated/notificacoes'
-    | '/pedido/$orderId'
+    | '/_authenticated/vendedor'
     | '/produto/$productId'
+    | '/_authenticated/pedido/$orderId'
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
@@ -259,12 +260,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
-  CarrinhoRoute: typeof CarrinhoRoute
-  JogosRoute: typeof JogosRoute
-  VendedorRoute: typeof VendedorRoute
-  PedidoOrderIdRoute: typeof PedidoOrderIdRoute
   ProdutoProductIdRoute: typeof ProdutoProductIdRoute
   ApiPublicMelhorEnvioOauthCallbackRoute: typeof ApiPublicMelhorEnvioOauthCallbackRoute
   ApiPublicMercadoPagoOauthCallbackRoute: typeof ApiPublicMercadoPagoOauthCallbackRoute
@@ -290,13 +286,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -304,26 +293,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/carrinho': {
-      id: '/carrinho'
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/carrinho': {
+      id: '/_authenticated/carrinho'
       path: '/carrinho'
       fullPath: '/carrinho'
-      preLoaderRoute: typeof CarrinhoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/jogos': {
-      id: '/jogos'
-      path: '/jogos'
-      fullPath: '/jogos'
-      preLoaderRoute: typeof JogosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/vendedor': {
-      id: '/vendedor'
-      path: '/vendedor'
-      fullPath: '/vendedor'
-      preLoaderRoute: typeof VendedorRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedCarrinhoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/compras': {
       id: '/_authenticated/compras'
@@ -346,6 +328,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCuponsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/jogos': {
+      id: '/_authenticated/jogos'
+      path: '/jogos'
+      fullPath: '/jogos'
+      preLoaderRoute: typeof AuthenticatedJogosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/notificacoes': {
       id: '/_authenticated/notificacoes'
       path: '/notificacoes'
@@ -353,12 +342,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNotificacoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/pedido/$orderId': {
-      id: '/pedido/$orderId'
-      path: '/pedido/$orderId'
-      fullPath: '/pedido/$orderId'
-      preLoaderRoute: typeof PedidoOrderIdRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/vendedor': {
+      id: '/_authenticated/vendedor'
+      path: '/vendedor'
+      fullPath: '/vendedor'
+      preLoaderRoute: typeof AuthenticatedVendedorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/produto/$productId': {
       id: '/produto/$productId'
@@ -366,6 +355,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/produto/$productId'
       preLoaderRoute: typeof ProdutoProductIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/pedido/$orderId': {
+      id: '/_authenticated/pedido/$orderId'
+      path: '/pedido/$orderId'
+      fullPath: '/pedido/$orderId'
+      preLoaderRoute: typeof AuthenticatedPedidoOrderIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/melhor-envio/oauth-callback': {
       id: '/api/public/melhor-envio/oauth-callback'
@@ -413,17 +409,27 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedCarrinhoRoute: typeof AuthenticatedCarrinhoRoute
   AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
   AuthenticatedContaRoute: typeof AuthenticatedContaRoute
   AuthenticatedCuponsRoute: typeof AuthenticatedCuponsRoute
+  AuthenticatedJogosRoute: typeof AuthenticatedJogosRoute
   AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
+  AuthenticatedVendedorRoute: typeof AuthenticatedVendedorRoute
+  AuthenticatedPedidoOrderIdRoute: typeof AuthenticatedPedidoOrderIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedCarrinhoRoute: AuthenticatedCarrinhoRoute,
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
   AuthenticatedContaRoute: AuthenticatedContaRoute,
   AuthenticatedCuponsRoute: AuthenticatedCuponsRoute,
+  AuthenticatedJogosRoute: AuthenticatedJogosRoute,
   AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
+  AuthenticatedVendedorRoute: AuthenticatedVendedorRoute,
+  AuthenticatedPedidoOrderIdRoute: AuthenticatedPedidoOrderIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -432,12 +438,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
-  CarrinhoRoute: CarrinhoRoute,
-  JogosRoute: JogosRoute,
-  VendedorRoute: VendedorRoute,
-  PedidoOrderIdRoute: PedidoOrderIdRoute,
   ProdutoProductIdRoute: ProdutoProductIdRoute,
   ApiPublicMelhorEnvioOauthCallbackRoute:
     ApiPublicMelhorEnvioOauthCallbackRoute,

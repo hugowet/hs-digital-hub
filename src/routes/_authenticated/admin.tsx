@@ -60,7 +60,7 @@ const setAllProductsShippingAdmin = createServerFn({ method: "POST" })
     return { success: true };
   });
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
   head: () => ({
     meta: [

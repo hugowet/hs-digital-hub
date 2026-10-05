@@ -149,7 +149,7 @@ function BuyerGamesPromoLink() {
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) {
-        setVisible(true);
+        setVisible(false);
         return;
       }
       const { data: roles } = await supabase
