@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Gamepad2, Sparkles, Trophy, RotateCcw, Copy, Check, ArrowLeft, Flame, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -99,12 +99,12 @@ function RoletaGame({ onCopyCoupon, copiedCode }: { onCopyCoupon: (c: string) =>
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<{ label: string; coupon?: string } | null>(null);
 
-  const prizes = [
+  const prizes: Array<{ label: string; coupon?: string }> = [
     { label: "5% OFF", coupon: "HSDIGITAL5" },
-    { label: "Tente Novamente", coupon: undefined },
+    { label: "Tente Novamente" },
     { label: "10% OFF", coupon: "HSDIGITAL10" },
     { label: "Frete Grátis*", coupon: "FRETEHS" },
-    { label: "Quase!", coupon: undefined },
+    { label: "Quase!" },
     { label: "15% OFF", coupon: "CLIENTEVIP15" },
   ];
 
@@ -122,7 +122,8 @@ function RoletaGame({ onCopyCoupon, copiedCode }: { onCopyCoupon: (c: string) =>
 
     setTimeout(() => {
       setSpinning(false);
-      setResult(prizes[selectedPrizeIndex]);
+      const chosen = prizes[selectedPrizeIndex] ?? { label: "Tente Novamente" };
+      setResult(chosen);
     }, 3500);
   };
 
