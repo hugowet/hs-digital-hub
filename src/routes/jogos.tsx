@@ -89,6 +89,7 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scratching = useRef(false);
   const revealed = useRef(false);
+  const scratchMoves = useRef(0);
   const play = useServerFn(playDailyGame);
   const [result, setResult] = useState<Outcome | null>(null);
   const [progress, setProgress] = useState(0);
@@ -119,8 +120,13 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
     if (!canvas || !context) return;
     const rect = canvas.getBoundingClientRect();
     context.save(); context.globalCompositeOperation = "destination-out"; context.beginPath();
-    context.arc((event.clientX - rect.left) * window.devicePixelRatio, (event.clientY - rect.top) * window.devicePixelRatio, 22 * window.devicePixelRatio, 0, Math.PI * 2); context.fill(); context.restore();
-    const next = Math.min(100, progress + 2.4); setProgress(next);
+    context.arc(event.clientX - rect.left, event.clientY - rect.top, 22, 0, Math.PI * 2); context.fill(); context.restore();
+    scratchMoves.current += 1;
+    if (scratchMoves.current % 4 !== 0) return;
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let transparent = 0;
+    for (let index = 3; index < pixels.length; index += 4) if (pixels[index] === 0) transparent += 1;
+    const next = Math.round((transparent / (pixels.length / 4)) * 100); setProgress(next);
     if (next >= 55) { revealed.current = true; play({ data: { gameType: "scratch" } }).then((reward) => { const outcome = reward.outcome as Outcome; setResult(outcome); onPlayed(outcome); context.clearRect(0, 0, canvas.width, canvas.height); }).catch((error) => { revealed.current = false; toast.error(error instanceof Error ? error.message : "Não foi possível revelar."); }); }
   };
 

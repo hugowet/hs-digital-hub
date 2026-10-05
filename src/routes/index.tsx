@@ -325,7 +325,7 @@ export function Home() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Select value={search.sort} onValueChange={(val: HomeSearch["sort"]) => setSearch({ sort: val })}>
+                <Select value={search.sort} onValueChange={(val) => setSearch({ sort: val as HomeSearch["sort"] })}>
                   <SelectTrigger className="w-[160px] h-9 text-xs">
                     <SelectValue placeholder="Ordenar por" />
                   </SelectTrigger>

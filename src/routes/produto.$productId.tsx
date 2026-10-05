@@ -121,7 +121,8 @@ export function ProductDetailPage() {
     if (media.length > 0) {
       const nextIdx = (selectedImage + 1) % media.length;
       const nextImg = new Image();
-      nextImg.src = media[nextIdx]?.url;
+      const nextUrl = media[nextIdx]?.url;
+      if (nextUrl) nextImg.src = nextUrl;
     }
   }, [selectedImage, media]);
 
@@ -132,12 +133,15 @@ export function ProductDetailPage() {
   }, [questions, productId]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStartX(e.touches[0].clientX);
+    const touch = e.touches[0];
+    if (touch) setTouchStartX(touch.clientX);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX === null) return;
-    const touchEndX = e.changedTouches[0].clientX;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const touchEndX = touch.clientX;
     const diff = touchStartX - touchEndX;
 
     // Deslizou para a esquerda -> próxima foto
