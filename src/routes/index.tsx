@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { infiniteQueryOptions, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import {
   Baby,
@@ -28,7 +28,7 @@ import {
   Watch,
   Zap,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/product-card";
 import { SiteFooter } from "@/components/site-footer";
@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 type HomeSearch = {
   q?: string | undefined;
@@ -142,6 +143,36 @@ const PRICE_RANGES = [
   { id: "d", label: "Acima de R$ 200", min: 200, max: Infinity },
 ];
 
+function BuyerGamesPromoLink() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) {
+        setVisible(true);
+        return;
+      }
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id);
+      const isSeller = roles?.some((item) => item.role === "seller") ?? false;
+      const isBuyer = roles?.some((item) => item.role === "buyer") ?? false;
+      setVisible(isBuyer && !isSeller);
+    });
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <Button asChild variant="secondary" className="mt-2 w-fit shadow-sm">
+      <Link to="/jogos">
+        <Gamepad2 className="h-4 w-4" /> Jogos &amp; Prêmios
+      </Link>
+    </Button>
+  );
+}
+
 export function Home() {
   const routeSearch = Route.useSearch();
   const search = resolveSearch(routeSearch);
@@ -230,6 +261,9 @@ export function Home() {
                 <span>
                   FRETE GRÁTIS NA SUA 1ª COMPRA • Use o cupom <strong>PRIMEIRACOMPRA</strong>
                 </span>
+              </div>
+              <div>
+                <BuyerGamesPromoLink />
               </div>
             </div>
           </div>

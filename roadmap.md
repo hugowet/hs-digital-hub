@@ -50,6 +50,8 @@
 - [x] Somar moedas dos quatro jogos e liberar cupom de 10% no frete a cada 1.000 moedas.
 - [x] Tornar os jogos mais difíceis após 500 moedas e limitar frete grátis de até R$ 30 a uma vez por mês por usuário.
 - [x] Exibir “Vem brincar na HS e concorra a prêmios” antes de iniciar cada jogo.
+- [x] Ajustar a roleta para quatro áreas grandes e legíveis conforme a referência enviada.
+- [x] Exibir o acesso a Jogos & Prêmios abaixo do aviso de frete grátis da primeira compra, sem mostrar para vendedores.
 
 - [x] Adicionar descrição longa ao cadastro de produto e persistir no catálogo.
 - [x] Adicionar aba Painel do Vendedor com pedidos da loja.

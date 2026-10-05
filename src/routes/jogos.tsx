@@ -52,12 +52,11 @@ const rewardText: Record<Outcome, string> = {
   free_shipping: "Frete grátis até R$ 30",
   none: "Não foi dessa vez",
 };
-const wheelLabels = ["5% no frete", "10% no frete", "Frete grátis", "Não foi dessa vez"];
-const outcomeIndex: Record<Outcome, number> = {
-  shipping_5: 0,
-  shipping_10: 1,
-  free_shipping: 2,
-  none: 3,
+const wheelPosition: Record<Outcome, number> = {
+  shipping_5: 90,
+  shipping_10: 180,
+  free_shipping: 270,
+  none: 0,
 };
 
 function GamesPage() {
@@ -129,8 +128,8 @@ function WheelGame({
     try {
       const reward = await play({ data: { gameType: "wheel" } });
       const outcome = reward.outcome as Outcome;
-      const index = outcomeIndex[outcome];
-      setRotation((current) => current + 1440 + (360 - index * 90 - 45));
+      const outcomeAngle = wheelPosition[outcome];
+      setRotation((current) => current + 1440 + (360 - outcomeAngle));
       window.setTimeout(() => {
         setResult(outcome);
         setSpinning(false);
@@ -155,30 +154,28 @@ function WheelGame({
         </div>
       </div>
       <div className="p-5 sm:p-7">
-        <div className="relative mx-auto aspect-square w-full max-w-sm">
-          <div className="absolute left-1/2 top-0 z-10 h-0 w-0 -translate-x-1/2 border-x-[13px] border-t-[28px] border-x-transparent border-t-foreground" />
-          <div className="h-full w-full rounded-full border-8 border-foreground bg-muted p-2 shadow-xl">
+        <div className="relative mx-auto aspect-square w-full max-w-md">
+          <div className="absolute left-1/2 top-0 z-20 h-0 w-0 -translate-x-1/2 border-x-[17px] border-t-[34px] border-x-transparent border-t-foreground drop-shadow-md" />
+          <div className="h-full w-full rounded-full border-[9px] border-foreground bg-card p-2 shadow-xl">
             <div
               className="relative h-full w-full overflow-hidden rounded-full transition-transform duration-[3500ms] ease-[cubic-bezier(.12,.75,.18,1)] motion-reduce:duration-0"
               style={{ transform: `rotate(${rotation}deg)` }}
             >
               <div className="absolute inset-0 game-wheel-bg" />
-              {wheelLabels.map((label, index) => {
-                const angle = index * 90 + 45;
-                return (
-                  <span
-                    key={label}
-                    className="absolute left-1/2 top-1/2 h-1/2 w-24 -translate-x-1/2 origin-top pt-14 text-center text-[11px] font-black leading-tight text-white drop-shadow-md sm:w-28 sm:pt-16 sm:text-sm"
-                    style={{ transform: `rotate(${angle}deg)` }}
-                  >
-                    <span className="inline-block" style={{ transform: `rotate(${-angle}deg)` }}>
-                      {label}
-                    </span>
-                  </span>
-                );
-              })}
-              <div className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 border-card bg-foreground text-primary-foreground shadow-lg">
-                <Gift className="h-6 w-6" />
+              <span className="absolute left-1/2 top-[17%] w-[42%] -translate-x-1/2 text-center text-sm font-black leading-tight text-primary-foreground drop-shadow-md sm:text-xl">
+                Não foi dessa vez
+              </span>
+              <span className="absolute right-[4%] top-1/2 w-[34%] -translate-y-1/2 text-center text-sm font-black leading-tight text-foreground sm:text-xl">
+                5% no frete
+              </span>
+              <span className="absolute bottom-[16%] left-1/2 w-[42%] -translate-x-1/2 text-center text-sm font-black leading-tight text-primary-foreground drop-shadow-md sm:text-xl">
+                10% no frete
+              </span>
+              <span className="absolute left-[4%] top-1/2 w-[34%] -translate-y-1/2 text-center text-sm font-black leading-tight text-foreground sm:text-xl">
+                Frete grátis
+              </span>
+              <div className="absolute left-1/2 top-1/2 grid h-[19%] w-[19%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 border-card bg-foreground text-wheel-gift shadow-lg">
+                <Gift className="h-1/2 w-1/2" />
               </div>
             </div>
           </div>
