@@ -79,7 +79,7 @@
 - [x] Converter custos em USD da CJ pela cotação de venda USD/BRL do Banco Central antes de aplicar a margem e corrigir os produtos já importados.
 - [x] Priorizar na fila da CJ fones, Bluetooth, smartwatches, caixas de som e eletrônicos de consumo.
 - [x] Priorizar ferramentas, celulares, televisores e peças/acessórios automotivos e de motos, preservando a margem da loja.
-- [ ] Remover a integração Dropi Nacional e substituí-la por um fornecedor brasileiro confiável, com integração simples e margem automática de 35% (em avaliação).
+- [ ] Remover a integração Dropi Nacional e substituí-la por um fornecedor brasileiro confiável que aceite cadastro somente com CPF, com integração simples e margem automática de 35% (em avaliação).
 - [x] Encaminhar pedidos pagos da CJ aos fornecedores com processamento idempotente.
 - [ ] Integrar rastreamento oficial dos Correios — aguardando contrato PJ e credenciais CWS; códigos do fornecedor já aparecem no acompanhamento.
 - [x] Remover apenas produtos fictícios, preservando cadastros reais.
