@@ -61,10 +61,10 @@ export const createSellerProduct = createServerFn({ method: "POST" })
       _product_type: data.productType,
       _delivery_url: data.deliveryUrl,
       _media: data.media,
-      _weight_kg: data.weightKg,
-      _height_cm: data.heightCm,
-      _width_cm: data.widthCm,
-      _length_cm: data.lengthCm,
+      _weight_kg: data.weightKg ?? 0,
+      _height_cm: data.heightCm ?? 0,
+      _width_cm: data.widthCm ?? 0,
+      _length_cm: data.lengthCm ?? 0,
     });
     if (error || !productId) throw new Error(error?.message ?? "Não foi possível cadastrar o produto.");
     return { productId };

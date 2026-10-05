@@ -37,6 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
 import { createSellerProduct } from "@/lib/products.functions";
 import { processSupplierFulfillment, syncCjProducts } from "@/lib/suppliers.functions";
+import { getSellerShippingConfiguration, saveSellerOriginPostalCode, startMelhorEnvioConnection } from "@/lib/shipping.functions";
 
 export const Route = createFileRoute("/vendedor")({
   ssr: false,
@@ -467,10 +468,67 @@ function SellerCenterPage() {
               )}
             </div>
             </section>
+            <SellerShippingSettings storeId={store.id} />
           </div>
         </TabsContent>
       </Tabs>
     </Shell>
+  );
+}
+
+function SellerShippingSettings({ storeId }: { storeId: string }) {
+  const getConfiguration = useServerFn(getSellerShippingConfiguration);
+  const savePostalCode = useServerFn(saveSellerOriginPostalCode);
+  const startConnection = useServerFn(startMelhorEnvioConnection);
+  const [postalCode, setPostalCode] = useState("");
+  const [saving, setSaving] = useState(false);
+  const { data, refetch } = useQuery({
+    queryKey: ["seller-shipping", storeId],
+    queryFn: () => getConfiguration({ data: { storeId } }),
+  });
+  useEffect(() => {
+    if (data?.originPostalCode) setPostalCode(data.originPostalCode);
+  }, [data?.originPostalCode]);
+  const connected = data?.status === "active";
+  return (
+    <section className="surface-card p-5 lg:col-span-2">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-2 font-semibold"><Truck className="h-5 w-5 text-primary" /> Frete de produtos próprios</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Conecte o Melhor Envio para oferecer Correios e transportadoras pelo CEP.</p>
+        </div>
+        <span className={`rounded-md px-2 py-1 text-xs font-semibold ${connected ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+          {connected ? "Conectado" : "Não conectado"}
+        </span>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+        <div>
+          <Label htmlFor="origin-postal-code">CEP de origem da loja</Label>
+          <Input id="origin-postal-code" value={postalCode} onChange={(event) => setPostalCode(event.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="00000000" />
+        </div>
+        <Button variant="outline" disabled={saving || postalCode.length !== 8} onClick={async () => {
+          setSaving(true);
+          try {
+            await savePostalCode({ data: { storeId, originPostalCode: postalCode } });
+            await refetch();
+            toast.success("CEP de origem salvo.");
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Não foi possível salvar o CEP.");
+          } finally {
+            setSaving(false);
+          }
+        }}>Salvar CEP</Button>
+        <Button disabled={connected} onClick={async () => {
+          try {
+            const result = await startConnection({ data: { storeId, origin: window.location.origin } });
+            window.location.assign(result.url);
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Não foi possível conectar o Melhor Envio.");
+          }
+        }}><ExternalLink className="h-4 w-4" /> {connected ? "Melhor Envio conectado" : "Conectar Melhor Envio"}</Button>
+      </div>
+      {data?.lastError && <p className="mt-3 text-xs text-destructive">{data.lastError}</p>}
+    </section>
   );
 }
 
