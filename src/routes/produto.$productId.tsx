@@ -458,7 +458,6 @@ export function ProductDetailPage() {
                 <Button
                   onClick={() => {
                     addProductToCart();
-                    toast.success("Produto adicionado ao carrinho!");
                   }}
                   variant="outline"
                   className="w-full bg-white hover:bg-gray-50 text-[#3483fa] border-blue-200 font-semibold py-5 text-sm rounded-lg"

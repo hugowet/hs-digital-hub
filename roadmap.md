@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+- [x] Bloquear carrinho e todas as páginas internas após o logout.
+- [x] Ocultar a barra de tarefas e o carrinho sem uma sessão ativa.
+- [x] Mostrar “Adicionado ao carrinho” em toda inclusão de produto.
+
 - [x] Banco de dados: profiles, user_roles, stores, products, orders, order_items, platform_settings
 - [x] Design system roxo/preto/branco
 - [x] Home: banner, categorias, grid de produtos, filtros

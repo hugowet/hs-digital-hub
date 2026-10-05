@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
 export type CartItem = {
   productId: string;
@@ -62,7 +63,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items,
       count,
       subtotal,
-      add: (item, quantity = 1) =>
+      add: (item, quantity = 1) => {
         setItems((prev) => {
           const found = prev.find((i) => i.productId === item.productId);
           if (found) {
@@ -73,7 +74,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
             );
           }
           return [...prev, { ...item, quantity }];
-        }),
+        });
+        toast.success("Adicionado ao carrinho");
+      },
       setQuantity: (productId, quantity) =>
         setItems((prev) =>
           quantity <= 0

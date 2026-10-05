@@ -27,4 +27,5 @@
 - Physical checkout uses short-lived, buyer-bound server quotes per store; CJ quotes are converted from USD and own-stock products use each seller's Melhor Envio OAuth account, while platform commission never applies to shipping.
 Game rewards are issued and rate-limited atomically in the database; shipping coupons expire after 24 hours and are redeemed atomically during checkout, funded only from platform commission up to R$ 30.
 - Authentication uses email/password and Google; biometric/passkey authentication is intentionally excluded because it caused deployment startup failures.
+- Cart, orders, games, seller tools, and administration live under the authenticated route gate so logout blocks every private surface.
 - Games and game coupons are buyer-only on both UI and server. Arcade sessions are single-use, coin awards are server-capped, 10% shipping coupons are issued atomically every 1,000 coins, and free shipping is limited to once per user per month.
