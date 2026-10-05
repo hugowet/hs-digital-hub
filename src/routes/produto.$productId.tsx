@@ -33,6 +33,7 @@ import { useCart } from "@/lib/cart";
 import { fetchProduct, fetchProducts } from "@/lib/catalog.functions";
 import { brl, compact } from "@/lib/format";
 import { ProductCard } from "@/components/product-card";
+import { CATEGORIES } from "@/lib/catalog";
 
 export const Route = createFileRoute("/produto/$productId")({
   head: () => ({
@@ -61,6 +62,7 @@ export function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   // Gesto de deslizar o dedo (Swipe) na imagem no celular
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -114,6 +116,15 @@ export function ProductDetailPage() {
     );
   }, [product]);
 
+  // Pré-carregamento suave da próxima foto para transição instantânea
+  useEffect(() => {
+    if (media.length > 0) {
+      const nextIdx = (selectedImage + 1) % media.length;
+      const nextImg = new Image();
+      nextImg.src = media[nextIdx]?.url;
+    }
+  }, [selectedImage, media]);
+
   useEffect(() => {
     try {
       localStorage.setItem(`questions_${productId}`, JSON.stringify(questions));
@@ -131,10 +142,12 @@ export function ProductDetailPage() {
 
     // Deslizou para a esquerda -> próxima foto
     if (diff > 45 && selectedImage < media.length - 1) {
+      setImageLoaded(false);
       setSelectedImage((prev) => prev + 1);
     }
     // Deslizou para a direita -> foto anterior
     if (diff < -45 && selectedImage > 0) {
+      setImageLoaded(false);
       setSelectedImage((prev) => prev - 1);
     }
     setTouchStartX(null);
@@ -172,6 +185,21 @@ export function ProductDetailPage() {
   const originalTitle = product.title;
   const rawDescription = product.description_long || product.description || "";
 
+  // Identificação da categoria para navegação estilo Mercado Livre
+  const categoryConfig = CATEGORIES.find(
+    (c) => c.slug === product.category || c.label.toLowerCase() === (product.category ?? "").toLowerCase(),
+  );
+  const categorySlug = categoryConfig?.slug ?? product.category ?? "geral";
+  const categoryLabel = categoryConfig?.label ?? product.category ?? "Variedades";
+
+  // Produtos relacionados estritamente da mesma categoria estilo Mercado Livre
+  const categoryProducts = allProducts
+    .filter((p) => p.id !== product.id && (p.category === product.category || p.category === categorySlug))
+    .slice(0, 6);
+
+  const fallbackRelatedProducts =
+    categoryProducts.length > 0 ? categoryProducts : allProducts.filter((p) => p.id !== product.id).slice(0, 6);
+
   const addProductToCart = () => {
     add(
       {
@@ -205,21 +233,26 @@ export function ProductDetailPage() {
     toast.success("Pergunta enviada com sucesso!");
   };
 
-  const relatedProducts = allProducts.filter((p) => p.id !== product.id).slice(0, 6);
-
   return (
     <div className="min-h-screen bg-[#ebebeb] text-gray-900 overflow-x-hidden">
       <SiteHeader />
       <main className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-3 sm:py-6">
-        {/* BREADCRUMB */}
-        <nav className="mb-3 flex items-center gap-1 text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap">
+        {/* BREADCRUMB ESTILO MERCADO LIVRE (CATEGORIA É CLICÁVEL) */}
+        <nav className="mb-3 flex items-center gap-1.5 text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap">
           <Link to="/" className="text-[#3483fa] hover:underline shrink-0">
             Início
           </Link>
           <span>/</span>
-          <span className="capitalize shrink-0">{product.category || "Variedades"}</span>
-          <ChevronRight className="h-3 w-3 shrink-0" />
-          <span className="truncate font-medium text-gray-700">{originalTitle}</span>
+          <Link
+            to="/"
+            search={{ category: categorySlug }}
+            className="text-[#3483fa] font-medium hover:underline shrink-0 capitalize"
+            title={`Ver todos os produtos de ${categoryLabel}`}
+          >
+            {categoryLabel}
+          </Link>
+          <ChevronRight className="h-3 w-3 shrink-0 text-gray-400" />
+          <span className="truncate font-normal text-gray-600">{originalTitle}</span>
         </nav>
 
         {/* CONTAINER PRINCIPAL DO PRODUTO */}
@@ -229,33 +262,56 @@ export function ProductDetailPage() {
             <div className="grid gap-6 md:grid-cols-[1fr_1.1fr] min-w-0">
               {/* Fotos */}
               <div className="flex flex-col-reverse sm:flex-row gap-3 min-w-0">
-                {/* Miniaturas */}
+                {/* Miniaturas com carregamento leve (lazy) */}
                 <div className="flex sm:flex-col gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                   {media.map((item, index) => (
                     <button
                       key={item.id}
-                      onClick={() => setSelectedImage(index)}
-                      className={`h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-lg border p-1 transition-all ${
+                      onClick={() => {
+                        setImageLoaded(false);
+                        setSelectedImage(index);
+                      }}
+                      className={`relative h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-lg border p-1 bg-gray-50 transition-all ${
                         selectedImage === index
-                          ? "border-2 border-[#3483fa] shadow-sm"
-                          : "border-gray-200 opacity-70 hover:opacity-100"
+                          ? "border-2 border-[#3483fa] ring-1 ring-blue-400 shadow-sm"
+                          : "border-gray-200 opacity-80 hover:opacity-100"
                       }`}
                     >
-                      <img src={item.url} alt="" className="h-full w-full object-contain" />
+                      <img
+                        src={item.url}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-contain"
+                      />
                     </button>
                   ))}
                 </div>
 
-                {/* Foto Principal com Gesto Touch (Swipe) */}
+                {/* Foto Principal com Gesto Touch (Swipe) e Prioridade de Rede */}
                 <div
                   onTouchStart={handleTouchStart}
                   onTouchEnd={handleTouchEnd}
-                  className="relative aspect-square w-full max-w-[420px] mx-auto rounded-xl border border-gray-100 bg-white p-3 flex items-center justify-center select-none touch-pan-y"
+                  className="relative aspect-square w-full max-w-[420px] mx-auto rounded-xl border border-gray-100 bg-white p-3 flex items-center justify-center select-none touch-pan-y overflow-hidden"
                 >
+                  {/* Efeito esqueleto enquanto a imagem externa carrega */}
+                  {!imageLoaded && (
+                    <div className="absolute inset-0 bg-gray-100 animate-pulse flex items-center justify-center text-xs text-gray-400 font-medium">
+                      Carregando foto...
+                    </div>
+                  )}
+
                   <img
+                    key={media[selectedImage]?.url || product.image_url || "main"}
                     src={media[selectedImage]?.url || product.image_url || undefined}
                     alt={originalTitle}
-                    className="max-h-[320px] sm:max-h-[380px] w-full object-contain transition-all"
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
+                    onLoad={() => setImageLoaded(true)}
+                    className={`max-h-[320px] sm:max-h-[380px] w-full object-contain transition-opacity duration-200 ${
+                      imageLoaded ? "opacity-100" : "opacity-0"
+                    }`}
                   />
 
                   {/* Contador de fotos no mobile */}
@@ -507,17 +563,33 @@ export function ProductDetailPage() {
             </div>
           </section>
 
-          {/* PRODUTOS RELACIONADOS */}
-          {relatedProducts.length > 0 && (
-            <section className="mt-12 border-t pt-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Quem comprou este produto também viu</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 sm:gap-4">
-                {relatedProducts.map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
+          {/* SEÇÃO ESTILO MERCADO LIVRE: PRODUTOS DA MESMA CATEGORIA */}
+          <section className="mt-12 border-t pt-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Mais produtos em {categoryLabel}</h2>
+                <p className="text-xs text-gray-500">Produtos similares disponíveis com entrega rápida</p>
               </div>
-            </section>
-          )}
+
+              {/* Botão estilo Mercado Livre para carregar a vitrine inteira da categoria */}
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="text-xs text-[#3483fa] border-blue-200 hover:bg-blue-50 self-start sm:self-auto"
+              >
+                <Link to="/" search={{ category: categorySlug }}>
+                  Ver todos os produtos desta categoria
+                </Link>
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 sm:gap-4">
+              {fallbackRelatedProducts.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </section>
         </div>
       </main>
 
