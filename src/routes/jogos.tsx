@@ -53,7 +53,12 @@ const rewardText: Record<Outcome, string> = {
   none: "Não foi dessa vez",
 };
 const wheelLabels = ["5% no frete", "10% no frete", "Frete grátis", "Não foi dessa vez"];
-const outcomeIndex: Record<Outcome, number> = { shipping_5: 0, shipping_10: 1, free_shipping: 2, none: 3 };
+const outcomeIndex: Record<Outcome, number> = {
+  shipping_5: 0,
+  shipping_10: 1,
+  free_shipping: 2,
+  none: 3,
+};
 
 function GamesPage() {
   const statusFn = useServerFn(getGameStatus);
@@ -158,10 +163,20 @@ function WheelGame({
               style={{ transform: `rotate(${rotation}deg)` }}
             >
               <div className="absolute inset-0 game-wheel-bg" />
-            {wheelLabels.map((label, index) => {
-              const angle = index * 90 + 45;
-              return <span key={label} className="absolute left-1/2 top-1/2 h-1/2 w-28 -translate-x-1/2 origin-top pt-7 text-center text-[11px] font-black leading-tight text-white drop-shadow-md sm:text-sm" style={{ transform: `rotate(${angle}deg)` }}><span className="inline-block" style={{ transform: `rotate(${-angle}deg)` }}>{label}</span></span>;
-            })}
+              {wheelLabels.map((label, index) => {
+                const angle = index * 90 + 45;
+                return (
+                  <span
+                    key={label}
+                    className="absolute left-1/2 top-1/2 h-1/2 w-28 -translate-x-1/2 origin-top pt-7 text-center text-[11px] font-black leading-tight text-white drop-shadow-md sm:text-sm"
+                    style={{ transform: `rotate(${angle}deg)` }}
+                  >
+                    <span className="inline-block" style={{ transform: `rotate(${-angle}deg)` }}>
+                      {label}
+                    </span>
+                  </span>
+                );
+              })}
               <div className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 border-card bg-foreground text-primary-foreground shadow-lg">
                 <Gift className="h-6 w-6" />
               </div>
