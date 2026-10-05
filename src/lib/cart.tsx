@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 export type CartItem = {
   productId: string;
@@ -24,31 +23,15 @@ type CartContextValue = {
   subtotal: number;
 };
 
+const STORAGE_KEY = "hs-digital-cart";
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [userId, setUserId] = useState<string | null>(null);
   const [items, setItems] = useState<CartItem[]>([]);
 
-  // Identifica o usuário logado para isolar os carrinhos
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? "convidado");
-    });
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id ?? "convidado");
-    });
-
-    return () => authListener.subscription.unsubscribe();
-  }, []);
-
-  // Carrega o carrinho exclusivo do usuário conectado
-  useEffect(() => {
-    if (!userId) return;
-    const storageKey = `hs-digital-cart_${userId}`;
     try {
-      const raw = localStorage.getItem(storageKey);
+      const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Array<CartItem & { stock?: number }>;
         setItems(
@@ -58,24 +41,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
             productType: item.productType ?? "physical",
           })),
         );
-      } else {
-        setItems([]);
       }
     } catch {
-      setItems([]);
+      /* carrinho vazio */
     }
-  }, [userId]);
+  }, []);
 
-  // Salva alterações no carrinho exclusivo deste usuário
   useEffect(() => {
-    if (!userId) return;
-    const storageKey = `hs-digital-cart_${userId}`;
     try {
-      localStorage.setItem(storageKey, JSON.stringify(items));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch {
-      /* ignora erro de cota */
+      /* ignora quota */
     }
-  }, [items, userId]);
+  }, [items]);
 
   const value = useMemo<CartContextValue>(() => {
     const count = items.reduce((sum, i) => sum + i.quantity, 0);
@@ -89,7 +67,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const found = prev.find((i) => i.productId === item.productId);
           if (found) {
             return prev.map((i) =>
-              i.productId === item.productId ? { ...i, quantity: Math.min(i.quantity + quantity, i.stock) } : i,
+              i.productId === item.productId
+                ? { ...i, quantity: Math.min(i.quantity + quantity, i.stock) }
+                : i,
             );
           }
           return [...prev, { ...item, quantity }];
@@ -98,17 +78,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems((prev) =>
           quantity <= 0
             ? prev.filter((i) => i.productId !== productId)
-            : prev.map((i) => (i.productId === productId ? { ...i, quantity: Math.min(quantity, i.stock) } : i)),
+            : prev.map((i) =>
+                i.productId === productId ? { ...i, quantity: Math.min(quantity, i.stock) } : i,
+              ),
         ),
       remove: (productId) => setItems((prev) => prev.filter((i) => i.productId !== productId)),
-      clear: () => {
-        setItems([]);
-        if (userId) {
-          localStorage.removeItem(`hs-digital-cart_${userId}`);
-        }
-      },
+      clear: () => setItems([]),
     };
-  }, [items, userId]);
+  }, [items]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
@@ -119,8 +96,12 @@ export function useCart() {
   return ctx;
 }
 
+/** Agrupa o carrinho por loja (carrinho multi-loja estilo Shopee). */
 export function groupByStore(items: CartItem[]) {
-  const map = new Map<string, { storeId: string; storeName: string; items: CartItem[]; subtotal: number }>();
+  const map = new Map<
+    string,
+    { storeId: string; storeName: string; items: CartItem[]; subtotal: number }
+  >();
   for (const item of items) {
     const group = map.get(item.storeId) ?? {
       storeId: item.storeId,

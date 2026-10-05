@@ -18,6 +18,7 @@ import { Route as JogosRouteImport } from './routes/jogos'
 import { Route as VendedorRouteImport } from './routes/vendedor'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
 import { Route as AuthenticatedContaRouteImport } from './routes/_authenticated/conta'
+import { Route as AuthenticatedCuponsRouteImport } from './routes/_authenticated/cupons'
 import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
 import { Route as PedidoOrderIdRouteImport } from './routes/pedido.$orderId'
 import { Route as ProdutoProductIdRouteImport } from './routes/produto.$productId'
@@ -70,6 +71,11 @@ const AuthenticatedComprasRoute = AuthenticatedComprasRouteImport.update({
 const AuthenticatedContaRoute = AuthenticatedContaRouteImport.update({
   id: '/conta',
   path: '/conta',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCuponsRoute = AuthenticatedCuponsRouteImport.update({
+  id: '/cupons',
+  path: '/cupons',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedNotificacoesRoute =
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/vendedor': typeof VendedorRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/conta': typeof AuthenticatedContaRoute
+  '/cupons': typeof AuthenticatedCuponsRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/pedido/$orderId': typeof PedidoOrderIdRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByTo {
   '/vendedor': typeof VendedorRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/conta': typeof AuthenticatedContaRoute
+  '/cupons': typeof AuthenticatedCuponsRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/pedido/$orderId': typeof PedidoOrderIdRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
@@ -173,6 +181,7 @@ export interface FileRoutesById {
   '/vendedor': typeof VendedorRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
   '/_authenticated/conta': typeof AuthenticatedContaRoute
+  '/_authenticated/cupons': typeof AuthenticatedCuponsRoute
   '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/pedido/$orderId': typeof PedidoOrderIdRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
     | '/vendedor'
     | '/compras'
     | '/conta'
+    | '/cupons'
     | '/notificacoes'
     | '/pedido/$orderId'
     | '/produto/$productId'
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/vendedor'
     | '/compras'
     | '/conta'
+    | '/cupons'
     | '/notificacoes'
     | '/pedido/$orderId'
     | '/produto/$productId'
@@ -233,6 +244,7 @@ export interface FileRouteTypes {
     | '/vendedor'
     | '/_authenticated/compras'
     | '/_authenticated/conta'
+    | '/_authenticated/cupons'
     | '/_authenticated/notificacoes'
     | '/pedido/$orderId'
     | '/produto/$productId'
@@ -327,6 +339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedContaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/cupons': {
+      id: '/_authenticated/cupons'
+      path: '/cupons'
+      fullPath: '/cupons'
+      preLoaderRoute: typeof AuthenticatedCuponsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/notificacoes': {
       id: '/_authenticated/notificacoes'
       path: '/notificacoes'
@@ -396,12 +415,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
   AuthenticatedContaRoute: typeof AuthenticatedContaRoute
+  AuthenticatedCuponsRoute: typeof AuthenticatedCuponsRoute
   AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
   AuthenticatedContaRoute: AuthenticatedContaRoute,
+  AuthenticatedCuponsRoute: AuthenticatedCuponsRoute,
   AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
 }
 

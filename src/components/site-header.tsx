@@ -12,6 +12,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   Store,
+  TicketPercent,
   User,
   X,
 } from "lucide-react";
@@ -47,6 +48,7 @@ export function SiteHeader({
   const [isAdmin, setIsAdmin] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
+  // Estado local para resposta rápida sem lag
   const [localQuery, setLocalQuery] = useState(query);
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -54,6 +56,7 @@ export function SiteHeader({
     setLocalQuery(query);
   }, [query]);
 
+  // Debounce leve para atualizar o filtro sem congelar a tela
   useEffect(() => {
     const timer = setTimeout(() => {
       if (localQuery !== query && onQueryChange) {
@@ -257,9 +260,15 @@ export function SiteHeader({
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
+                      <Link to="/cupons">
+                        <TicketPercent className="mr-2 h-4 w-4" />
+                        Meus cupons
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link to="/jogos">
-                        <Gamepad2 className="mr-2 h-4 w-4 text-amber-500" />
-                        Jogos & Cupons
+                        <Gamepad2 className="mr-2 h-4 w-4" />
+                        Jogos & Prêmios
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -311,7 +320,6 @@ export function SiteHeader({
           </nav>
         </div>
 
-        {/* Barra de Links Superiores no Desktop */}
         <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
           <Link to="/" className="hover:text-white">
             Início
@@ -319,9 +327,10 @@ export function SiteHeader({
           <Link to="/compras" className="hover:text-white">
             Minhas compras
           </Link>
-          <Link to="/jogos" className="flex items-center gap-1.5 text-amber-300 hover:text-amber-200 font-semibold">
-            <Gamepad2 className="h-4 w-4" /> Jogos & Prêmios
+          <Link to="/jogos" className="hover:text-white">
+            Jogos & Prêmios
           </Link>
+          {signedIn && <Link to="/cupons" className="hover:text-white">Meus cupons</Link>}
           <Link to="/notificacoes" className="hover:text-white">
             Notificações
           </Link>
@@ -333,9 +342,8 @@ export function SiteHeader({
           </span>
         </div>
 
-        {/* Menu Lateral Mobile */}
         {open && (
-          <div className="mt-3 grid gap-1 rounded-lg border border-primary-foreground/10 bg-black/85 p-2 text-sm shadow-xl backdrop-blur sm:hidden">
+          <div className="mt-3 grid gap-1 rounded-lg border border-primary-foreground/10 bg-black/80 p-2 text-sm shadow-xl backdrop-blur sm:hidden">
             <Link
               to="/"
               onClick={() => setOpen(false)}
@@ -343,13 +351,6 @@ export function SiteHeader({
             >
               <Home className="h-4 w-4" />
               Início
-            </Link>
-            <Link
-              to="/jogos"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-amber-300 font-bold hover:bg-primary-foreground/10"
-            >
-              <Gamepad2 className="h-4 w-4" /> Jogos & Cupons de Desconto
             </Link>
             {signedIn && (
               <>
@@ -370,6 +371,14 @@ export function SiteHeader({
                   Minhas compras
                 </Link>
                 <Link
+                  to="/cupons"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <TicketPercent className="h-4 w-4" />
+                  Meus cupons
+                </Link>
+                <Link
                   to="/notificacoes"
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
@@ -379,6 +388,14 @@ export function SiteHeader({
                 </Link>
               </>
             )}
+            <Link
+              to="/jogos"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+            >
+              <Gamepad2 className="h-4 w-4" />
+              Jogos & Prêmios
+            </Link>
             <Link
               to="/carrinho"
               onClick={() => setOpen(false)}
