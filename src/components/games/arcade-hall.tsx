@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  ArrowDown,
   Bird,
   Car,
   CircleDot,
@@ -120,6 +121,25 @@ function ArcadeScreen({
   const [coins, setCoins] = useState(0);
   const [busy, setBusy] = useState(false);
   const input = useRef({ x: 1, y: 0, flap: false, lane: 1 });
+  const pointerStart = useRef<Point | null>(null);
+
+  const move = useCallback(
+    (x: number, y: number) => {
+      if (phase !== "playing") return;
+      if (game.id === "flappy") {
+        if (y < 0) input.current.flap = true;
+        return;
+      }
+      if (game.id === "highway") {
+        if (x < 0) input.current.lane = Math.max(0, input.current.lane - 1);
+        if (x > 0) input.current.lane = Math.min(2, input.current.lane + 1);
+        return;
+      }
+      input.current.x = x;
+      input.current.y = y;
+    },
+    [game.id, phase],
+  );
 
   const finish = useCallback(
     async (earned: number) => {
@@ -364,35 +384,41 @@ function ArcadeScreen({
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.key === " " || e.key === "ArrowUp") {
-        e.preventDefault();
-        input.current.flap = true;
-        input.current.y = -1;
-        input.current.x = 0;
+      if (phase !== "playing" || ![" ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+      e.preventDefault();
+      if (game.id === "flappy") {
+        if (e.key === " " || e.key === "ArrowUp") input.current.flap = true;
+        return;
       }
-      if (e.key === "ArrowDown") {
-        input.current.y = 1;
-        input.current.x = 0;
-      }
-      if (e.key === "ArrowLeft") {
-        input.current.x = -1;
-        input.current.y = 0;
-        input.current.lane = Math.max(0, input.current.lane - 1);
-      }
-      if (e.key === "ArrowRight") {
-        input.current.x = 1;
-        input.current.y = 0;
-        input.current.lane = Math.min(2, input.current.lane + 1);
-      }
+      if (e.key === "ArrowUp") move(0, -1);
+      if (e.key === "ArrowDown") move(0, 1);
+      if (e.key === "ArrowLeft") move(-1, 0);
+      if (e.key === "ArrowRight") move(1, 0);
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, []);
+  }, [game.id, move, phase]);
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-[#090313] text-white"
-      onPointerDown={() => {
-        if (game.id === "flappy") input.current.flap = true;
+      onPointerDown={(event) => {
+        pointerStart.current = { x: event.clientX, y: event.clientY };
+      }}
+      onPointerUp={(event) => {
+        const startPoint = pointerStart.current;
+        pointerStart.current = null;
+        if (!startPoint || phase !== "playing") return;
+        const dx = event.clientX - startPoint.x;
+        const dy = event.clientY - startPoint.y;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 28) {
+          if (game.id === "flappy") input.current.flap = true;
+          return;
+        }
+        if (Math.abs(dx) > Math.abs(dy)) move(Math.sign(dx), 0);
+        else move(0, Math.sign(dy));
+      }}
+      onPointerCancel={() => {
+        pointerStart.current = null;
       }}
     >
       <div className="flex items-center justify-between border-b border-white/10 bg-black/30 px-4 py-3">
@@ -456,36 +482,37 @@ function ArcadeScreen({
           <Button
             variant="secondary"
             size="icon"
-            onClick={() => {
-              input.current.x = -1;
-              input.current.y = 0;
-              input.current.lane = Math.max(0, input.current.lane - 1);
-            }}
+            onClick={() => move(-1, 0)}
+            aria-label="Mover para a esquerda"
           >
             <ArrowLeft />
           </Button>
           <Button
             variant="secondary"
             size="icon"
-            onClick={() => {
-              input.current.flap = true;
-              input.current.x = 0;
-              input.current.y = -1;
-            }}
+            onClick={() => game.id === "flappy" ? (input.current.flap = true) : move(0, -1)}
+            aria-label="Mover para cima"
           >
             <ArrowUp />
           </Button>
           <Button
             variant="secondary"
             size="icon"
-            onClick={() => {
-              input.current.x = 1;
-              input.current.y = 0;
-              input.current.lane = Math.min(2, input.current.lane + 1);
-            }}
+            onClick={() => move(1, 0)}
+            aria-label="Mover para a direita"
           >
             <ArrowRight />
           </Button>
+          {(game.id === "snake" || game.id === "pacman") && (
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={() => move(0, 1)}
+              aria-label="Mover para baixo"
+            >
+              <ArrowDown />
+            </Button>
+          )}
         </div>
       )}
     </div>

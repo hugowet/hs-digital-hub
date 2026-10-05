@@ -3,6 +3,8 @@
 - [x] Bloquear carrinho e todas as páginas internas após o logout.
 - [x] Ocultar a barra de tarefas e o carrinho sem uma sessão ativa.
 - [x] Mostrar “Adicionado ao carrinho” em toda inclusão de produto.
+- [x] Exibir aviso de login e bloquear ações privadas iniciadas sem sessão.
+- [x] Controlar os quatro jogos por deslizes no celular e setas no computador.
 
 - [x] Banco de dados: profiles, user_roles, stores, products, orders, order_items, platform_settings
 - [x] Design system roxo/preto/branco

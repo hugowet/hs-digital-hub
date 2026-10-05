@@ -34,6 +34,7 @@ import { fetchProduct, fetchProducts } from "@/lib/catalog.functions";
 import { brl, compact } from "@/lib/format";
 import { ProductCard } from "@/components/product-card";
 import { CATEGORIES } from "@/lib/catalog";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/produto/$productId")({
   head: () => ({
@@ -204,7 +205,13 @@ export function ProductDetailPage() {
   const fallbackRelatedProducts =
     categoryProducts.length > 0 ? categoryProducts : allProducts.filter((p) => p.id !== product.id).slice(0, 6);
 
-  const addProductToCart = () => {
+  const addProductToCart = async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+      toast.info("Faça login primeiro para adicionar produtos ao carrinho.");
+      navigate({ to: "/auth", search: { reason: "login-required" } });
+      return false;
+    }
     add(
       {
         productId: product.id,
@@ -220,6 +227,7 @@ export function ProductDetailPage() {
       quantity,
     );
     void trackAbandonedCart(product.id, quantity);
+    return true;
   };
 
   const handleAskQuestion = (e: React.FormEvent) => {
@@ -447,18 +455,15 @@ export function ProductDetailPage() {
               {/* Botões de Ação */}
               <div className="mt-4 space-y-2">
                 <Button
-                  onClick={() => {
-                    addProductToCart();
-                    navigate({ to: "/carrinho" });
+                  onClick={async () => {
+                    if (await addProductToCart()) navigate({ to: "/carrinho" });
                   }}
                   className="w-full bg-[#3483fa] hover:bg-[#2968c8] text-white font-semibold py-5 text-sm rounded-lg shadow-sm"
                 >
                   Comprar agora
                 </Button>
                 <Button
-                  onClick={() => {
-                    addProductToCart();
-                  }}
+                  onClick={() => void addProductToCart()}
                   variant="outline"
                   className="w-full bg-white hover:bg-gray-50 text-[#3483fa] border-blue-200 font-semibold py-5 text-sm rounded-lg"
                 >
