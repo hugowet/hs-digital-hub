@@ -2,7 +2,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
-  Heart,
   Home,
   LogIn,
   LogOut,
@@ -37,7 +36,7 @@ export function SiteHeader({
 }: {
   query?: string;
   onQueryChange?: (value: string) => void;
-  suggestions?: Array<{ id: string; title: string; category: string; price?: number; image?: string }>;
+  suggestions?: Array<{ id: string; title: string; category: string }>;
 }) {
   const { count } = useCart();
   const navigate = useNavigate();
@@ -47,31 +46,29 @@ export function SiteHeader({
   const [isAdmin, setIsAdmin] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
-  // Estado local para digitação imediata e sem travamentos
+  // Estado local para resposta rápida sem lag
   const [localQuery, setLocalQuery] = useState(query);
-  const [isFocused, setIsFocused] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
 
-  // Sincroniza se a URL mudar externamente
   useEffect(() => {
     setLocalQuery(query);
   }, [query]);
 
-  // Debounce: só avisa a página principal 250ms após parar de digitar
+  // Debounce leve para atualizar o filtro sem congelar a tela
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (localQuery !== query) {
-        onQueryChange?.(localQuery);
+      if (localQuery !== query && onQueryChange) {
+        onQueryChange(localQuery);
       }
-    }, 250);
+    }, 200);
     return () => clearTimeout(timer);
   }, [localQuery, onQueryChange, query]);
 
-  // Sugestões instantâneas calculadas na memória
-  const filteredSuggestions = useMemo(() => {
-    const q = localQuery.trim().toLowerCase();
-    if (!q || q.length < 2) return [];
+  const matches = useMemo(() => {
+    const normalized = (localQuery ?? "").trim().toLowerCase();
+    if (!normalized || normalized.length < 2) return [];
     return suggestions
-      .filter((s) => s.title.toLowerCase().includes(q) || s.category.toLowerCase().includes(q))
+      .filter((item) => `${item.title} ${item.category}`.toLowerCase().includes(normalized))
       .slice(0, 6);
   }, [localQuery, suggestions]);
 
@@ -111,9 +108,13 @@ export function SiteHeader({
     navigate({ to: "/auth", replace: true });
   }
 
-  const handleSelectSuggestion = (id: string) => {
-    setIsFocused(false);
-    navigate({ to: "/produto/$productId", params: { productId: id } });
+  const triggerSearch = () => {
+    setSearchFocused(false);
+    if (onQueryChange) {
+      onQueryChange(localQuery);
+    } else {
+      navigate({ to: "/", search: { q: localQuery || undefined } });
+    }
   };
 
   return (
@@ -124,37 +125,44 @@ export function SiteHeader({
             <img
               src={logoAsset.url}
               alt="HS Digital"
-              width={38}
-              height={38}
+              width={40}
+              height={40}
               className="h-9 w-9 sm:h-10 sm:w-10 rounded-full ring-1 ring-white/20 object-cover"
             />
             <span className="font-display text-base sm:text-lg font-bold tracking-tight max-sm:hidden">HS Digital</span>
           </Link>
 
-          {/* Campo de Busca Rápido */}
+          {/* Barra de Pesquisa */}
           <div className="relative flex-1 min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={localQuery}
-              onChange={(e) => setLocalQuery(e.target.value)}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  onQueryChange?.(localQuery);
-                  setIsFocused(false);
-                }
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                triggerSearch();
               }}
-              placeholder="Buscar produtos e marcas..."
-              aria-label="Buscar produtos e marcas"
-              className="h-10 w-full rounded-full border border-white/20 bg-white pl-9 pr-8 text-sm text-foreground outline-none shadow-inner placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-400"
-            />
+              action="/"
+              method="get"
+              className="w-full m-0 p-0"
+            >
+              <input
+                type="search"
+                enterKeyHint="search"
+                value={localQuery}
+                onChange={(e) => setLocalQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => window.setTimeout(() => setSearchFocused(false), 200)}
+                placeholder="Buscar produtos e lojas..."
+                aria-label="Buscar produtos e lojas"
+                className="h-10 w-full rounded-full border border-white/15 bg-white pl-9 pr-9 text-sm text-foreground outline-none ring-primary-glow/60 placeholder:text-muted-foreground focus:ring-2"
+              />
+            </form>
+
             {localQuery && (
               <button
                 type="button"
                 onClick={() => {
                   setLocalQuery("");
-                  onQueryChange?.("");
+                  if (onQueryChange) onQueryChange("");
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
@@ -162,93 +170,253 @@ export function SiteHeader({
               </button>
             )}
 
-            {/* Menu de Sugestões Instantâneas ao Digitar */}
-            {isFocused && filteredSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-xl border border-gray-200 bg-white text-gray-900 shadow-2xl">
-                <div className="p-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400 border-b">
-                  Sugestões encontradas
+            {/* Menu de Sugestões Rápidas */}
+            {searchFocused && matches.length > 0 && (
+              <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl">
+                <div className="bg-muted/40 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Sugestões
                 </div>
-                <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
-                  {filteredSuggestions.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onMouseDown={() => handleSelectSuggestion(item.id)}
-                      className="flex w-full items-center gap-3 p-2.5 text-left text-sm hover:bg-blue-50 transition-colors"
-                    >
-                      <Search className="h-4 w-4 shrink-0 text-gray-400" />
-                      <div className="flex-1 truncate">
-                        <p className="truncate font-medium text-gray-800">{item.title}</p>
-                        <span className="text-[11px] text-gray-400 capitalize">{item.category}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                {matches.map((item) => (
+                  <Button
+                    key={item.id}
+                    type="button"
+                    variant="ghost"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setLocalQuery(item.title);
+                      if (onQueryChange) onQueryChange(item.title);
+                      setSearchFocused(false);
+                      navigate({ to: "/produto/$productId", params: { productId: item.id } });
+                    }}
+                    className="h-auto w-full justify-between rounded-none px-4 py-3 text-left text-sm hover:bg-muted/60"
+                  >
+                    <span className="truncate font-medium">{item.title}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground ml-2 capitalize">{item.category}</span>
+                  </Button>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Carrinho e Menu */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <Button asChild variant="ghost" size="icon" className="relative text-white hover:bg-white/10">
-              <Link to="/carrinho" aria-label="Carrinho">
-                <ShoppingCart className="h-5 w-5" />
-                {count > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-gray-900">
-                    {count}
-                  </span>
-                )}
+          <nav className="flex items-center gap-1">
+            <Link
+              to="/carrinho"
+              className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10"
+              aria-label="Carrinho"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {count > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-primary-glow px-1 text-[11px] font-bold">
+                  {count}
+                </span>
+              )}
+            </Link>
+            {signedIn ? (
+              <>
+                <Link
+                  to="/notificacoes"
+                  className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden"
+                  aria-label="Notificações"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadMessages > 0 && (
+                    <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold">
+                      {unreadMessages}
+                    </span>
+                  )}
+                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground max-sm:hidden"
+                      aria-label="Menu da conta"
+                    >
+                      <User className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-60">
+                    <DropdownMenuLabel>Minha conta HS Digital</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/conta">
+                        <User className="mr-2 h-4 w-4" />
+                        Minha conta
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/conta">
+                        <MapPin className="mr-2 h-4 w-4" />
+                        Meus endereços
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/compras">
+                        <ShoppingBag className="mr-2 h-4 w-4" />
+                        Minhas compras
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/notificacoes">
+                        <Bell className="mr-2 h-4 w-4" />
+                        Notificações
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/vendedor">
+                        <Store className="mr-2 h-4 w-4" />
+                        Seller Center
+                      </Link>
+                    </DropdownMenuItem>
+                    {isAdmin && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin">
+                          <User className="mr-2 h-4 w-4" />
+                          Admin
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => void signOut()}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sair da conta
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Link
+                to="/auth"
+                className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden"
+                aria-label="Minha conta"
+              >
+                <User className="h-5 w-5" />
               </Link>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setOpen((v) => !v)}
+              className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground sm:hidden"
+              aria-label="Menu"
+            >
+              <Menu className="h-5 w-5" />
             </Button>
-
-            <DropdownMenu open={open} onOpenChange={setOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/" className="cursor-pointer">
-                    <Home className="mr-2 h-4 w-4" /> Início
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/compras" className="cursor-pointer">
-                    <ShoppingBag className="mr-2 h-4 w-4" /> Minhas Compras
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/vendedor" className="cursor-pointer">
-                    <Store className="mr-2 h-4 w-4" /> Área do Vendedor
-                  </Link>
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/admin" className="cursor-pointer font-semibold text-primary">
-                      <Store className="mr-2 h-4 w-4" /> Painel Admin
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                {signedIn ? (
-                  <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
-                    <LogOut className="mr-2 h-4 w-4" /> Sair
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem asChild>
-                    <Link to="/auth" className="cursor-pointer font-medium text-primary">
-                      <LogIn className="mr-2 h-4 w-4" /> Entrar / Cadastrar
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          </nav>
         </div>
+
+        <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
+          <Link to="/" className="hover:text-white">
+            Início
+          </Link>
+          <Link to="/compras" className="hover:text-white">
+            Minhas compras
+          </Link>
+          <Link to="/notificacoes" className="hover:text-white">
+            Notificações
+          </Link>
+          <span className="ml-auto flex items-center gap-2">
+            <Store className="h-4 w-4" />
+            <Link to="/vendedor" className="hover:text-white">
+              Venda na HS Digital
+            </Link>
+          </span>
+        </div>
+
+        {open && (
+          <div className="mt-3 grid gap-1 rounded-lg border border-primary-foreground/10 bg-black/80 p-2 text-sm shadow-xl backdrop-blur sm:hidden">
+            <Link
+              to="/"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+            >
+              <Home className="h-4 w-4" />
+              Início
+            </Link>
+            {signedIn && (
+              <>
+                <Link
+                  to="/conta"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <User className="h-4 w-4" />
+                  Minha conta e endereços
+                </Link>
+                <Link
+                  to="/compras"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  Minhas compras
+                </Link>
+                <Link
+                  to="/notificacoes"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <Bell className="h-4 w-4" />
+                  Notificações {unreadMessages > 0 ? `(${unreadMessages})` : ""}
+                </Link>
+              </>
+            )}
+            <Link
+              to="/carrinho"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              Carrinho {count > 0 ? `(${count})` : ""}
+            </Link>
+            <Link
+              to="/vendedor"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+            >
+              <Store className="h-4 w-4" />
+              Seller Center
+            </Link>
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+              >
+                <User className="h-4 w-4" />
+                Admin
+              </Link>
+            )}
+            {signedIn ? (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setOpen(false);
+                  void signOut();
+                }}
+                className="justify-start text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
+              >
+                Sair da conta
+              </Button>
+            ) : (
+              <Link to="/auth" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">
+                Entrar / Criar conta
+              </Link>
+            )}
+          </div>
+        )}
       </div>
     </header>
+  );
+}
+
+export function AuthCta() {
+  return (
+    <Button asChild variant="secondary" size="sm">
+      <Link to="/auth">
+        <LogIn className="h-4 w-4" /> Entrar
+      </Link>
+    </Button>
   );
 }
