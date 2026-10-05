@@ -1,11 +1,13 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ShoppingCart, Star } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { trackAbandonedCart } from "@/lib/abandoned-cart";
 import { brl, compact } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import type { Product } from "@/lib/catalog";
+import { supabase } from "@/integrations/supabase/client";
 
 function Stars({ rating }: { rating: number }) {
   return (
@@ -26,6 +28,7 @@ function Stars({ rating }: { rating: number }) {
 
 export function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
+  const navigate = useNavigate();
   // Título original mantido para facilitar buscas
   const originalTitle = product.title;
 
@@ -96,7 +99,13 @@ export function ProductCard({ product }: { product: Product }) {
 
           <Button
             size="sm"
-            onClick={() => {
+            onClick={async () => {
+              const { data, error } = await supabase.auth.getUser();
+              if (error || !data.user) {
+                toast.info("Faça login primeiro para adicionar produtos ao carrinho.");
+                navigate({ to: "/auth", search: { reason: "login-required" } });
+                return;
+              }
               add(
                 {
                   productId: product.id,

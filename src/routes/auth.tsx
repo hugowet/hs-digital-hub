@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/site-header";
@@ -11,6 +11,8 @@ import { lovable } from "@/integrations/lovable/index";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
+  validateSearch: (search: Record<string, unknown>): { reason?: "login-required" } =>
+    search["reason"] === "login-required" ? { reason: "login-required" } : {},
   head: () => ({
     meta: [
       { title: "Entrar · HS Digital" },
@@ -29,6 +31,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { reason } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [fullName, setFullName] = useState("");
   const [accountType, setAccountType] = useState<"buyer" | "seller">("buyer");
@@ -36,6 +39,11 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  useEffect(() => {
+    if (reason === "login-required") {
+      toast.info("Faça login primeiro para acessar esta área.");
+    }
+  }, [reason]);
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -96,6 +104,12 @@ function AuthPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Compre, acompanhe pedidos e gerencie sua loja.
           </p>
+
+          {reason === "login-required" && (
+            <div role="alert" className="mt-4 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm font-medium text-foreground">
+              Faça login primeiro para acessar esta área.
+            </div>
+          )}
 
           {awaitingConfirmation ? (
             <div className="mt-6 rounded-md border border-border bg-muted p-4 text-sm">
