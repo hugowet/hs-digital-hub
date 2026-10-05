@@ -16,7 +16,7 @@ import { useCart } from "@/lib/cart";
 import { brl } from "@/lib/format";
 import { createMercadoPagoPayment, getMercadoPagoPublicConfig, reconcileMercadoPagoPayment } from "@/lib/payments.functions";
 
-export const Route = createFileRoute("/pedido/$orderId")({
+export const Route = createFileRoute("/_authenticated/pedido/$orderId")({
   ssr: false,
   head: () => ({ meta: [
     { title: "Pagamento do pedido · HS Digital" },

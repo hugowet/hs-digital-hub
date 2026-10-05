@@ -39,7 +39,7 @@ import { createSellerProduct } from "@/lib/products.functions";
 import { processSupplierFulfillment, syncCjProducts } from "@/lib/suppliers.functions";
 import { getSellerShippingConfiguration, saveSellerOriginPostalCode, startMelhorEnvioConnection } from "@/lib/shipping.functions";
 
-export const Route = createFileRoute("/vendedor")({
+export const Route = createFileRoute("/_authenticated/vendedor")({
   ssr: false,
   head: () => ({
     meta: [
