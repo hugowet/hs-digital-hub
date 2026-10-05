@@ -253,58 +253,42 @@ export function SiteHeader({
                   <DropdownMenuContent align="end" className="w-60">
                     <DropdownMenuLabel>Minha conta HS Digital</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/conta">
-                        <User className="mr-2 h-4 w-4" />
-                        Minha conta
-                      </Link>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
+                      <User className="mr-2 h-4 w-4" />
+                      Minha conta
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/conta">
-                        <MapPin className="mr-2 h-4 w-4" />
-                        Meus endereços
-                      </Link>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
+                      <MapPin className="mr-2 h-4 w-4" />
+                      Meus endereços
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/compras">
-                        <ShoppingBag className="mr-2 h-4 w-4" />
-                        Minhas compras
-                      </Link>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/compras" })}>
+                      <ShoppingBag className="mr-2 h-4 w-4" />
+                      Minhas compras
                     </DropdownMenuItem>
                     {isBuyer && (
-                      <DropdownMenuItem asChild>
-                        <Link to="/cupons">
-                          <TicketPercent className="mr-2 h-4 w-4" />
-                          Meus cupons
-                        </Link>
+                      <DropdownMenuItem onSelect={() => navigate({ to: "/cupons" })}>
+                        <TicketPercent className="mr-2 h-4 w-4" />
+                        Meus cupons
                       </DropdownMenuItem>
                     )}
                     {isBuyer && (
-                      <DropdownMenuItem asChild>
-                        <Link to="/jogos">
-                          <Gamepad2 className="mr-2 h-4 w-4" />
-                          Jogos & Prêmios
-                        </Link>
+                      <DropdownMenuItem onSelect={() => navigate({ to: "/jogos" })}>
+                        <Gamepad2 className="mr-2 h-4 w-4" />
+                        Jogos & Prêmios
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem asChild>
-                      <Link to="/notificacoes">
-                        <Bell className="mr-2 h-4 w-4" />
-                        Notificações
-                      </Link>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/notificacoes" })}>
+                      <Bell className="mr-2 h-4 w-4" />
+                      Notificações
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/vendedor">
-                        <Store className="mr-2 h-4 w-4" />
-                        Seller Center
-                      </Link>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/vendedor" })}>
+                      <Store className="mr-2 h-4 w-4" />
+                      Seller Center
                     </DropdownMenuItem>
                     {isAdmin && (
-                      <DropdownMenuItem asChild>
-                        <Link to="/admin">
-                          <User className="mr-2 h-4 w-4" />
-                          Admin
-                        </Link>
+                      <DropdownMenuItem onSelect={() => navigate({ to: "/admin" })}>
+                        <User className="mr-2 h-4 w-4" />
+                        Admin
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
