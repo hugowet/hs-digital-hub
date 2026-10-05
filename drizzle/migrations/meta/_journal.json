@@ -50,6 +50,13 @@
       "when": 1791157180956,
       "tag": "0006_seller_product_shipping_dimensions",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791164525585,
+      "tag": "0007_protect_seller_shipping_credentials",
+      "breakpoints": true
     }
   ]
 }
