@@ -206,6 +206,33 @@ export type Database = {
           },
         ]
       }
+      game_plays: {
+        Row: {
+          created_at: string
+          game_type: string
+          id: string
+          outcome: string
+          played_on: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          game_type: string
+          id?: string
+          outcome: string
+          played_on?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          game_type?: string
+          id?: string
+          outcome?: string
+          played_on?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mercado_pago_accounts: {
         Row: {
           access_token_encrypted: string
@@ -528,6 +555,7 @@ export type Database = {
         Row: {
           buyer_id: string
           checkout_group_id: string
+          coupon_discount: number
           created_at: string
           expires_at: string
           id: string
@@ -543,6 +571,7 @@ export type Database = {
         Insert: {
           buyer_id: string
           checkout_group_id?: string
+          coupon_discount?: number
           created_at?: string
           expires_at?: string
           id?: string
@@ -558,6 +587,7 @@ export type Database = {
         Update: {
           buyer_id?: string
           checkout_group_id?: string
+          coupon_discount?: number
           created_at?: string
           expires_at?: string
           id?: string
@@ -1476,6 +1506,56 @@ export type Database = {
         }
         Relationships: []
       }
+      user_coupons: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          kind: string
+          max_discount: number
+          percent_off: number | null
+          redeemed_order_id: string | null
+          source: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          kind: string
+          max_discount?: number
+          percent_off?: number | null
+          redeemed_order_id?: string | null
+          source: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          kind?: string
+          max_discount?: number
+          percent_off?: number | null
+          redeemed_order_id?: string | null
+          source?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_coupons_redeemed_order_id_fkey"
+            columns: ["redeemed_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1532,6 +1612,15 @@ export type Database = {
         }
         Returns: string
       }
+      create_marketplace_order_v3: {
+        Args: {
+          _coupon_id?: string
+          _items: Json
+          _shipping_address: Json
+          _shipping_quote_ids: Json
+        }
+        Returns: string
+      }
       create_seller_product: {
         Args: {
           _category: string
@@ -1580,6 +1669,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      play_daily_game: {
+        Args: { _game_type: string }
+        Returns: {
+          coupon_code: string
+          coupon_id: string
+          expires_at: string
+          outcome: string
+        }[]
       }
       release_expired_marketplace_orders: { Args: never; Returns: number }
       reprice_cj_products_brl: {
