@@ -1,22 +1,43 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, Home, LogIn, LogOut, MapPin, Menu, Search, ShoppingBag, ShoppingCart, Store, User } from "lucide-react";
+import {
+  Bell,
+  Heart,
+  Home,
+  LogIn,
+  LogOut,
+  MapPin,
+  Menu,
+  Search,
+  ShoppingBag,
+  ShoppingCart,
+  Store,
+  User,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useCart } from "@/lib/cart";
 import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 
 export function SiteHeader({
-  query,
+  query = "",
   onQueryChange,
   suggestions = [],
 }: {
   query?: string;
   onQueryChange?: (value: string) => void;
-  suggestions?: Array<{ id: string; title: string; category: string }>;
+  suggestions?: Array<{ id: string; title: string; category: string; price?: number; image?: string }>;
 }) {
   const { count } = useCart();
   const navigate = useNavigate();
@@ -25,22 +46,52 @@ export function SiteHeader({
   const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const matches = useMemo(() => {
-    const normalized = (query ?? "").trim().toLowerCase();
-    if (!normalized) return suggestions.slice(0, 5);
+
+  // Estado local para digitação imediata e sem travamentos
+  const [localQuery, setLocalQuery] = useState(query);
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Sincroniza se a URL mudar externamente
+  useEffect(() => {
+    setLocalQuery(query);
+  }, [query]);
+
+  // Debounce: só avisa a página principal 250ms após parar de digitar
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localQuery !== query) {
+        onQueryChange?.(localQuery);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [localQuery, onQueryChange, query]);
+
+  // Sugestões instantâneas calculadas na memória
+  const filteredSuggestions = useMemo(() => {
+    const q = localQuery.trim().toLowerCase();
+    if (!q || q.length < 2) return [];
     return suggestions
-      .filter((item) => `${item.title} ${item.category}`.toLowerCase().includes(normalized))
-      .slice(0, 5);
-  }, [query, suggestions]);
+      .filter((s) => s.title.toLowerCase().includes(q) || s.category.toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [localQuery, suggestions]);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       setSignedIn(!!data.user);
       if (data.user) {
-        const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).eq("role", "admin").maybeSingle();
+        const { data: role } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id)
+          .eq("role", "admin")
+          .maybeSingle();
         setIsAdmin(Boolean(role));
-        const { count: unread } = await supabase.from("order_messages").select("id,order_conversations!inner(buyer_id)", { count: "exact", head: true }).is("read_at", null).neq("sender_id", data.user.id).eq("order_conversations.buyer_id", data.user.id);
+        const { count: unread } = await supabase
+          .from("order_messages")
+          .select("id,order_conversations!inner(buyer_id)", { count: "exact", head: true })
+          .is("read_at", null)
+          .neq("sender_id", data.user.id)
+          .eq("order_conversations.buyer_id", data.user.id);
         setUnreadMessages(unread ?? 0);
       }
     });
@@ -60,157 +111,144 @@ export function SiteHeader({
     navigate({ to: "/auth", replace: true });
   }
 
+  const handleSelectSuggestion = (id: string) => {
+    setIsFocused(false);
+    navigate({ to: "/produto/$productId", params: { productId: id } });
+  };
+
   return (
-    <header className="sticky top-0 z-50 brand-gradient text-primary-foreground">
-      <div className="mx-auto w-full max-w-7xl px-4 py-3">
-        <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-50 brand-gradient text-primary-foreground shadow-md">
+      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2.5 sm:py-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link to="/" className="flex shrink-0 items-center gap-2">
             <img
               src={logoAsset.url}
               alt="HS Digital"
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-full ring-1 ring-white/20"
+              width={38}
+              height={38}
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full ring-1 ring-white/20 object-cover"
             />
-            <span className="font-display text-lg font-bold tracking-tight max-sm:hidden">
-              HS Digital
-            </span>
+            <span className="font-display text-base sm:text-lg font-bold tracking-tight max-sm:hidden">HS Digital</span>
           </Link>
 
-          <div className="relative flex-1">
+          {/* Campo de Busca Rápido */}
+          <div className="relative flex-1 min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              value={query ?? ""}
-              onChange={(e) => onQueryChange?.(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => window.setTimeout(() => setSearchFocused(false), 120)}
-              placeholder="Buscar produtos e lojas..."
-              aria-label="Buscar produtos e lojas"
-              className="h-10 w-full rounded-full border border-white/15 bg-white pl-9 pr-4 text-sm text-foreground outline-none ring-primary-glow/60 placeholder:text-muted-foreground focus:ring-2"
+              value={localQuery}
+              onChange={(e) => setLocalQuery(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  onQueryChange?.(localQuery);
+                  setIsFocused(false);
+                }
+              }}
+              placeholder="Buscar produtos e marcas..."
+              aria-label="Buscar produtos e marcas"
+              className="h-10 w-full rounded-full border border-white/20 bg-white pl-9 pr-8 text-sm text-foreground outline-none shadow-inner placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-400"
             />
-            {onQueryChange && searchFocused && matches.length > 0 && (
-              <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl">
-                {matches.map((item) => (
-                  <Button
-                    key={item.id}
-                    type="button"
-                    variant="ghost"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => {
-                      onQueryChange(item.title);
-                      setSearchFocused(false);
-                      navigate({ to: "/produto/$productId", params: { productId: item.id } });
-                    }}
-                    className="h-auto w-full justify-between rounded-none px-4 py-3 text-left text-sm"
-                  >
-                    <span className="truncate font-medium">{item.title}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">{item.category}</span>
-                  </Button>
-                ))}
+            {localQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setLocalQuery("");
+                  onQueryChange?.("");
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Menu de Sugestões Instantâneas ao Digitar */}
+            {isFocused && filteredSuggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-xl border border-gray-200 bg-white text-gray-900 shadow-2xl">
+                <div className="p-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400 border-b">
+                  Sugestões encontradas
+                </div>
+                <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
+                  {filteredSuggestions.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onMouseDown={() => handleSelectSuggestion(item.id)}
+                      className="flex w-full items-center gap-3 p-2.5 text-left text-sm hover:bg-blue-50 transition-colors"
+                    >
+                      <Search className="h-4 w-4 shrink-0 text-gray-400" />
+                      <div className="flex-1 truncate">
+                        <p className="truncate font-medium text-gray-800">{item.title}</p>
+                        <span className="text-[11px] text-gray-400 capitalize">{item.category}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
-          <nav className="flex items-center gap-1">
-            <Link
-              to="/carrinho"
-              className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10"
-              aria-label="Carrinho"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {count > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-primary-glow px-1 text-[11px] font-bold">
-                  {count}
-                </span>
-              )}
-            </Link>
-            {signedIn ? (
-              <>
-                 <Link to="/notificacoes" className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden" aria-label="Notificações"><Bell className="h-5 w-5" />{unreadMessages > 0 && <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold">{unreadMessages}</span>}</Link>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground max-sm:hidden" aria-label="Menu da conta"><User className="h-5 w-5" /></Button></DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-60"><DropdownMenuLabel>Minha conta HS Digital</DropdownMenuLabel><DropdownMenuSeparator />
-                    <DropdownMenuItem asChild><Link to="/conta"><User />Minha conta</Link></DropdownMenuItem>
-                    <DropdownMenuItem asChild><Link to="/conta"><MapPin />Meus endereços</Link></DropdownMenuItem>
-                    <DropdownMenuItem asChild><Link to="/compras"><ShoppingBag />Minhas compras</Link></DropdownMenuItem>
-                    <DropdownMenuItem asChild><Link to="/notificacoes"><Bell />Notificações</Link></DropdownMenuItem>
-                    <DropdownMenuItem asChild><Link to="/vendedor"><Store />Seller Center</Link></DropdownMenuItem>
-                    {isAdmin && <DropdownMenuItem asChild><Link to="/admin"><User />Admin</Link></DropdownMenuItem>}
-                    <DropdownMenuSeparator /><DropdownMenuItem onSelect={() => void signOut()}><LogOut />Sair da conta</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            ) : (
-              <Link
-                to="/auth"
-                className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden"
-                aria-label="Minha conta"
-              >
-                <User className="h-5 w-5" />
+          {/* Carrinho e Menu */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <Button asChild variant="ghost" size="icon" className="relative text-white hover:bg-white/10">
+              <Link to="/carrinho" aria-label="Carrinho">
+                <ShoppingCart className="h-5 w-5" />
+                {count > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-gray-900">
+                    {count}
+                  </span>
+                )}
               </Link>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setOpen((v) => !v)}
-              className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground sm:hidden"
-              aria-label="Menu"
-            >
-              <Menu className="h-5 w-5" />
             </Button>
-          </nav>
-        </div>
 
-        <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
-          <Link to="/" className="hover:text-white">Início</Link><Link to="/compras" className="hover:text-white">Minhas compras</Link><Link to="/notificacoes" className="hover:text-white">Notificações</Link>
-          <span className="ml-auto flex items-center gap-2">
-            <Store className="h-4 w-4" />
-            <Link to="/vendedor" className="hover:text-white">
-              Venda na HS Digital
-            </Link>
-          </span>
-        </div>
-
-        {open && (
-          <div className="mt-3 grid gap-1 rounded-lg border border-primary-foreground/10 bg-ink/70 p-2 text-sm shadow-xl backdrop-blur sm:hidden">
-            <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><Home className="h-4 w-4" />Início</Link>
-             {signedIn && <><Link to="/conta" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><User className="h-4 w-4" />Minha conta e endereços</Link><Link to="/compras" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><ShoppingBag className="h-4 w-4" />Minhas compras</Link><Link to="/notificacoes" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><Bell className="h-4 w-4" />Notificações {unreadMessages > 0 ? `(${unreadMessages})` : ""}</Link></>}
-            <Link to="/carrinho" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><ShoppingCart className="h-4 w-4" />Carrinho {count > 0 ? `(${count})` : ""}</Link>
-            <Link to="/vendedor" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><Store className="h-4 w-4" />Seller Center</Link>
-            {isAdmin && <Link to="/admin" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"><User className="h-4 w-4" />Admin</Link>}
-            {signedIn ? (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setOpen(false);
-                  void signOut();
-                }}
-                className="justify-start text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
-              >
-                Sair da conta
-              </Button>
-            ) : (
-              <Link
-                to="/auth"
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2 hover:bg-white/10"
-              >
-                Entrar / Criar conta
-              </Link>
-            )}
+            <DropdownMenu open={open} onOpenChange={setOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/" className="cursor-pointer">
+                    <Home className="mr-2 h-4 w-4" /> Início
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/compras" className="cursor-pointer">
+                    <ShoppingBag className="mr-2 h-4 w-4" /> Minhas Compras
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/vendedor" className="cursor-pointer">
+                    <Store className="mr-2 h-4 w-4" /> Área do Vendedor
+                  </Link>
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin" className="cursor-pointer font-semibold text-primary">
+                      <Store className="mr-2 h-4 w-4" /> Painel Admin
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                {signedIn ? (
+                  <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" /> Sair
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link to="/auth" className="cursor-pointer font-medium text-primary">
+                      <LogIn className="mr-2 h-4 w-4" /> Entrar / Cadastrar
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        )}
+        </div>
       </div>
     </header>
-  );
-}
-
-export function AuthCta() {
-  return (
-    <Button asChild variant="secondary" size="sm">
-      <Link to="/auth">
-        <LogIn className="h-4 w-4" /> Entrar
-      </Link>
-    </Button>
   );
 }
