@@ -261,7 +261,7 @@ export function Home() {
               <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
                 <Gift className="h-4 w-4" />
                 <span>
-                  FRETE GRÁTIS NA SUA 1ª COMPRA • Use o cupom <strong>PRIMEIRACOMPRA</strong>
+                  FRETE GRÁTIS AUTOMÁTICO NA SUA 1ª COMPRA
                 </span>
               </div>
               <div>

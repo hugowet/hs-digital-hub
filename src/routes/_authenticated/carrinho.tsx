@@ -15,6 +15,7 @@ import { brl } from "@/lib/format";
 import { createMarketplaceCheckout } from "@/lib/payments.functions";
 import { quoteMarketplaceShipping } from "@/lib/shipping.functions";
 import { getMyCoupons } from "@/lib/games.functions";
+import { getFirstPurchaseShippingEligibility } from "@/lib/checkout.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/carrinho")({
@@ -43,6 +44,7 @@ function CartPage() {
   const createCheckout = useServerFn(createMarketplaceCheckout);
   const quoteShipping = useServerFn(quoteMarketplaceShipping);
   const loadCoupons = useServerFn(getMyCoupons);
+  const loadFirstPurchaseEligibility = useServerFn(getFirstPurchaseShippingEligibility);
   const groups = groupByStore(items);
 
   const [name, setName] = useState("");
@@ -62,6 +64,7 @@ function CartPage() {
   const [selectedQuotes, setSelectedQuotes] = useState<Record<string, string>>({});
   const [coupons, setCoupons] = useState<Awaited<ReturnType<typeof getMyCoupons>>>([]);
   const [selectedCouponId, setSelectedCouponId] = useState("");
+  const [firstPurchaseEligible, setFirstPurchaseEligible] = useState(false);
 
   const shipping = quotes.reduce((sum, group) => {
     const selected = group.options.find((option) => option.id === selectedQuotes[group.storeId]);
@@ -74,7 +77,8 @@ function CartPage() {
       : Math.min(shipping * Number(selectedCoupon.percent_off) / 100, Number(selectedCoupon.max_discount))
     : 0;
   const couponDiscount = Math.min(requestedCouponDiscount, subtotal * 0.12);
-  const total = subtotal + shipping - couponDiscount;
+  const shippingDiscount = firstPurchaseEligible ? shipping : couponDiscount;
+  const total = subtotal + shipping - shippingDiscount;
 
   useEffect(() => {
     if (items.length > 0) void trackCheckoutAbandonment(items);
@@ -95,6 +99,12 @@ function CartPage() {
   useEffect(() => {
     loadCoupons().then((items) => setCoupons(items.filter((coupon) => coupon.status === "active" && new Date(coupon.expires_at).getTime() > Date.now()))).catch(() => undefined);
   }, [loadCoupons]);
+
+  useEffect(() => {
+    loadFirstPurchaseEligibility()
+      .then(({ eligible }) => setFirstPurchaseEligible(eligible))
+      .catch(() => setFirstPurchaseEligible(false));
+  }, [loadFirstPurchaseEligibility]);
 
   const cartSignature = items.map((item) => `${item.productId}:${item.quantity}`).sort().join("|");
   useEffect(() => {
@@ -258,7 +268,7 @@ function CartPage() {
                   <dt className="text-muted-foreground">Produtos</dt>
                   <dd>{brl(subtotal)}</dd>
                 </div>
-                {selectedCoupon && couponDiscount > 0 && <div className="flex justify-between text-success"><dt>Cupom de frete</dt><dd>− {brl(couponDiscount)}</dd></div>}
+                {shippingDiscount > 0 && <div className="flex justify-between text-success"><dt>{firstPurchaseEligible ? "Frete grátis da 1ª compra" : "Cupom de frete"}</dt><dd>− {brl(shippingDiscount)}</dd></div>}
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Frete</dt>
                   <dd>{quotes.length === 0 ? "Calcule pelo CEP" : shipping === 0 ? "Grátis" : brl(shipping)}</dd>
@@ -356,7 +366,13 @@ function CartPage() {
                 </div>
               )}
 
-              {quotes.length > 0 && coupons.length > 0 && (
+              {quotes.length > 0 && firstPurchaseEligible && (
+                <div className="mt-4 rounded-lg border border-success/30 bg-success/10 p-3 text-sm font-semibold text-success">
+                  Seu frete grátis de primeira compra será aplicado automaticamente.
+                </div>
+              )}
+
+              {quotes.length > 0 && coupons.length > 0 && !firstPurchaseEligible && (
                 <div className="mt-4 border-t border-border pt-4">
                   <label htmlFor="shipping-coupon" className="flex items-center gap-2 text-sm font-semibold"><TicketPercent className="h-4 w-4 text-primary" /> Usar cupom no frete</label>
                   <select id="shipping-coupon" value={selectedCouponId} onChange={(event) => setSelectedCouponId(event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring">
