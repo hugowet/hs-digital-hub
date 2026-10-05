@@ -1,6 +1,6 @@
 # HS Digital — MVP
 
-- [ ] Exibir o mascote Lupi ao abrir o site, atravessando a tela enquanto empurra um carrinho de compras.
+- [ ] Exibir o Lupi empurrando um carrinho cheio e, depois, revelar “HS Digital Marketplace” e “Evoluindo com tecnologia” antes de entrar no site.
 
 - [x] Bloquear carrinho e todas as páginas internas após o logout.
 - [x] Ocultar a barra de tarefas e o carrinho sem uma sessão ativa.
