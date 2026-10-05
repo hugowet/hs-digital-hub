@@ -1,4 +1,7 @@
 import { decryptSecret, encryptSecret } from "@/lib/mercado-pago.server";
+import { createOpenAI } from "@ai-sdk/openai";
+import { streamText } from "ai";
+import { createLovableAiGatewayRunIdFetch } from "@/lib/ai-run-id.server";
 
 const CJ_API = "https://developers.cjdropshipping.com/api2.0/v1";
 
@@ -60,10 +63,6 @@ let cjLastRequestAt = 0;
 
 type BrlExchangeRate = { rate: number; quotedAt: string };
 
-type TranslationResponse = {
-  choices?: Array<{ message?: { content?: string } }>;
-};
-
 function parseTranslations(content: string, expected: number) {
   const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
   const parsed = JSON.parse(cleaned) as { translations?: unknown };
@@ -76,27 +75,29 @@ async function translateProductTitles(titles: string[]) {
   if (titles.length === 0) return [];
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("A tradução automática ainda não está disponível.");
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(30_000),
-    body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      temperature: 0.1,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "Traduza títulos de produtos de e-commerce do inglês para português do Brasil. Preserve marcas, modelos, medidas e siglas. Não invente características. Responda somente JSON no formato {\"translations\":[\"...\"]}, mantendo exatamente a ordem e a quantidade.",
-        },
-        { role: "user", content: JSON.stringify(titles) },
-      ],
-    }),
+  const runIdFetch = createLovableAiGatewayRunIdFetch();
+  const provider = createOpenAI({
+    baseURL: "https://ai.gateway.lovable.dev/v1",
+    apiKey,
+    headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    fetch: runIdFetch.fetch,
   });
-  if (!response.ok) throw new Error(`A tradução automática recusou a operação: ${response.status}.`);
-  const payload = (await response.json()) as TranslationResponse;
-  const content = payload.choices?.[0]?.message?.content;
+  const result = streamText({
+    model: provider.responses("openai/gpt-6-astra"),
+    instructions:
+      "Traduza títulos de produtos de e-commerce do inglês para português do Brasil. Preserve marcas, modelos, medidas e siglas. Não invente características. Responda somente JSON válido no formato {\"translations\":[\"...\"]}, mantendo exatamente a ordem e a quantidade.",
+    messages: [{ role: "user", content: JSON.stringify(titles) }],
+    providerOptions: {
+      openai: {
+        store: false,
+        forceReasoning: true,
+        reasoningEffort: "low",
+        reasoningSummary: "auto",
+        include: ["reasoning.encrypted_content"],
+      },
+    },
+  });
+  const content = await result.text;
   if (!content) throw new Error("A tradução automática retornou uma resposta vazia.");
   return parseTranslations(content, titles.length);
 }
