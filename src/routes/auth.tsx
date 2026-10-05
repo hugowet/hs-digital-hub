@@ -51,7 +51,9 @@ function AuthPage() {
     setLoading(true);
     try {
       const challenge = await beginBiometric();
-      const response = await startAuthentication({ optionsJSON: JSON.parse(challenge.optionsJSON) });
+      const response = await startAuthentication({
+        optionsJSON: JSON.parse(challenge.optionsJSON),
+      });
       const session = await completeBiometric({
         data: { challengeId: challenge.challengeId, response },
       });
