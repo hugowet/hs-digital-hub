@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
+  Gamepad2,
   Home,
   LogIn,
   LogOut,
@@ -11,6 +12,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   Store,
+  TicketPercent,
   User,
   X,
 } from "lucide-react";
@@ -258,6 +260,18 @@ export function SiteHeader({
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
+                      <Link to="/cupons">
+                        <TicketPercent className="mr-2 h-4 w-4" />
+                        Meus cupons
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/jogos">
+                        <Gamepad2 className="mr-2 h-4 w-4" />
+                        Jogos & Prêmios
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link to="/notificacoes">
                         <Bell className="mr-2 h-4 w-4" />
                         Notificações
@@ -313,6 +327,10 @@ export function SiteHeader({
           <Link to="/compras" className="hover:text-white">
             Minhas compras
           </Link>
+          <Link to="/jogos" className="hover:text-white">
+            Jogos & Prêmios
+          </Link>
+          {signedIn && <Link to="/cupons" className="hover:text-white">Meus cupons</Link>}
           <Link to="/notificacoes" className="hover:text-white">
             Notificações
           </Link>
@@ -353,6 +371,14 @@ export function SiteHeader({
                   Minhas compras
                 </Link>
                 <Link
+                  to="/cupons"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <TicketPercent className="h-4 w-4" />
+                  Meus cupons
+                </Link>
+                <Link
                   to="/notificacoes"
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
@@ -362,6 +388,14 @@ export function SiteHeader({
                 </Link>
               </>
             )}
+            <Link
+              to="/jogos"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+            >
+              <Gamepad2 className="h-4 w-4" />
+              Jogos & Prêmios
+            </Link>
             <Link
               to="/carrinho"
               onClick={() => setOpen(false)}

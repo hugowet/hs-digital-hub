@@ -25,3 +25,4 @@
 - The public catalog is server-prefetched and paginated; supplier synchronization writes durable rows and never runs during a shopper page load, so large catalogs do not block the storefront.
 - CJ customer-facing titles are translated server-side in bounded batches and persisted with the original supplier text, so translation never delays storefront reads.
 - Physical checkout uses short-lived, buyer-bound server quotes per store; CJ quotes are converted from USD and own-stock products use each seller's Melhor Envio OAuth account, while platform commission never applies to shipping.
+Game rewards are issued and rate-limited atomically in the database; shipping coupons expire after 24 hours and are redeemed atomically during checkout, funded only from platform commission up to R$ 30.

@@ -126,16 +126,18 @@ const checkoutSchema = z.object({
     note: z.string().trim().max(200),
   }),
   shippingQuoteIds: z.record(z.string(), z.string().uuid()),
+  couponId: z.string().uuid().optional(),
 });
 
 export const createMarketplaceCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => checkoutSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const request = context.supabase.rpc("create_marketplace_order_v2", {
+    const request = context.supabase.rpc("create_marketplace_order_v3", {
       _items: data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
       _shipping_address: { ...data.shippingAddress, postal_code: data.shippingAddress.postalCode },
       _shipping_quote_ids: data.shippingQuoteIds,
+      _coupon_id: data.couponId,
     });
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
