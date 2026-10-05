@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Gift, RotateCw, Sparkles, TicketPercent, Trophy } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { toast } from "sonner";
 
 import { SiteFooter } from "@/components/site-footer";
@@ -112,7 +112,7 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
   }, []);
   useEffect(() => { resetCanvas(); window.addEventListener("resize", resetCanvas); return () => window.removeEventListener("resize", resetCanvas); }, [resetCanvas]);
 
-  const scratch = (event: React.PointerEvent<HTMLCanvasElement>) => {
+  const scratch = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!scratching.current || played || revealed.current) return;
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");

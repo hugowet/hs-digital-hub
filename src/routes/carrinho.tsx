@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CreditCard, Loader2, Minus, Plus, Store, Trash2, Truck } from "lucide-react";
+import { CreditCard, Loader2, Minus, Plus, Store, TicketPercent, Trash2, Truck } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { trackCheckoutAbandonment } from "@/lib/abandoned-cart";
 import { brl } from "@/lib/format";
 import { createMarketplaceCheckout } from "@/lib/payments.functions";
 import { quoteMarketplaceShipping } from "@/lib/shipping.functions";
+import { getMyCoupons } from "@/lib/games.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/carrinho")({
@@ -41,6 +42,7 @@ function CartPage() {
   const navigate = useNavigate();
   const createCheckout = useServerFn(createMarketplaceCheckout);
   const quoteShipping = useServerFn(quoteMarketplaceShipping);
+  const loadCoupons = useServerFn(getMyCoupons);
   const groups = groupByStore(items);
 
   const [name, setName] = useState("");
@@ -58,12 +60,21 @@ function CartPage() {
     options: Array<{ id: string; serviceName: string; carrierName: string; amount: number; deliveryDaysMin: number | null; deliveryDaysMax: number | null }>;
   }>>([]);
   const [selectedQuotes, setSelectedQuotes] = useState<Record<string, string>>({});
+  const [coupons, setCoupons] = useState<Awaited<ReturnType<typeof getMyCoupons>>>([]);
+  const [selectedCouponId, setSelectedCouponId] = useState("");
 
   const shipping = quotes.reduce((sum, group) => {
     const selected = group.options.find((option) => option.id === selectedQuotes[group.storeId]);
     return sum + (selected?.amount ?? 0);
   }, 0);
-  const total = subtotal + shipping;
+  const selectedCoupon = coupons.find((coupon) => coupon.id === selectedCouponId);
+  const requestedCouponDiscount = selectedCoupon
+    ? selectedCoupon.kind === "free_shipping"
+      ? Math.min(shipping, Number(selectedCoupon.max_discount))
+      : Math.min(shipping * Number(selectedCoupon.percent_off) / 100, Number(selectedCoupon.max_discount))
+    : 0;
+  const couponDiscount = Math.min(requestedCouponDiscount, subtotal * 0.12);
+  const total = subtotal + shipping - couponDiscount;
 
   useEffect(() => {
     if (items.length > 0) void trackCheckoutAbandonment(items);
@@ -80,6 +91,10 @@ function CartPage() {
       setPostalCode(data.postal_code ?? "");
     });
   }, []);
+
+  useEffect(() => {
+    loadCoupons().then((items) => setCoupons(items.filter((coupon) => coupon.status === "active" && new Date(coupon.expires_at).getTime() > Date.now()))).catch(() => undefined);
+  }, [loadCoupons]);
 
   const cartSignature = items.map((item) => `${item.productId}:${item.quantity}`).sort().join("|");
   useEffect(() => {
@@ -136,6 +151,7 @@ function CartPage() {
         note: note.trim(),
         },
         shippingQuoteIds: selectedQuotes,
+        couponId: selectedCouponId || undefined,
       } });
       setSubmitting(false);
       navigate({ to: "/pedido/$orderId", params: { orderId } });
@@ -242,6 +258,7 @@ function CartPage() {
                   <dt className="text-muted-foreground">Produtos</dt>
                   <dd>{brl(subtotal)}</dd>
                 </div>
+                {selectedCoupon && couponDiscount > 0 && <div className="flex justify-between text-success"><dt>Cupom de frete</dt><dd>− {brl(couponDiscount)}</dd></div>}
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Frete</dt>
                   <dd>{quotes.length === 0 ? "Calcule pelo CEP" : shipping === 0 ? "Grátis" : brl(shipping)}</dd>
@@ -336,6 +353,17 @@ function CartPage() {
                       ))}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {quotes.length > 0 && coupons.length > 0 && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <label htmlFor="shipping-coupon" className="flex items-center gap-2 text-sm font-semibold"><TicketPercent className="h-4 w-4 text-primary" /> Usar cupom no frete</label>
+                  <select id="shipping-coupon" value={selectedCouponId} onChange={(event) => setSelectedCouponId(event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring">
+                    <option value="">Não usar cupom</option>
+                    {coupons.map((coupon) => <option key={coupon.id} value={coupon.id}>{coupon.kind === "free_shipping" ? "Frete grátis" : `${Number(coupon.percent_off)}% no frete`} · {coupon.code}</option>)}
+                  </select>
+                  <p className="mt-1.5 text-xs text-muted-foreground">O desconto sai da comissão da HS Digital, até R$ 30. O vendedor recebe o frete integral.</p>
                 </div>
               )}
 
