@@ -88,3 +88,5 @@
 
 - [ ] Aplicar frete totalmente grátis automaticamente na primeira compra paga do comprador.
 - [ ] Traduzir para português todos os produtos importados que ainda aparecem em inglês.
+
+- [ ] Centralizar verticalmente a passagem do Lupi e aumentar sua duração para 3 minutos, mantendo as frases no final.
