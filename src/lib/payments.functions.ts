@@ -133,12 +133,13 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => checkoutSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const request = context.supabase.rpc("create_marketplace_order_v3", {
+    const rpcArguments = {
       _items: data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
       _shipping_address: { ...data.shippingAddress, postal_code: data.shippingAddress.postalCode },
       _shipping_quote_ids: data.shippingQuoteIds,
-      _coupon_id: data.couponId,
-    });
+      ...(data.couponId ? { _coupon_id: data.couponId } : {}),
+    };
+    const request = context.supabase.rpc("create_marketplace_order_v3", rpcArguments);
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(

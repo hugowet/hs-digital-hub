@@ -157,8 +157,10 @@ function SnakeGame() {
       const speed = Math.max(70, 150 - Math.floor(points / 3) * 9);
       if (time - last >= speed) {
         last = time; frame += 1; directionRef.current = nextDirection.current;
-        const velocity = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[directionRef.current];
-        const head = { x: (snake[0].x + velocity[0] + cells) % cells, y: (snake[0].y + velocity[1] + cells) % cells };
+        const velocity: Record<Direction, readonly [number, number]> = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+        const [dx, dy] = velocity[directionRef.current];
+        const currentHead = snake[0]!;
+        const head = { x: (currentHead.x + dx + cells) % cells, y: (currentHead.y + dy + cells) % cells };
         if (snake.some((part) => part.x === head.x && part.y === head.y)) { setRunning(false); setBest((current) => Math.max(current, points)); return; }
         snake.unshift(head);
         if (head.x === food.x && head.y === food.y) { points += 1; setScore(points); setLevel(1 + Math.floor(points / 3)); placeFood(); } else snake.pop();
