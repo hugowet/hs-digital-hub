@@ -22,6 +22,11 @@ export const playDailyGame = createServerFn({ method: "POST" })
 export const getGameStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const [{ data: buyer }, { data: seller }] = await Promise.all([
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "buyer" }),
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "seller" }),
+    ]);
+    if (!buyer || seller) throw new Error("Jogos disponíveis somente para compradores.");
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
       new Date(),
     );
@@ -71,6 +76,11 @@ export const finishArcadeGame = createServerFn({ method: "POST" })
 export const getMyCoupons = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const [{ data: buyer }, { data: seller }] = await Promise.all([
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "buyer" }),
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "seller" }),
+    ]);
+    if (!buyer || seller) throw new Error("Cupons de jogos disponíveis somente para compradores.");
     const { data, error } = await context.supabase
       .from("user_coupons")
       .select("id,code,kind,percent_off,max_discount,status,source,expires_at,created_at")

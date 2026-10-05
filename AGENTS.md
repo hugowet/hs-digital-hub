@@ -26,3 +26,5 @@
 - CJ customer-facing titles are translated server-side in bounded batches and persisted with the original supplier text, so translation never delays storefront reads.
 - Physical checkout uses short-lived, buyer-bound server quotes per store; CJ quotes are converted from USD and own-stock products use each seller's Melhor Envio OAuth account, while platform commission never applies to shipping.
 Game rewards are issued and rate-limited atomically in the database; shipping coupons expire after 24 hours and are redeemed atomically during checkout, funded only from platform commission up to R$ 30.
+- Passkeys use WebAuthn with discoverable credentials and required device verification; only public keys are stored, challenges are short-lived and single-use, and no biometric template leaves the device.
+- Games and game coupons are buyer-only on both UI and server. Arcade sessions are single-use, coin awards are server-capped, 10% shipping coupons are issued atomically every 1,000 coins, and free shipping is limited to once per user per month.

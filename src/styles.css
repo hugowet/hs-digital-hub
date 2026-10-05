@@ -173,15 +173,11 @@ html {
 
 @utility game-wheel-bg {
   background: conic-gradient(
-    from -22.5deg,
-    var(--wheel-a) 0deg 45deg,
-    var(--wheel-b) 45deg 90deg,
-    var(--wheel-c) 90deg 135deg,
-    var(--wheel-d) 135deg 180deg,
-    var(--wheel-a) 180deg 225deg,
-    var(--wheel-b) 225deg 270deg,
-    var(--wheel-c) 270deg 315deg,
-    var(--wheel-d) 315deg 360deg
+    from -45deg,
+    var(--wheel-a) 0deg 90deg,
+    var(--wheel-b) 90deg 180deg,
+    var(--wheel-c) 180deg 270deg,
+    var(--wheel-d) 270deg 360deg
   );
 }
 
