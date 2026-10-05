@@ -85,3 +85,6 @@
 - [x] Encaminhar pedidos pagos da CJ aos fornecedores com processamento idempotente.
 - [ ] Integrar rastreamento oficial dos Correios — aguardando contrato PJ e credenciais CWS; códigos do fornecedor já aparecem no acompanhamento.
 - [x] Remover apenas produtos fictícios, preservando cadastros reais.
+
+- [ ] Aplicar frete totalmente grátis automaticamente na primeira compra paga do comprador.
+- [ ] Traduzir para português todos os produtos importados que ainda aparecem em inglês.
