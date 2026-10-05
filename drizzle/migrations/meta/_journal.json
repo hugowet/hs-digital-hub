@@ -71,6 +71,13 @@
       "when": 1791186028843,
       "tag": "0009_add_game_rewards_and_shipping_coupons",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791187236701,
+      "tag": "0010_secure_passkeys_and_buyer_game_rewards",
+      "breakpoints": true
     }
   ]
 }
