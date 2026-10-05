@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { getGameStatus, playDailyGame } from "@/lib/games.functions";
+import { ArcadeHall } from "@/components/games/arcade-hall";
 
 export const Route = createFileRoute("/jogos")({
   head: () => ({ meta: [
@@ -35,7 +36,7 @@ const outcomeIndex: Record<Outcome, number> = { shipping_5: 0, shipping_10: 1, f
 
 function GamesPage() {
   const statusFn = useServerFn(getGameStatus);
-  const [status, setStatus] = useState<{ wheel: string | null; scratch: string | null }>({ wheel: null, scratch: null });
+  const [status, setStatus] = useState<{ wheel: string | null; scratch: string | null; coins: number }>({ wheel: null, scratch: null, coins: 0 });
   useEffect(() => { statusFn().then(setStatus).catch(() => undefined); }, [statusFn]);
   return <div className="min-h-screen bg-background"><SiteHeader />
     <main className="mx-auto w-full max-w-7xl px-4 py-8">
@@ -47,7 +48,7 @@ function GamesPage() {
         <WheelGame played={Boolean(status.wheel)} onPlayed={(outcome) => setStatus((s) => ({ ...s, wheel: outcome }))} />
         <ScratchGame played={Boolean(status.scratch)} onPlayed={(outcome) => setStatus((s) => ({ ...s, scratch: outcome }))} />
       </div>
-      <div className="mt-6"><SnakeGame /></div>
+      <ArcadeHall initialCoins={status.coins} onCoins={(coins) => setStatus((current) => ({ ...current, coins }))} />
     </main><SiteFooter /></div>;
 }
 
