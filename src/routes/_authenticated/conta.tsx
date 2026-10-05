@@ -144,12 +144,14 @@ export function AccountPage() {
   });
 
   async function addPasskey() {
-    if (!window.PublicKeyCredential)
-      return toast.error("Este aparelho não oferece biometria/passkey.");
+    if (!window.PublicKeyCredential) {
+      toast.error("Este aparelho não oferece biometria/passkey.");
+      return;
+    }
     setPasskeyLoading(true);
     try {
       const challenge = await beginPasskey();
-      const response = await startRegistration({ optionsJSON: challenge.options });
+      const response = await startRegistration({ optionsJSON: challenge.options as never });
       await completePasskey({
         data: {
           challengeId: challenge.challengeId,

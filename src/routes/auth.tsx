@@ -44,12 +44,14 @@ function AuthPage() {
   const completeBiometric = useServerFn(completePasskeyLogin);
 
   async function handleBiometric() {
-    if (!window.PublicKeyCredential)
-      return toast.error("Este aparelho não oferece entrada biométrica.");
+    if (!window.PublicKeyCredential) {
+      toast.error("Este aparelho não oferece entrada biométrica.");
+      return;
+    }
     setLoading(true);
     try {
       const challenge = await beginBiometric();
-      const response = await startAuthentication({ optionsJSON: challenge.options });
+      const response = await startAuthentication({ optionsJSON: challenge.options as never });
       const session = await completeBiometric({
         data: { challengeId: challenge.challengeId, response },
       });

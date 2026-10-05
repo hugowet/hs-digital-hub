@@ -58,7 +58,7 @@ export const beginPasskeyRegistration = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw error;
-    return { challengeId: challenge.id, options, origin };
+    return { challengeId: challenge.id, options: JSON.parse(JSON.stringify(options)) as Record<string, unknown>, origin };
   });
 
 export const completePasskeyRegistration = createServerFn({ method: "POST" })
@@ -119,7 +119,7 @@ export const beginPasskeyLogin = createServerFn({ method: "POST" }).handler(asyn
     .select("id")
     .single();
   if (error) throw new Error("Não foi possível iniciar a entrada biométrica.");
-  return { challengeId: data.id, options };
+  return { challengeId: data.id, options: JSON.parse(JSON.stringify(options)) as Record<string, unknown> };
 });
 
 export const completePasskeyLogin = createServerFn({ method: "POST" })
