@@ -50,8 +50,9 @@
 
 ## Integração de fornecedores e logística
 
-- [ ] Calcular frete real por CEP no checkout e eliminar a tarifa fixa de R$ 19,90.
-- [ ] Disparar o envio automático à CJ no webhook após a confirmação do pagamento.
+- [x] Calcular frete real por CEP no checkout e eliminar a tarifa fixa de R$ 19,90.
+- [x] Disparar o envio automático à CJ no webhook após a confirmação do pagamento.
+- [ ] Ativar o Melhor Envio em produção com as credenciais da plataforma; vendedores já podem conectar a própria conta, informar CEP de origem e cadastrar dimensões.
 - [x] Fazer a vitrine abrir com produtos atuais já carregados, sem baixar nem renderizar todo o catálogo de uma vez.
 - [x] Traduzir para português os títulos e descrições dos produtos CJ já importados e das próximas sincronizações.
 - [x] Integrar catálogo e estoque da CJ Dropshipping à loja JJ Kuster.
