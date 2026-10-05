@@ -168,6 +168,7 @@ function ArcadeScreen({
       const result = await startServer({ data: { gameType: game.id } });
       if (!result) throw new Error();
       sessionRef.current = result.session_id;
+      input.current = { x: 1, y: 0, flap: false, lane: 1 };
       setCoins(0);
       setPhase("playing");
     } catch (error) {
@@ -479,39 +480,42 @@ function ArcadeScreen({
       </div>
       {phase === "playing" && (
         <div className="flex justify-center gap-3 bg-black/40 p-3">
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={() => move(-1, 0)}
-            aria-label="Mover para a esquerda"
-          >
-            <ArrowLeft />
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={() => game.id === "flappy" ? (input.current.flap = true) : move(0, -1)}
-            aria-label="Mover para cima"
-          >
-            <ArrowUp />
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={() => move(1, 0)}
-            aria-label="Mover para a direita"
-          >
-            <ArrowRight />
-          </Button>
-          {(game.id === "snake" || game.id === "pacman") && (
+          {game.id === "flappy" ? (
             <Button
               variant="secondary"
-              size="icon"
-              onClick={() => move(0, 1)}
-              aria-label="Mover para baixo"
+              className="min-w-40"
+              onClick={() => {
+                input.current.flap = true;
+              }}
             >
-              <ArrowDown />
+              <ArrowUp /> Voar
             </Button>
+          ) : game.id === "highway" ? (
+            <>
+              <Button variant="secondary" size="icon" onClick={() => move(-1, 0)} aria-label="Mudar para a faixa esquerda">
+                <ArrowLeft />
+              </Button>
+              <Button variant="secondary" size="icon" onClick={() => move(1, 0)} aria-label="Mudar para a faixa direita">
+                <ArrowRight />
+              </Button>
+            </>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              <span />
+              <Button variant="secondary" size="icon" onClick={() => move(0, -1)} aria-label="Mover para cima">
+                <ArrowUp />
+              </Button>
+              <span />
+              <Button variant="secondary" size="icon" onClick={() => move(-1, 0)} aria-label="Mover para a esquerda">
+                <ArrowLeft />
+              </Button>
+              <Button variant="secondary" size="icon" onClick={() => move(0, 1)} aria-label="Mover para baixo">
+                <ArrowDown />
+              </Button>
+              <Button variant="secondary" size="icon" onClick={() => move(1, 0)} aria-label="Mover para a direita">
+                <ArrowRight />
+              </Button>
+            </div>
           )}
         </div>
       )}

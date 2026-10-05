@@ -11,9 +11,8 @@ import { lovable } from "@/integrations/lovable/index";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
-  validateSearch: (search: Record<string, unknown>) => ({
-    reason: search.reason === "login-required" ? "login-required" : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { reason?: "login-required" } =>
+    search["reason"] === "login-required" ? { reason: "login-required" } : {},
   head: () => ({
     meta: [
       { title: "Entrar · HS Digital" },
