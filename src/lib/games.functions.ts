@@ -22,7 +22,9 @@ export const playDailyGame = createServerFn({ method: "POST" })
 export const getGameStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
+      new Date(),
+    );
     const { data, error } = await context.supabase
       .from("game_plays")
       .select("game_type,outcome")
@@ -40,17 +42,30 @@ export const getGameStatus = createServerFn({ method: "GET" })
   });
 
 export const startArcadeGame = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth]).inputValidator((input) => arcadeSchema.parse(input))
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => arcadeSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await context.supabase.rpc("start_arcade_game", { _game_type: data.gameType });
-    if (error) throw new Error(error.message); return result?.[0];
+    const { data: result, error } = await context.supabase.rpc("start_arcade_game", {
+      _game_type: data.gameType,
+    });
+    if (error) throw new Error(error.message);
+    return result?.[0];
   });
 
 export const finishArcadeGame = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth]).inputValidator((input) => z.object({ sessionId: z.string().uuid(), coins: z.number().int().min(0).max(10000) }).parse(input))
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({ sessionId: z.string().uuid(), coins: z.number().int().min(0).max(10000) })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await context.supabase.rpc("finish_arcade_game", { _session_id: data.sessionId, _coins: data.coins });
-    if (error) throw new Error(error.message); return result?.[0];
+    const { data: result, error } = await context.supabase.rpc("finish_arcade_game", {
+      _session_id: data.sessionId,
+      _coins: data.coins,
+    });
+    if (error) throw new Error(error.message);
+    return result?.[0];
   });
 
 export const getMyCoupons = createServerFn({ method: "GET" })

@@ -82,9 +82,14 @@ export function SiteHeader({
         const { data: roles } = await supabase
           .from("user_roles")
           .select("role")
-          .eq("user_id", data.user.id)
+          .eq("user_id", data.user.id);
         setIsAdmin(Boolean(roles?.some((item) => item.role === "admin")));
-        setIsBuyer(Boolean(roles?.some((item) => item.role === "buyer") && !roles?.some((item) => item.role === "seller")));
+        setIsBuyer(
+          Boolean(
+            roles?.some((item) => item.role === "buyer") &&
+            !roles?.some((item) => item.role === "seller"),
+          ),
+        );
         const { count: unread } = await supabase
           .from("order_messages")
           .select("id,order_conversations!inner(buyer_id)", { count: "exact", head: true })
@@ -97,7 +102,10 @@ export function SiteHeader({
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
         setSignedIn(!!session?.user);
-        if (!session?.user) { setIsAdmin(false); setIsBuyer(false); }
+        if (!session?.user) {
+          setIsAdmin(false);
+          setIsBuyer(false);
+        }
       }
     });
     return () => data.subscription.unsubscribe();
@@ -131,7 +139,9 @@ export function SiteHeader({
               height={40}
               className="h-9 w-9 sm:h-10 sm:w-10 rounded-full ring-1 ring-white/20 object-cover"
             />
-            <span className="font-display text-base sm:text-lg font-bold tracking-tight max-sm:hidden">HS Digital</span>
+            <span className="font-display text-base sm:text-lg font-bold tracking-tight max-sm:hidden">
+              HS Digital
+            </span>
           </Link>
 
           {/* Barra de Pesquisa */}
@@ -193,7 +203,9 @@ export function SiteHeader({
                     className="h-auto w-full justify-between rounded-none px-4 py-3 text-left text-sm hover:bg-muted/60"
                   >
                     <span className="truncate font-medium">{item.title}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground ml-2 capitalize">{item.category}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground ml-2 capitalize">
+                      {item.category}
+                    </span>
                   </Button>
                 ))}
               </div>
@@ -259,18 +271,22 @@ export function SiteHeader({
                         Minhas compras
                       </Link>
                     </DropdownMenuItem>
-                    {isBuyer && <DropdownMenuItem asChild>
-                      <Link to="/cupons">
-                        <TicketPercent className="mr-2 h-4 w-4" />
-                        Meus cupons
-                      </Link>
-                    </DropdownMenuItem>}
-                    {isBuyer && <DropdownMenuItem asChild>
-                      <Link to="/jogos">
-                        <Gamepad2 className="mr-2 h-4 w-4" />
-                        Jogos & Prêmios
-                      </Link>
-                    </DropdownMenuItem>}
+                    {isBuyer && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/cupons">
+                          <TicketPercent className="mr-2 h-4 w-4" />
+                          Meus cupons
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {isBuyer && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/jogos">
+                          <Gamepad2 className="mr-2 h-4 w-4" />
+                          Jogos & Prêmios
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem asChild>
                       <Link to="/notificacoes">
                         <Bell className="mr-2 h-4 w-4" />
@@ -327,10 +343,16 @@ export function SiteHeader({
           <Link to="/compras" className="hover:text-white">
             Minhas compras
           </Link>
-          {isBuyer && <Link to="/jogos" className="hover:text-white">
-            Jogos & Prêmios
-          </Link>}
-          {isBuyer && <Link to="/cupons" className="hover:text-white">Meus cupons</Link>}
+          {isBuyer && (
+            <Link to="/jogos" className="hover:text-white">
+              Jogos & Prêmios
+            </Link>
+          )}
+          {isBuyer && (
+            <Link to="/cupons" className="hover:text-white">
+              Meus cupons
+            </Link>
+          )}
           <Link to="/notificacoes" className="hover:text-white">
             Notificações
           </Link>
@@ -370,14 +392,16 @@ export function SiteHeader({
                   <ShoppingBag className="h-4 w-4" />
                   Minhas compras
                 </Link>
-                {isBuyer && <Link
-                  to="/cupons"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
-                >
-                  <TicketPercent className="h-4 w-4" />
-                  Meus cupons
-                </Link>}
+                {isBuyer && (
+                  <Link
+                    to="/cupons"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                  >
+                    <TicketPercent className="h-4 w-4" />
+                    Meus cupons
+                  </Link>
+                )}
                 <Link
                   to="/notificacoes"
                   onClick={() => setOpen(false)}
@@ -388,14 +412,16 @@ export function SiteHeader({
                 </Link>
               </>
             )}
-            {isBuyer && <Link
-              to="/jogos"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
-            >
-              <Gamepad2 className="h-4 w-4" />
-              Jogos & Prêmios
-            </Link>}
+            {isBuyer && (
+              <Link
+                to="/jogos"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+              >
+                <Gamepad2 className="h-4 w-4" />
+                Jogos & Prêmios
+              </Link>
+            )}
             <Link
               to="/carrinho"
               onClick={() => setOpen(false)}
@@ -434,7 +460,11 @@ export function SiteHeader({
                 Sair da conta
               </Button>
             ) : (
-              <Link to="/auth" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">
+              <Link
+                to="/auth"
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-3 py-2 hover:bg-white/10"
+              >
                 Entrar / Criar conta
               </Link>
             )}

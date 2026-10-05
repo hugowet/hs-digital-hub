@@ -44,18 +44,30 @@ function AuthPage() {
   const completeBiometric = useServerFn(completePasskeyLogin);
 
   async function handleBiometric() {
-    if (!window.PublicKeyCredential) return toast.error("Este aparelho não oferece entrada biométrica.");
+    if (!window.PublicKeyCredential)
+      return toast.error("Este aparelho não oferece entrada biométrica.");
     setLoading(true);
     try {
       const challenge = await beginBiometric();
       const response = await startAuthentication({ optionsJSON: challenge.options });
-      const session = await completeBiometric({ data: { challengeId: challenge.challengeId, response } });
-      const { error } = await supabase.auth.setSession({ access_token: session.accessToken, refresh_token: session.refreshToken });
+      const session = await completeBiometric({
+        data: { challengeId: challenge.challengeId, response },
+      });
+      const { error } = await supabase.auth.setSession({
+        access_token: session.accessToken,
+        refresh_token: session.refreshToken,
+      });
       if (error) throw error;
       navigate({ to: "/" });
     } catch (error) {
-      toast.error(error instanceof Error && error.name !== "NotAllowedError" ? error.message : "Biometria cancelada ou não reconhecida.");
-    } finally { setLoading(false); }
+      toast.error(
+        error instanceof Error && error.name !== "NotAllowedError"
+          ? error.message
+          : "Biometria cancelada ou não reconhecida.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -199,11 +211,20 @@ function AuthPage() {
 
           {!awaitingConfirmation && mode === "signin" && (
             <div className="mt-3 space-y-2">
-              <Button variant="outline" className="w-full" onClick={() => void handleBiometric()} disabled={loading}>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => void handleBiometric()}
+                disabled={loading}
+              >
                 <Fingerprint className="h-4 w-4" /> Entrar com biometria
               </Button>
-              <Button variant="outline" className="w-full" onClick={handleGoogle}>Continuar com Google</Button>
-              <p className="text-center text-[11px] text-muted-foreground">Use a digital, Face ID ou PIN já protegido pelo seu aparelho.</p>
+              <Button variant="outline" className="w-full" onClick={handleGoogle}>
+                Continuar com Google
+              </Button>
+              <p className="text-center text-[11px] text-muted-foreground">
+                Use a digital, Face ID ou PIN já protegido pelo seu aparelho.
+              </p>
             </div>
           )}
 
