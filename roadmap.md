@@ -1,5 +1,7 @@
 # HS Digital — MVP
 
+- [ ] Exibir o mascote Lupi ao abrir o site, atravessando a tela enquanto empurra um carrinho de compras.
+
 - [x] Bloquear carrinho e todas as páginas internas após o logout.
 - [x] Ocultar a barra de tarefas e o carrinho sem uma sessão ativa.
 - [x] Mostrar “Adicionado ao carrinho” em toda inclusão de produto.
