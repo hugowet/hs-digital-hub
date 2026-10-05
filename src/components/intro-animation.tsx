@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import lupiCart from "@/assets/lupi-full-shopping-cart.png";
 
 const INTRO_SESSION_KEY = "hs-digital-intro-seen";
-const INTRO_DURATION_MS = 6800;
+const INTRO_DURATION_MS = 184_000;
 
 export function IntroAnimation() {
   const [visible, setVisible] = useState(false);
