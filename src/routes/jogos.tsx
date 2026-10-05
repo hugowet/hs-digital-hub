@@ -168,7 +168,7 @@ function WheelGame({
                 return (
                   <span
                     key={label}
-                    className="absolute left-1/2 top-1/2 h-1/2 w-28 -translate-x-1/2 origin-top pt-7 text-center text-[11px] font-black leading-tight text-white drop-shadow-md sm:text-sm"
+                    className="absolute left-1/2 top-1/2 h-1/2 w-24 -translate-x-1/2 origin-top pt-14 text-center text-[11px] font-black leading-tight text-white drop-shadow-md sm:w-28 sm:pt-16 sm:text-sm"
                     style={{ transform: `rotate(${angle}deg)` }}
                   >
                     <span className="inline-block" style={{ transform: `rotate(${-angle}deg)` }}>

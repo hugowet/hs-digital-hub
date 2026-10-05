@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  Bird,
   Car,
   CircleDot,
   Gamepad2,
@@ -9,6 +10,7 @@ import {
   RotateCcw,
   X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -18,29 +20,29 @@ import { finishArcadeGame, startArcadeGame } from "@/lib/games.functions";
 
 type Game = "snake" | "pacman" | "flappy" | "highway";
 type Point = { x: number; y: number };
-const games: Array<{ id: Game; title: string; icon: string; help: string }> = [
+const games: Array<{ id: Game; title: string; Icon: LucideIcon; help: string }> = [
   {
     id: "snake",
     title: "Cobrinha Turbo",
-    icon: "🐍",
+    Icon: Gamepad2,
     help: "Colete moedas, atravesse as bordas e não encoste no próprio corpo.",
   },
   {
     id: "pacman",
     title: "Come-Come",
-    icon: "🟡",
+    Icon: CircleDot,
     help: "Coma as pastilhas e moedas do labirinto enquanto foge dos fantasmas.",
   },
   {
     id: "flappy",
     title: "Pássaro Voador",
-    icon: "🐦",
+    Icon: Bird,
     help: "Toque na tela ou aperte espaço para passar entre os canos.",
   },
   {
     id: "highway",
     title: "Desvia e Coleta",
-    icon: "🏎️",
+    Icon: Car,
     help: "Troque de faixa, desvie dos carros e passe por cima das moedas.",
   },
 ];
@@ -74,8 +76,8 @@ export function ArcadeHall({
             onClick={() => setSelected(game)}
             className="group overflow-hidden rounded-2xl border bg-card text-left shadow-sm transition hover:-translate-y-1 hover:border-primary hover:shadow-xl"
           >
-            <div className="grid h-36 place-items-center bg-gradient-to-br from-[#140825] via-[#3b0a69] to-[#7c24d4] text-6xl transition group-hover:scale-105">
-              {game.icon}
+            <div className="grid h-36 place-items-center bg-gradient-to-br from-[#140825] via-[#3b0a69] to-[#7c24d4] transition group-hover:scale-105">
+              <game.Icon className="h-14 w-14 text-primary-foreground" strokeWidth={1.6} />
             </div>
             <div className="p-4">
               <h3 className="font-black">{game.title}</h3>
@@ -395,8 +397,8 @@ function ArcadeScreen({
     >
       <div className="flex items-center justify-between border-b border-white/10 bg-black/30 px-4 py-3">
         <div>
-          <strong>
-            {game.icon} {game.title}
+          <strong className="flex items-center gap-2">
+            <game.Icon className="h-5 w-5" /> {game.title}
           </strong>
           <span className="ml-3 text-xs text-white/60">
             🪙 {coins}
@@ -410,7 +412,7 @@ function ArcadeScreen({
       <div className="relative flex min-h-0 flex-1 items-center justify-center p-3">
         {phase === "intro" && (
           <div className="max-w-xl text-center">
-            <div className="text-7xl">{game.icon}</div>
+            <game.Icon className="mx-auto h-20 w-20 text-fuchsia-300" strokeWidth={1.5} />
             <p className="mt-6 text-sm font-black uppercase tracking-[.25em] text-fuchsia-300">
               Vem brincar na HS e concorra a prêmios
             </p>
