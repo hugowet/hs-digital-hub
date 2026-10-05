@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CarrinhoRouteImport } from './routes/carrinho'
+import { Route as JogosRouteImport } from './routes/jogos'
 import { Route as VendedorRouteImport } from './routes/vendedor'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
 import { Route as AuthenticatedContaRouteImport } from './routes/_authenticated/conta'
@@ -49,6 +50,11 @@ const AuthRoute = AuthRouteImport.update({
 const CarrinhoRoute = CarrinhoRouteImport.update({
   id: '/carrinho',
   path: '/carrinho',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JogosRoute = JogosRouteImport.update({
+  id: '/jogos',
+  path: '/jogos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VendedorRoute = VendedorRouteImport.update({
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
+  '/jogos': typeof JogosRoute
   '/vendedor': typeof VendedorRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/conta': typeof AuthenticatedContaRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
+  '/jogos': typeof JogosRoute
   '/vendedor': typeof VendedorRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/conta': typeof AuthenticatedContaRoute
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/carrinho': typeof CarrinhoRoute
+  '/jogos': typeof JogosRoute
   '/vendedor': typeof VendedorRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
   '/_authenticated/conta': typeof AuthenticatedContaRoute
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/carrinho'
+    | '/jogos'
     | '/vendedor'
     | '/compras'
     | '/conta'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/carrinho'
+    | '/jogos'
     | '/vendedor'
     | '/compras'
     | '/conta'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/carrinho'
+    | '/jogos'
     | '/vendedor'
     | '/_authenticated/compras'
     | '/_authenticated/conta'
@@ -238,6 +250,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   CarrinhoRoute: typeof CarrinhoRoute
+  JogosRoute: typeof JogosRoute
   VendedorRoute: typeof VendedorRoute
   PedidoOrderIdRoute: typeof PedidoOrderIdRoute
   ProdutoProductIdRoute: typeof ProdutoProductIdRoute
@@ -284,6 +297,13 @@ declare module '@tanstack/react-router' {
       path: '/carrinho'
       fullPath: '/carrinho'
       preLoaderRoute: typeof CarrinhoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/jogos': {
+      id: '/jogos'
+      path: '/jogos'
+      fullPath: '/jogos'
+      preLoaderRoute: typeof JogosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/vendedor': {
@@ -394,6 +414,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   CarrinhoRoute: CarrinhoRoute,
+  JogosRoute: JogosRoute,
   VendedorRoute: VendedorRoute,
   PedidoOrderIdRoute: PedidoOrderIdRoute,
   ProdutoProductIdRoute: ProdutoProductIdRoute,

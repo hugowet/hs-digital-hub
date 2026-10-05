@@ -1,10 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { infiniteQueryOptions, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import {
   Baby,
   CarFront,
-  ChevronLeft,
-  ChevronRight,
   Drill,
   Dumbbell,
   Files,
@@ -13,16 +11,13 @@ import {
   GraduationCap,
   Keyboard,
   LampDesk,
-  Rocket,
   ShieldCheck,
   Shirt,
   ShoppingBasket,
-  ShoppingCart,
   Smartphone,
   Sofa,
   Sparkles,
   Store,
-  Tag,
   Truck,
   Tv,
   Watch,
@@ -165,7 +160,6 @@ export function Home() {
       },
     });
 
-  // Limpa a busca automaticamente se o usuário atualizou a página (F5/Reload)
   useEffect(() => {
     try {
       const navEntry = window.performance?.getEntriesByType?.("navigation")?.[0] as
@@ -175,14 +169,6 @@ export function Home() {
       }
     } catch {}
   }, []);
-
-  const promoProducts = useMemo(() => {
-    return products.filter((p) => (p.compare_at_price && p.compare_at_price > p.price) || (p.sold_count ?? 0) > 10);
-  }, [products]);
-
-  const freeShippingProducts = useMemo(() => {
-    return products.filter((p) => p.free_shipping || Number(p.price) >= 79);
-  }, [products]);
 
   const filtered = useMemo(() => {
     const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
@@ -343,7 +329,12 @@ export function Home() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Select value={search.sort} onValueChange={(val: HomeSearch["sort"]) => setSearch({ sort: val })}>
+                <Select
+                  value={search.sort ?? "popular"}
+                  onValueChange={(val: string) =>
+                    setSearch({ sort: val === "popular" ? undefined : (val as HomeSearch["sort"]) })
+                  }
+                >
                   <SelectTrigger className="w-[160px] h-9 text-xs">
                     <SelectValue placeholder="Ordenar por" />
                   </SelectTrigger>
