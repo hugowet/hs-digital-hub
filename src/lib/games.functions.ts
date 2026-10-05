@@ -28,6 +28,10 @@ export const getGameStatus = createServerFn({ method: "GET" })
       .select("game_type,outcome")
       .eq("played_on", today);
     if (error) throw error;
+    const { data: wallet } = await context.supabase
+      .from("user_game_wallets")
+      .select("lifetime_coins")
+      .maybeSingle();
     return {
       wheel: data?.find((play) => play.game_type === "wheel")?.outcome ?? null,
       scratch: data?.find((play) => play.game_type === "scratch")?.outcome ?? null,

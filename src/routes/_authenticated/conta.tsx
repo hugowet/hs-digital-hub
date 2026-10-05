@@ -9,6 +9,7 @@ import {
   Phone,
   Plus,
   ShieldCheck,
+  Fingerprint,
   Store,
   Trash2,
   User,
@@ -22,6 +23,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { startRegistration } from "@simplewebauthn/browser";
+import { useServerFn } from "@tanstack/react-start";
+import { beginPasskeyRegistration, completePasskeyRegistration, revokePasskey } from "@/lib/webauthn.functions";
 
 export const Route = createFileRoute("/_authenticated/conta")({
   head: () => ({
@@ -76,6 +80,10 @@ export function AccountPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isCpfVerified, setIsCpfVerified] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const beginPasskey = useServerFn(beginPasskeyRegistration);
+  const completePasskey = useServerFn(completePasskeyRegistration);
+  const revokeDevice = useServerFn(revokePasskey);
 
   // Endereço
   const [form, setForm] = useState({
@@ -114,6 +122,27 @@ export function AccountPage() {
       return data ?? [];
     },
   });
+
+  const { data: passkeys = [] } = useQuery({
+    queryKey: ["my-passkeys", user.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("webauthn_credentials").select("id,nickname,created_at,last_used_at,backed_up").is("revoked_at", null).order("created_at", { ascending: false });
+      if (error) throw error; return data ?? [];
+    },
+  });
+
+  async function addPasskey() {
+    if (!window.PublicKeyCredential) return toast.error("Este aparelho não oferece biometria/passkey.");
+    setPasskeyLoading(true);
+    try {
+      const challenge = await beginPasskey();
+      const response = await startRegistration({ optionsJSON: challenge.options });
+      await completePasskey({ data: { challengeId: challenge.challengeId, response, nickname: "Biometria deste aparelho" } });
+      await qc.invalidateQueries({ queryKey: ["my-passkeys"] });
+      toast.success("Biometria cadastrada. Você já pode usá-la para entrar.");
+    } catch (error) { toast.error(error instanceof Error && error.name !== "NotAllowedError" ? error.message : "Cadastro biométrico cancelado."); }
+    finally { setPasskeyLoading(false); }
+  }
 
   useEffect(() => {
     if (profile) {
@@ -386,6 +415,17 @@ export function AccountPage() {
               </Button>
             </div>
           </form>
+        </section>
+
+        <section className="rounded-lg border border-gray-200 bg-white p-5 sm:p-6 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div><h2 className="flex items-center gap-2 font-bold"><Fingerprint className="h-5 w-5 text-primary" /> Biometria e dispositivos</h2><p className="mt-1 max-w-xl text-xs text-gray-500">Cadastre a biometria deste aparelho para entrar sem senha. A HS Digital guarda somente uma chave pública, nunca sua digital ou seu rosto.</p></div>
+            <Button onClick={() => void addPasskey()} disabled={passkeyLoading}><Fingerprint className="h-4 w-4" /> {passkeyLoading ? "Cadastrando…" : "Cadastrar biometria"}</Button>
+          </div>
+          <div className="mt-4 space-y-2">
+            {passkeys.length === 0 && <p className="rounded-lg bg-gray-50 p-4 text-xs text-gray-500">Nenhum aparelho biométrico cadastrado.</p>}
+            {passkeys.map((device) => <div key={device.id} className="flex items-center justify-between rounded-lg border p-3 text-xs"><div><strong>{device.nickname}</strong><p className="text-gray-500">Cadastrado em {new Date(device.created_at).toLocaleDateString("pt-BR")}{device.last_used_at ? ` · usado em ${new Date(device.last_used_at).toLocaleDateString("pt-BR")}` : ""}</p></div><Button variant="ghost" size="sm" onClick={async () => { await revokeDevice({ data: { id: device.id } }); await qc.invalidateQueries({ queryKey: ["my-passkeys"] }); toast.success("Dispositivo removido."); }}><Trash2 className="h-4 w-4" /> Remover</Button></div>)}
+          </div>
         </section>
 
         {/* GESTÃO DE ENDEREÇOS */}

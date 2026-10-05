@@ -46,6 +46,7 @@ export function SiteHeader({
   const [open, setOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isBuyer, setIsBuyer] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   // Estado local para resposta rápida sem lag
@@ -78,13 +79,12 @@ export function SiteHeader({
     supabase.auth.getUser().then(async ({ data }) => {
       setSignedIn(!!data.user);
       if (data.user) {
-        const { data: role } = await supabase
+        const { data: roles } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", data.user.id)
-          .eq("role", "admin")
-          .maybeSingle();
-        setIsAdmin(Boolean(role));
+        setIsAdmin(Boolean(roles?.some((item) => item.role === "admin")));
+        setIsBuyer(Boolean(roles?.some((item) => item.role === "buyer") && !roles?.some((item) => item.role === "seller")));
         const { count: unread } = await supabase
           .from("order_messages")
           .select("id,order_conversations!inner(buyer_id)", { count: "exact", head: true })
@@ -97,7 +97,7 @@ export function SiteHeader({
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
         setSignedIn(!!session?.user);
-        if (!session?.user) setIsAdmin(false);
+        if (!session?.user) { setIsAdmin(false); setIsBuyer(false); }
       }
     });
     return () => data.subscription.unsubscribe();
@@ -259,18 +259,18 @@ export function SiteHeader({
                         Minhas compras
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
+                    {isBuyer && <DropdownMenuItem asChild>
                       <Link to="/cupons">
                         <TicketPercent className="mr-2 h-4 w-4" />
                         Meus cupons
                       </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
+                    </DropdownMenuItem>}
+                    {isBuyer && <DropdownMenuItem asChild>
                       <Link to="/jogos">
                         <Gamepad2 className="mr-2 h-4 w-4" />
                         Jogos & Prêmios
                       </Link>
-                    </DropdownMenuItem>
+                    </DropdownMenuItem>}
                     <DropdownMenuItem asChild>
                       <Link to="/notificacoes">
                         <Bell className="mr-2 h-4 w-4" />
@@ -327,10 +327,10 @@ export function SiteHeader({
           <Link to="/compras" className="hover:text-white">
             Minhas compras
           </Link>
-          <Link to="/jogos" className="hover:text-white">
+          {isBuyer && <Link to="/jogos" className="hover:text-white">
             Jogos & Prêmios
-          </Link>
-          {signedIn && <Link to="/cupons" className="hover:text-white">Meus cupons</Link>}
+          </Link>}
+          {isBuyer && <Link to="/cupons" className="hover:text-white">Meus cupons</Link>}
           <Link to="/notificacoes" className="hover:text-white">
             Notificações
           </Link>
@@ -370,14 +370,14 @@ export function SiteHeader({
                   <ShoppingBag className="h-4 w-4" />
                   Minhas compras
                 </Link>
-                <Link
+                {isBuyer && <Link
                   to="/cupons"
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
                 >
                   <TicketPercent className="h-4 w-4" />
                   Meus cupons
-                </Link>
+                </Link>}
                 <Link
                   to="/notificacoes"
                   onClick={() => setOpen(false)}
@@ -388,14 +388,14 @@ export function SiteHeader({
                 </Link>
               </>
             )}
-            <Link
+            {isBuyer && <Link
               to="/jogos"
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
             >
               <Gamepad2 className="h-4 w-4" />
               Jogos & Prêmios
-            </Link>
+            </Link>}
             <Link
               to="/carrinho"
               onClick={() => setOpen(false)}
