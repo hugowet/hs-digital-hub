@@ -23,7 +23,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { startRegistration } from "@simplewebauthn/browser";
 import { useServerFn } from "@tanstack/react-start";
 import {
   beginPasskeyRegistration,
@@ -150,6 +149,7 @@ export function AccountPage() {
     }
     setPasskeyLoading(true);
     try {
+      const { startRegistration } = await import("@simplewebauthn/browser");
       const challenge = await beginPasskey();
       const response = await startRegistration({ optionsJSON: JSON.parse(challenge.optionsJSON) });
       await completePasskey({
