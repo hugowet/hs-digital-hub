@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { startAuthentication } from "@simplewebauthn/browser";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/site-header";
@@ -50,6 +49,7 @@ function AuthPage() {
     }
     setLoading(true);
     try {
+      const { startAuthentication } = await import("@simplewebauthn/browser");
       const challenge = await beginBiometric();
       const response = await startAuthentication({
         optionsJSON: JSON.parse(challenge.optionsJSON),
