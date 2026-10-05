@@ -31,6 +31,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/product-card";
+import { IntroAnimation } from "@/components/intro-animation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
@@ -239,6 +240,7 @@ export function Home() {
 
   return (
     <div className="min-h-screen bg-[#ebebeb] text-gray-900">
+      <IntroAnimation />
       <SiteHeader query={search.q} onQueryChange={(q) => setSearch({ q })} suggestions={suggestions} />
 
       <main>

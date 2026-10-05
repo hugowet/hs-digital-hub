@@ -11,6 +11,8 @@
 
 <!-- LOVABLE:END -->
 
+- The storefront intro is a home-only, once-per-browser-session presentation so internal navigation remains immediate.
+
 - O checkout registra o pedido atomicamente, reserva estoque e cobra cada loja separadamente pelo Mercado Pago; a comissão usa `application_fee` e toda confirmação depende de webhook assinado mais consulta à API.
 - Credenciais da plataforma e tokens OAuth dos vendedores ficam criptografados no banco e são lidos apenas no servidor; produtos digitais são liberados pela confirmação idempotente do pagamento.
 - Papéis de comprador/vendedor são criados por trigger a partir do cadastro e nunca são gravados pelo navegador, evitando elevação de privilégio.
