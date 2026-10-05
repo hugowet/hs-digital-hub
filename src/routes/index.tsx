@@ -28,7 +28,7 @@ import {
   Watch,
   Zap,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { ProductCard } from "@/components/product-card";
 import { SiteFooter } from "@/components/site-footer";
@@ -165,6 +165,17 @@ export function Home() {
       },
     });
 
+  // Limpa a busca automaticamente se o usuário atualizou a página (F5/Reload)
+  useEffect(() => {
+    try {
+      const navEntry = window.performance?.getEntriesByType?.("navigation")?.[0] as
+        PerformanceNavigationTiming | undefined;
+      if (navEntry?.type === "reload" && search.q) {
+        setSearch({ q: undefined });
+      }
+    } catch {}
+  }, []);
+
   const promoProducts = useMemo(() => {
     return products.filter((p) => (p.compare_at_price && p.compare_at_price > p.price) || (p.sold_count ?? 0) > 10);
   }, [products]);
@@ -225,11 +236,18 @@ export function Home() {
                 Milhares de produtos nacionais e importados com frete grátis e compra protegida.
               </p>
 
-              <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
-                <Gift className="h-4 w-4" />
-                <span>
-                  FRETE GRÁTIS NA SUA 1ª COMPRA • Use o cupom <strong>PRIMEIRACOMPRA</strong>
-                </span>
+              <div className="mt-4 flex flex-wrap gap-2 items-center">
+                <div className="inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
+                  <Gift className="h-4 w-4" />
+                  <span>
+                    FRETE GRÁTIS NA 1ª COMPRA • Cupom <strong>PRIMEIRACOMPRA</strong>
+                  </span>
+                </div>
+                <Button asChild size="sm" className="bg-amber-400 hover:bg-amber-300 text-gray-900 font-bold text-xs">
+                  <Link to="/jogos">
+                    <Gamepad2 className="h-4 w-4 mr-1.5" /> Ganhar Mais Cupons
+                  </Link>
+                </Button>
               </div>
             </div>
           </div>
@@ -266,7 +284,7 @@ export function Home() {
         </section>
 
         <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-6 space-y-8">
-          {/* CATEGORIAS EM ROLAGEM HORIZONTAL PERFEITA NO CELULAR */}
+          {/* CATEGORIAS EM ROLAGEM HORIZONTAL NO CELULAR */}
           <section id="categorias" className="rounded-xl bg-white p-3 sm:p-4 shadow-sm border border-gray-100">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-gray-700">
@@ -316,7 +334,7 @@ export function Home() {
             </div>
           </section>
 
-          {/* VITRINE PRINCIPAL DE PRODUTOS */}
+          {/* VITRINE DE PRODUTOS */}
           <section className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-lg border border-gray-100">
               <div>
