@@ -95,7 +95,12 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.52 0.24 296);
 
-  --gradient-brand: linear-gradient(118deg, var(--ink) 0%, oklch(0.23 0.07 295) 52%, oklch(0.42 0.19 296) 100%);
+  --gradient-brand: linear-gradient(
+    118deg,
+    var(--ink) 0%,
+    oklch(0.23 0.07 295) 52%,
+    oklch(0.42 0.19 296) 100%
+  );
   --gradient-primary: linear-gradient(135deg, var(--primary), var(--primary-glow));
   --shadow-card: 0 1px 2px oklch(0.16 0.02 290 / 6%), 0 8px 24px -12px oklch(0.16 0.02 290 / 18%);
   --shadow-hover: 0 12px 34px -12px oklch(0.52 0.24 296 / 38%);
@@ -173,15 +178,10 @@ html {
 
 @utility game-wheel-bg {
   background: conic-gradient(
-    from -22.5deg,
-    var(--wheel-a) 0deg 45deg,
-    var(--wheel-b) 45deg 90deg,
-    var(--wheel-c) 90deg 135deg,
-    var(--wheel-d) 135deg 180deg,
-    var(--wheel-a) 180deg 225deg,
-    var(--wheel-b) 225deg 270deg,
-    var(--wheel-c) 270deg 315deg,
-    var(--wheel-d) 315deg 360deg
+    from -45deg,
+    var(--wheel-a) 0deg 90deg,
+    var(--wheel-b) 90deg 180deg,
+    var(--wheel-c) 180deg 270deg,
+    var(--wheel-d) 270deg 360deg
   );
 }
-

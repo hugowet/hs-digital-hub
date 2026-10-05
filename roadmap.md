@@ -43,13 +43,13 @@
 - [x] Adicionar acompanhamento de entrega em cinco etapas
 - [x] Adicionar roleta, raspadinha interativa, cobrinha e cupons de frete válidos por 24 horas.
 - [x] Permitir usar cupons ganhos nos jogos durante o checkout, com teto de R$ 30.
-- [ ] Adicionar entrada por biometria/passkey, com cadastro após autenticação e credenciais protegidas por usuário.
-- [ ] Restringir Jogos & Prêmios a compradores e ocultar o acesso de contas vendedoras.
-- [ ] Corrigir os rótulos da roleta e transformar cada jogo em uma experiência de tela inteira.
-- [ ] Melhorar a cobrinha e adicionar Pac-Man, Flappy Bird e corredor de estrada, sem prêmios por partida isolada.
-- [ ] Somar moedas dos quatro jogos e liberar cupom de 10% no frete a cada 1.000 moedas.
-- [ ] Tornar os jogos mais difíceis após 500 moedas e limitar frete grátis de até R$ 30 a uma vez por mês por usuário.
-- [ ] Exibir “Vem brincar na HS e concorra a prêmios” antes de iniciar cada jogo.
+- [x] Adicionar entrada por biometria/passkey, com cadastro após autenticação e credenciais protegidas por usuário.
+- [x] Restringir Jogos & Prêmios a compradores e ocultar o acesso de contas vendedoras.
+- [x] Corrigir os rótulos da roleta e transformar cada jogo em uma experiência de tela inteira.
+- [x] Melhorar a cobrinha e adicionar Pac-Man, Flappy Bird e corredor de estrada, sem prêmios por partida isolada.
+- [x] Somar moedas dos quatro jogos e liberar cupom de 10% no frete a cada 1.000 moedas.
+- [x] Tornar os jogos mais difíceis após 500 moedas e limitar frete grátis de até R$ 30 a uma vez por mês por usuário.
+- [x] Exibir “Vem brincar na HS e concorra a prêmios” antes de iniciar cada jogo.
 
 - [x] Adicionar descrição longa ao cadastro de produto e persistir no catálogo.
 - [x] Adicionar aba Painel do Vendedor com pedidos da loja.

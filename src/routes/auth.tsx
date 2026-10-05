@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { startAuthentication } from "@simplewebauthn/browser";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/site-header";
@@ -8,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { beginPasskeyLogin, completePasskeyLogin } from "@/lib/webauthn.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { Fingerprint } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -36,6 +40,39 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const beginBiometric = useServerFn(beginPasskeyLogin);
+  const completeBiometric = useServerFn(completePasskeyLogin);
+
+  async function handleBiometric() {
+    if (!window.PublicKeyCredential) {
+      toast.error("Este aparelho não oferece entrada biométrica.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const challenge = await beginBiometric();
+      const response = await startAuthentication({
+        optionsJSON: JSON.parse(challenge.optionsJSON),
+      });
+      const session = await completeBiometric({
+        data: { challengeId: challenge.challengeId, response },
+      });
+      const { error } = await supabase.auth.setSession({
+        access_token: session.accessToken,
+        refresh_token: session.refreshToken,
+      });
+      if (error) throw error;
+      navigate({ to: "/" });
+    } catch (error) {
+      toast.error(
+        error instanceof Error && error.name !== "NotAllowedError"
+          ? error.message
+          : "Biometria cancelada ou não reconhecida.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -177,9 +214,22 @@ function AuthPage() {
           )}
 
           {!awaitingConfirmation && mode === "signin" && (
-            <Button variant="outline" className="mt-3 w-full" onClick={handleGoogle}>
-              Continuar com Google
-            </Button>
+            <div className="mt-3 space-y-2">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => void handleBiometric()}
+                disabled={loading}
+              >
+                <Fingerprint className="h-4 w-4" /> Entrar com biometria
+              </Button>
+              <Button variant="outline" className="w-full" onClick={handleGoogle}>
+                Continuar com Google
+              </Button>
+              <p className="text-center text-[11px] text-muted-foreground">
+                Use a digital, Face ID ou PIN já protegido pelo seu aparelho.
+              </p>
+            </div>
           )}
 
           <button

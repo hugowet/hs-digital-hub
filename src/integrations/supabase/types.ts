@@ -64,6 +64,39 @@ export type Database = {
           },
         ]
       }
+      arcade_game_sessions: {
+        Row: {
+          accepted_coins: number | null
+          expires_at: string
+          game_type: string
+          id: string
+          started_at: string
+          submitted_at: string | null
+          submitted_coins: number | null
+          user_id: string
+        }
+        Insert: {
+          accepted_coins?: number | null
+          expires_at?: string
+          game_type: string
+          id?: string
+          started_at?: string
+          submitted_at?: string | null
+          submitted_coins?: number | null
+          user_id: string
+        }
+        Update: {
+          accepted_coins?: number | null
+          expires_at?: string
+          game_type?: string
+          id?: string
+          started_at?: string
+          submitted_at?: string | null
+          submitted_coins?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       digital_deliveries: {
         Row: {
           buyer_id: string
@@ -1556,6 +1589,30 @@ export type Database = {
           },
         ]
       }
+      user_game_wallets: {
+        Row: {
+          coin_balance: number
+          lifetime_coins: number
+          rewarded_milestones: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coin_balance?: number
+          lifetime_coins?: number
+          rewarded_milestones?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coin_balance?: number
+          lifetime_coins?: number
+          rewarded_milestones?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1573,6 +1630,78 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      webauthn_challenges: {
+        Row: {
+          challenge: string
+          challenge_type: string
+          created_at: string
+          expires_at: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          challenge: string
+          challenge_type: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          challenge?: string
+          challenge_type?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      webauthn_credentials: {
+        Row: {
+          backed_up: boolean
+          counter: number
+          created_at: string
+          credential_id: string
+          device_type: string
+          id: string
+          last_used_at: string | null
+          nickname: string
+          public_key: string
+          revoked_at: string | null
+          transports: string[]
+          user_id: string
+        }
+        Insert: {
+          backed_up?: boolean
+          counter?: number
+          created_at?: string
+          credential_id: string
+          device_type: string
+          id?: string
+          last_used_at?: string | null
+          nickname?: string
+          public_key: string
+          revoked_at?: string | null
+          transports?: string[]
+          user_id: string
+        }
+        Update: {
+          backed_up?: boolean
+          counter?: number
+          created_at?: string
+          credential_id?: string
+          device_type?: string
+          id?: string
+          last_used_at?: string | null
+          nickname?: string
+          public_key?: string
+          revoked_at?: string | null
+          transports?: string[]
           user_id?: string
         }
         Relationships: []
@@ -1663,6 +1792,14 @@ export type Database = {
         }
         Returns: string
       }
+      finish_arcade_game: {
+        Args: { _coins: number; _session_id: string }
+        Returns: {
+          accepted_coins: number
+          coupon_code: string
+          total_coins: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1687,6 +1824,14 @@ export type Database = {
           _usd_brl_rate: number
         }
         Returns: number
+      }
+      start_arcade_game: {
+        Args: { _game_type: string }
+        Returns: {
+          hard_mode: boolean
+          session_id: string
+          total_coins: number
+        }[]
       }
     }
     Enums: {
