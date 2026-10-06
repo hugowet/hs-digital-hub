@@ -3,8 +3,13 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const gameSchema = z.object({ gameType: z.enum(["wheel", "scratch"]) });
-const arcadeSchema = z.object({ gameType: z.enum(["snake", "pacman", "flappy", "highway"]) });
+const gameSchema = z.object({
+  gameType: z.enum(["wheel", "scratch", "tigrinho"]),
+});
+
+const arcadeSchema = z.object({
+  gameType: z.enum(["snake", "pacman", "flappy", "highway"]),
+});
 
 export const playDailyGame = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -27,21 +32,18 @@ export const getGameStatus = createServerFn({ method: "GET" })
       context.supabase.rpc("has_role", { _user_id: context.userId, _role: "seller" }),
     ]);
     if (!buyer || seller) throw new Error("Jogos disponíveis somente para compradores.");
-    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
-      new Date(),
-    );
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
     const { data, error } = await context.supabase
       .from("game_plays")
       .select("game_type,outcome")
       .eq("played_on", today);
     if (error) throw error;
-    const { data: wallet } = await context.supabase
-      .from("user_game_wallets")
-      .select("lifetime_coins")
-      .maybeSingle();
+    const { data: wallet } = await context.supabase.from("user_game_wallets").select("lifetime_coins").maybeSingle();
+
     return {
       wheel: data?.find((play) => play.game_type === "wheel")?.outcome ?? null,
       scratch: data?.find((play) => play.game_type === "scratch")?.outcome ?? null,
+      tigrinho: data?.find((play) => play.game_type === "tigrinho")?.outcome ?? null,
       coins: wallet?.lifetime_coins ?? 0,
     };
   });
@@ -60,9 +62,7 @@ export const startArcadeGame = createServerFn({ method: "POST" })
 export const finishArcadeGame = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z
-      .object({ sessionId: z.string().uuid(), coins: z.number().int().min(0).max(10000) })
-      .parse(input),
+    z.object({ sessionId: z.string().uuid(), coins: z.number().int().min(0).max(10000) }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { data: result, error } = await context.supabase.rpc("finish_arcade_game", {
