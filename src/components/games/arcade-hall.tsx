@@ -1,16 +1,4 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  ArrowDown,
-  Bird,
-  Car,
-  CircleDot,
-  Gamepad2,
-  Play,
-  RotateCcw,
-  X,
-} from "lucide-react";
+import { Bird, Car, CircleDot, Gamepad2, Play, RotateCcw, Sparkles, Touchpad, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,56 +9,65 @@ import { finishArcadeGame, startArcadeGame } from "@/lib/games.functions";
 
 type Game = "snake" | "pacman" | "flappy" | "highway";
 type Point = { x: number; y: number };
-const games: Array<{ id: Game; title: string; Icon: LucideIcon; help: string }> = [
+
+const games: Array<{
+  id: Game;
+  title: string;
+  Icon: LucideIcon;
+  help: string;
+  instruction: string;
+}> = [
   {
     id: "snake",
     title: "Cobrinha Turbo",
     Icon: Gamepad2,
-    help: "Colete moedas, atravesse as bordas e não encoste no próprio corpo.",
+    help: "Colete moedas sem bater no próprio corpo. O jogo começa devagar e ganha ritmo.",
+    instruction: "Deslize o dedo na tela para mudar a direção da cobrinha.",
   },
   {
     id: "pacman",
     title: "Come-Come",
     Icon: CircleDot,
-    help: "Coma as pastilhas e moedas do labirinto enquanto foge dos fantasmas.",
+    help: "Coma as pastilhas pelo labirinto e fuja dos fantasmas.",
+    instruction: "Deslize o dedo na tela (cima, baixo, esquerda ou direita).",
   },
   {
     id: "flappy",
     title: "Pássaro Voador",
     Icon: Bird,
-    help: "Toque na tela ou aperte espaço para passar entre os canos.",
+    help: "Passe entre os canos e colete moedas no ar.",
+    instruction: "Toque em qualquer lugar da tela para bater as asas e voar.",
   },
   {
     id: "highway",
     title: "Desvia e Coleta",
     Icon: Car,
-    help: "Troque de faixa, desvie dos carros e passe por cima das moedas.",
+    help: "Troque de faixa, desvie do tráfego e pegue moedas na pista.",
+    instruction: "Deslize o dedo para a esquerda ou direita para mudar de faixa.",
   },
 ];
 
-export function ArcadeHall({
-  initialCoins,
-  onCoins,
-}: {
-  initialCoins: number;
-  onCoins: (coins: number) => void;
-}) {
+export function ArcadeHall({ initialCoins, onCoins }: { initialCoins: number; onCoins: (coins: number) => void }) {
   const [selected, setSelected] = useState<(typeof games)[number] | null>(null);
+
   return (
     <section className="mt-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[.2em] text-primary">Arcade HS</p>
-          <h2 className="mt-1 text-2xl font-black">Quatro jogos, uma carteira de moedas</h2>
+          <p className="flex items-center gap-1.5 text-xs font-black uppercase tracking-[.2em] text-primary">
+            <Sparkles className="h-3.5 w-3.5" /> Arcade HS
+          </p>
+          <h2 className="mt-1 text-2xl font-black sm:text-3xl">Quatro jogos, uma carteira de moedas</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            A cada 1.000 moedas, você recebe um cupom de 10% no frete por 24 horas.
+            A cada 1.000 moedas acumuladas, você ganha 10% de desconto no frete por 24 horas.
           </p>
         </div>
-        <div className="rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground">
+        <div className="rounded-full bg-gradient-to-r from-amber-500 to-primary px-5 py-2.5 text-sm font-black text-white shadow-md">
           🪙 {initialCoins.toLocaleString("pt-BR")} moedas
         </div>
       </div>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {games.map((game) => (
           <button
             key={game.id}
@@ -78,18 +75,19 @@ export function ArcadeHall({
             className="group overflow-hidden rounded-2xl border bg-card text-left shadow-sm transition hover:-translate-y-1 hover:border-primary hover:shadow-xl"
           >
             <div className="grid h-36 place-items-center bg-gradient-to-br from-[#140825] via-[#3b0a69] to-[#7c24d4] transition group-hover:scale-105">
-              <game.Icon className="h-14 w-14 text-primary-foreground" strokeWidth={1.6} />
+              <game.Icon className="h-14 w-14 text-white" strokeWidth={1.8} />
             </div>
             <div className="p-4">
-              <h3 className="font-black">{game.title}</h3>
+              <h3 className="text-lg font-black">{game.title}</h3>
               <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{game.help}</p>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-primary">
-                <Play className="h-3 w-3" /> Jogar em tela cheia
+              <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-primary">
+                <Play className="h-3.5 w-3.5 fill-current" /> Jogar agora
               </span>
             </div>
           </button>
         ))}
       </div>
+
       {selected && (
         <ArcadeScreen
           game={selected}
@@ -120,14 +118,16 @@ function ArcadeScreen({
   const [phase, setPhase] = useState<"intro" | "playing" | "over">("intro");
   const [coins, setCoins] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [showTip, setShowTip] = useState(true);
+
   const input = useRef({ x: 1, y: 0, flap: false, lane: 1 });
-  const pointerStart = useRef<Point | null>(null);
+  const touchStart = useRef<Point | null>(null);
 
   const move = useCallback(
     (x: number, y: number) => {
       if (phase !== "playing") return;
       if (game.id === "flappy") {
-        if (y < 0) input.current.flap = true;
+        input.current.flap = true;
         return;
       }
       if (game.id === "highway") {
@@ -135,11 +135,41 @@ function ArcadeScreen({
         if (x > 0) input.current.lane = Math.min(2, input.current.lane + 1);
         return;
       }
+      // Cobrinha e Pacman: impede inversão direta instantânea
+      if (x !== 0 && input.current.x === -x) return;
+      if (y !== 0 && input.current.y === -y) return;
       input.current.x = x;
       input.current.y = y;
     },
     [game.id, phase],
   );
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    touchStart.current = { x: e.clientX, y: e.clientY };
+    if (game.id === "flappy") {
+      input.current.flap = true;
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!touchStart.current || phase !== "playing") return;
+    const dx = e.clientX - touchStart.current.x;
+    const dy = e.clientY - touchStart.current.y;
+    const threshold = 22;
+
+    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        move(dx > 0 ? 1 : -1, 0);
+      } else {
+        move(0, dy > 0 ? 1 : -1);
+      }
+      touchStart.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handlePointerUp = () => {
+    touchStart.current = null;
+  };
 
   const finish = useCallback(
     async (earned: number) => {
@@ -152,11 +182,12 @@ function ArcadeScreen({
         if (result) {
           onCoins(result.total_coins);
           setCoins(result.accepted_coins);
-          if (result.coupon_code)
-            toast.success("Você alcançou 1.000 moedas e ganhou 10% no frete!");
+          if (result.coupon_code) {
+            toast.success("Parabéns! Você alcançou 1.000 moedas e ganhou 10% no frete!");
+          }
         }
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Não foi possível salvar as moedas.");
+        toast.error(error instanceof Error ? error.message : "Não foi possível registrar as moedas.");
       }
     },
     [finishServer, onCoins],
@@ -170,355 +201,383 @@ function ArcadeScreen({
       sessionRef.current = result.session_id;
       input.current = { x: 1, y: 0, flap: false, lane: 1 };
       setCoins(0);
+      setShowTip(true);
       setPhase("playing");
+      setTimeout(() => setShowTip(false), 3800);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar o jogo.");
     } finally {
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (phase !== "playing") return;
+      if (e.key === "ArrowUp" || e.key === "w" || e.key === " ") move(0, -1);
+      if (e.key === "ArrowDown" || e.key === "s") move(0, 1);
+      if (e.key === "ArrowLeft" || e.key === "a") move(-1, 0);
+      if (e.key === "ArrowRight" || e.key === "d") move(1, 0);
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [move, phase]);
+
+  // Loop do jogo
   useEffect(() => {
     if (phase !== "playing") return;
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    const w = canvas.width,
-      h = canvas.height;
-    let raf = 0,
-      last = 0,
-      earned = 0,
-      alive = true;
-    const end = () => {
-      if (!alive) return;
-      alive = false;
-      cancelAnimationFrame(raf);
-      void finish(earned);
-    };
-    if (game.id === "snake") {
-      let snake: Point[] = [
-          { x: 7, y: 10 },
-          { x: 6, y: 10 },
-          { x: 5, y: 10 },
-        ],
-        food = { x: 15, y: 10 },
-        dir = { x: 1, y: 0 };
-      const tick = (t: number) => {
-        if (!alive) return;
-        if (t - last > (hardMode ? 82 : 125)) {
-          last = t;
-          const next = input.current;
-          if (!(next.x === -dir.x && next.y === -dir.y)) dir = { x: next.x, y: next.y };
-          const head = { x: (snake[0]!.x + dir.x + 22) % 22, y: (snake[0]!.y + dir.y + 22) % 22 };
-          if (snake.some((p) => p.x === head.x && p.y === head.y)) return end();
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animId = 0;
+    let score = 0;
+    let lastTick = performance.now();
+
+    // Estado Cobrinha
+    let snake = [
+      { x: 10, y: 10 },
+      { x: 9, y: 10 },
+      { x: 8, y: 10 },
+    ];
+    let food = { x: 15, y: 10 };
+
+    // Estado Come-Come
+    let pac = { x: 140, y: 140 };
+    let ghost = { x: 280, y: 280 };
+
+    // Estado Flappy
+    let birdY = 240;
+    let birdVel = 0;
+    let pipes: Array<{ x: number; top: number; bottom: number; passed: boolean }> = [];
+    let pipeTimer = 0;
+
+    // Estado Highway
+    let playerLane = 1;
+    let traffic: Array<{ lane: number; y: number; speed: number }> = [];
+    let coinItems: Array<{ lane: number; y: number }> = [];
+    let trafficTimer = 0;
+
+    const loop = (now: number) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (game.id === "snake") {
+        // Velocidade suave: começa em 210ms (bem devagar) e vai até 85ms
+        const step = Math.max(85, 210 - Math.min(125, score * 4));
+        if (now - lastTick >= step) {
+          lastTick = now;
+          const head = { ...snake[0] };
+          head.x = (head.x + input.current.x + 28) % 28;
+          head.y = (head.y + input.current.y + 28) % 28;
+
+          // Colisão com o corpo
+          if (snake.slice(1).some((s) => s.x === head.x && s.y === head.y)) {
+            void finish(score);
+            return;
+          }
+
           snake.unshift(head);
           if (head.x === food.x && head.y === food.y) {
-            earned += 10;
-            setCoins(earned);
-            do {
-              food = { x: Math.floor(Math.random() * 22), y: Math.floor(Math.random() * 22) };
-            } while (snake.some((p) => p.x === food.x && p.y === food.y));
-          } else snake.pop();
+            score += 1;
+            food = {
+              x: Math.floor(Math.random() * 26) + 1,
+              y: Math.floor(Math.random() * 26) + 1,
+            };
+          } else {
+            snake.pop();
+          }
         }
-        ctx.fillStyle = "#090313";
-        ctx.fillRect(0, 0, w, h);
-        const s = w / 22;
-        snake.forEach((p, i) => {
-          ctx.fillStyle = i ? "#8b2be2" : "#d7a8ff";
-          ctx.fillRect(p.x * s + 2, p.y * s + 2, s - 4, s - 4);
-        });
-        ctx.fillStyle = "#ffd43b";
+
+        // Render Cobrinha
+        ctx.fillStyle = "#0c0414";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Grade sutil
+        ctx.strokeStyle = "#ffffff08";
+        for (let i = 0; i < 560; i += 20) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, 560);
+          ctx.stroke();
+        }
+
+        // Comida / Moeda
+        ctx.fillStyle = "#facc15";
         ctx.beginPath();
-        ctx.arc((food.x + 0.5) * s, (food.y + 0.5) * s, s * 0.3, 0, Math.PI * 2);
+        ctx.arc(food.x * 20 + 10, food.y * 20 + 10, 8, 0, Math.PI * 2);
         ctx.fill();
-        raf = requestAnimationFrame(tick);
-      };
-      raf = requestAnimationFrame(tick);
-    } else if (game.id === "flappy") {
-      let y = h / 2,
-        velocity = 0,
-        x = 100,
-        pipes = [{ x: w, gap: h / 2 }],
-        passed = new Set<number>();
-      const tick = (t: number) => {
-        if (!alive) return;
-        const dt = Math.min(32, t - last || 16);
-        last = t;
+
+        // Corpo
+        snake.forEach((part, index) => {
+          ctx.fillStyle = index === 0 ? "#a855f7" : "#c084fc";
+          ctx.fillRect(part.x * 20 + 1, part.y * 20 + 1, 18, 18);
+        });
+      } else if (game.id === "pacman") {
+        const step = Math.max(70, 160 - Math.min(80, score * 3));
+        if (now - lastTick >= step) {
+          lastTick = now;
+          pac.x = Math.max(20, Math.min(520, pac.x + input.current.x * 16));
+          pac.y = Math.max(20, Math.min(520, pac.y + input.current.y * 16));
+
+          // Fantasma persegue devagar no início
+          const gSpeed = Math.min(9, 3 + Math.floor(score / 5));
+          if (ghost.x < pac.x) ghost.x += gSpeed;
+          else if (ghost.x > pac.x) ghost.x -= gSpeed;
+          if (ghost.y < pac.y) ghost.y += gSpeed;
+          else if (ghost.y > pac.y) ghost.y -= gSpeed;
+
+          // Moedas
+          score += 1;
+
+          // Colisão com fantasma
+          if (Math.hypot(pac.x - ghost.x, pac.y - ghost.y) < 26) {
+            void finish(score);
+            return;
+          }
+        }
+
+        ctx.fillStyle = "#07030e";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Come-come
+        ctx.fillStyle = "#facc15";
+        ctx.beginPath();
+        ctx.arc(pac.x, pac.y, 16, 0.2 * Math.PI, 1.8 * Math.PI);
+        ctx.lineTo(pac.x, pac.y);
+        ctx.fill();
+
+        // Fantasma
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.arc(ghost.x, ghost.y - 4, 15, Math.PI, 0, false);
+        ctx.lineTo(ghost.x + 15, ghost.y + 14);
+        ctx.lineTo(ghost.x - 15, ghost.y + 14);
+        ctx.fill();
+      } else if (game.id === "flappy") {
+        // Gravidade e salto suaves
         if (input.current.flap) {
-          velocity = -7;
+          birdVel = -6.5;
           input.current.flap = false;
         }
-        velocity += 0.38 * (dt / 16);
-        y += velocity * (dt / 16);
-        pipes.forEach((p, i) => {
-          p.x -= (hardMode ? 4.4 : 3.2) * (dt / 16);
-          if (!passed.has(i) && p.x < x) {
-            passed.add(i);
-            earned += 10;
-            setCoins(earned);
-          }
-          if (x + 13 > p.x && x - 13 < p.x + 58 && (y - 13 < p.gap - 72 || y + 13 > p.gap + 72))
-            end();
-        });
-        if (pipes[0]!.x < -70) {
-          pipes = [{ x: w, gap: 100 + Math.random() * (h - 200) }];
-          passed = new Set();
-        }
-        if (y < 0 || y > h) end();
-        ctx.fillStyle = "#170629";
-        ctx.fillRect(0, 0, w, h);
-        pipes.forEach((p) => {
-          ctx.fillStyle = "#21c46b";
-          ctx.fillRect(p.x, 0, 58, p.gap - 72);
-          ctx.fillRect(p.x, p.gap + 72, 58, h);
-        });
-        ctx.fillStyle = "#ffd43b";
-        ctx.beginPath();
-        ctx.arc(x, y, 14, 0, Math.PI * 2);
-        ctx.fill();
-        raf = requestAnimationFrame(tick);
-      };
-      raf = requestAnimationFrame(tick);
-    } else if (game.id === "highway") {
-      let objects = Array.from({ length: 6 }, (_, i) => ({
-        lane: i % 3,
-        y: -i * 130,
-        coin: i % 2 === 0,
-      }));
-      const tick = (t: number) => {
-        if (!alive) return;
-        const dt = Math.min(32, t - last || 16);
-        last = t;
-        const carY = h - 90;
-        objects.forEach((o) => {
-          o.y += (hardMode ? 7 : 5) * (dt / 16);
-          if (o.y > h) {
-            o.y = -100 - Math.random() * 300;
-            o.lane = Math.floor(Math.random() * 3);
-            o.coin = Math.random() > 0.45;
-          }
-          const ox = w * 0.2 + o.lane * w * 0.3;
-          if (Math.abs(o.y - carY) < 42 && o.lane === input.current.lane) {
-            if (o.coin) {
-              earned += 10;
-              setCoins(earned);
-              o.y = -150;
-            } else end();
-          }
-        });
-        ctx.fillStyle = "#191919";
-        ctx.fillRect(0, 0, w, h);
-        ctx.strokeStyle = "#fff8";
-        ctx.setLineDash([30, 25]);
-        [0.35, 0.65].forEach((n) => {
-          ctx.beginPath();
-          ctx.moveTo(w * n, 0);
-          ctx.lineTo(w * n, h);
-          ctx.stroke();
-        });
-        ctx.setLineDash([]);
-        objects.forEach((o) => {
-          const ox = w * 0.2 + o.lane * w * 0.3;
-          ctx.fillStyle = o.coin ? "#ffd43b" : "#ef4444";
-          o.coin
-            ? (ctx.beginPath(), ctx.arc(ox, o.y, 13, 0, Math.PI * 2), ctx.fill())
-            : ctx.fillRect(ox - 18, o.y - 30, 36, 60);
-        });
-        const cx = w * 0.2 + input.current.lane * w * 0.3;
-        ctx.fillStyle = "#8b2be2";
-        ctx.fillRect(cx - 20, carY - 32, 40, 64);
-        raf = requestAnimationFrame(tick);
-      };
-      raf = requestAnimationFrame(tick);
-    } else {
-      const size = 28,
-        cols = Math.floor(w / size),
-        rows = Math.floor(h / size);
-      let hero = { x: 1, y: 1 },
-        ghost = { x: cols - 2, y: rows - 2 },
-        dots = new Set<string>();
-      for (let y = 1; y < rows - 1; y += 2)
-        for (let x = 1; x < cols - 1; x += 2) dots.add(`${x},${y}`);
-      const tick = (t: number) => {
-        if (!alive) return;
-        if (t - last > (hardMode ? 105 : 155)) {
-          last = t;
-          hero = {
-            x: Math.max(0, Math.min(cols - 1, hero.x + input.current.x)),
-            y: Math.max(0, Math.min(rows - 1, hero.y + input.current.y)),
-          };
-          const key = `${hero.x},${hero.y}`;
-          if (dots.delete(key)) {
-            earned += 10;
-            setCoins(earned);
-          }
-          ghost = {
-            x: ghost.x + Math.sign(hero.x - ghost.x) * (Math.random() > 0.35 ? 1 : 0),
-            y: ghost.y + Math.sign(hero.y - ghost.y) * (Math.random() > 0.35 ? 1 : 0),
-          };
-        }
-        if (hero.x === ghost.x && hero.y === ghost.y) return end();
-        ctx.fillStyle = "#08031b";
-        ctx.fillRect(0, 0, w, h);
-        ctx.fillStyle = "#7050a0";
-        for (let x = 0; x < w; x += size * 4) ctx.fillRect(x, 0, 5, h);
-        ctx.fillStyle = "#f5d90a";
-        dots.forEach((k) => {
-          const [x, y] = k.split(",").map(Number);
-          ctx.beginPath();
-          ctx.arc((x! + 0.5) * size, (y! + 0.5) * size, 4, 0, Math.PI * 2);
-          ctx.fill();
-        });
-        ctx.beginPath();
-        ctx.arc((hero.x + 0.5) * size, (hero.y + 0.5) * size, 12, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#ff4d8d";
-        ctx.fillRect(ghost.x * size + 5, ghost.y * size + 5, 20, 20);
-        raf = requestAnimationFrame(tick);
-      };
-      raf = requestAnimationFrame(tick);
-    }
-    return () => {
-      alive = false;
-      cancelAnimationFrame(raf);
-    };
-  }, [phase, game.id, hardMode, finish]);
+        birdVel += 0.32;
+        birdY += birdVel;
 
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => {
-      if (phase !== "playing" || ![" ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
-      e.preventDefault();
-      if (game.id === "flappy") {
-        if (e.key === " " || e.key === "ArrowUp") input.current.flap = true;
-        return;
-      }
-      if (e.key === "ArrowUp") move(0, -1);
-      if (e.key === "ArrowDown") move(0, 1);
-      if (e.key === "ArrowLeft") move(-1, 0);
-      if (e.key === "ArrowRight") move(1, 0);
-    };
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
-  }, [game.id, move, phase]);
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-[#090313] text-white"
-      onPointerDown={(event) => {
-        pointerStart.current = { x: event.clientX, y: event.clientY };
-      }}
-      onPointerUp={(event) => {
-        const startPoint = pointerStart.current;
-        pointerStart.current = null;
-        if (!startPoint || phase !== "playing") return;
-        const dx = event.clientX - startPoint.x;
-        const dy = event.clientY - startPoint.y;
-        if (Math.max(Math.abs(dx), Math.abs(dy)) < 28) {
-          if (game.id === "flappy") input.current.flap = true;
+        pipeTimer += 1;
+        // Intervalo de canos mais espaçado no começo
+        if (pipeTimer > 110) {
+          pipeTimer = 0;
+          const gap = Math.max(140, 190 - Math.min(50, score * 3));
+          const top = Math.random() * (canvas.height - gap - 80) + 40;
+          pipes.push({ x: canvas.width, top, bottom: top + gap, passed: false });
+        }
+
+        const pipeSpeed = Math.min(5, 2.5 + score * 0.1);
+        pipes.forEach((p) => {
+          p.x -= pipeSpeed;
+          if (!p.passed && p.x < 100) {
+            p.passed = true;
+            score += 1;
+          }
+        });
+        pipes = pipes.filter((p) => p.x > -80);
+
+        // Colisões
+        if (birdY < 0 || birdY > canvas.height - 20) {
+          void finish(score);
           return;
         }
-        if (Math.abs(dx) > Math.abs(dy)) move(Math.sign(dx), 0);
-        else move(0, Math.sign(dy));
-      }}
-      onPointerCancel={() => {
-        pointerStart.current = null;
-      }}
-    >
-      <div className="flex items-center justify-between border-b border-white/10 bg-black/30 px-4 py-3">
-        <div>
-          <strong className="flex items-center gap-2">
-            <game.Icon className="h-5 w-5" /> {game.title}
-          </strong>
-          <span className="ml-3 text-xs text-white/60">
-            🪙 {coins}
-            {hardMode ? " · modo avançado" : ""}
-          </span>
+        for (const p of pipes) {
+          if (p.x < 120 && p.x + 60 > 80) {
+            if (birdY < p.top || birdY > p.bottom) {
+              void finish(score);
+              return;
+            }
+          }
+        }
+
+        ctx.fillStyle = "#1e1035";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Canos
+        ctx.fillStyle = "#10b981";
+        pipes.forEach((p) => {
+          ctx.fillRect(p.x, 0, 56, p.top);
+          ctx.fillRect(p.x, p.bottom, 56, canvas.height - p.bottom);
+        });
+
+        // Pássaro
+        ctx.fillStyle = "#f59e0b";
+        ctx.beginPath();
+        ctx.arc(100, birdY, 14, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (game.id === "highway") {
+        playerLane = input.current.lane;
+        trafficTimer += 1;
+
+        if (trafficTimer % 65 === 0) {
+          const l = Math.floor(Math.random() * 3);
+          traffic.push({ lane: l, y: -80, speed: Math.min(7, 3 + score * 0.15) });
+        }
+        if (trafficTimer % 45 === 0) {
+          const l = Math.floor(Math.random() * 3);
+          coinItems.push({ lane: l, y: -30 });
+        }
+
+        traffic.forEach((t) => (t.y += t.speed));
+        coinItems.forEach((c) => (c.y += 4));
+
+        // Coleta moedas
+        coinItems = coinItems.filter((c) => {
+          if (c.lane === playerLane && Math.abs(c.y - 460) < 30) {
+            score += 1;
+            return false;
+          }
+          return c.y < canvas.height + 40;
+        });
+
+        // Colisão carro
+        for (const t of traffic) {
+          if (t.lane === playerLane && Math.abs(t.y - 460) < 40) {
+            void finish(score);
+            return;
+          }
+        }
+        traffic = traffic.filter((t) => t.y < canvas.height + 80);
+
+        // Desenhar pista
+        ctx.fillStyle = "#18181b";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Faixas divisórias
+        ctx.strokeStyle = "#e4e4e7";
+        ctx.lineWidth = 4;
+        ctx.setLineDash([20, 20]);
+        ctx.beginPath();
+        ctx.moveTo(186, 0);
+        ctx.lineTo(186, canvas.height);
+        ctx.moveTo(373, 0);
+        ctx.lineTo(373, canvas.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Carros do tráfego
+        ctx.fillStyle = "#ef4444";
+        traffic.forEach((t) => {
+          const x = 50 + t.lane * 186;
+          ctx.fillRect(x, t.y, 60, 80);
+        });
+
+        // Moedas na pista
+        ctx.fillStyle = "#facc15";
+        coinItems.forEach((c) => {
+          const x = 80 + c.lane * 186;
+          ctx.beginPath();
+          ctx.arc(x, c.y, 12, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Jogador
+        ctx.fillStyle = "#3b82f6";
+        const playerX = 50 + playerLane * 186;
+        ctx.fillRect(playerX, 460, 60, 80);
+      }
+
+      // Painel de pontuação no topo do canvas
+      ctx.fillStyle = "#000000a0";
+      ctx.fillRect(16, 16, 170, 42);
+      ctx.fillStyle = "#facc15";
+      ctx.font = "bold 18px sans-serif";
+      ctx.fillText(`🪙 Moedas: ${score}`, 28, 43);
+
+      animId = requestAnimationFrame(loop);
+    };
+
+    animId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animId);
+  }, [finish, game.id, phase]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/95 text-white backdrop-blur-md">
+      {/* Barra superior */}
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/20 text-primary">
+            <game.Icon className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="font-black text-white sm:text-lg">{game.title}</h3>
+            <p className="text-xs text-white/60">Controle direto na tela por toque</p>
+          </div>
         </div>
-        <Button variant="ghost" size="icon" className="text-white" onClick={onClose}>
-          <X />
+        <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full text-white hover:bg-white/10">
+          <X className="h-6 w-6" />
         </Button>
       </div>
-      <div className="relative flex min-h-0 flex-1 items-center justify-center p-3">
+
+      {/* Área central do jogo */}
+      <div className="relative flex flex-1 items-center justify-center p-2 sm:p-4">
         {phase === "intro" && (
-          <div className="max-w-xl text-center">
-            <game.Icon className="mx-auto h-20 w-20 text-fuchsia-300" strokeWidth={1.5} />
-            <p className="mt-6 text-sm font-black uppercase tracking-[.25em] text-fuchsia-300">
-              Vem brincar na HS e concorra a prêmios
-            </p>
-            <h2 className="mt-3 text-4xl font-black">{game.title}</h2>
-            <p className="mx-auto mt-4 max-w-md text-white/70">{game.help}</p>
-            <p className="mt-3 text-sm text-yellow-300">
-              Colete moedas. Depois de 500 moedas, a velocidade aumenta.
-            </p>
-            <Button size="lg" className="mt-8" disabled={busy} onClick={() => void start()}>
-              <Play /> {busy ? "Preparando…" : "Começar partida"}
+          <div className="max-w-md p-6 text-center">
+            <game.Icon className="mx-auto h-20 w-20 text-primary" />
+            <h2 className="mt-4 text-3xl font-black">{game.title}</h2>
+            <p className="mt-2 text-sm text-white/70">{game.help}</p>
+
+            <div className="mt-6 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm font-semibold text-primary-foreground">
+              <Touchpad className="mx-auto mb-2 h-7 w-7 text-primary" />
+              {game.instruction}
+            </div>
+
+            <Button
+              size="lg"
+              className="mt-8 w-full bg-primary py-6 text-lg font-black text-white hover:bg-primary/90"
+              disabled={busy}
+              onClick={() => void start()}
+            >
+              <Play className="mr-2 h-5 w-5 fill-current" />
+              {busy ? "Preparando…" : "Iniciar jogo"}
             </Button>
           </div>
         )}
+
         {phase === "playing" && (
-          <canvas
-            ref={canvasRef}
-            width={560}
-            height={560}
-            className="max-h-full max-w-full touch-none rounded-2xl border border-fuchsia-400/30 bg-black shadow-2xl"
-          />
+          <div className="relative flex h-full w-full items-center justify-center">
+            {/* Aviso flutuante de instrução nos primeiros segundos */}
+            {showTip && (
+              <div className="pointer-events-none absolute top-4 z-20 flex animate-bounce items-center gap-2 rounded-full bg-primary/90 px-5 py-2.5 text-xs font-black text-white shadow-xl backdrop-blur">
+                <Touchpad className="h-4 w-4" />
+                {game.instruction}
+              </div>
+            )}
+
+            <canvas
+              ref={canvasRef}
+              width={560}
+              height={560}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              className="aspect-square max-h-[82vh] w-auto max-w-full touch-none select-none rounded-2xl border-2 border-primary/40 bg-black shadow-2xl"
+            />
+          </div>
         )}
+
         {phase === "over" && (
-          <div className="text-center">
-            <Gamepad2 className="mx-auto h-14 w-14 text-fuchsia-300" />
-            <h2 className="mt-4 text-3xl font-black">Fim de jogo</h2>
-            <p className="mt-2 text-xl text-yellow-300">Você garantiu {coins} moedas</p>
-            <div className="mt-6 flex gap-3">
-              <Button onClick={() => void start()}>
-                <RotateCcw />
-                Jogar novamente
+          <div className="max-w-sm rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur-lg">
+            <Gamepad2 className="mx-auto h-16 w-16 text-primary" />
+            <h2 className="mt-4 text-3xl font-black">Fim de partida!</h2>
+            <p className="mt-2 text-xl font-bold text-amber-400">🪙 +{coins} moedas acumuladas</p>
+            <div className="mt-8 flex flex-col gap-3">
+              <Button size="lg" className="w-full font-bold" onClick={() => void start()}>
+                <RotateCcw className="mr-2 h-4 w-4" /> Jogar novamente
               </Button>
-              <Button variant="secondary" onClick={onClose}>
-                Voltar à central
+              <Button size="lg" variant="secondary" className="w-full" onClick={onClose}>
+                Voltar à vitrine
               </Button>
             </div>
           </div>
         )}
       </div>
-      {phase === "playing" && (
-        <div className="flex justify-center gap-3 bg-black/40 p-3">
-          {game.id === "flappy" ? (
-            <Button
-              variant="secondary"
-              className="min-w-40"
-              onClick={() => {
-                input.current.flap = true;
-              }}
-            >
-              <ArrowUp /> Voar
-            </Button>
-          ) : game.id === "highway" ? (
-            <>
-              <Button variant="secondary" size="icon" onClick={() => move(-1, 0)} aria-label="Mudar para a faixa esquerda">
-                <ArrowLeft />
-              </Button>
-              <Button variant="secondary" size="icon" onClick={() => move(1, 0)} aria-label="Mudar para a faixa direita">
-                <ArrowRight />
-              </Button>
-            </>
-          ) : (
-            <div className="grid grid-cols-3 gap-2">
-              <span />
-              <Button variant="secondary" size="icon" onClick={() => move(0, -1)} aria-label="Mover para cima">
-                <ArrowUp />
-              </Button>
-              <span />
-              <Button variant="secondary" size="icon" onClick={() => move(-1, 0)} aria-label="Mover para a esquerda">
-                <ArrowLeft />
-              </Button>
-              <Button variant="secondary" size="icon" onClick={() => move(0, 1)} aria-label="Mover para baixo">
-                <ArrowDown />
-              </Button>
-              <Button variant="secondary" size="icon" onClick={() => move(1, 0)} aria-label="Mover para a direita">
-                <ArrowRight />
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
