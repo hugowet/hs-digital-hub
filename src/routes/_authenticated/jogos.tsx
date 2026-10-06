@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Flame, Gift, RotateCw, Sparkles, TicketPercent, Trophy } from "lucide-react";
+import { Gift, RotateCw, Sparkles, TicketPercent } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { toast } from "sonner";
 
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/jogos")({
       { property: "og:title", content: "Jogos & Prêmios · HS Digital" },
       {
         property: "og:description",
-        content: "Tigrinho, roleta, raspadinha e arcade com prêmios na HS Digital.",
+        content: "Roleta, raspadinha e arcade com prêmios na HS Digital.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -48,9 +48,8 @@ function GamesPage() {
   const [status, setStatus] = useState<{
     wheel: string | null;
     scratch: string | null;
-    tigrinho: string | null;
     coins: number;
-  }>({ wheel: null, scratch: null, tigrinho: null, coins: 0 });
+  }>({ wheel: null, scratch: null, coins: 0 });
 
   useEffect(() => {
     statusFn()
@@ -64,28 +63,22 @@ function GamesPage() {
       <main className="mx-auto w-full max-w-7xl px-4 py-8">
         <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
           <div>
-            <p className="flex items-center gap-2 text-sm font-black text-amber-500 uppercase tracking-wider">
+            <p className="flex items-center gap-2 text-sm font-bold text-amber-500">
               <Sparkles className="h-4 w-4" /> Prêmios Diários Oficiais
             </p>
-            <h1 className="mt-2 text-3xl font-black sm:text-4xl">Jogos & Prêmios HS Digital</h1>
+            <h1 className="mt-2 text-3xl font-black sm:text-4xl">Jogos & Prêmios</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Gire a roleta, solte o Tigrinho e raspe a cartela. Ganhe cupons reais de frete grátis e descontos
-              aplicados direto no seu carrinho!
+              Gire a roleta e raspe a cartela diariamente para ganhar cupons de desconto no frete.
             </p>
           </div>
-          <Button asChild variant="outline" className="border-primary/40 font-bold">
+          <Button asChild variant="outline" className="font-bold">
             <Link to="/cupons">
-              <TicketPercent className="h-4 w-4 text-primary" /> Meus Cupons Salvos
+              <TicketPercent className="h-4 w-4 text-primary" /> Meus Cupons
             </Link>
           </Button>
         </header>
 
-        {/* 3 Jogos de Sorte Diários com Exclusividade Mútua */}
-        <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <TigrinhoGame
-            played={Boolean(status.tigrinho)}
-            onPlayed={(outcome) => setStatus((s) => ({ ...s, tigrinho: outcome }))}
-          />
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <WheelGame
             played={Boolean(status.wheel)}
             onPlayed={(outcome) => setStatus((s) => ({ ...s, wheel: outcome }))}
@@ -96,118 +89,9 @@ function GamesPage() {
           />
         </div>
 
-        {/* Arcade dos 4 Jogos de Habilidade */}
         <ArcadeHall initialCoins={status.coins} onCoins={(coins) => setStatus((current) => ({ ...current, coins }))} />
       </main>
       <SiteFooter />
-    </div>
-  );
-}
-
-function TigrinhoGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome: Outcome) => void }) {
-  const play = useServerFn(playDailyGame);
-  const [spinning, setSpinning] = useState(false);
-  const [reels, setReels] = useState(["🐯", "💰", "⚡"]);
-  const [result, setResult] = useState<Outcome | null>(null);
-
-  const symbols = ["🐯", "💰", "⚡", "💎", "⭐", "📦"];
-
-  const spinReels = async () => {
-    if (played || spinning) return;
-    setSpinning(true);
-    setResult(null);
-
-    const interval = setInterval(() => {
-      setReels([
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)],
-      ]);
-    }, 80);
-
-    try {
-      const reward = await play({ data: { gameType: "tigrinho" } });
-      const outcome = reward.outcome as Outcome;
-
-      setTimeout(() => {
-        clearInterval(interval);
-        if (outcome === "free_shipping") {
-          setReels(["🐯", "🐯", "🐯"]);
-        } else if (outcome === "shipping_10") {
-          setReels(["💎", "💎", "💎"]);
-        } else if (outcome === "shipping_5") {
-          setReels(["💰", "💰", "💰"]);
-        } else {
-          setReels(["🐯", "📦", "⚡"]);
-        }
-        setResult(outcome);
-        onPlayed(outcome);
-        setSpinning(false);
-
-        if (outcome !== "none") {
-          toast.success("O TIGRINHO SOLTOU O PRÊMIO! Cupom gerado com sucesso!");
-        } else {
-          toast.info("Não foi dessa vez. Volte amanhã para tentar novamente!");
-        }
-      }, 2000);
-    } catch (err) {
-      clearInterval(interval);
-      setSpinning(false);
-      toast.error(err instanceof Error ? err.message : "Erro ao girar o Tigrinho.");
-    }
-  };
-
-  return (
-    <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-gradient-to-br from-amber-950/60 via-card to-background p-6 shadow-md border-amber-500/30">
-      <div>
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-black uppercase text-amber-400">
-            <Flame className="h-3.5 w-3.5" /> Vale-Bônus
-          </span>
-          <span className="text-xs font-semibold text-muted-foreground">1x por dia</span>
-        </div>
-        <h3 className="mt-3 text-xl font-black text-foreground">Tigrinho da Sorte</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Alinhe os 3 símbolos iguais para faturar frete grátis ou até 10% de desconto.
-        </p>
-
-        {/* Cilindros / Roletas do Tigrinho */}
-        <div className="mt-6 flex items-center justify-center gap-3 rounded-xl border border-amber-500/40 bg-black/40 p-4 shadow-inner">
-          {reels.map((sym, i) => (
-            <div
-              key={i}
-              className={`flex h-20 w-16 items-center justify-center rounded-lg bg-gradient-to-b from-amber-500/20 to-black/60 text-4xl shadow-md border border-amber-400/20 ${
-                spinning ? "animate-bounce" : ""
-              }`}
-            >
-              {sym}
-            </div>
-          ))}
-        </div>
-
-        {result && (
-          <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-center">
-            <p className="text-xs font-black uppercase tracking-wider text-amber-400">Resultado:</p>
-            <p className="mt-0.5 text-sm font-black text-foreground">{rewardText[result]}</p>
-          </div>
-        )}
-      </div>
-
-      <Button
-        onClick={spinReels}
-        disabled={played || spinning}
-        className="mt-6 w-full bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black hover:opacity-95 text-sm h-11 shadow-lg"
-      >
-        {spinning ? (
-          <span className="flex items-center gap-2">
-            <RotateCw className="h-4 w-4 animate-spin" /> Rodando os cilindros...
-          </span>
-        ) : played ? (
-          "Rodada de hoje já utilizada"
-        ) : (
-          "Girar o Tigrinho"
-        )}
-      </Button>
     </div>
   );
 }
@@ -234,9 +118,9 @@ function WheelGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome: 
         onPlayed(outcome);
         setSpinning(false);
         if (outcome !== "none") {
-          toast.success("Parabéns! Você ganhou um desconto de frete na Roleta!");
+          toast.success("Parabéns! Você ganhou um cupom de frete!");
         } else {
-          toast.info("Não foi dessa vez. Volte amanhã!");
+          toast.info("Não foi dessa vez. Volte amanhã para tentar novamente!");
         }
       }, 3500);
     } catch (err) {
@@ -254,22 +138,22 @@ function WheelGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome: 
           </span>
           <span className="text-xs font-semibold text-muted-foreground">1x por dia</span>
         </div>
-        <h3 className="mt-3 text-xl font-black text-foreground">Roleta de Frete</h3>
+        <h3 className="mt-3 text-xl font-black text-foreground">Roleta da Sorte</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Gire e tente a sorte para faturar frete grátis direto no seu pedido.
+          Gire para tentar a sorte e ganhar até frete grátis para suas compras.
         </p>
 
         <div className="relative mt-6 flex items-center justify-center py-4">
           <div className="absolute top-2 z-10 -translate-x-1/2 text-2xl font-black text-amber-500 drop-shadow">▼</div>
           <div
-            className="flex h-40 w-40 items-center justify-center rounded-full border-4 border-primary/50 shadow-xl transition-transform duration-[3500ms] ease-out"
+            className="flex h-44 w-44 items-center justify-center rounded-full border-4 border-primary/50 shadow-xl transition-transform duration-[3500ms] ease-out"
             style={{
               transform: `rotate(${rotation}deg)`,
               background:
                 "conic-gradient(#f59e0b 0deg 90deg, #3b82f6 90deg 180deg, #10b981 180deg 270deg, #64748b 270deg 360deg)",
             }}
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-card shadow-inner">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-card shadow-inner">
               <Gift className="h-6 w-6 text-foreground" />
             </div>
           </div>
@@ -283,7 +167,7 @@ function WheelGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome: 
         )}
       </div>
 
-      <Button onClick={spin} disabled={played || spinning} className="mt-6 w-full font-black text-sm h-11 shadow">
+      <Button onClick={spin} disabled={played || spinning} className="mt-6 w-full font-black text-sm h-11">
         {spinning ? (
           <span className="flex items-center gap-2">
             <RotateCw className="h-4 w-4 animate-spin" /> Girando a roleta...
@@ -315,7 +199,7 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
     ctx.fillStyle = "#475569";
     ctx.font = "bold 14px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("RASPE AQUI COM O DEDO", canvas.width / 2, canvas.height / 2 + 5);
+    ctx.fillText("PASSE O DEDO PARA RASPAR", canvas.width / 2, canvas.height / 2 + 5);
   }, []);
 
   useEffect(() => {
@@ -334,7 +218,7 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
 
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
-    ctx.arc(x, y, 20, 0, Math.PI * 2);
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
     ctx.fill();
 
     if (!result) {
@@ -349,7 +233,7 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
           if (outcome !== "none") {
             toast.success("Raspadinha premiada! Cupom salvo na sua conta.");
           } else {
-            toast.info("Não foi dessa vez. Volte amanhã!");
+            toast.info("Não foi dessa vez. Volte amanhã para tentar novamente!");
           }
         })
         .catch((err) => {
@@ -370,7 +254,7 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
         </div>
         <h3 className="mt-3 text-xl font-black text-foreground">Raspadinha da Sorte</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Passe o dedo ou mouse sobre a área para revelar o seu prêmio.
+          Raspe o cartão com o dedo para revelar o seu prêmio do dia.
         </p>
 
         <div className="relative mt-6 flex items-center justify-center py-4">
