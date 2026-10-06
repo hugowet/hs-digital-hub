@@ -3,13 +3,8 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const gameSchema = z.object({
-  gameType: z.enum(["wheel", "scratch", "tigrinho"]),
-});
-
-const arcadeSchema = z.object({
-  gameType: z.enum(["snake", "pacman", "flappy", "highway"]),
-});
+const gameSchema = z.object({ gameType: z.enum(["wheel", "scratch"]) });
+const arcadeSchema = z.object({ gameType: z.enum(["snake", "pacman", "flappy", "highway"]) });
 
 export const playDailyGame = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -39,11 +34,9 @@ export const getGameStatus = createServerFn({ method: "GET" })
       .eq("played_on", today);
     if (error) throw error;
     const { data: wallet } = await context.supabase.from("user_game_wallets").select("lifetime_coins").maybeSingle();
-
     return {
       wheel: data?.find((play) => play.game_type === "wheel")?.outcome ?? null,
       scratch: data?.find((play) => play.game_type === "scratch")?.outcome ?? null,
-      tigrinho: data?.find((play) => play.game_type === "tigrinho")?.outcome ?? null,
       coins: wallet?.lifetime_coins ?? 0,
     };
   });
