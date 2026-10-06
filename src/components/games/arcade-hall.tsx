@@ -21,22 +21,22 @@ const games: Array<{
     id: "highway",
     title: "Desvia e Coleta (Corrida)",
     Icon: Car,
-    help: "Troque de faixa, desvie do tráfego e pegue moedas. Começa tranquilo e ganha velocidade com sua pontuação.",
-    instruction: "Toque nas faixas ou deslize o dedo para os lados na tela para mudar de pista.",
+    help: "Troque de faixa, desvie dos carros e colete moedas. O jogo começa devagar e ganha ritmo.",
+    instruction: "Toque no lado esquerdo ou direito da tela para mudar de faixa.",
   },
   {
     id: "snake",
     title: "Cobrinha Turbo",
     Icon: Gamepad2,
-    help: "Colete moedas sem bater no próprio corpo. O jogo começa devagar e ganha ritmo.",
-    instruction: "Deslize o dedo na tela na direção que quiser virar.",
+    help: "Colete as moedas sem bater no próprio corpo.",
+    instruction: "Deslize o dedo na tela para virar a cobrinha.",
   },
   {
     id: "pacman",
     title: "Come-Come",
     Icon: CircleDot,
     help: "Coma as pastilhas pelo labirinto e fuja dos fantasmas.",
-    instruction: "Deslize o dedo na tela (cima, baixo, esquerda ou direita).",
+    instruction: "Deslize o dedo na tela na direção que quiser andar.",
   },
   {
     id: "flappy",
@@ -59,7 +59,7 @@ export function ArcadeHall({ initialCoins, onCoins }: { initialCoins: number; on
           </p>
           <h2 className="mt-1 text-2xl font-black sm:text-3xl">4 Jogos com Moedas Reais</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            A cada 1.000 moedas acumuladas no arcade, você desbloqueia um cupom de 10% de desconto no frete.
+            A cada 1.000 moedas acumuladas no arcade, você desbloqueia 10% de desconto no frete.
           </p>
         </div>
         <div className="rounded-full bg-gradient-to-r from-amber-500 to-primary px-5 py-2.5 text-sm font-black text-white shadow-md">
@@ -102,7 +102,6 @@ export function ArcadeHall({ initialCoins, onCoins }: { initialCoins: number; on
 
 function ArcadeScreen({
   game,
-  hardMode,
   onClose,
   onCoins,
 }: {
@@ -120,43 +119,55 @@ function ArcadeScreen({
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Estados específicos dos jogos
-  const highwayState = useRef<{
-    lane: number; // 0, 1 ou 2
-    obstacles: Array<{ lane: number; y: number; speed: number; color: string }>;
-    coinsList: Array<{ lane: number; y: number }>;
-    speed: number;
-    roadOffset: number;
+  // Estados dos 4 jogos
+  const gameState = useRef<{
+    // Highway
+    lane: number;
+    traffic: Array<{ lane: number; y: number; speed: number; color: string }>;
+    highwayCoins: Array<{ lane: number; y: number }>;
+    roadSpeed: number;
+    offset: number;
+
+    // Snake
+    snake: Point[];
+    snakeDir: Point;
+    food: Point;
+    lastSnakeTick: number;
+
+    // Pacman
+    pac: Point;
+    pacDir: Point;
+    ghost: Point;
+    lastPacTick: number;
+
+    // Flappy
+    birdY: number;
+    birdVel: number;
+    pipes: Array<{ x: number; top: number; bottom: number; passed: boolean }>;
   }>({
     lane: 1,
-    obstacles: [],
-    coinsList: [],
-    speed: 3.5,
-    roadOffset: 0,
-  });
+    traffic: [],
+    highwayCoins: [],
+    roadSpeed: 3.2,
+    offset: 0,
 
-  const snakeState = useRef<{
-    snake: Point[];
-    dir: Point;
-    food: Point;
-    speed: number;
-  }>({
-    snake: [{ x: 10, y: 10 }],
-    dir: { x: 1, y: 0 },
+    snake: [
+      { x: 10, y: 10 },
+      { x: 9, y: 10 },
+      { x: 8, y: 10 },
+    ],
+    snakeDir: { x: 1, y: 0 },
     food: { x: 15, y: 10 },
-    speed: 120,
-  });
+    lastSnakeTick: 0,
 
-  const flappyState = useRef<{
-    birdY: number;
-    velocity: number;
-    pipes: Array<{ x: number; top: number; bottom: number; passed: boolean }>;
-    coinsList: Array<{ x: number; y: number; collected: boolean }>;
-  }>({
-    birdY: 250,
-    velocity: 0,
+    pac: { x: 120, y: 120 },
+    pacDir: { x: 1, y: 0 },
+    ghost: { x: 260, y: 260 },
+    lastPacTick: 0,
+
+    birdY: 200,
+    birdVel: 0,
     pipes: [],
-    coinsList: [],
   });
 
   const startGameSession = async () => {
@@ -165,34 +176,35 @@ function ArcadeScreen({
       sessionRef.current = res?.session_id ?? null;
       setCoins(0);
 
-      // Reseta carrinho
-      highwayState.current = {
+      gameState.current = {
         lane: 1,
-        obstacles: [],
-        coinsList: [],
-        speed: 3.5,
-        roadOffset: 0,
-      };
+        traffic: [],
+        highwayCoins: [],
+        roadSpeed: 3.2,
+        offset: 0,
 
-      // Reseta cobrinha
-      snakeState.current = {
-        snake: [{ x: 10, y: 10 }],
-        dir: { x: 1, y: 0 },
+        snake: [
+          { x: 10, y: 10 },
+          { x: 9, y: 10 },
+          { x: 8, y: 10 },
+        ],
+        snakeDir: { x: 1, y: 0 },
         food: { x: 15, y: 10 },
-        speed: 130,
-      };
+        lastSnakeTick: performance.now(),
 
-      // Reseta flappy
-      flappyState.current = {
-        birdY: 250,
-        velocity: 0,
+        pac: { x: 120, y: 120 },
+        pacDir: { x: 1, y: 0 },
+        ghost: { x: 260, y: 260 },
+        lastPacTick: performance.now(),
+
+        birdY: 200,
+        birdVel: 0,
         pipes: [],
-        coinsList: [],
       };
 
       setPhase("playing");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao iniciar partida.");
+      toast.error(err instanceof Error ? err.message : "Erro ao iniciar jogo.");
     }
   };
 
@@ -208,14 +220,14 @@ function ArcadeScreen({
           onCoins(res.accepted_coins);
           toast.success(`+${finalCoins} moedas salvas na sua conta!`);
         }
-      } catch (err) {
+      } catch {
         toast.error("Erro ao registrar moedas da partida.");
       }
     },
     [finishServer, onCoins],
   );
 
-  // Loop de renderização e lógica do jogo
+  // Loop de renderização
   useEffect(() => {
     if (phase !== "playing") return;
     const canvas = canvasRef.current;
@@ -229,138 +241,196 @@ function ArcadeScreen({
 
     const lanesX = [canvas.width * 0.22, canvas.width * 0.5, canvas.width * 0.78];
 
-    const loop = () => {
+    const loop = (now: number) => {
       frame++;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const state = gameState.current;
 
+      // 1. JOGO DO CARRINHO (HIGHWAY)
       if (game.id === "highway") {
-        const state = highwayState.current;
-        // Dificuldade progressiva suave: aumenta a velocidade a cada 10 moedas
-        state.speed = 3.5 + Math.min(localCoins * 0.15, 6.5);
+        state.roadSpeed = 3.2 + Math.min(localCoins * 0.12, 6.0);
 
-        // Fundo pista
+        // Pista
         ctx.fillStyle = "#1e293b";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Linhas das faixas
-        state.roadOffset = (state.roadOffset + state.speed) % 40;
+        // Faixas
+        state.offset = (state.offset + state.roadSpeed) % 40;
         ctx.strokeStyle = "#facc15";
         ctx.lineWidth = 4;
         ctx.setLineDash([20, 20]);
         ctx.beginPath();
-        ctx.moveTo(canvas.width * 0.36, -state.roadOffset);
+        ctx.moveTo(canvas.width * 0.36, -state.offset);
         ctx.lineTo(canvas.width * 0.36, canvas.height);
-        ctx.moveTo(canvas.width * 0.64, -state.roadOffset);
+        ctx.moveTo(canvas.width * 0.64, -state.offset);
         ctx.lineTo(canvas.width * 0.64, canvas.height);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Gera tráfego de outros carros
-        if (frame % Math.max(45, 90 - Math.floor(localCoins * 1.5)) === 0) {
-          const randomLane = Math.floor(Math.random() * 3);
-          state.obstacles.push({
-            lane: randomLane,
+        // Carros de tráfego
+        if (frame % Math.max(50, 95 - Math.floor(localCoins * 1.5)) === 0) {
+          state.traffic.push({
+            lane: Math.floor(Math.random() * 3),
             y: -80,
-            speed: state.speed * 0.65,
+            speed: state.roadSpeed * 0.65,
             color: ["#ef4444", "#3b82f6", "#a855f7"][Math.floor(Math.random() * 3)],
           });
         }
 
-        // Gera moedas na pista
-        if (frame % 60 === 0) {
-          const coinLane = Math.floor(Math.random() * 3);
-          state.coinsList.push({ lane: coinLane, y: -40 });
+        // Moedas
+        if (frame % 55 === 0) {
+          state.highwayCoins.push({ lane: Math.floor(Math.random() * 3), y: -30 });
         }
 
-        // Move e desenha moedas
-        for (let i = state.coinsList.length - 1; i >= 0; i--) {
-          const c = state.coinsList[i];
-          c.y += state.speed;
-
+        // Move moedas
+        for (let i = state.highwayCoins.length - 1; i >= 0; i--) {
+          const c = state.highwayCoins[i];
+          c.y += state.roadSpeed;
           ctx.fillStyle = "#fbbf24";
           ctx.beginPath();
-          ctx.arc(lanesX[c.lane], c.y, 14, 0, Math.PI * 2);
+          ctx.arc(lanesX[c.lane], c.y, 13, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = "#78350f";
-          ctx.font = "bold 12px sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText("🪙", lanesX[c.lane], c.y + 4);
 
-          // Coleta de moedas pelo carrinho do jogador
           if (c.lane === state.lane && c.y > canvas.height - 110 && c.y < canvas.height - 30) {
             localCoins += 2;
             setCoins(localCoins);
-            state.coinsList.splice(i, 1);
-          } else if (c.y > canvas.height + 50) {
-            state.coinsList.splice(i, 1);
+            state.highwayCoins.splice(i, 1);
+          } else if (c.y > canvas.height + 40) {
+            state.highwayCoins.splice(i, 1);
           }
         }
 
-        // Move e desenha carros de tráfego
-        for (let i = state.obstacles.length - 1; i >= 0; i--) {
-          const obs = state.obstacles[i];
-          obs.y += obs.speed;
-
-          // Desenho do carro obstáculo
-          ctx.fillStyle = obs.color;
+        // Move tráfego
+        for (let i = state.traffic.length - 1; i >= 0; i--) {
+          const t = state.traffic[i];
+          t.y += t.speed;
+          ctx.fillStyle = t.color;
           ctx.beginPath();
-          ctx.roundRect(lanesX[obs.lane] - 22, obs.y, 44, 70, 8);
+          ctx.roundRect(lanesX[t.lane] - 22, t.y, 44, 68, 8);
           ctx.fill();
 
-          // Faróis
-          ctx.fillStyle = "#fef08a";
-          ctx.fillRect(lanesX[obs.lane] - 18, obs.y + 60, 8, 5);
-          ctx.fillRect(lanesX[obs.lane] + 10, obs.y + 60, 8, 5);
+          if (t.lane === state.lane && t.y + 68 > canvas.height - 100 && t.y < canvas.height - 25) {
+            cancelAnimationFrame(animId);
+            endGame(localCoins);
+            return;
+          }
+          if (t.y > canvas.height + 80) state.traffic.splice(i, 1);
+        }
 
-          // Colisão com o jogador
-          if (obs.lane === state.lane && obs.y + 70 > canvas.height - 100 && obs.y < canvas.height - 25) {
+        // Carro do jogador
+        const px = lanesX[state.lane];
+        const py = canvas.height - 100;
+        ctx.fillStyle = "#22c55e";
+        ctx.beginPath();
+        ctx.roundRect(px - 24, py, 48, 75, 10);
+        ctx.fill();
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(px - 18, py + 20, 36, 24);
+
+        // 2. JOGO DA COBRINHA (SNAKE)
+      } else if (game.id === "snake") {
+        ctx.fillStyle = "#0b0f19";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const tickRate = Math.max(90, 200 - localCoins * 3);
+        if (now - state.lastSnakeTick >= tickRate) {
+          state.lastSnakeTick = now;
+          const head = { ...state.snake[0] };
+          head.x = (head.x + state.snakeDir.x + 24) % 24;
+          head.y = (head.y + state.snakeDir.y + 24) % 24;
+
+          if (state.snake.slice(1).some((p) => p.x === head.x && p.y === head.y)) {
             cancelAnimationFrame(animId);
             endGame(localCoins);
             return;
           }
 
-          if (obs.y > canvas.height + 100) {
-            state.obstacles.splice(i, 1);
+          state.snake.unshift(head);
+          if (head.x === state.food.x && head.y === state.food.y) {
+            localCoins += 2;
+            setCoins(localCoins);
+            state.food = {
+              x: Math.floor(Math.random() * 22) + 1,
+              y: Math.floor(Math.random() * 22) + 1,
+            };
+          } else {
+            state.snake.pop();
           }
         }
 
-        // Desenha o Carro do Jogador
-        const playerX = lanesX[state.lane];
-        const playerY = canvas.height - 100;
-
-        ctx.fillStyle = "#22c55e"; // Carro verde neon
+        // Desenha comida
+        ctx.fillStyle = "#facc15";
         ctx.beginPath();
-        ctx.roundRect(playerX - 24, playerY, 48, 75, 10);
+        ctx.arc(state.food.x * 20 + 10, state.food.y * 20 + 10, 8, 0, Math.PI * 2);
         ctx.fill();
 
-        // Vidros e teto
-        ctx.fillStyle = "#0f172a";
-        ctx.fillRect(playerX - 18, playerY + 20, 36, 25);
-        ctx.fillStyle = "#fef08a";
-        ctx.fillRect(playerX - 20, playerY + 4, 8, 6);
-        ctx.fillRect(playerX + 12, playerY + 4, 8, 6);
-      } else if (game.id === "flappy") {
-        const state = flappyState.current;
-        state.velocity += 0.35;
-        state.birdY += state.velocity;
+        // Desenha cobrinha
+        state.snake.forEach((part, idx) => {
+          ctx.fillStyle = idx === 0 ? "#a855f7" : "#c084fc";
+          ctx.fillRect(part.x * 20 + 1, part.y * 20 + 1, 18, 18);
+        });
 
-        // Fundo
+        // 3. JOGO DO PACMAN (COME-COME)
+      } else if (game.id === "pacman") {
+        ctx.fillStyle = "#020617";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const pacStep = Math.max(70, 160 - localCoins * 2);
+        if (now - state.lastPacTick >= pacStep) {
+          state.lastPacTick = now;
+          state.pac.x = Math.max(20, Math.min(canvas.width - 20, state.pac.x + state.pacDir.x * 16));
+          state.pac.y = Math.max(20, Math.min(canvas.height - 20, state.pac.y + state.pacDir.y * 16));
+
+          const gSpeed = 4 + Math.min(5, Math.floor(localCoins / 5));
+          if (state.ghost.x < state.pac.x) state.ghost.x += gSpeed;
+          else if (state.ghost.x > state.pac.x) state.ghost.x -= gSpeed;
+          if (state.ghost.y < state.pac.y) state.ghost.y += gSpeed;
+          else if (state.ghost.y > state.pac.y) state.ghost.y -= gSpeed;
+
+          localCoins += 1;
+          setCoins(localCoins);
+
+          if (Math.hypot(state.pac.x - state.ghost.x, state.pac.y - state.ghost.y) < 24) {
+            cancelAnimationFrame(animId);
+            endGame(localCoins);
+            return;
+          }
+        }
+
+        // Desenha Pacman
+        ctx.fillStyle = "#facc15";
+        ctx.beginPath();
+        ctx.arc(state.pac.x, state.pac.y, 15, 0.2 * Math.PI, 1.8 * Math.PI);
+        ctx.lineTo(state.pac.x, state.pac.y);
+        ctx.fill();
+
+        // Desenha Fantasma
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.arc(state.ghost.x, state.ghost.y - 4, 14, Math.PI, 0, false);
+        ctx.lineTo(state.ghost.x + 14, state.ghost.y + 14);
+        ctx.lineTo(state.ghost.x - 14, state.ghost.y + 14);
+        ctx.fill();
+
+        // 4. JOGO FLAPPY
+      } else if (game.id === "flappy") {
+        state.birdVel += 0.32;
+        state.birdY += state.birdVel;
+
         ctx.fillStyle = "#0284c7";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Canos
         if (frame % 100 === 0) {
-          const topH = Math.floor(Math.random() * 180) + 60;
+          const topH = Math.floor(Math.random() * 160) + 60;
           state.pipes.push({ x: canvas.width, top: topH, bottom: topH + 150, passed: false });
         }
 
         for (let i = state.pipes.length - 1; i >= 0; i--) {
           const p = state.pipes[i];
-          p.x -= 2.5;
-
+          p.x -= 2.6;
           ctx.fillStyle = "#15803d";
-          ctx.fillRect(p.x, 0, 55, p.top);
-          ctx.fillRect(p.x, p.bottom, 55, canvas.height - p.bottom);
+          ctx.fillRect(p.x, 0, 50, p.top);
+          ctx.fillRect(p.x, p.bottom, 50, canvas.height - p.bottom);
 
           if (!p.passed && p.x < 100) {
             p.passed = true;
@@ -368,8 +438,7 @@ function ArcadeScreen({
             setCoins(localCoins);
           }
 
-          // Colisão
-          if (100 + 15 > p.x && 100 - 15 < p.x + 55 && (state.birdY - 15 < p.top || state.birdY + 15 > p.bottom)) {
+          if (100 + 14 > p.x && 100 - 14 < p.x + 50 && (state.birdY - 14 < p.top || state.birdY + 14 > p.bottom)) {
             cancelAnimationFrame(animId);
             endGame(localCoins);
             return;
@@ -378,10 +447,9 @@ function ArcadeScreen({
           if (p.x < -60) state.pipes.splice(i, 1);
         }
 
-        // Pássaro
-        ctx.fillStyle = "#facc15";
+        ctx.fillStyle = "#f59e0b";
         ctx.beginPath();
-        ctx.arc(100, state.birdY, 18, 0, Math.PI * 2);
+        ctx.arc(100, state.birdY, 15, 0, Math.PI * 2);
         ctx.fill();
 
         if (state.birdY > canvas.height || state.birdY < 0) {
@@ -389,20 +457,6 @@ function ArcadeScreen({
           endGame(localCoins);
           return;
         }
-      } else {
-        // Modo Genérico para Snake e Pacman
-        ctx.fillStyle = "#0f172a";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (frame % 25 === 0) {
-          localCoins += 1;
-          setCoins(localCoins);
-        }
-
-        ctx.fillStyle = "#e2e8f0";
-        ctx.font = "bold 20px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("Deslize na tela para guiar o personagem", canvas.width / 2, canvas.height / 2);
       }
 
       animId = requestAnimationFrame(loop);
@@ -412,7 +466,7 @@ function ArcadeScreen({
     return () => cancelAnimationFrame(animId);
   }, [phase, game.id, endGame]);
 
-  // Controles 100% por Toque e Tela
+  // Controles por toque na tela (sem setas)
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     touchStartRef.current = { x: e.clientX, y: e.clientY };
 
@@ -422,14 +476,14 @@ function ArcadeScreen({
       const third = rect.width / 3;
 
       if (clickX < third) {
-        highwayState.current.lane = 0; // Faixa esquerda
+        gameState.current.lane = 0;
       } else if (clickX < third * 2) {
-        highwayState.current.lane = 1; // Faixa central
+        gameState.current.lane = 1;
       } else {
-        highwayState.current.lane = 2; // Faixa direita
+        gameState.current.lane = 2;
       }
     } else if (game.id === "flappy") {
-      flappyState.current.velocity = -6.5;
+      gameState.current.birdVel = -6.2;
     }
   };
 
@@ -438,11 +492,15 @@ function ArcadeScreen({
     const diffX = e.clientX - touchStartRef.current.x;
     const diffY = e.clientY - touchStartRef.current.y;
 
-    if (game.id === "highway") {
-      if (diffX > 40 && highwayState.current.lane < 2) {
-        highwayState.current.lane++;
-      } else if (diffX < -40 && highwayState.current.lane > 0) {
-        highwayState.current.lane--;
+    if (game.id === "snake" || game.id === "pacman") {
+      if (Math.abs(diffX) > Math.abs(diffY)) {
+        const dir = diffX > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
+        if (game.id === "snake") gameState.current.snakeDir = dir;
+        else gameState.current.pacDir = dir;
+      } else {
+        const dir = diffY > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
+        if (game.id === "snake") gameState.current.snakeDir = dir;
+        else gameState.current.pacDir = dir;
       }
     }
 
@@ -483,7 +541,7 @@ function ArcadeScreen({
               <h4 className="mt-4 text-2xl font-black">Como Jogar</h4>
               <p className="mt-2 max-w-xs text-sm text-slate-300 leading-relaxed">{game.instruction}</p>
               <div className="mt-4 rounded-lg bg-white/10 px-4 py-2 text-xs text-amber-400 font-semibold">
-                Controle direto na tela • Sem setas
+                Controle direto na tela por toque
               </div>
               <Button
                 onClick={startGameSession}
