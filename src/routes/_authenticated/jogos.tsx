@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { getGameStatus, playDailyGame } from "@/lib/games.functions";
 import { ArcadeHall } from "@/components/games/arcade-hall";
 
-export const Route = createFileRoute("/_authenticated/jogos")({
+export const Route = createFileRoute("/jogos")({
   head: () => ({
     meta: [
       { title: "Jogos & Prêmios · HS Digital" },
