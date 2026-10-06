@@ -11,42 +11,61 @@ import {
   TicketPercent,
   Trophy,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { toast } from "sonner";
+
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { getGameStatus, playDailyGame } from "@/lib/games.functions";
 import { ArcadeHall } from "@/components/games/arcade-hall";
+
 export const Route = createFileRoute("/_authenticated/jogos")({
   head: () => ({
     meta: [
       { title: "Jogos & Prêmios · HS Digital" },
       { name: "description", content: "Jogue diariamente e ganhe cupons de frete na HS Digital." },
       { property: "og:title", content: "Jogos & Prêmios · HS Digital" },
-      { property: "og:description", content: "Roleta, raspadinha e cobrinha com prêmios na HS Digital." },
+      {
+        property: "og:description",
+        content: "Roleta, raspadinha e cobrinha com prêmios na HS Digital.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: GamesPage,
 });
+
 type Outcome = "shipping_5" | "shipping_10" | "free_shipping" | "none";
 type Direction = "up" | "down" | "left" | "right";
+
 const rewardText: Record<Outcome, string> = {
   shipping_5: "5% de desconto no frete",
   shipping_10: "10% de desconto no frete",
   free_shipping: "Frete grátis até R$ 30",
   none: "Não foi dessa vez",
 };
-const wheelPosition: Record<Outcome, number> = { shipping_5: 90, shipping_10: 180, free_shipping: 270, none: 0 };
+const wheelPosition: Record<Outcome, number> = {
+  shipping_5: 90,
+  shipping_10: 180,
+  free_shipping: 270,
+  none: 0,
+};
+
 function GamesPage() {
   const statusFn = useServerFn(getGameStatus);
-  const [status, setStatus] = useState<{ wheel: string | null; scratch: string | null; coins: number }>({
-    wheel: null,
-    scratch: null,
-    coins: 0,
-  });
+  const [status, setStatus] = useState<{
+    wheel: string | null;
+    scratch: string | null;
+    coins: number;
+  }>({ wheel: null, scratch: null, coins: 0 });
   useEffect(() => {
     statusFn()
       .then(setStatus)
@@ -54,53 +73,52 @@ function GamesPage() {
   }, [statusFn]);
   return (
     <div className="min-h-screen bg-background">
-      {" "}
-      <SiteHeader />{" "}
+      <SiteHeader />
       <main className="mx-auto w-full max-w-7xl px-4 py-8">
-        {" "}
         <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
-          {" "}
           <div>
-            {" "}
             <p className="flex items-center gap-2 text-sm font-bold text-primary">
-              {" "}
-              <Sparkles className="h-4 w-4" /> Prêmios todos os dias{" "}
-            </p>{" "}
-            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Jogos & Prêmios</h1>{" "}
+              <Sparkles className="h-4 w-4" /> Prêmios todos os dias
+            </p>
+            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Jogos & Prêmios</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              {" "}
-              Ganhe descontos para usar no frete. Cada prêmio vale por 24 horas e tem limite de R$ 30.{" "}
-            </p>{" "}
-          </div>{" "}
+              Ganhe descontos para usar no frete. Cada prêmio vale por 24 horas e tem limite de R$
+              30.
+            </p>
+          </div>
           <Button asChild variant="outline">
-            {" "}
             <Link to="/cupons">
-              {" "}
-              <TicketPercent className="h-4 w-4" /> Meus cupons{" "}
-            </Link>{" "}
-          </Button>{" "}
-        </header>{" "}
+              <TicketPercent className="h-4 w-4" /> Meus cupons
+            </Link>
+          </Button>
+        </header>
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          {" "}
           <WheelGame
             played={Boolean(status.wheel)}
             onPlayed={(outcome) => setStatus((s) => ({ ...s, wheel: outcome }))}
-          />{" "}
+          />
           <ScratchGame
             played={Boolean(status.scratch)}
             onPlayed={(outcome) => setStatus((s) => ({ ...s, scratch: outcome }))}
-          />{" "}
-        </div>{" "}
+          />
+        </div>
         <ArcadeHall
           initialCoins={status.coins}
           onCoins={(coins) => setStatus((current) => ({ ...current, coins }))}
-        />{" "}
-      </main>{" "}
-      <SiteFooter />{" "}
+        />
+      </main>
+      <SiteFooter />
     </div>
   );
 }
-function WheelGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome: Outcome) => void }) {
+
+function WheelGame({
+  played,
+  onPlayed,
+}: {
+  played: boolean;
+  onPlayed: (outcome: Outcome) => void;
+}) {
   const play = useServerFn(playDailyGame);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -124,85 +142,84 @@ function WheelGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome: 
   };
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card">
-      {" "}
       <div className="border-b border-border p-5">
-        {" "}
         <div className="flex items-center justify-between gap-3">
-          {" "}
           <div>
-            {" "}
-            <p className="text-xs font-bold uppercase text-primary">1 giro por dia</p>{" "}
-            <h2 className="mt-1 text-xl font-bold">Roleta premiada</h2>{" "}
-          </div>{" "}
+            <p className="text-xs font-bold uppercase text-primary">1 giro por dia</p>
+            <h2 className="mt-1 text-xl font-bold">Roleta premiada</h2>
+          </div>
           <div className="grid h-11 w-11 place-items-center rounded-full bg-primary/10 text-primary">
-            {" "}
-            <RotateCw className="h-5 w-5" />{" "}
-          </div>{" "}
-        </div>{" "}
-      </div>{" "}
+            <RotateCw className="h-5 w-5" />
+          </div>
+        </div>
+      </div>
       <div className="p-5 sm:p-7">
-        {" "}
         <div className="relative mx-auto aspect-square w-full max-w-md">
-          {" "}
-          <div className="absolute left-1/2 top-0 z-20 h-0 w-0 -translate-x-1/2 border-x-[17px] border-t-[34px] border-x-transparent border-t-foreground drop-shadow-md" />{" "}
+          <div className="absolute left-1/2 top-0 z-20 h-0 w-0 -translate-x-1/2 border-x-[17px] border-t-[34px] border-x-transparent border-t-foreground drop-shadow-md" />
           <div className="h-full w-full rounded-full border-[9px] border-foreground bg-card p-2 shadow-xl">
-            {" "}
             <div
               className="relative h-full w-full overflow-hidden rounded-full transition-transform duration-[3500ms] ease-[cubic-bezier(.12,.75,.18,1)] motion-reduce:duration-0"
               style={{ transform: `rotate(${rotation}deg)` }}
             >
-              {" "}
-              <div className="absolute inset-0 game-wheel-bg" />{" "}
+              <div className="absolute inset-0 game-wheel-bg" />
               <span className="absolute left-1/2 top-[17%] w-[42%] -translate-x-1/2 text-center text-sm font-black leading-tight text-primary-foreground drop-shadow-md sm:text-xl">
-                {" "}
-                Não foi dessa vez{" "}
-              </span>{" "}
+                Não foi dessa vez
+              </span>
               <span className="absolute right-[4%] top-1/2 w-[34%] -translate-y-1/2 text-center text-sm font-black leading-tight text-foreground sm:text-xl">
-                {" "}
-                5% no frete{" "}
-              </span>{" "}
+                5% no frete
+              </span>
               <span className="absolute bottom-[16%] left-1/2 w-[42%] -translate-x-1/2 text-center text-sm font-black leading-tight text-primary-foreground drop-shadow-md sm:text-xl">
-                {" "}
-                10% no frete{" "}
-              </span>{" "}
+                10% no frete
+              </span>
               <span className="absolute left-[4%] top-1/2 w-[34%] -translate-y-1/2 text-center text-sm font-black leading-tight text-foreground sm:text-xl">
-                {" "}
-                Frete grátis{" "}
-              </span>{" "}
+                Frete grátis
+              </span>
               <div className="absolute left-1/2 top-1/2 grid h-[19%] w-[19%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 border-card bg-foreground text-wheel-gift shadow-lg">
-                {" "}
-                <Gift className="h-1/2 w-1/2" />{" "}
-              </div>{" "}
-            </div>{" "}
-          </div>{" "}
-        </div>{" "}
+                <Gift className="h-1/2 w-1/2" />
+              </div>
+            </div>
+          </div>
+        </div>
         {result ? (
           <Result outcome={result} />
         ) : (
-          <Button className="mt-6 w-full" size="lg" onClick={() => void spin()} disabled={played || spinning}>
-            {" "}
-            {spinning ? "Girando…" : played ? "Giro diário já realizado" : "Girar agora"}{" "}
+          <Button
+            className="mt-6 w-full"
+            size="lg"
+            onClick={() => void spin()}
+            disabled={played || spinning}
+          >
+            {spinning ? "Girando…" : played ? "Giro diário já realizado" : "Girar agora"}
           </Button>
-        )}{" "}
-      </div>{" "}
+        )}
+      </div>
     </section>
   );
 }
+
 function Result({ outcome }: { outcome: Outcome }) {
   return (
     <div
       className={`mt-5 rounded-lg border p-4 text-center animate-scale-in ${outcome === "none" ? "border-border bg-muted" : "border-primary/30 bg-primary/5"}`}
     >
-      {" "}
-      <Trophy className={`mx-auto h-6 w-6 ${outcome === "none" ? "text-muted-foreground" : "text-primary"}`} />{" "}
-      <p className="mt-2 font-bold">{rewardText[outcome]}</p>{" "}
+      <Trophy
+        className={`mx-auto h-6 w-6 ${outcome === "none" ? "text-muted-foreground" : "text-primary"}`}
+      />
+      <p className="mt-2 font-bold">{rewardText[outcome]}</p>
       {outcome !== "none" && (
         <p className="mt-1 text-xs text-muted-foreground">Seu cupom já está em Meus cupons.</p>
-      )}{" "}
+      )}
     </div>
   );
 }
-function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome: Outcome) => void }) {
+
+function ScratchGame({
+  played,
+  onPlayed,
+}: {
+  played: boolean;
+  onPlayed: (outcome: Outcome) => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scratching = useRef(false);
   const revealed = useRef(false);
@@ -210,6 +227,7 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
   const play = useServerFn(playDailyGame);
   const [result, setResult] = useState<Outcome | null>(null);
   const [progress, setProgress] = useState(0);
+
   const resetCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -232,6 +250,7 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
     window.addEventListener("resize", resetCanvas);
     return () => window.removeEventListener("resize", resetCanvas);
   }, [resetCanvas]);
+
   const scratch = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!scratching.current || played || revealed.current) return;
     const canvas = canvasRef.current;
@@ -248,7 +267,8 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
     if (scratchMoves.current % 4 !== 0) return;
     const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
     let transparent = 0;
-    for (let index = 3; index < pixels.length; index += 4) if (pixels[index] === 0) transparent += 1;
+    for (let index = 3; index < pixels.length; index += 4)
+      if (pixels[index] === 0) transparent += 1;
     const next = Math.round((transparent / (pixels.length / 4)) * 100);
     setProgress(next);
     if (next >= 55) {
@@ -266,37 +286,31 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
         });
     }
   };
+
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card">
-      {" "}
       <div className="border-b border-border p-5">
-        {" "}
         <div className="flex items-center justify-between gap-3">
-          {" "}
           <div>
-            {" "}
-            <p className="text-xs font-bold uppercase text-primary">1 raspadinha por dia</p>{" "}
-            <h2 className="mt-1 text-xl font-bold">Raspadinha surpresa</h2>{" "}
-          </div>{" "}
+            <p className="text-xs font-bold uppercase text-primary">1 raspadinha por dia</p>
+            <h2 className="mt-1 text-xl font-bold">Raspadinha surpresa</h2>
+          </div>
           <div className="grid h-11 w-11 place-items-center rounded-full bg-primary/10 text-primary">
-            {" "}
-            <Sparkles className="h-5 w-5" />{" "}
-          </div>{" "}
-        </div>{" "}
-      </div>{" "}
+            <Sparkles className="h-5 w-5" />
+          </div>
+        </div>
+      </div>
       <div className="p-5 sm:p-7">
-        {" "}
         <div className="relative mx-auto aspect-[1.7] w-full max-w-md overflow-hidden rounded-lg border-2 border-dashed border-primary/40 bg-muted">
-          {" "}
           <div className="absolute inset-0 grid place-items-center p-6 text-center">
-            {" "}
             <div>
-              {" "}
-              <Gift className="mx-auto h-10 w-10 text-primary" />{" "}
-              <p className="mt-3 text-xl font-black"> {result ? rewardText[result] : "Seu prêmio está aqui"} </p>{" "}
-              <p className="mt-1 text-xs text-muted-foreground">Válido por 24 horas</p>{" "}
-            </div>{" "}
-          </div>{" "}
+              <Gift className="mx-auto h-10 w-10 text-primary" />
+              <p className="mt-3 text-xl font-black">
+                {result ? rewardText[result] : "Seu prêmio está aqui"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Válido por 24 horas</p>
+            </div>
+          </div>
           {!result && (
             <canvas
               ref={canvasRef}
@@ -315,29 +329,27 @@ function ScratchGame({ played, onPlayed }: { played: boolean; onPlayed: (outcome
               }}
               aria-label="Raspe movendo o dedo ou mouse"
             />
-          )}{" "}
-        </div>{" "}
+          )}
+        </div>
         <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-          {" "}
           <span>
-            {" "}
             {played && !result
               ? "Raspadinha diária já utilizada"
               : result
                 ? "Prêmio revelado"
-                : "Passe o dedo ou mouse para raspar"}{" "}
-          </span>{" "}
-          <span>{Math.round(progress)}%</span>{" "}
-        </div>{" "}
+                : "Passe o dedo ou mouse para raspar"}
+          </span>
+          <span>{Math.round(progress)}%</span>
+        </div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-          {" "}
-          <div className="h-full bg-primary transition-[width]" style={{ width: `${progress}%` }} />{" "}
-        </div>{" "}
-        {result && <Result outcome={result} />}{" "}
-      </div>{" "}
+          <div className="h-full bg-primary transition-[width]" style={{ width: `${progress}%` }} />
+        </div>
+        {result && <Result outcome={result} />}
+      </div>
     </section>
   );
 }
+
 function SnakeGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const directionRef = useRef<Direction>("right");
@@ -386,7 +398,10 @@ function SnakeGame() {
         };
         const [dx, dy] = velocity[directionRef.current];
         const currentHead = snake[0]!;
-        const head = { x: (currentHead.x + dx + cells) % cells, y: (currentHead.y + dy + cells) % cells };
+        const head = {
+          x: (currentHead.x + dx + cells) % cells,
+          y: (currentHead.y + dy + cells) % cells,
+        };
         if (snake.some((part) => part.x === head.x && part.y === head.y)) {
           setRunning(false);
           setBest((current) => Math.max(current, points));
@@ -418,9 +433,16 @@ function SnakeGame() {
       context.globalAlpha = 1;
       snake.forEach((part, index) => {
         context.fillStyle =
-          index === 0 ? styles.getPropertyValue("--primary-glow") : styles.getPropertyValue("--primary");
+          index === 0
+            ? styles.getPropertyValue("--primary-glow")
+            : styles.getPropertyValue("--primary");
         const inset = index === 0 ? 1 : 2;
-        context.fillRect(part.x * size + inset, part.y * size + inset, size - inset * 2, size - inset * 2);
+        context.fillRect(
+          part.x * size + inset,
+          part.y * size + inset,
+          size - inset * 2,
+          size - inset * 2,
+        );
       });
       context.fillStyle = styles.getPropertyValue("--success");
       context.beginPath();
@@ -467,72 +489,77 @@ function SnakeGame() {
   };
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card lg:grid lg:grid-cols-[340px_1fr]">
-      {" "}
       <div className="border-b border-border p-6 lg:border-b-0 lg:border-r">
-        {" "}
-        <p className="text-xs font-bold uppercase text-primary">Desafio livre</p>{" "}
-        <h2 className="mt-1 text-2xl font-bold">Cobrinha Turbo</h2>{" "}
+        <p className="text-xs font-bold uppercase text-primary">Desafio livre</p>
+        <h2 className="mt-1 text-2xl font-bold">Cobrinha Turbo</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          {" "}
-          A velocidade aumenta a cada três frutas. Atravesse as bordas e tente superar seu recorde.{" "}
-        </p>{" "}
+          A velocidade aumenta a cada três frutas. Atravesse as bordas e tente superar seu recorde.
+        </p>
         <div className="mt-6 grid grid-cols-3 gap-2 text-center">
-          {" "}
           <div className="rounded-lg bg-muted p-3">
-            {" "}
-            <strong className="block text-xl text-primary">{score}</strong>{" "}
-            <span className="text-[11px] text-muted-foreground">Pontos</span>{" "}
-          </div>{" "}
+            <strong className="block text-xl text-primary">{score}</strong>
+            <span className="text-[11px] text-muted-foreground">Pontos</span>
+          </div>
           <div className="rounded-lg bg-muted p-3">
-            {" "}
-            <strong className="block text-xl text-primary">{level}</strong>{" "}
-            <span className="text-[11px] text-muted-foreground">Nível</span>{" "}
-          </div>{" "}
+            <strong className="block text-xl text-primary">{level}</strong>
+            <span className="text-[11px] text-muted-foreground">Nível</span>
+          </div>
           <div className="rounded-lg bg-muted p-3">
-            {" "}
-            <strong className="block text-xl text-primary">{best}</strong>{" "}
-            <span className="text-[11px] text-muted-foreground">Recorde</span>{" "}
-          </div>{" "}
-        </div>{" "}
+            <strong className="block text-xl text-primary">{best}</strong>
+            <span className="text-[11px] text-muted-foreground">Recorde</span>
+          </div>
+        </div>
         <Button className="mt-5 w-full" onClick={start}>
-          {" "}
-          {running ? "Reiniciar partida" : score > 0 ? "Jogar novamente" : "Começar"}{" "}
-        </Button>{" "}
-      </div>{" "}
+          {running ? "Reiniciar partida" : score > 0 ? "Jogar novamente" : "Começar"}
+        </Button>
+      </div>
       <div className="grid place-items-center bg-foreground p-4 sm:p-6">
-        {" "}
         <div className="w-full max-w-md">
-          {" "}
           <canvas
             ref={canvasRef}
             width={440}
             height={440}
             className="aspect-square w-full rounded-lg border border-primary/30"
             aria-label="Jogo da cobrinha"
-          />{" "}
+          />
           <div className="mx-auto mt-3 grid w-36 grid-cols-3 gap-1">
-            {" "}
-            <span />{" "}
-            <Button size="icon" variant="secondary" onClick={() => setDirection("up")} aria-label="Cima">
-              {" "}
-              <ArrowUp />{" "}
-            </Button>{" "}
-            <span />{" "}
-            <Button size="icon" variant="secondary" onClick={() => setDirection("left")} aria-label="Esquerda">
-              {" "}
-              <ArrowLeft />{" "}
-            </Button>{" "}
-            <Button size="icon" variant="secondary" onClick={() => setDirection("down")} aria-label="Baixo">
-              {" "}
-              <ArrowDown />{" "}
-            </Button>{" "}
-            <Button size="icon" variant="secondary" onClick={() => setDirection("right")} aria-label="Direita">
-              {" "}
-              <ArrowRight />{" "}
-            </Button>{" "}
-          </div>{" "}
-        </div>{" "}
-      </div>{" "}
+            <span />
+            <Button
+              size="icon"
+              variant="secondary"
+              onClick={() => setDirection("up")}
+              aria-label="Cima"
+            >
+              <ArrowUp />
+            </Button>
+            <span />
+            <Button
+              size="icon"
+              variant="secondary"
+              onClick={() => setDirection("left")}
+              aria-label="Esquerda"
+            >
+              <ArrowLeft />
+            </Button>
+            <Button
+              size="icon"
+              variant="secondary"
+              onClick={() => setDirection("down")}
+              aria-label="Baixo"
+            >
+              <ArrowDown />
+            </Button>
+            <Button
+              size="icon"
+              variant="secondary"
+              onClick={() => setDirection("right")}
+              aria-label="Direita"
+            >
+              <ArrowRight />
+            </Button>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
