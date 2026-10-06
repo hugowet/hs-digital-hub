@@ -76,25 +76,42 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
+const SITE_URL = "https://hs-digital-marck.lovable.app";
+const LOGO_PREVIEW_URL = "https://hs-digital-marck.lovable.app/__l5e/assets-v1/39fcaa1a-9680-41a5-9293-4e05e8dc7c2b/hs-digital-logo.png";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "HS Digital · Marketplace" },
+      { title: "HS Digital · Marketplace Oficial" },
       {
         name: "description",
-        content: "Marketplace HS Digital: compre de várias lojas com frete grátis e entrega rápida.",
+        content: "Marketplace HS Digital: compre eletrônicos, ferramentas, utilidades e novidades com frete garantido para todo o Brasil.",
       },
       { name: "author", content: "HS Digital" },
-      { property: "og:title", content: "HS Digital · Marketplace" },
+
+      // OpenGraph (WhatsApp, Facebook, Telegram, LinkedIn)
+      { property: "og:site_name", content: "HS Digital Marketplace" },
+      { property: "og:title", content: "HS Digital · Marketplace Oficial" },
       {
         property: "og:description",
-        content: "Marketplace HS Digital: compre de várias lojas com frete grátis e entrega rápida.",
+        content: "Encontre os melhores produtos com ofertas exclusivas, cupons diários e entrega em todo o Brasil.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: SITE_URL },
+      { property: "og:image", content: LOGO_PREVIEW_URL },
+      { property: "og:image:secure_url", content: LOGO_PREVIEW_URL },
+      { property: "og:image:type", content: "image/png" },
+
+      // Twitter Cards
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "HS Digital · Marketplace Oficial" },
+      {
+        name: "twitter:description",
+        content: "Ofertas e novidades com frete garantido para todo o Brasil.",
+      },
+      { name: "twitter:image", content: LOGO_PREVIEW_URL },
     ],
     links: [
       {
@@ -136,7 +153,6 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <CartProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
         <Toaster position="top-center" richColors />
         <AuraChatWidget />
