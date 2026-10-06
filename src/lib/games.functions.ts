@@ -1,18 +1,29 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-const gameSchema = z.object({ gameType: z.enum(["wheel", "scratch"]) });
-const arcadeSchema = z.object({ gameType: z.enum(["snake", "pacman", "flappy", "highway"]) });
+
+const gameSchema = z.object({
+  gameType: z.enum(["wheel", "scratch", "tigrinho"]),
+});
+
+const arcadeSchema = z.object({
+  gameType: z.enum(["snake", "pacman", "flappy", "highway"]),
+});
+
 export const playDailyGame = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => gameSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await context.supabase.rpc("play_daily_game", { _game_type: data.gameType });
+    const { data: result, error } = await context.supabase.rpc("play_daily_game", {
+      _game_type: data.gameType,
+    });
     if (error) throw new Error(error.message);
     const reward = result?.[0];
     if (!reward) throw new Error("Não foi possível registrar a jogada.");
     return reward;
   });
+
 export const getGameStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -28,20 +39,26 @@ export const getGameStatus = createServerFn({ method: "GET" })
       .eq("played_on", today);
     if (error) throw error;
     const { data: wallet } = await context.supabase.from("user_game_wallets").select("lifetime_coins").maybeSingle();
+
     return {
       wheel: data?.find((play) => play.game_type === "wheel")?.outcome ?? null,
       scratch: data?.find((play) => play.game_type === "scratch")?.outcome ?? null,
+      tigrinho: data?.find((play) => play.game_type === "tigrinho")?.outcome ?? null,
       coins: wallet?.lifetime_coins ?? 0,
     };
   });
+
 export const startArcadeGame = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => arcadeSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await context.supabase.rpc("start_arcade_game", { _game_type: data.gameType });
+    const { data: result, error } = await context.supabase.rpc("start_arcade_game", {
+      _game_type: data.gameType,
+    });
     if (error) throw new Error(error.message);
     return result?.[0];
   });
+
 export const finishArcadeGame = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -55,6 +72,7 @@ export const finishArcadeGame = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return result?.[0];
   });
+
 export const getMyCoupons = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
