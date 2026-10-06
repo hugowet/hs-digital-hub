@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import lupiCart from "@/assets/lupi-full-shopping-cart.png";
 
 const INTRO_SESSION_KEY = "hs-digital-intro-seen";
-const INTRO_DURATION_MS = 184_000;
+const INTRO_DURATION_MS = 3_000;
 
 export function IntroAnimation() {
   const [visible, setVisible] = useState(false);
@@ -22,11 +22,13 @@ export function IntroAnimation() {
 
   return (
     <div className="intro-stage fixed inset-0 z-[100] overflow-hidden bg-ink" aria-label="Apresentação HS Digital">
-      <div className="intro-lupi absolute left-0 top-1/2 w-[min(88vw,760px)] -translate-y-1/2">
+      <div className="intro-lupi absolute left-0 w-[min(88vw,760px)]">
         <img
           src={lupiCart}
           alt="Lupi empurrando um carrinho cheio de compras"
           className="h-auto w-full object-contain"
+          decoding="async"
+          fetchPriority="high"
         />
       </div>
 
