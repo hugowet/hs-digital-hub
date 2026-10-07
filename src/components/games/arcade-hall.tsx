@@ -1,4 +1,17 @@
-import { Bird, Car, CircleDot, Gamepad2, Play, RotateCcw, Sparkles, Touchpad, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Bird,
+  Car,
+  CircleDot,
+  Gamepad2,
+  Play,
+  RotateCcw,
+  Sparkles,
+  X,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,15 +34,15 @@ const games: Array<{
     id: "snake",
     title: "Cobrinha Turbo",
     Icon: Gamepad2,
-    help: "Colete moedas sem bater no próprio corpo. O jogo começa devagar e ganha ritmo.",
-    instruction: "Deslize o dedo na tela para mudar a direção da cobrinha.",
+    help: "Colete moedas sem bater no próprio corpo.",
+    instruction: "Use as setas na tela ou deslize o dedo para guiar a cobrinha.",
   },
   {
     id: "pacman",
     title: "Come-Come",
     Icon: CircleDot,
     help: "Coma as pastilhas pelo labirinto e fuja dos fantasmas.",
-    instruction: "Deslize o dedo na tela (cima, baixo, esquerda ou direita).",
+    instruction: "Use as setas na tela para mudar a direção.",
   },
   {
     id: "flappy",
@@ -43,7 +56,7 @@ const games: Array<{
     title: "Desvia e Coleta",
     Icon: Car,
     help: "Troque de faixa, desvie do tráfego e pegue moedas na pista.",
-    instruction: "Deslize o dedo para a esquerda ou direita para mudar de faixa.",
+    instruction: "Toque nas setas ou nos lados da tela para mudar de faixa.",
   },
 ];
 
@@ -120,7 +133,22 @@ function ArcadeScreen({
   const [coins, setCoins] = useState(0);
   const [earned, setEarned] = useState(0);
   const input = useRef<Point>({ x: 1, y: 0 });
-  const touchStart = useRef<Point | null>(null);
+
+  const triggerDirection = useCallback(
+    (dir: "up" | "down" | "left" | "right") => {
+      if (dir === "up") input.current = { x: 0, y: -1 };
+      if (dir === "down") input.current = { x: 0, y: 1 };
+      if (dir === "left") {
+        input.current = { x: -1, y: 0 };
+        window.dispatchEvent(new CustomEvent("arcade-move", { detail: "left" }));
+      }
+      if (dir === "right") {
+        input.current = { x: 1, y: 0 };
+        window.dispatchEvent(new CustomEvent("arcade-move", { detail: "right" }));
+      }
+    },
+    [],
+  );
 
   const start = async () => {
     try {
@@ -165,7 +193,7 @@ function ArcadeScreen({
     let lastTick = performance.now();
     let score = 0;
 
-    // Estado Cobrinha
+    // Cobrinha
     let snake: Point[] = [
       { x: 14, y: 14 },
       { x: 13, y: 14 },
@@ -174,7 +202,7 @@ function ArcadeScreen({
     let food: Point = { x: 20, y: 14 };
     input.current = { x: 1, y: 0 };
 
-    // Estado Come-Come
+    // Come-Come
     let pacPos = { x: 14, y: 14 };
     let pacDir = { x: 0, y: 0 };
     let pellets: Point[] = [];
@@ -197,17 +225,26 @@ function ArcadeScreen({
     ];
     let ghostTick = performance.now();
 
-    // Estado Flappy
+    // Flappy
     let birdY = 240;
     let birdVel = 0;
     let pipes: Array<{ x: number; top: number; bottom: number; passed: boolean }> = [];
     let pipeTimer = 0;
 
-    // Estado Highway
+    // Highway
     let playerLane = 1;
     let traffic: Array<{ lane: number; y: number; speed: number }> = [];
     let coinItems: Array<{ lane: number; y: number }> = [];
     let trafficTimer = 0;
+
+    const handleCustomMove = (e: Event) => {
+      const dir = (e as CustomEvent<string>).detail;
+      if (game.id === "highway") {
+        if (dir === "left") playerLane = Math.max(0, playerLane - 1);
+        if (dir === "right") playerLane = Math.min(2, playerLane + 1);
+      }
+    };
+    window.addEventListener("arcade-move", handleCustomMove);
 
     const loop = (now: number) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -452,35 +489,38 @@ function ArcadeScreen({
     animId = requestAnimationFrame(loop);
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp") input.current = { x: 0, y: -1 };
-      if (e.key === "ArrowDown") input.current = { x: 0, y: 1 };
-      if (e.key === "ArrowLeft") {
-        input.current = { x: -1, y: 0 };
-        if (game.id === "highway") playerLane = Math.max(0, playerLane - 1);
-      }
-      if (e.key === "ArrowRight") {
-        input.current = { x: 1, y: 0 };
-        if (game.id === "highway") playerLane = Math.min(2, playerLane + 1);
-      }
+      if (e.key === "ArrowUp") triggerDirection("up");
+      if (e.key === "ArrowDown") triggerDirection("down");
+      if (e.key === "ArrowLeft") triggerDirection("left");
+      if (e.key === "ArrowRight") triggerDirection("right");
       if (e.key === " " && game.id === "flappy") {
         birdVel = -6.5;
       }
     };
     window.addEventListener("keydown", onKeyDown);
 
+    const handleCanvasFlap = () => {
+      if (game.id === "flappy") {
+        birdVel = -6.5;
+      }
+    };
+    canvas.addEventListener("pointerdown", handleCanvasFlap);
+
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("arcade-move", handleCustomMove);
+      canvas.removeEventListener("pointerdown", handleCanvasFlap);
     };
-  }, [phase, game.id, hardMode, finish]);
+  }, [phase, game.id, hardMode, finish, triggerDirection]);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-[560px] overflow-hidden rounded-3xl border border-white/10 bg-[#0d0718] p-4 text-white shadow-2xl">
-        <div className="flex items-center justify-between pb-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto">
+      <div className="relative flex flex-col w-full max-w-[480px] max-h-[96dvh] overflow-hidden rounded-3xl border border-white/10 bg-[#0d0718] p-3 sm:p-4 text-white shadow-2xl">
+        <div className="flex items-center justify-between pb-2 shrink-0">
           <div className="flex items-center gap-2">
             <game.Icon className="h-5 w-5 text-primary" />
-            <span className="font-black">{game.title}</span>
+            <span className="font-black text-sm sm:text-base">{game.title}</span>
           </div>
           <button
             onClick={onClose}
@@ -491,70 +531,117 @@ function ArcadeScreen({
         </div>
 
         {phase === "intro" && (
-          <div className="grid aspect-square place-items-center text-center">
-            <div>
-              <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-primary/20 text-primary">
-                <game.Icon className="h-10 w-10" />
-              </div>
-              <h3 className="mt-4 text-2xl font-black">{game.title}</h3>
-              <p className="mx-auto mt-2 max-w-sm text-xs text-muted-foreground">{game.instruction}</p>
-              <Button onClick={start} size="lg" className="mt-6 font-black">
-                <Play className="mr-2 h-4 w-4 fill-current" /> Iniciar Partida
-              </Button>
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
+            <div className="grid h-16 w-16 sm:h-20 sm:w-20 place-items-center rounded-3xl bg-primary/20 text-primary">
+              <game.Icon className="h-9 w-9 sm:h-10 sm:w-10" />
             </div>
+            <h3 className="mt-4 text-xl sm:text-2xl font-black">{game.title}</h3>
+            <p className="mx-auto mt-2 max-w-xs text-xs text-muted-foreground">{game.instruction}</p>
+            <Button onClick={start} size="lg" className="mt-6 font-black w-full max-w-xs">
+              <Play className="mr-2 h-4 w-4 fill-current" /> Iniciar Partida
+            </Button>
           </div>
         )}
 
         {phase === "playing" && (
-          <div
-            className="relative aspect-square w-full touch-none overflow-hidden rounded-2xl"
-            onTouchStart={(e) => {
-              const t = e.touches[0];
-              if (t) touchStart.current = { x: t.clientX, y: t.clientY };
-              if (game.id === "flappy") {
-                window.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
-              }
-            }}
-            onTouchEnd={(e) => {
-              if (!touchStart.current) return;
-              const t = e.changedTouches[0];
-              if (!t) return;
-              const dx = t.clientX - touchStart.current.x;
-              const dy = t.clientY - touchStart.current.y;
-              if (Math.abs(dx) > Math.abs(dy)) {
-                if (dx > 20) window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
-                if (dx < -20) window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
-              } else {
-                if (dy > 20) window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
-                if (dy < -20) window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp" }));
-              }
-            }}
-          >
-            <canvas ref={canvasRef} width={560} height={560} className="h-full w-full" />
+          <div className="flex-1 flex flex-col items-center justify-between gap-3 overflow-hidden">
+            {/* Área do Jogo / Canvas */}
+            <div className="relative aspect-square w-full max-h-[50dvh] sm:max-h-[55dvh] touch-none overflow-hidden rounded-2xl bg-black border border-white/5">
+              <canvas ref={canvasRef} width={560} height={560} className="h-full w-full object-contain" />
+            </div>
+
+            {/* Controles para Celular */}
+            <div className="w-full flex flex-col items-center justify-center shrink-0 pt-1">
+              {(game.id === "snake" || game.id === "pacman") && (
+                <div className="grid grid-cols-3 gap-1.5 w-44">
+                  <div />
+                  <button
+                    type="button"
+                    onPointerDown={() => triggerDirection("up")}
+                    className="h-11 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-manipulation shadow"
+                  >
+                    <ArrowUp className="h-5 w-5" />
+                  </button>
+                  <div />
+                  <button
+                    type="button"
+                    onPointerDown={() => triggerDirection("left")}
+                    className="h-11 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-manipulation shadow"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onPointerDown={() => triggerDirection("down")}
+                    className="h-11 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-manipulation shadow"
+                  >
+                    <ArrowDown className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onPointerDown={() => triggerDirection("right")}
+                    className="h-11 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-manipulation shadow"
+                  >
+                    <ArrowRight className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+
+              {game.id === "highway" && (
+                <div className="flex items-center justify-center gap-4 w-full px-4">
+                  <button
+                    type="button"
+                    onPointerDown={() => triggerDirection("left")}
+                    className="flex-1 h-12 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center gap-2 font-bold touch-manipulation shadow"
+                  >
+                    <ArrowLeft className="h-5 w-5" /> Esquerda
+                  </button>
+                  <button
+                    type="button"
+                    onPointerDown={() => triggerDirection("right")}
+                    className="flex-1 h-12 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center gap-2 font-bold touch-manipulation shadow"
+                  >
+                    Direita <ArrowRight className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+
+              {game.id === "flappy" && (
+                <div className="w-full px-4">
+                  <button
+                    type="button"
+                    onPointerDown={() => {
+                      window.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
+                    }}
+                    className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 active:scale-95 flex items-center justify-center font-black tracking-wide touch-manipulation shadow"
+                  >
+                    TOQUE PARA BATER AS ASAS 🕊️
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {phase === "over" && (
-          <div className="grid aspect-square place-items-center text-center">
-            <div>
-              <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-amber-500/20 text-3xl">
-                🪙
-              </div>
-              <h3 className="mt-4 text-2xl font-black">Fim de jogo!</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Você coletou {coins} moedas nessa rodada.</p>
-              {earned > 0 && (
-                <p className="mt-3 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-4 py-1.5 text-xs font-black text-emerald-300">
-                  <Sparkles className="h-3.5 w-3.5" /> +{earned} moedas adicionadas à sua carteira!
-                </p>
-              )}
-              <div className="mt-6 flex justify-center gap-2">
-                <Button onClick={start} variant="outline" className="border-white/20">
-                  <RotateCcw className="mr-2 h-4 w-4" /> Jogar Novamente
-                </Button>
-                <Button onClick={onClose} className="font-bold">
-                  Concluir
-                </Button>
-              </div>
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-amber-500/20 text-3xl">
+              🪙
+            </div>
+            <h3 className="mt-4 text-xl sm:text-2xl font-black">Fim de jogo!</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Você coletou {coins} moedas nessa rodada.</p>
+            {earned > 0 && (
+              <p className="mt-3 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-4 py-1.5 text-xs font-black text-emerald-300">
+                <Sparkles className="h-3.5 w-3.5" /> +{earned} moedas adicionadas à sua carteira!
+              </p>
+            )}
+            <div className="mt-6 flex justify-center gap-2 w-full max-w-xs">
+              <Button onClick={start} variant="outline" className="flex-1 border-white/20">
+                <RotateCcw className="mr-2 h-4 w-4" /> Jogar
+              </Button>
+              <Button onClick={onClose} className="flex-1 font-bold">
+                Concluir
+              </Button>
             </div>
           </div>
         )}
