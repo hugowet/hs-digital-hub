@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { infiniteQueryOptions, useQuery, useSuspenseInfiniteQuery } from "@tanstack/react-query";
+import { infiniteQueryOptions, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import {
   Baby,
   CarFront,
+  ChevronLeft,
+  ChevronRight,
   Drill,
   Dumbbell,
   Files,
@@ -11,18 +13,19 @@ import {
   GraduationCap,
   Keyboard,
   LampDesk,
-  Search,
+  Rocket,
   ShieldCheck,
   Shirt,
   ShoppingBasket,
+  ShoppingCart,
   Smartphone,
   Sofa,
   Sparkles,
   Store,
+  Tag,
   Truck,
   Tv,
   Watch,
-  X,
   Zap,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -141,72 +144,6 @@ const PRICE_RANGES = [
   { id: "d", label: "Acima de R$ 200", min: 200, max: Infinity },
 ];
 
-// ===== BUSCA INTELIGENTE (novo) =====
-const SEARCH_STOPWORDS = new Set([
-  "de", "da", "do", "das", "dos", "para", "por", "com", "em", "no", "na",
-  "os", "as", "um", "uma", "uns", "umas", "e", "o", "a", "the", "of",
-]);
-
-const normalizeText = (value: string) =>
-  (value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-const queryTokens = (rawQuery: string) =>
-  normalizeText(rawQuery)
-    .split(/[^a-z0-9]+/)
-    .filter((token) => token.length >= 2 && !SEARCH_STOPWORDS.has(token));
-
-function levenshtein(a: string, b: string): number {
-  if (a === b) return 0;
-  if (!a.length) return b.length;
-  if (!b.length) return a.length;
-  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
-  for (let i = 1; i <= a.length; i++) {
-    const current = [i];
-    for (let j = 1; j <= b.length; j++) {
-      current[j] = Math.min(
-        previous[j] + 1,
-        current[j - 1] + 1,
-        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
-    }
-    previous = current;
-  }
-  return previous[b.length];
-}
-
-// O produto corresponde ao termo? Palavra-chave em título, descrição, categoria e especificações
-function productMatchesQuery(
-  product: { title?: string | null; description?: string | null; category?: string | null; specifications?: unknown },
-  rawQuery: string,
-) {
-  const tokens = queryTokens(rawQuery);
-  if (tokens.length === 0) return true;
-
-  const haystack = normalizeText(
-    [
-      product.title ?? "",
-      product.description ?? "",
-      product.category ?? "",
-      typeof product.specifications === "string"
-        ? product.specifications
-        : JSON.stringify(product.specifications ?? {}),
-    ].join(" "),
-  );
-  const words = haystack.split(/[^a-z0-9]+/).filter(Boolean);
-
-  // Basta UMA palavra-chave bater (igual Mercado Livre: busca aberta, não restritiva)
-  return tokens.some((token) => {
-    if (haystack.includes(token)) return true;
-    // Parecido com erro de digitação: compara palavra por palavra
-    const tolerance = token.length <= 4 ? 1 : token.length <= 8 ? 2 : 3;
-    return words.some((word) => Math.abs(word.length - token.length) <= tolerance && levenshtein(token, word) <= tolerance);
-  });
-}
-// ===== FIM DA BUSCA INTELIGENTE =====
-
 function BuyerGamesPromoLink() {
   const [visible, setVisible] = useState(false);
 
@@ -216,7 +153,10 @@ function BuyerGamesPromoLink() {
         setVisible(false);
         return;
       }
-      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id);
       const isSeller = roles?.some((item) => item.role === "seller") ?? false;
       const isBuyer = roles?.some((item) => item.role === "buyer") ?? false;
       setVisible(isBuyer && !isSeller);
@@ -242,23 +182,7 @@ export function Home() {
     catalogQueryOptions(routeSearch),
   );
   const products = data.pages.flatMap((page) => page.products);
-
-  // Busca dinamicamente apenas as categorias com produtos ativos
-  const { data: activeCategories = [] } = useQuery({
-    queryKey: ["active-store-categories"],
-    queryFn: async () => {
-      const { data } = await supabase.from("products").select("category").eq("is_active", true);
-      const uniqueSlugs = Array.from(new Set(data?.map((p) => p.category).filter(Boolean)));
-
-      return uniqueSlugs.map((slug) => {
-        const found = CATEGORIES.find((c) => c.slug === slug);
-        if (found) return found;
-        const formatted = slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-        return { slug, label: formatted, icon: "ShoppingBasket" };
-      });
-    },
-    staleTime: 5 * 60_000,
-  });
+  const total = data.pages[0]?.total ?? 0;
 
   const setSearch = (changes: HomeSearchUpdate) =>
     navigate({
@@ -273,7 +197,14 @@ export function Home() {
       },
     });
 
-  // Filtro estrito: se tiver pesquisa por termo ou categoria, traz estritamente correspondentes
+  const promoProducts = useMemo(() => {
+    return products.filter((p) => (p.compare_at_price && p.compare_at_price > p.price) || (p.sold_count ?? 0) > 10);
+  }, [products]);
+
+  const freeShippingProducts = useMemo(() => {
+    return products.filter((p) => p.free_shipping || Number(p.price) >= 79);
+  }, [products]);
+
   const filtered = useMemo(() => {
     const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
       id: "all",
@@ -282,89 +213,64 @@ export function Home() {
       max: Infinity,
     };
 
-    const result = products.filter((product) => {
+    // 1. Filtragem básica por faixa de preço e categoria específica (se selecionada)
+    const baseList = products.filter((product) => {
       if (search.category && product.category !== search.category) {
-        return false;
-      }
-      if (search.q && !productMatchesQuery(product, search.q)) {
         return false;
       }
       const price = Number(product.price);
       return price >= selectedRange.min && price <= selectedRange.max;
     });
 
-    return [...result].sort((a, b) => {
+    // 2. Se estiver em "Todas" (sem categoria selecionada) no modo popular, DIVERSIFICA entre categorias
+    if (!search.category && search.sort === "popular") {
+      const byCategory = new Map<string, typeof products>();
+      for (const p of baseList) {
+        const cat = p.category || "geral";
+        if (!byCategory.has(cat)) byCategory.set(cat, []);
+        byCategory.get(cat)!.push(p);
+      }
+
+      const diversified: typeof products = [];
+      const categoryBuckets = Array.from(byCategory.values());
+      let hasMore = true;
+      let depth = 0;
+
+      while (hasMore) {
+        hasMore = false;
+        for (const bucket of categoryBuckets) {
+          if (depth < bucket.length) {
+            diversified.push(bucket[depth]);
+            hasMore = true;
+          }
+        }
+        depth++;
+      }
+
+      return diversified;
+    }
+
+    // 3. Caso o usuário ordene por preço ou esteja em uma categoria específica
+    return [...baseList].sort((a, b) => {
       if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
       if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
       return (b.sold_count ?? 0) - (a.sold_count ?? 0);
     });
-  }, [products, search.category, search.q, search.range, search.sort]);
+  }, [products, search.category, search.range, search.sort]);
 
-  const hasSearchQuery = Boolean(search.q && search.q.trim().length > 0);
-  const noResults = hasSearchQuery && filtered.length === 0;
-
-  // Plano B: quando a busca inteligente não acha nada, varre o catálogo procurando produtos PARECIDOS
-  const { data: fuzzyData } = useQuery({
-    queryKey: ["catalog-fuzzy", search.q],
-    enabled: noResults,
-    queryFn: async () => {
-      const pages = await Promise.all(
-        [0, 1, 2, 3, 4].map((page) =>
-          fetchCatalogPage({
-            data: {
-              page,
-              pageSize: 100,
-              query: "",
-              category: null,
-              range: "all",
-              sort: "popular",
-              onlyFreeShipping: false,
-            },
-          }),
-        ),
-      );
-      return pages.flatMap((page) => page.products);
-    },
-    staleTime: 60_000,
-  });
-
-  const fuzzyFiltered = useMemo(() => {
-    if (!noResults || !fuzzyData) return [];
-    const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
-      id: "all",
-      label: "Todos os preços",
-      min: 0,
-      max: Infinity,
-    };
-    const result = fuzzyData.filter((product) => {
-      if (search.category && product.category !== search.category) return false;
-      if (!productMatchesQuery(product, search.q)) return false;
-      const price = Number(product.price);
-      return price >= selectedRange.min && price <= selectedRange.max;
-    });
-    return [...result].sort((a, b) => (b.sold_count ?? 0) - (a.sold_count ?? 0));
-  }, [noResults, fuzzyData, search.category, search.q, search.range]);
-
-  const showingSimilar = noResults && fuzzyFiltered.length > 0;
-  const displayList = showingSimilar ? fuzzyFiltered : filtered;
-
-  const categoryLabel = hasSearchQuery
-    ? showingSimilar
-      ? `Produtos parecidos com "${search.q}"`
-      : `Resultados para "${search.q}"`
-    : search.free
-      ? "Produtos com Frete Grátis"
-      : search.category
-        ? (activeCategories.find((item) => item.slug === search.category)?.label ?? search.category)
-        : "Todas as ofertas";
+  const categoryLabel = search.free
+    ? "Produtos com Frete Grátis"
+    : search.category
+      ? CATEGORIES.find((item) => item.slug === search.category)?.label
+      : "Todas as ofertas";
 
   const suggestions = useMemo(() => {
     return products.slice(0, 50).map((p) => ({
       id: p.id,
       title: p.title,
-      category: activeCategories.find((c) => c.slug === p.category)?.label ?? p.category ?? "Geral",
+      category: CATEGORIES.find((c) => c.slug === p.category)?.label ?? p.category ?? "Geral",
     }));
-  }, [products, activeCategories]);
+  }, [products]);
 
   return (
     <div className="min-h-screen bg-[#ebebeb] text-gray-900">
@@ -372,108 +278,85 @@ export function Home() {
       <SiteHeader query={search.q} onQueryChange={(q) => setSearch({ q })} suggestions={suggestions} />
 
       <main>
-        {/* BANNER PRINCIPAL (Exibido apenas na tela inicial geral) */}
-        {!hasSearchQuery && (
-          <>
-            <section className="bg-gradient-to-r from-[#2968c8] via-[#3483fa] to-[#1d52a8] text-white">
-              <div className="mx-auto flex min-h-[210px] w-full max-w-7xl items-center px-4 py-8 md:min-h-[260px]">
-                <div className="relative max-w-3xl">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
-                    <ShieldCheck className="h-4 w-4" /> HS Digital Marketplace
-                  </span>
-                  <h1 className="mt-3 text-2xl font-black sm:text-4xl md:text-5xl tracking-tight leading-tight">
-                    Ofertas imperdíveis com envio rápido
-                  </h1>
-                  <p className="mt-2 text-sm text-blue-100 sm:text-base md:text-lg">
-                    Milhares de produtos nacionais e importados com frete grátis e compra protegida.
-                  </p>
+        {/* BANNER PRINCIPAL */}
+        <section className="bg-gradient-to-r from-[#2968c8] via-[#3483fa] to-[#1d52a8] text-white">
+          <div className="mx-auto flex min-h-[210px] w-full max-w-7xl items-center px-4 py-8 md:min-h-[260px]">
+            <div className="relative max-w-3xl">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
+                <ShieldCheck className="h-4 w-4" /> HS Digital Marketplace
+              </span>
+              <h1 className="mt-3 text-2xl font-black sm:text-4xl md:text-5xl tracking-tight leading-tight">
+                Ofertas imperdíveis com envio rápido
+              </h1>
+              <p className="mt-2 text-sm text-blue-100 sm:text-base md:text-lg">
+                Milhares de produtos nacionais e importados com frete grátis e compra protegida.
+              </p>
 
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
-                    <Gift className="h-4 w-4" />
-                    <span>FRETE GRÁTIS AUTOMÁTICO NA SUA 1ª COMPRA</span>
-                  </div>
-                  <div>
-                    <BuyerGamesPromoLink />
-                  </div>
-                </div>
+              <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
+                <Gift className="h-4 w-4" />
+                <span>
+                  FRETE GRÁTIS AUTOMÁTICO NA SUA 1ª COMPRA
+                </span>
               </div>
-            </section>
-
-            {/* FAIXA DE BENEFÍCIOS */}
-            <section className="bg-white border-b shadow-sm">
-              <div className="mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl px-4 py-3 text-xs text-gray-600">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-[#3483fa] shrink-0" />
-                  <span>
-                    <strong>Frete rápido</strong> em todo o Brasil
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-[#00a650] shrink-0" />
-                  <span>
-                    <strong>Compra Garantida</strong> receba ou seu dinheiro volta
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-amber-500 shrink-0" />
-                  <span>
-                    <strong>Ofertas diárias</strong> com até 50% OFF
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Store className="h-5 w-5 text-purple-600 shrink-0" />
-                  <span>
-                    <strong>Lojas oficiais</strong> nacionais e internacionais
-                  </span>
-                </div>
+              <div>
+                <BuyerGamesPromoLink />
               </div>
-            </section>
-          </>
-        )}
+            </div>
+          </div>
+        </section>
 
-        <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-6 space-y-6">
-          {/* BARRA DE ABAS: INCLUI A NOVA ABA DA PESQUISA QUANDO DIGITADA */}
+        {/* FAIXA DE BENEFÍCIOS */}
+        <section className="bg-white border-b shadow-sm">
+          <div className="mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl px-4 py-3 text-xs text-gray-600">
+            <div className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-[#3483fa] shrink-0" />
+              <span>
+                <strong>Frete rápido</strong> em todo o Brasil
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-[#00a650] shrink-0" />
+              <span>
+                <strong>Compra Garantida</strong> receba ou seu dinheiro volta
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500 shrink-0" />
+              <span>
+                <strong>Ofertas diárias</strong> com até 50% OFF
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Store className="h-5 w-5 text-purple-600 shrink-0" />
+              <span>
+                <strong>Lojas oficiais</strong> nacionais e internacionais
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-6 space-y-8">
+          {/* CATEGORIAS EM ROLAGEM HORIZONTAL PERFEITA NO CELULAR */}
           <section id="categorias" className="rounded-xl bg-white p-3 sm:p-4 shadow-sm border border-gray-100">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-gray-700">
-                {hasSearchQuery ? "Aba da Pesquisa Selecionada" : "Categorias"}
+                Categorias em destaque
               </h2>
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-xs text-[#3483fa]"
-                onClick={() => setSearch({ category: null, q: "", free: false })}
+                onClick={() => setSearch({ category: null, free: false })}
               >
-                Ver todas as ofertas
+                Ver todas
               </Button>
             </div>
 
-            <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory items-center">
-              {/* ABA DINÂMICA DA PESQUISA (Aparece no início se houver termo digitado) */}
-              {hasSearchQuery && (
-                <div className="snap-start shrink-0 flex items-center rounded-xl p-2.5 h-20 border-2 border-[#3483fa] bg-blue-50 text-[#3483fa] font-bold shadow-sm gap-2">
-                  <div className="flex flex-col items-center justify-center min-w-[70px]">
-                    <Search className="h-5 w-5 mb-1 text-[#3483fa]" />
-                    <span className="text-[11px] leading-tight text-center line-clamp-1 max-w-[100px]">
-                      "{search.q}"
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSearch({ q: "" })}
-                    title="Fechar pesquisa"
-                    className="p-1 rounded-full hover:bg-blue-200/80 text-blue-700 transition"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* ABA "TODAS" */}
+            <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
               <button
-                onClick={() => setSearch({ category: null, q: "", free: false })}
+                onClick={() => setSearch({ category: null, free: false })}
                 className={`snap-start shrink-0 flex flex-col items-center justify-center rounded-xl p-2.5 min-w-[76px] sm:min-w-[88px] h-20 transition-all border ${
-                  search.category === null && !hasSearchQuery && !search.free
+                  search.category === null && !search.free
                     ? "border-blue-500 bg-blue-50 text-blue-600 font-bold shadow-xs"
                     : "border-gray-100 bg-gray-50/80 text-gray-700 hover:bg-gray-100"
                 }`}
@@ -482,14 +365,13 @@ export function Home() {
                 <span className="text-[11px] leading-tight text-center">Todas</span>
               </button>
 
-              {/* DEMAIS ABAS DE CATEGORIAS */}
-              {activeCategories.map((item) => {
+              {CATEGORIES.map((item) => {
                 const Icon = ICONS[item.icon] ?? Smartphone;
-                const isSelected = !hasSearchQuery && search.category === item.slug;
+                const isSelected = search.category === item.slug;
                 return (
                   <button
                     key={item.slug}
-                    onClick={() => setSearch({ category: item.slug, q: "", free: false })}
+                    onClick={() => setSearch({ category: item.slug, free: false })}
                     className={`snap-start shrink-0 flex flex-col items-center justify-center rounded-xl p-2.5 min-w-[76px] sm:min-w-[88px] h-20 transition-all border ${
                       isSelected
                         ? "border-blue-500 bg-blue-50 text-blue-600 font-bold shadow-xs"
@@ -504,82 +386,51 @@ export function Home() {
             </div>
           </section>
 
-          {/* VITRINE FILTRADA DE PRODUTOS */}
+          {/* VITRINE PRINCIPAL DE PRODUTOS */}
           <section className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-lg border border-gray-100 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-lg border border-gray-100">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
-                  {hasSearchQuery && <Search className="h-4 w-4 text-[#3483fa]" />}
-                  {categoryLabel}
-                </h2>
-                <p className="text-xs text-gray-500">{displayList.length} produtos correspondentes</p>
+                <h2 className="text-base sm:text-lg font-bold text-gray-900">{categoryLabel}</h2>
+                <p className="text-xs text-gray-500">{filtered.length} produtos disponíveis para entrega</p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <Select value={search.range} onValueChange={(val) => setSearch({ range: val as any })}>
-                  <SelectTrigger className="w-[140px] h-9 text-xs">
-                    <SelectValue placeholder="Preço" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRICE_RANGES.map((r) => (
-                      <SelectItem key={r.id} value={r.id} className="text-xs">
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
+              <div className="flex items-center gap-2">
                 <Select value={search.sort} onValueChange={(val) => setSearch({ sort: val as HomeSearch["sort"] })}>
-                  <SelectTrigger className="w-[150px] h-9 text-xs">
+                  <SelectTrigger className="w-[160px] h-9 text-xs">
                     <SelectValue placeholder="Ordenar por" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="popular" className="text-xs">Mais populares</SelectItem>
-                    <SelectItem value="price-asc" className="text-xs">Menor preço</SelectItem>
-                    <SelectItem value="price-desc" className="text-xs">Maior preço</SelectItem>
+                    <SelectItem value="popular">Mais populares</SelectItem>
+                    <SelectItem value="price-asc">Menor preço</SelectItem>
+                    <SelectItem value="price-desc">Maior preço</SelectItem>
                   </SelectContent>
                 </Select>
-
-                <button
-                  type="button"
-                  onClick={() => setSearch({ free: !search.free })}
-                  className={`h-9 px-3 rounded-md border text-xs font-semibold transition flex items-center gap-1.5 ${
-                    search.free
-                      ? "bg-[#00a650] text-white border-[#00a650] shadow"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <Truck className="h-3.5 w-3.5" /> Frete Grátis
-                </button>
               </div>
             </div>
 
-            {displayList.length === 0 ? (
+            {filtered.length === 0 ? (
               <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
-                <p className="text-base font-bold text-gray-700">
-                  Nenhum produto encontrado para {hasSearchQuery ? `"${search.q}"` : "esta categoria"}.
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Confira a ortografia ou tente pesquisar por outro termo.
+                <p className="text-sm font-medium text-gray-600">
+                  Nenhum produto encontrado nesta categoria no momento.
                 </p>
                 <Button
                   variant="outline"
                   size="sm"
                   className="mt-4 text-xs font-semibold"
-                  onClick={() => setSearch({ category: null, q: "", free: false })}
+                  onClick={() => setSearch({ category: null, free: false })}
                 >
-                  Limpar busca e ver todas as ofertas
+                  Ver todas as ofertas
                 </Button>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-4">
-                {displayList.map((product) => (
+                {filtered.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
             )}
 
-            {hasNextPage && !showingSimilar && (
+            {hasNextPage && (
               <div className="flex justify-center pt-6">
                 <Button
                   onClick={() => fetchNextPage()}
@@ -598,3 +449,4 @@ export function Home() {
     </div>
   );
 }
+
