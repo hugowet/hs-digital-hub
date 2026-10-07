@@ -156,7 +156,7 @@ export function ProductCard({ product }: { product: Product }) {
                   productId: product.id,
                   title: displayTitle,
                   price: Number(product.price),
-                  imageUrl: product.image_url ?? null,
+                  imageUrl: product.image_url ?? undefined,
                   maxStock: product.stock ?? 99,
                   freeShipping: product.free_shipping,
                   storeId: product.store_id,
