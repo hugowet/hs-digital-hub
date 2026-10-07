@@ -126,68 +126,68 @@ export function ProductDetailPage() {
   const media = useMemo(() => {
     if (!product) return [];
     if (product.media?.length) return product.media;
-    const urls = [product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean) as string[];
-    return urls.map((url, i) => ({
-      id: `fallback-${i}`,
-      url,
-      media_type: "image" as const,
-      storage_path: url,
-      position: i,
-    }));
+    return [...new Set([product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean) as string[])].map(
+      (url, index) => ({
+        id: `${index}`,
+        storage_path: url,
+        media_type: "image" as const,
+        mime_type: "image/*",
+        position: index,
+        url,
+      }),
+    );
   }, [product]);
 
   useEffect(() => {
-    if (product) {
-      trackAbandonedCart({
-        id: product.id,
-        title: product.title,
-        price: Number(product.price),
-        image_url: product.image_url,
-      });
+    if (media.length > 0) {
+      const nextIdx = (selectedImage + 1) % media.length;
+      const nextImg = new Image();
+      const nextUrl = media[nextIdx]?.url;
+      if (nextUrl) nextImg.src = nextUrl;
     }
-  }, [product]);
+  }, [selectedImage, media]);
 
-  const handleShare = async () => {
-    const shareUrl = window.location.href;
-    const shareTitle = product?.title || "Produto na HS Digital";
-    const shareText = `Olha esse produto que encontrei na HS Digital: ${shareTitle} por ${product ? brl(product.price) : ""}`;
+  useEffect(() => {
+    try {
+      localStorage.setItem(`questions_${productId}`, JSON.stringify(questions));
+    } catch {}
+  }, [questions, productId]);
 
-    // Tenta anexar o arquivo da imagem para o WhatsApp/celular exibir a foto do produto
-    if (navigator.share) {
-      try {
-        if (product?.image_url) {
-          try {
-            const response = await fetch(product.image_url);
-            const blob = await response.blob();
-            const file = new File([blob], "produto.jpg", { type: blob.type || "image/jpeg" });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-              await navigator.share({
-                title: shareTitle,
-                text: `${shareText}\n${shareUrl}`,
-                files: [file],
-              });
-              return;
-            }
-          } catch {
-            // Continua com compartilhamento de link normal caso haja bloqueio de CORS na imagem
-          }
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (touch) setTouchStartX(touch.clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const touch = e.changedTouches[0];
+    if (touch) {
+      const diff = touchStartX - touch.clientX;
+      if (Math.abs(diff) > 40 && media.length > 1) {
+        if (diff > 0) {
+          setSelectedImage((prev) => (prev + 1) % media.length);
+        } else {
+          setSelectedImage((prev) => (prev - 1 + media.length) % media.length);
         }
-
-        await navigator.share({
-          title: shareTitle,
-          text: shareText,
-          url: shareUrl,
-        });
-        return;
-      } catch {
-        // Se o usuário cancelou o menu de compartilhar, não faz nada
-        return;
       }
     }
+    setTouchStartX(null);
+  };
 
-    // Fallback para computadores sem suporte a navigator.share
-    navigator.clipboard.writeText(shareUrl);
-    toast.success("Link do produto copiado com sucesso!");
+  const handleShare = () => {
+    const shareUrl = window.location.href;
+    const shareData = {
+      title: product?.title || "Confira este produto na HS Digital",
+      text: `Olha esse produto na HS Digital por ${product ? brl(product.price) : ""}:`,
+      url: shareUrl,
+    };
+
+    if (navigator.share) {
+      navigator.share(shareData).catch(() => undefined);
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      toast.success("Link do produto copiado com sucesso!");
+    }
   };
 
   const handleAddQuestion = (e: React.FormEvent) => {
@@ -209,11 +209,11 @@ export function ProductDetailPage() {
         <SiteHeader />
         <main className="mx-auto w-full max-w-7xl px-4 py-8">
           <div className="grid gap-8 lg:grid-cols-2">
-            <div className="aspect-square animate-pulse rounded-2xl bg-muted" />
+            <div className="aspect-square w-full animate-pulse rounded-2xl bg-muted" />
             <div className="space-y-4">
               <div className="h-8 w-3/4 animate-pulse rounded bg-muted" />
-              <div className="h-6 w-1/4 animate-pulse rounded bg-muted" />
-              <div className="h-24 w-full animate-pulse rounded bg-muted" />
+              <div className="h-10 w-1/3 animate-pulse rounded bg-muted" />
+              <div className="h-32 w-full animate-pulse rounded bg-muted" />
             </div>
           </div>
         </main>
@@ -226,12 +226,14 @@ export function ProductDetailPage() {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
-        <main className="mx-auto flex min-h-[50vh] max-w-7xl flex-col items-center justify-center px-4 py-16 text-center">
-          <AlertCircle className="h-12 w-12 text-muted-foreground" />
+        <main className="mx-auto w-full max-w-7xl px-4 py-16 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
           <h1 className="mt-4 text-2xl font-bold">Produto não encontrado</h1>
-          <p className="mt-2 text-sm text-muted-foreground">O produto que você procura não existe ou está indisponível.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            O produto que você está procurando pode ter sido desativado ou removido.
+          </p>
           <Button asChild className="mt-6">
-            <Link to="/">Voltar para o catálogo</Link>
+            <Link to="/">Voltar à vitrine</Link>
           </Button>
         </main>
         <SiteFooter />
@@ -239,49 +241,68 @@ export function ProductDetailPage() {
     );
   }
 
-  const currentMedia = media[selectedImage] ?? media[0];
-  const isDigital = product.product_type === "digital" || product.category?.includes("digital");
-  const relatedProducts = allProducts.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 6);
+  const currentMedia = media[selectedImage] || media[0];
+  const maxInstallments = 10;
+  const installmentValue = product.price / maxInstallments;
+  const isDigital = product.product_type === "digital" || !product.supplier;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteHeader />
-
       <main className="mx-auto w-full max-w-7xl px-4 py-6">
         {/* Breadcrumb */}
-        <nav className="mb-6 flex items-center gap-2 text-xs text-muted-foreground">
-          <Link to="/" className="hover:text-foreground">Início</Link>
-          <ChevronRight className="h-3 w-3" />
-          <Link to="/" search={{ category: product.category }} className="hover:text-foreground capitalize">
-            {CATEGORIES.find((c) => c.slug === product.category)?.label || product.category}
-          </Link>
-          <ChevronRight className="h-3 w-3" />
-          <span className="line-clamp-1 text-foreground font-medium">{product.title}</span>
+        <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <Link to="/" className="hover:text-primary transition">Início</Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="capitalize">{product.category || "Geral"}</span>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="truncate max-w-[200px] sm:max-w-xs font-medium text-foreground">
+            {product.title}
+          </span>
         </nav>
 
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid gap-8 lg:grid-cols-12">
           {/* Galeria de Fotos */}
-          <div className="space-y-4">
+          <div className="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-4">
+            {media.length > 1 && (
+              <div className="flex sm:flex-col gap-2.5 overflow-x-auto sm:overflow-y-auto sm:max-h-[520px] pb-2 sm:pb-0 scrollbar-none">
+                {media.map((item, index) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setSelectedImage(index);
+                      setImageLoaded(false);
+                    }}
+                    className={`relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-xl border-2 transition ${
+                      selectedImage === index
+                        ? "border-primary shadow-md"
+                        : "border-border hover:border-muted-foreground/50 opacity-80"
+                    }`}
+                  >
+                    <img
+                      src={item.url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div
-              className="relative aspect-square w-full overflow-hidden rounded-2xl border border-border bg-card flex items-center justify-center select-none"
-              onTouchStart={(e) => setTouchStartX(e.touches[0]?.clientX ?? null)}
-              onTouchEnd={(e) => {
-                if (touchStartX === null || media.length <= 1) return;
-                const endX = e.changedTouches[0]?.clientX ?? touchStartX;
-                const diff = touchStartX - endX;
-                if (diff > 40) setSelectedImage((prev) => (prev + 1) % media.length);
-                if (diff < -40) setSelectedImage((prev) => (prev - 1 + media.length) % media.length);
-                setTouchStartX(null);
-              }}
+              className="relative flex-1 aspect-square max-h-[540px] overflow-hidden rounded-3xl border border-border bg-card shadow-sm flex items-center justify-center select-none"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
             >
               {currentMedia?.url ? (
                 <img
                   src={currentMedia.url}
                   alt={product.title}
-                  className={`h-full w-full object-contain p-4 transition-opacity duration-300 ${
+                  onLoad={() => setImageLoaded(true)}
+                  className={`h-full w-full object-contain p-2 transition duration-300 ${
                     imageLoaded ? "opacity-100" : "opacity-0"
                   }`}
-                  onLoad={() => setImageLoaded(true)}
                 />
               ) : (
                 <div className="text-muted-foreground text-sm">Sem imagem disponível</div>
@@ -312,237 +333,183 @@ export function ProductDetailPage() {
               </div>
 
               {product.free_shipping && (
-                <span className="absolute bottom-4 left-4 rounded-md bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow">
-                  Frete Grátis
+                <span className="absolute top-4 left-4 rounded-full bg-emerald-500 px-3 py-1 text-xs font-black text-white shadow">
+                  FRETE GRÁTIS
                 </span>
               )}
             </div>
-
-            {/* Miniaturas */}
-            {media.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-                {media.map((item, index) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setSelectedImage(index);
-                      setImageLoaded(false);
-                    }}
-                    className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 bg-card p-1 transition ${
-                      selectedImage === index ? "border-primary" : "border-border hover:border-muted-foreground"
-                    }`}
-                  >
-                    <img src={item.url} alt="" className="h-full w-full object-contain" />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
-          {/* Detalhes da Compra */}
-          <div className="space-y-6">
+          {/* Bloco de Detalhes e Compra */}
+          <div className="lg:col-span-5 flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Store className="h-4 w-4" />
-                <span>Vendido por <strong>{product.stores?.name ?? "HS Digital"}</strong></span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {isDigital ? "Produto Digital · Envio Imediato" : "Produto Físico · Envio Rastreado"}
+                </span>
+                {product.sold_count > 0 && (
+                  <span className="text-xs text-muted-foreground">• {product.sold_count} vendidos</span>
+                )}
               </div>
-              <h1 className="mt-2 text-xl font-bold sm:text-2xl">{product.title}</h1>
 
-              <div className="mt-2 flex items-center gap-2 text-xs">
-                <div className="flex items-center text-amber-500">
-                  {[...Array(5)].map((_, i) => (
+              <h1 className="mt-2 text-2xl sm:text-3xl font-black leading-tight">
+                {product.title}
+              </h1>
+
+              {/* Avaliação */}
+              <div className="mt-2.5 flex items-center gap-2">
+                <div className="flex items-center text-amber-400">
+                  {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
-                      className={`h-4 w-4 ${i < Math.floor(product.rating ?? 4.8) ? "fill-current" : "text-muted"}`}
+                      className={`h-4 w-4 ${
+                        i < Math.floor(product.rating || 5) ? "fill-current" : "opacity-30"
+                      }`}
                     />
                   ))}
                 </div>
-                <span className="font-bold">{product.rating ?? 4.8}</span>
-                <span className="text-muted-foreground">({compact(product.reviews_count ?? 120)} avaliações)</span>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-muted-foreground">{compact(product.sold_count ?? 30)} vendidos</span>
+                <span className="text-xs font-bold text-foreground">
+                  {(product.rating || 5).toFixed(1)}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  ({product.reviews_count || 12} avaliações)
+                </span>
               </div>
-            </div>
 
-            <div className="rounded-xl border border-border bg-card p-4 sm:p-6 space-y-4">
-              <div>
+              {/* Preço e Parcelamento */}
+              <div className="mt-5 rounded-2xl bg-muted/40 p-4 border border-border">
+                {product.compare_at_price && product.compare_at_price > product.price && (
+                  <p className="text-xs text-muted-foreground line-through">
+                    {brl(product.compare_at_price)}
+                  </p>
+                )}
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-foreground">{brl(product.price)}</span>
-                  {product.compare_at_price && product.compare_at_price > product.price && (
-                    <span className="text-sm text-muted-foreground line-through">{brl(product.compare_at_price)}</span>
-                  )}
+                  <span className="text-3xl sm:text-4xl font-black text-primary">
+                    {brl(product.price)}
+                  </span>
+                  <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600">
+                    no Pix
+                  </span>
                 </div>
-                <p className="mt-1 text-xs font-semibold text-emerald-600">
-                  em até 10x de {brl(product.price / 10)} sem juros no cartão
-                </p>
+                {product.price >= 30 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    ou em até {maxInstallments}x de {brl(installmentValue)} no cartão
+                  </p>
+                )}
               </div>
 
-              {/* Seletor de Quantidade */}
-              <div className="flex items-center gap-3 pt-2">
-                <span className="text-xs font-medium">Quantidade:</span>
-                <div className="flex items-center rounded-lg border border-border bg-background">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="p-2 text-muted-foreground hover:text-foreground"
-                    disabled={quantity <= 1}
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                  <span className="w-8 text-center text-xs font-bold">{quantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.min(product.stock ?? 99, q + 1))}
-                    className="p-2 text-muted-foreground hover:text-foreground"
-                    disabled={quantity >= (product.stock ?? 99)}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <span className="text-[11px] text-muted-foreground">({product.stock ?? 50} disponíveis)</span>
-              </div>
-
-              {/* Botões de Ação */}
-              <div className="grid gap-2 pt-2">
+              {/* Botão de Compartilhar */}
+              <div className="mt-4">
                 <Button
-                  size="lg"
-                  className="w-full font-bold bg-[#3483fa] hover:bg-[#2968c8] text-white"
-                  onClick={async () => {
-                    const { data, error } = await supabase.auth.getUser();
-                    if (error || !data.user) {
-                      toast.info("Faça login para continuar com a compra.");
-                      navigate({ to: "/auth", search: { reason: "login-required" } });
-                      return;
-                    }
-                    add(
-                      {
-                        productId: product.id,
-                        title: product.title,
-                        price: Number(product.price),
-                        imageUrl: product.image_url ?? null,
-                        maxStock: product.stock ?? 99,
-                        freeShipping: product.free_shipping,
-                        storeId: product.store_id,
-                        storeName: product.stores?.name ?? "HS Digital",
-                        productType: (product.product_type as "physical" | "digital") ?? "physical",
-                      },
-                      quantity,
-                    );
-                    navigate({ to: "/carrinho" });
-                  }}
-                >
-                  Comprar agora
-                </Button>
-                <Button
-                  size="lg"
                   variant="outline"
-                  className="w-full font-bold"
-                  onClick={async () => {
-                    const { data, error } = await supabase.auth.getUser();
-                    if (error || !data.user) {
-                      toast.info("Faça login para adicionar ao carrinho.");
-                      navigate({ to: "/auth", search: { reason: "login-required" } });
-                      return;
-                    }
-                    add(
-                      {
-                        productId: product.id,
-                        title: product.title,
-                        price: Number(product.price),
-                        imageUrl: product.image_url ?? null,
-                        maxStock: product.stock ?? 99,
-                        freeShipping: product.free_shipping,
-                        storeId: product.store_id,
-                        storeName: product.stores?.name ?? "HS Digital",
-                        productType: (product.product_type as "physical" | "digital") ?? "physical",
-                      },
-                      quantity,
-                    );
-                    toast.success("Adicionado ao carrinho!");
-                  }}
-                >
-                  Adicionar ao carrinho
-                </Button>
-              </div>
-
-              {/* Botão de Compartilhar com foto */}
-              <div className="pt-2">
-                <Button
-                  variant="ghost"
                   onClick={handleShare}
-                  className="w-full border border-dashed border-border text-xs font-semibold flex items-center justify-center gap-2 h-10 hover:bg-muted"
+                  className="w-full border-primary/30 text-primary hover:bg-primary/5 font-bold flex items-center justify-center gap-2 h-10"
                 >
-                  <Share2 className="h-4 w-4 text-primary" /> Compartilhar produto com foto
+                  <Share2 className="h-4 w-4" /> Compartilhar produto
                 </Button>
               </div>
 
               {/* Benefícios */}
-              <div className="pt-2 space-y-2 text-xs text-muted-foreground border-t border-border">
+              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span>Compra 100% Protegida com devolução grátis em até 7 dias</span>
+                  <span>Compra 100% Protegida com garantia de entrega ou dinheiro de volta</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Truck className="h-4 w-4 text-primary shrink-0" />
-                  <span>Envio com código de rastreamento oficial no seu e-mail</span>
+                  <span>Código de rastreamento oficial enviado para o seu e-mail</span>
                 </div>
               </div>
+            </div>
+
+            {/* Ações de Compra */}
+            <div className="mt-6 pt-6 border-t border-border space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center rounded-xl border border-border bg-card">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="p-2.5 text-muted-foreground hover:text-foreground transition"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="w-10 text-center font-bold text-sm">{quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.min(product.stock || 99, q + 1))}
+                    className="p-2.5 text-muted-foreground hover:text-foreground transition"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    add(product, quantity);
+                    toast.success("Produto adicionado ao seu carrinho!");
+                  }}
+                  variant="outline"
+                  className="flex-1 font-bold h-12 text-sm"
+                >
+                  Adicionar ao Carrinho
+                </Button>
+              </div>
+
+              <Button
+                onClick={() => {
+                  add(product, quantity);
+                  navigate({ to: "/carrinho" });
+                }}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black h-12 text-base shadow-lg transition"
+              >
+                Comprar Agora
+              </Button>
             </div>
           </div>
         </div>
 
-        {/* Descrição do Produto */}
-        <section className="mt-12 rounded-2xl border border-border bg-card p-6">
-          <h2 className="text-lg font-bold">Descrição do produto</h2>
-          <div className="mt-4 prose prose-sm dark:prose-invert max-w-none text-muted-foreground leading-relaxed whitespace-pre-line">
-            {product.description_long || product.description || "Este produto não possui uma descrição detalhada cadastrada."}
+        {/* Descrição e Especificações */}
+        <section className="mt-12 rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+          <h2 className="text-xl sm:text-2xl font-black">Detalhes do Produto</h2>
+          <div className="mt-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+            {product.description_long || product.description || "Nenhuma descrição detalhada informada."}
           </div>
         </section>
 
-        {/* Perguntas & Respostas */}
-        <section className="mt-8 rounded-2xl border border-border bg-card p-6">
-          <h2 className="text-lg font-bold">Perguntas ao vendedor</h2>
+        {/* Perguntas e Respostas */}
+        <section className="mt-8 rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-black">Perguntas sobre o produto</h2>
+          </div>
+
           <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2">
             <Input
               value={newQuestion}
               onChange={(e) => setNewQuestion(e.target.value)}
               placeholder="Escreva sua dúvida sobre o produto..."
-              className="flex-1"
+              className="flex-1 h-11"
             />
-            <Button type="submit">
-              <Send className="mr-1.5 h-4 w-4" /> Perguntar
+            <Button type="submit" className="font-bold h-11 px-5">
+              <Send className="h-4 w-4 mr-1.5" /> Perguntar
             </Button>
           </form>
 
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 divide-y divide-border">
             {questions.map((q) => (
-              <div key={q.id} className="space-y-1 rounded-lg border border-border/50 bg-background/50 p-3 text-xs">
-                <p className="font-semibold text-foreground flex items-center gap-1.5">
-                  <MessageSquare className="h-3.5 w-3.5 text-primary" /> {q.question}
-                </p>
-                {q.answer ? (
-                  <p className="pl-5 text-muted-foreground">↳ {q.answer}</p>
-                ) : (
-                  <p className="pl-5 text-amber-500 italic">Aguardando resposta do vendedor...</p>
+              <div key={q.id} className="py-4">
+                <p className="text-sm font-bold text-foreground">P: {q.question}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Enviada {q.created_at}</p>
+                {q.answer && (
+                  <div className="mt-2 rounded-xl bg-muted/50 p-3 text-xs text-foreground border-l-2 border-primary">
+                    <span className="font-bold text-primary">Resposta do vendedor:</span> {q.answer}
+                  </div>
                 )}
               </div>
             ))}
           </div>
         </section>
-
-        {/* Produtos Relacionados */}
-        {relatedProducts.length > 0 && (
-          <section className="mt-12">
-            <h2 className="text-lg font-bold">Quem viu este produto também comprou</h2>
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {relatedProducts.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-          </section>
-        )}
       </main>
-
       <SiteFooter />
     </div>
   );
