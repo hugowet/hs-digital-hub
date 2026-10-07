@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  Clock,
   Gift,
   RotateCw,
   Sparkles,
@@ -26,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { getGameStatus, playDailyGame } from "@/lib/games.functions";
 import { ArcadeHall } from "@/components/games/arcade-hall";
 
-export const Route = createFileRoute("/jogos")({
+export const Route = createFileRoute("/_authenticated/jogos")({
   head: () => ({
     meta: [
       { title: "Jogos & Prêmios · HS Digital" },
@@ -59,6 +60,25 @@ const wheelPosition: Record<Outcome, number> = {
   none: 0,
 };
 
+function getTimeUntilMidnight(): { hours: number; minutes: number; seconds: number; isMidnight: boolean } {
+  const now = new Date();
+  // Converte para horário de Brasília
+  const spString = now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
+  const spDate = new Date(spString);
+  const midnight = new Date(spDate);
+  midnight.setHours(24, 0, 0, 0);
+
+  const diffMs = midnight.getTime() - spDate.getTime();
+  if (diffMs <= 1000) {
+    return { hours: 0, minutes: 0, seconds: 0, isMidnight: true };
+  }
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return { hours, minutes, seconds, isMidnight: false };
+}
+
 function GamesPage() {
   const statusFn = useServerFn(getGameStatus);
   const [status, setStatus] = useState<{
@@ -66,11 +86,32 @@ function GamesPage() {
     scratch: string | null;
     coins: number;
   }>({ wheel: null, scratch: null, coins: 0 });
-  useEffect(() => {
+
+  const [timeLeft, setTimeLeft] = useState(getTimeUntilMidnight());
+
+  const refreshStatus = useCallback(() => {
     statusFn()
       .then(setStatus)
       .catch(() => undefined);
   }, [statusFn]);
+
+  useEffect(() => {
+    refreshStatus();
+  }, [refreshStatus]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const remaining = getTimeUntilMidnight();
+      setTimeLeft(remaining);
+      if (remaining.isMidnight) {
+        refreshStatus();
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [refreshStatus]);
+
+  const countdownText = `${timeLeft.hours}h ${timeLeft.minutes.toString().padStart(2, "0")}m`;
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
@@ -78,12 +119,11 @@ function GamesPage() {
         <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
           <div>
             <p className="flex items-center gap-2 text-sm font-bold text-primary">
-              <Sparkles className="h-4 w-4" /> Prêmios todos os dias
+              <Sparkles className="h-4 w-4" /> Prêmios todos os dias · Renova à meia-noite (00:00)
             </p>
             <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Jogos & Prêmios</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Ganhe descontos para usar no frete. Cada prêmio vale por 24 horas e tem limite de R$
-              30.
+              Ganhe descontos para usar no frete. 1 giro e 1 raspadinha por dia. Cada prêmio vale por 24 horas.
             </p>
           </div>
           <Button asChild variant="outline">
@@ -92,13 +132,16 @@ function GamesPage() {
             </Link>
           </Button>
         </header>
+
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <WheelGame
             played={Boolean(status.wheel)}
+            countdownText={countdownText}
             onPlayed={(outcome) => setStatus((s) => ({ ...s, wheel: outcome }))}
           />
           <ScratchGame
             played={Boolean(status.scratch)}
+            countdownText={countdownText}
             onPlayed={(outcome) => setStatus((s) => ({ ...s, scratch: outcome }))}
           />
         </div>
@@ -114,9 +157,11 @@ function GamesPage() {
 
 function WheelGame({
   played,
+  countdownText,
   onPlayed,
 }: {
   played: boolean;
+  countdownText: string;
   onPlayed: (outcome: Outcome) => void;
 }) {
   const play = useServerFn(playDailyGame);
@@ -183,14 +228,21 @@ function WheelGame({
         {result ? (
           <Result outcome={result} />
         ) : (
-          <Button
-            className="mt-6 w-full"
-            size="lg"
-            onClick={() => void spin()}
-            disabled={played || spinning}
-          >
-            {spinning ? "Girando…" : played ? "Giro diário já realizado" : "Girar agora"}
-          </Button>
+          <div className="mt-6 space-y-2">
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={() => void spin()}
+              disabled={played || spinning}
+            >
+              {spinning ? "Girando…" : played ? "Giro diário já realizado" : "Girar agora"}
+            </Button>
+            {played && (
+              <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground font-medium text-center">
+                <Clock className="h-3.5 w-3.5" /> Próximo giro libera à meia-noite (em {countdownText})
+              </p>
+            )}
+          </div>
         )}
       </div>
     </section>
@@ -215,9 +267,11 @@ function Result({ outcome }: { outcome: Outcome }) {
 
 function ScratchGame({
   played,
+  countdownText,
   onPlayed,
 }: {
   played: boolean;
+  countdownText: string;
   onPlayed: (outcome: Outcome) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -228,63 +282,83 @@ function ScratchGame({
   const [result, setResult] = useState<Outcome | null>(null);
   const [progress, setProgress] = useState(0);
 
-  const resetCanvas = useCallback(() => {
+  const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = Math.round(rect.width * window.devicePixelRatio);
-    canvas.height = Math.round(rect.height * window.devicePixelRatio);
-    const context = canvas.getContext("2d");
-    if (!context) return;
-    context.scale(window.devicePixelRatio, window.devicePixelRatio);
-    const styles = getComputedStyle(document.documentElement);
-    context.fillStyle = styles.getPropertyValue("--primary");
-    context.fillRect(0, 0, rect.width, rect.height);
-    context.fillStyle = styles.getPropertyValue("--primary-foreground");
-    context.font = "700 15px Manrope";
-    context.textAlign = "center";
-    context.fillText("RASPE AQUI", rect.width / 2, rect.height / 2 + 5);
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillRect(0, 0, rect.width, rect.height);
+    ctx.fillStyle = "#334155";
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Raspe aqui para revelar o prêmio", rect.width / 2, rect.height / 2);
   }, []);
-  useEffect(() => {
-    resetCanvas();
-    window.addEventListener("resize", resetCanvas);
-    return () => window.removeEventListener("resize", resetCanvas);
-  }, [resetCanvas]);
 
-  const scratch = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!scratching.current || played || revealed.current) return;
+  useEffect(() => {
+    initCanvas();
+  }, [initCanvas]);
+
+  const scratch = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context) return;
+    if (!canvas || !scratching.current || revealed.current) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
-    context.save();
-    context.globalCompositeOperation = "destination-out";
-    context.beginPath();
-    context.arc(event.clientX - rect.left, event.clientY - rect.top, 22, 0, Math.PI * 2);
-    context.fill();
-    context.restore();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
+    ctx.fill();
+
     scratchMoves.current += 1;
-    if (scratchMoves.current % 4 !== 0) return;
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-    let transparent = 0;
-    for (let index = 3; index < pixels.length; index += 4)
-      if (pixels[index] === 0) transparent += 1;
-    const next = Math.round((transparent / (pixels.length / 4)) * 100);
-    setProgress(next);
-    if (next >= 55) {
-      revealed.current = true;
-      play({ data: { gameType: "scratch" } })
-        .then((reward) => {
-          const outcome = reward.outcome as Outcome;
-          setResult(outcome);
-          onPlayed(outcome);
-          context.clearRect(0, 0, canvas.width, canvas.height);
-        })
-        .catch((error) => {
-          revealed.current = false;
-          toast.error(error instanceof Error ? error.message : "Não foi possível revelar.");
-        });
+    if (scratchMoves.current % 12 === 0) {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      let clearPixels = 0;
+      for (let i = 3; i < data.length; i += 4) {
+        if (data[i] === 0) clearPixels++;
+      }
+      const pct = Math.round((clearPixels / (canvas.width * canvas.height)) * 100);
+      setProgress(pct);
+      if (pct > 40 && !revealed.current) {
+        revealed.current = true;
+        ctx.clearRect(0, 0, rect.width, rect.height);
+      }
     }
+  };
+
+  const handlePointerDown = async (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (played) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    scratching.current = true;
+    if (!result) {
+      try {
+        const reward = await play({ data: { gameType: "scratch" } });
+        const outcome = reward.outcome as Outcome;
+        setResult(outcome);
+        onPlayed(outcome);
+      } catch (error) {
+        scratching.current = false;
+        toast.error(error instanceof Error ? error.message : "Não foi possível raspar.");
+      }
+    }
+    scratch(e.clientX, e.clientY);
+  };
+
+  const handlePointerMove = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    scratch(e.clientX, e.clientY);
+  };
+
+  const handlePointerUp = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    scratching.current = false;
   };
 
   return (
@@ -293,272 +367,49 @@ function ScratchGame({
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase text-primary">1 raspadinha por dia</p>
-            <h2 className="mt-1 text-xl font-bold">Raspadinha surpresa</h2>
+            <h2 className="mt-1 text-xl font-bold">Raspadinha da sorte</h2>
           </div>
           <div className="grid h-11 w-11 place-items-center rounded-full bg-primary/10 text-primary">
-            <Sparkles className="h-5 w-5" />
+            <Gift className="h-5 w-5" />
           </div>
         </div>
       </div>
       <div className="p-5 sm:p-7">
-        <div className="relative mx-auto aspect-[1.7] w-full max-w-md overflow-hidden rounded-lg border-2 border-dashed border-primary/40 bg-muted">
-          <div className="absolute inset-0 grid place-items-center p-6 text-center">
-            <div>
-              <Gift className="mx-auto h-10 w-10 text-primary" />
-              <p className="mt-3 text-xl font-black">
-                {result ? rewardText[result] : "Seu prêmio está aqui"}
+        <div className="relative mx-auto aspect-video w-full max-w-md overflow-hidden rounded-xl border border-border bg-muted">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+            {result ? (
+              <>
+                <Trophy
+                  className={`h-8 w-8 ${result === "none" ? "text-muted-foreground" : "text-primary"}`}
+                />
+                <p className="mt-2 text-lg font-bold">{rewardText[result]}</p>
+                {result !== "none" && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Cupom gerado e salvo em Meus cupons.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {played ? "Você já raspou hoje!" : "Raspe para revelar o prêmio"}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">Válido por 24 horas</p>
-            </div>
+            )}
           </div>
-          {!result && (
+          {!played && (
             <canvas
               ref={canvasRef}
-              className={`absolute inset-0 h-full w-full touch-none ${played ? "pointer-events-none opacity-50" : "cursor-crosshair"}`}
-              onPointerDown={(event) => {
-                scratching.current = true;
-                event.currentTarget.setPointerCapture(event.pointerId);
-                scratch(event);
-              }}
-              onPointerMove={scratch}
-              onPointerUp={() => {
-                scratching.current = false;
-              }}
-              onPointerCancel={() => {
-                scratching.current = false;
-              }}
-              aria-label="Raspe movendo o dedo ou mouse"
+              className="absolute inset-0 h-full w-full cursor-pointer touch-none"
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
             />
           )}
         </div>
-        <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            {played && !result
-              ? "Raspadinha diária já utilizada"
-              : result
-                ? "Prêmio revelado"
-                : "Passe o dedo ou mouse para raspar"}
-          </span>
-          <span>{Math.round(progress)}%</span>
-        </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div className="h-full bg-primary transition-[width]" style={{ width: `${progress}%` }} />
-        </div>
-        {result && <Result outcome={result} />}
-      </div>
-    </section>
-  );
-}
-
-function SnakeGame() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const directionRef = useRef<Direction>("right");
-  const nextDirection = useRef<Direction>("right");
-  const [running, setRunning] = useState(false);
-  const [score, setScore] = useState(0);
-  const [best, setBest] = useState(0);
-  const [level, setLevel] = useState(1);
-  const setDirection = (direction: Direction) => {
-    const opposite = { up: "down", down: "up", left: "right", right: "left" } as const;
-    if (direction !== opposite[directionRef.current]) nextDirection.current = direction;
-  };
-  useEffect(() => {
-    if (!running) return;
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context) return;
-    const cells = 22;
-    const size = canvas.width / cells;
-    let snake = [
-      { x: 7, y: 11 },
-      { x: 6, y: 11 },
-      { x: 5, y: 11 },
-    ];
-    let food = { x: 16, y: 11 };
-    let points = 0;
-    let frame = 0;
-    let last = 0;
-    let animation = 0;
-    const placeFood = () => {
-      do {
-        food = { x: Math.floor(Math.random() * cells), y: Math.floor(Math.random() * cells) };
-      } while (snake.some((part) => part.x === food.x && part.y === food.y));
-    };
-    const draw = (time: number) => {
-      const speed = Math.max(70, 150 - Math.floor(points / 3) * 9);
-      if (time - last >= speed) {
-        last = time;
-        frame += 1;
-        directionRef.current = nextDirection.current;
-        const velocity: Record<Direction, readonly [number, number]> = {
-          up: [0, -1],
-          down: [0, 1],
-          left: [-1, 0],
-          right: [1, 0],
-        };
-        const [dx, dy] = velocity[directionRef.current];
-        const currentHead = snake[0]!;
-        const head = {
-          x: (currentHead.x + dx + cells) % cells,
-          y: (currentHead.y + dy + cells) % cells,
-        };
-        if (snake.some((part) => part.x === head.x && part.y === head.y)) {
-          setRunning(false);
-          setBest((current) => Math.max(current, points));
-          return;
-        }
-        snake.unshift(head);
-        if (head.x === food.x && head.y === food.y) {
-          points += 1;
-          setScore(points);
-          setLevel(1 + Math.floor(points / 3));
-          placeFood();
-        } else snake.pop();
-      }
-      const styles = getComputedStyle(document.documentElement);
-      context.fillStyle = styles.getPropertyValue("--ink");
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.strokeStyle = styles.getPropertyValue("--border");
-      context.globalAlpha = 0.16;
-      for (let i = 1; i < cells; i += 1) {
-        context.beginPath();
-        context.moveTo(i * size, 0);
-        context.lineTo(i * size, canvas.height);
-        context.stroke();
-        context.beginPath();
-        context.moveTo(0, i * size);
-        context.lineTo(canvas.width, i * size);
-        context.stroke();
-      }
-      context.globalAlpha = 1;
-      snake.forEach((part, index) => {
-        context.fillStyle =
-          index === 0
-            ? styles.getPropertyValue("--primary-glow")
-            : styles.getPropertyValue("--primary");
-        const inset = index === 0 ? 1 : 2;
-        context.fillRect(
-          part.x * size + inset,
-          part.y * size + inset,
-          size - inset * 2,
-          size - inset * 2,
-        );
-      });
-      context.fillStyle = styles.getPropertyValue("--success");
-      context.beginPath();
-      context.arc(
-        food.x * size + size / 2,
-        food.y * size + size / 2,
-        size * (0.27 + Math.sin(frame * 0.7) * 0.04),
-        0,
-        Math.PI * 2,
-      );
-      context.fill();
-      animation = requestAnimationFrame(draw);
-    };
-    animation = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(animation);
-  }, [running]);
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      const keys: Record<string, Direction> = {
-        ArrowUp: "up",
-        w: "up",
-        ArrowDown: "down",
-        s: "down",
-        ArrowLeft: "left",
-        a: "left",
-        ArrowRight: "right",
-        d: "right",
-      };
-      const direction = keys[event.key];
-      if (direction) {
-        event.preventDefault();
-        setDirection(direction);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-  const start = () => {
-    directionRef.current = "right";
-    nextDirection.current = "right";
-    setScore(0);
-    setLevel(1);
-    setRunning(true);
-  };
-  return (
-    <section className="overflow-hidden rounded-lg border border-border bg-card lg:grid lg:grid-cols-[340px_1fr]">
-      <div className="border-b border-border p-6 lg:border-b-0 lg:border-r">
-        <p className="text-xs font-bold uppercase text-primary">Desafio livre</p>
-        <h2 className="mt-1 text-2xl font-bold">Cobrinha Turbo</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          A velocidade aumenta a cada três frutas. Atravesse as bordas e tente superar seu recorde.
-        </p>
-        <div className="mt-6 grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-lg bg-muted p-3">
-            <strong className="block text-xl text-primary">{score}</strong>
-            <span className="text-[11px] text-muted-foreground">Pontos</span>
-          </div>
-          <div className="rounded-lg bg-muted p-3">
-            <strong className="block text-xl text-primary">{level}</strong>
-            <span className="text-[11px] text-muted-foreground">Nível</span>
-          </div>
-          <div className="rounded-lg bg-muted p-3">
-            <strong className="block text-xl text-primary">{best}</strong>
-            <span className="text-[11px] text-muted-foreground">Recorde</span>
-          </div>
-        </div>
-        <Button className="mt-5 w-full" onClick={start}>
-          {running ? "Reiniciar partida" : score > 0 ? "Jogar novamente" : "Começar"}
-        </Button>
-      </div>
-      <div className="grid place-items-center bg-foreground p-4 sm:p-6">
-        <div className="w-full max-w-md">
-          <canvas
-            ref={canvasRef}
-            width={440}
-            height={440}
-            className="aspect-square w-full rounded-lg border border-primary/30"
-            aria-label="Jogo da cobrinha"
-          />
-          <div className="mx-auto mt-3 grid w-36 grid-cols-3 gap-1">
-            <span />
-            <Button
-              size="icon"
-              variant="secondary"
-              onClick={() => setDirection("up")}
-              aria-label="Cima"
-            >
-              <ArrowUp />
-            </Button>
-            <span />
-            <Button
-              size="icon"
-              variant="secondary"
-              onClick={() => setDirection("left")}
-              aria-label="Esquerda"
-            >
-              <ArrowLeft />
-            </Button>
-            <Button
-              size="icon"
-              variant="secondary"
-              onClick={() => setDirection("down")}
-              aria-label="Baixo"
-            >
-              <ArrowDown />
-            </Button>
-            <Button
-              size="icon"
-              variant="secondary"
-              onClick={() => setDirection("right")}
-              aria-label="Direita"
-            >
-              <ArrowRight />
-            </Button>
-          </div>
-        </div>
+        {played && (
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted-foreground font-medium text-center">
+            <Clock className="h-3.5 w-3.5" /> Próxima raspadinha libera à meia-noite (em {countdownText})
+          </p>
+        )}
       </div>
     </section>
   );
