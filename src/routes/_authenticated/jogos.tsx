@@ -1,10 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
   Clock,
   Gift,
   RotateCw,
@@ -17,7 +13,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { toast } from "sonner";
 
@@ -45,7 +40,6 @@ export const Route = createFileRoute("/_authenticated/jogos")({
 });
 
 type Outcome = "shipping_5" | "shipping_10" | "free_shipping" | "none";
-type Direction = "up" | "down" | "left" | "right";
 
 const rewardText: Record<Outcome, string> = {
   shipping_5: "5% de desconto no frete",
@@ -53,6 +47,7 @@ const rewardText: Record<Outcome, string> = {
   free_shipping: "Frete grátis até R$ 30",
   none: "Não foi dessa vez",
 };
+
 const wheelPosition: Record<Outcome, number> = {
   shipping_5: 90,
   shipping_10: 180,
@@ -62,7 +57,6 @@ const wheelPosition: Record<Outcome, number> = {
 
 function getTimeUntilMidnight(): { hours: number; minutes: number; seconds: number; isMidnight: boolean } {
   const now = new Date();
-  // Converte para horário de Brasília
   const spString = now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
   const spDate = new Date(spString);
   const midnight = new Date(spDate);
@@ -168,6 +162,7 @@ function WheelGame({
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<Outcome | null>(null);
+
   const spin = async () => {
     setSpinning(true);
     try {
@@ -185,6 +180,7 @@ function WheelGame({
       toast.error(error instanceof Error ? error.message : "Não foi possível girar.");
     }
   };
+
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="border-b border-border p-5">
@@ -275,12 +271,12 @@ function ScratchGame({
   onPlayed: (outcome: Outcome) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const scratching = useRef(false);
+  const isScratching = useRef(false);
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
   const revealed = useRef(false);
   const scratchMoves = useRef(0);
   const play = useServerFn(playDailyGame);
   const [result, setResult] = useState<Outcome | null>(null);
-  const [progress, setProgress] = useState(0);
 
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -288,77 +284,91 @@ function ScratchGame({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    ctx.fillStyle = "#94a3b8";
+    if (rect.width === 0) return;
+
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    // Fundo cinza prateado de raspadinha
+    const grad = ctx.createLinearGradient(0, 0, rect.width, rect.height);
+    grad.addColorStop(0, "#94a3b8");
+    grad.addColorStop(0.5, "#cbd5e1");
+    grad.addColorStop(1, "#64748b");
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, rect.width, rect.height);
-    ctx.fillStyle = "#334155";
-    ctx.font = "bold 16px sans-serif";
+
+    // Texto de instrução
+    ctx.fillStyle = "#1e293b";
+    ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("Raspe aqui para revelar o prêmio", rect.width / 2, rect.height / 2);
+    ctx.fillText("✨ Raspe aqui com o dedo ✨", rect.width / 2, rect.height / 2);
   }, []);
 
   useEffect(() => {
     initCanvas();
   }, [initCanvas]);
 
-  const scratch = (clientX: number, clientY: number) => {
+  const requestPrizeIfNeeded = useCallback(() => {
+    if (!result && !played) {
+      play({ data: { gameType: "scratch" } })
+        .then((reward) => {
+          const outcome = reward.outcome as Outcome;
+          setResult(outcome);
+          onPlayed(outcome);
+        })
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : "Não foi possível validar a raspadinha.");
+        });
+    }
+  }, [play, result, played, onPlayed]);
+
+  const scratchAt = (x: number, y: number) => {
     const canvas = canvasRef.current;
-    if (!canvas || !scratching.current || revealed.current) return;
+    if (!canvas || revealed.current) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+
     ctx.globalCompositeOperation = "destination-out";
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 44;
+
     ctx.beginPath();
-    ctx.arc(x, y, 22, 0, Math.PI * 2);
-    ctx.fill();
+    if (lastPos.current) {
+      ctx.moveTo(lastPos.current.x, lastPos.current.y);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    } else {
+      ctx.arc(x, y, 22, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    lastPos.current = { x, y };
 
     scratchMoves.current += 1;
-    if (scratchMoves.current % 12 === 0) {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      let clearPixels = 0;
-      for (let i = 3; i < data.length; i += 4) {
-        if (data[i] === 0) clearPixels++;
+    if (scratchMoves.current % 10 === 0) {
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imgData.data;
+      let cleared = 0;
+      for (let i = 3; i < data.length; i += 8) {
+        if (data[i] === 0) cleared++;
       }
-      const pct = Math.round((clearPixels / (canvas.width * canvas.height)) * 100);
-      setProgress(pct);
-      if (pct > 40 && !revealed.current) {
+      const totalSampled = data.length / 8;
+      if (cleared / totalSampled > 0.35 && !revealed.current) {
         revealed.current = true;
-        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
   };
 
-  const handlePointerDown = async (e: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (played) return;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    scratching.current = true;
-    if (!result) {
-      try {
-        const reward = await play({ data: { gameType: "scratch" } });
-        const outcome = reward.outcome as Outcome;
-        setResult(outcome);
-        onPlayed(outcome);
-      } catch (error) {
-        scratching.current = false;
-        toast.error(error instanceof Error ? error.message : "Não foi possível raspar.");
-      }
-    }
-    scratch(e.clientX, e.clientY);
-  };
-
-  const handlePointerMove = (e: ReactPointerEvent<HTMLCanvasElement>) => {
-    scratch(e.clientX, e.clientY);
-  };
-
-  const handlePointerUp = (e: ReactPointerEvent<HTMLCanvasElement>) => {
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    scratching.current = false;
+  const getCanvasCoords = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
   };
 
   return (
@@ -375,7 +385,7 @@ function ScratchGame({
         </div>
       </div>
       <div className="p-5 sm:p-7">
-        <div className="relative mx-auto aspect-video w-full max-w-md overflow-hidden rounded-xl border border-border bg-muted">
+        <div className="relative mx-auto aspect-video w-full max-w-md overflow-hidden rounded-xl border border-border bg-muted select-none">
           <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
             {result ? (
               <>
@@ -390,18 +400,60 @@ function ScratchGame({
                 )}
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                {played ? "Você já raspou hoje!" : "Raspe para revelar o prêmio"}
+              <p className="text-sm text-muted-foreground font-medium">
+                {played ? "Você já raspou hoje!" : "Raspe a área prateada para ver seu prêmio"}
               </p>
             )}
           </div>
+
           {!played && (
             <canvas
               ref={canvasRef}
               className="absolute inset-0 h-full w-full cursor-pointer touch-none"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
+              // Suporte a mouse
+              onMouseDown={(e) => {
+                isScratching.current = true;
+                requestPrizeIfNeeded();
+                const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+                lastPos.current = { x, y };
+                scratchAt(x, y);
+              }}
+              onMouseMove={(e) => {
+                if (!isScratching.current) return;
+                const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+                scratchAt(x, y);
+              }}
+              onMouseUp={() => {
+                isScratching.current = false;
+                lastPos.current = null;
+              }}
+              onMouseLeave={() => {
+                isScratching.current = false;
+                lastPos.current = null;
+              }}
+              // Suporte nativo ao dedo / toque no celular sem travar a tela
+              onTouchStart={(e) => {
+                isScratching.current = true;
+                requestPrizeIfNeeded();
+                const touch = e.touches[0];
+                if (touch) {
+                  const { x, y } = getCanvasCoords(touch.clientX, touch.clientY);
+                  lastPos.current = { x, y };
+                  scratchAt(x, y);
+                }
+              }}
+              onTouchMove={(e) => {
+                if (!isScratching.current) return;
+                const touch = e.touches[0];
+                if (touch) {
+                  const { x, y } = getCanvasCoords(touch.clientX, touch.clientY);
+                  scratchAt(x, y);
+                }
+              }}
+              onTouchEnd={() => {
+                isScratching.current = false;
+                lastPos.current = null;
+              }}
             />
           )}
         </div>
