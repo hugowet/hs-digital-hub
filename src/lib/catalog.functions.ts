@@ -13,9 +13,7 @@ function isStoredMediaPath(value: string) {
 
 async function signProductBatch(products: Product[]) {
   const storedProducts = products.filter((product) => {
-    const urls = [product.image_url, ...(product.gallery_urls ?? [])].filter((value): value is string =>
-      Boolean(value),
-    );
+    const urls = [product.image_url, ...(product.gallery_urls ?? [])].filter((value): value is string => Boolean(value));
     return urls.some(isStoredMediaPath);
   });
   if (storedProducts.length === 0) return products.map((product) => ({ ...product, media: [] }));
@@ -48,7 +46,7 @@ async function signProductBatch(products: Product[]) {
         media,
       };
     }
-    const signLegacy = (value: string) => (isStoredMediaPath(value) ? (signedByPath.get(value) ?? value) : value);
+    const signLegacy = (value: string) => (isStoredMediaPath(value) ? signedByPath.get(value) ?? value : value);
     return {
       ...product,
       image_url: product.image_url ? signLegacy(product.image_url) : null,
@@ -73,72 +71,6 @@ const catalogInput = z.object({
 
 type CatalogInput = z.infer<typeof catalogInput>;
 
-// ===== BUSCA INTELIGENTE (novo) =====
-const STOPWORDS = new Set([
-  "de", "da", "do", "das", "dos", "para", "por", "com", "em", "no", "na",
-  "os", "as", "um", "uma", "uns", "umas", "e", "o", "a", "the", "of",
-]);
-
-// Sinônimos e erros de digitação comuns: o termo digitado também busca por estes
-const SEARCH_SYNONYMS: Record<string, string[]> = {
-  fone: ["headset", "earphone", "headphone", "audio", "fone"],
-  fones: ["fone", "headset", "earphone", "headphone"],
-  fome: ["fone"],
-  fon: ["fone"],
-  fone Ouvido: [],
-  celular: ["celular", "smartphone", "phone", "telefone"],
-  celullar: ["celular"],
-  cel: ["celular", "smartphone"],
-  notebook: ["notebook", "laptop"],
-  notbook: ["notebook"],
-  notbok: ["notebook"],
-  smarttv: ["smart tv", "tv"],
-  smartv: ["smart tv", "tv"],
-  tv: ["tv", "televisao", "smart tv"],
-  tenis: ["tenis", "sneaker", "sapato"],
-  relogio: ["relogio", "watch", "smartwatch"],
-  relogui: ["relogio"],
-  mouse: ["mouse", "periferico"],
-  teclado: ["teclado", "keyboard"],
-  foneOuvido: ["fone"],
-  carregador: ["carregador", "fonte", "charger"],
-  caixa: ["caixa", "som", "speaker", "caixinha"],
-  bone: ["bone", "boné", "cap"],
-  oculos: ["oculos", "óculos", "glasses"],
-  garrafa: ["garrafa", "copo", "termica"],
-  brinquedo: ["brinquedo", "toy", "infantil"],
-  camisa: ["camisa", "camiseta", "shirt"],
-  vestido: ["vestido", "dress"],
-  mic: ["microfone", "mic"],
-  microfone: ["microfone", "mic"],
-};
-
-function normalizeText(value: string) {
-  return (value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-function buildSearchVariants(rawQuery: string): string[] {
-  const normalized = normalizeText(rawQuery).replace(/[%_,()]/g, " ");
-  const tokens = normalized.split(/[^a-z0-9]+/).filter((t) => t.length >= 2 && !STOPWORDS.has(t));
-  const variants = new Set<string>();
-
-  for (const token of tokens) {
-    variants.add(token);
-    for (const synonym of SEARCH_SYNONYMS[token] ?? []) {
-      const normalizedSynonym = normalizeText(synonym);
-      if (normalizedSynonym) variants.add(normalizedSynonym);
-    }
-    // Tolerância a erro de digitação: também tenta o token sem a última letra
-    if (token.length >= 6) variants.add(token.slice(0, -1));
-  }
-
-  return Array.from(variants).slice(0, 12);
-}
-// ===== FIM DA BUSCA INTELIGENTE =====
-
 async function createPublicClient() {
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
   return createClient<Database>(process.env["SUPABASE_URL"]!, key, {
@@ -158,18 +90,7 @@ async function queryCatalog(input: CatalogInput) {
   const supabasePublic = await createPublicClient();
   let query = supabasePublic.from("products").select(projection, { count: "exact" }).eq("is_active", true);
 
-  // BUSCA INTELIGENTE: procura em título, descrição E categoria, com sinônimos e tolerância a typo
-  if (input.query) {
-    const variants = buildSearchVariants(input.query);
-    if (variants.length > 0) {
-      const conditions = variants.flatMap((variant) => [
-        `title.ilike.%${variant}%`,
-        `description.ilike.%${variant}%`,
-        `category.ilike.%${variant}%`,
-      ]);
-      query = query.or(conditions.join(","));
-    }
-  }
+  if (input.query) query = query.ilike("title", `%${input.query.replace(/[%_,]/g, " ")}%`);
   if (input.category) query = query.eq("category", input.category);
   if (input.range === "a") query = query.lte("price", 50);
   if (input.range === "b") query = query.gte("price", 50).lte("price", 100);
@@ -250,8 +171,7 @@ export const fetchProduct = createServerFn({ method: "GET" })
       global: {
         fetch: (input, init) => {
           const headers = new Headers(init?.headers);
-          if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`)
-            headers.delete("Authorization");
+          if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
           headers.set("apikey", key);
           return fetch(input, { ...init, headers });
         },
