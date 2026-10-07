@@ -75,10 +75,7 @@ export function SiteHeader({
     supabase.auth.getUser().then(async ({ data }) => {
       setSignedIn(!!data.user);
       if (data.user) {
-        const { data: roles } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", data.user.id);
+        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
         setIsAdmin(Boolean(roles?.some((item) => item.role === "admin")));
         const { count: unread } = await supabase
           .from("order_messages")
@@ -123,7 +120,7 @@ export function SiteHeader({
     <header className="sticky top-0 z-50 brand-gradient text-primary-foreground shadow-md">
       <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2 sm:py-2.5">
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Logotipo Otimizado e com Nitidez Máxima */}
+          {/* Logotipo */}
           <Link to="/" className="flex shrink-0 items-center gap-2 transition hover:opacity-95">
             <img
               src={logoAsset.url}
@@ -186,9 +183,7 @@ export function SiteHeader({
                     >
                       <div className="flex items-center gap-2 truncate">
                         <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-xs sm:text-sm truncate text-foreground">
-                          {item.title}
-                        </span>
+                        <span className="text-xs sm:text-sm truncate text-foreground">{item.title}</span>
                       </div>
                       <span className="text-[10px] text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded shrink-0">
                         {item.category}
@@ -225,7 +220,7 @@ export function SiteHeader({
 
             {signedIn && (
               <Link
-                to="/pedidos"
+                to="/compras"
                 className="px-2.5 py-1.5 rounded-md hover:bg-white/10 transition font-medium flex items-center gap-1.5 relative"
               >
                 <ShoppingBag className="h-4 w-4" /> Minhas Compras
@@ -283,7 +278,7 @@ export function SiteHeader({
                   <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/pedidos" className="flex items-center gap-2 cursor-pointer">
+                    <Link to="/compras" className="flex items-center gap-2 cursor-pointer">
                       <ShoppingBag className="h-4 w-4" /> Minhas Compras
                     </Link>
                   </DropdownMenuItem>
@@ -298,7 +293,7 @@ export function SiteHeader({
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/enderecos" className="flex items-center gap-2 cursor-pointer">
+                    <Link to="/conta" className="flex items-center gap-2 cursor-pointer">
                       <MapPin className="h-4 w-4" /> Meus Endereços
                     </Link>
                   </DropdownMenuItem>
@@ -360,7 +355,7 @@ export function SiteHeader({
             </Link>
             {signedIn && (
               <Link
-                to="/pedidos"
+                to="/compras"
                 onClick={() => setOpen(false)}
                 className="px-3 py-2 rounded-md hover:bg-white/10 font-medium flex items-center gap-2 justify-between"
               >
