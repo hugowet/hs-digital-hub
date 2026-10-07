@@ -15,7 +15,7 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -49,11 +49,19 @@ export function SiteHeader({
 
   const [localQuery, setLocalQuery] = useState(query);
   const [searchFocused, setSearchFocused] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setLocalQuery(query);
   }, [query]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localQuery !== query && onQueryChange) {
+        onQueryChange(localQuery);
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [localQuery, onQueryChange, query]);
 
   const matches = useMemo(() => {
     const normalized = (localQuery ?? "").trim().toLowerCase();
@@ -67,10 +75,7 @@ export function SiteHeader({
     supabase.auth.getUser().then(async ({ data }) => {
       setSignedIn(!!data.user);
       if (data.user) {
-        const { data: roles } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", data.user.id);
+        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
         setIsAdmin(Boolean(roles?.some((item) => item.role === "admin")));
         const { count: unread } = await supabase
           .from("order_messages")
@@ -102,21 +107,12 @@ export function SiteHeader({
     navigate({ to: "/auth", replace: true });
   }
 
-  const triggerSearch = (termToSearch?: string) => {
-    const finalTerm = termToSearch !== undefined ? termToSearch : localQuery;
+  const triggerSearch = () => {
     setSearchFocused(false);
-    // Fecha o teclado virtual do celular imediatamente
-    if (searchInputRef.current) {
-      searchInputRef.current.blur();
-    }
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-
     if (onQueryChange) {
-      onQueryChange(finalTerm);
+      onQueryChange(localQuery);
     } else {
-      navigate({ to: "/", search: { q: finalTerm || undefined } });
+      navigate({ to: "/", search: { q: localQuery || undefined } });
     }
   };
 
@@ -142,12 +138,9 @@ export function SiteHeader({
                 triggerSearch();
               }}
               className="relative w-full"
-              action="#"
             >
               <input
-                ref={searchInputRef}
                 type="search"
-                enterKeyHint="search"
                 value={localQuery}
                 onChange={(e) => setLocalQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
@@ -155,21 +148,15 @@ export function SiteHeader({
                 placeholder="Buscar produtos, marcas e mais..."
                 className="w-full rounded-full bg-white/95 text-foreground placeholder:text-muted-foreground px-3.5 sm:px-4 py-1.5 sm:py-2 pl-9 sm:pl-10 pr-9 sm:pr-10 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent shadow-inner transition"
               />
-              <button
-                type="submit"
-                aria-label="Buscar"
-                className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5"
-              >
-                <Search className="h-3.5 sm:h-4 w-3.5 sm:w-4" />
-              </button>
+              <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-muted-foreground pointer-events-none" />
               {localQuery ? (
                 <button
                   type="button"
                   onClick={() => {
                     setLocalQuery("");
-                    triggerSearch("");
+                    onQueryChange?.("");
                   }}
-                  className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
+                  className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -189,15 +176,14 @@ export function SiteHeader({
                       onMouseDown={(e) => {
                         e.preventDefault();
                         setLocalQuery(item.title);
-                        triggerSearch(item.title);
+                        onQueryChange?.(item.title);
+                        setSearchFocused(false);
                       }}
                       className="w-full text-left px-3.5 py-2 hover:bg-muted/60 transition flex items-center justify-between gap-2"
                     >
                       <div className="flex items-center gap-2 truncate">
                         <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-xs sm:text-sm truncate text-foreground">
-                          {item.title}
-                        </span>
+                        <span className="text-xs sm:text-sm truncate text-foreground">{item.title}</span>
                       </div>
                       <span className="text-[10px] text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded shrink-0">
                         {item.category}
