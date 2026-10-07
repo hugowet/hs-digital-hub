@@ -123,7 +123,6 @@ function ArcadeScreen({
   hardMode: boolean;
   onClose: () => void;
   onCoins: (coins: number) => void;
-  hardMode?: boolean;
 }) {
   const startServer = useServerFn(startArcadeGame);
   const finishServer = useServerFn(finishArcadeGame);
@@ -133,6 +132,24 @@ function ArcadeScreen({
   const [coins, setCoins] = useState(0);
   const [earned, setEarned] = useState(0);
   const input = useRef<Point>({ x: 1, y: 0 });
+
+  // Referência estável de onCoins para impedir que o timer de 1s da tela reinicie a partida
+  const onCoinsRef = useRef(onCoins);
+  useEffect(() => {
+    onCoinsRef.current = onCoins;
+  }, [onCoins]);
+
+  // Trava rolagem do fundo no celular
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, []);
 
   const triggerDirection = useCallback(
     (dir: "up" | "down" | "left" | "right") => {
@@ -174,12 +191,12 @@ function ArcadeScreen({
           },
         });
         setEarned(res.coinsAwarded);
-        onCoins(res.totalCoins);
+        onCoinsRef.current(res.totalCoins);
       } catch {
         toast.error("Erro ao registrar suas moedas.");
       }
     },
-    [finishServer, onCoins],
+    [finishServer],
   );
 
   useEffect(() => {
@@ -255,8 +272,8 @@ function ArcadeScreen({
           lastTick = now;
           const currentHead = snake[0] ?? { x: 14, y: 14 };
           const head: Point = {
-            x: (currentHead.x + input.current.x + 28) % 28,
-            y: (currentHead.y + input.current.y + 28) % 28,
+            x: ((currentHead.x + input.current.x) % 28 + 28) % 28,
+            y: ((currentHead.y + input.current.y) % 28 + 28) % 28,
           };
 
           if (snake.slice(1).some((s) => s.x === head.x && s.y === head.y)) {
@@ -303,8 +320,8 @@ function ArcadeScreen({
         if (now - lastTick >= step) {
           lastTick = now;
           pacDir = input.current;
-          pacPos.x = (pacPos.x + pacDir.x + 28) % 28;
-          pacPos.y = (pacPos.y + pacDir.y + 28) % 28;
+          pacPos.x = ((pacPos.x + pacDir.x) % 28 + 28) % 28;
+          pacPos.y = ((pacPos.y + pacDir.y) % 28 + 28) % 28;
 
           const pIdx = pellets.findIndex((p) => p.x === pacPos.x && p.y === pacPos.y);
           if (pIdx >= 0) {
@@ -326,8 +343,8 @@ function ArcadeScreen({
                 : ghostDirs[Math.floor(Math.random() * ghostDirs.length)]!;
             return {
               ...g,
-              x: (g.x + (pick.x || 0) + 28) % 28,
-              y: (g.y + (pick.y || 0) + 28) % 28,
+              x: ((g.x + (pick.x || 0)) % 28 + 28) % 28,
+              y: ((g.y + (pick.y || 0)) % 28 + 28) % 28,
             };
           });
 
@@ -499,39 +516,78 @@ function ArcadeScreen({
     };
     window.addEventListener("keydown", onKeyDown);
 
-    const handleCanvasFlap = () => {
+    // Suporte ao toque direto no canvas (Toque para pular no Flappy ou Swipe na Cobrinha)
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    const onCanvasTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
       if (game.id === "flappy") {
         birdVel = -6.5;
+        return;
+      }
+      const touch = e.touches[0];
+      if (touch) {
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
       }
     };
-    canvas.addEventListener("pointerdown", handleCanvasFlap);
+
+    const onCanvasTouchEnd = (e: TouchEvent) => {
+      e.preventDefault();
+      if (game.id !== "snake" && game.id !== "pacman") return;
+      const touch = e.changedTouches[0];
+      if (!touch) return;
+      const diffX = touch.clientX - touchStartX;
+      const diffY = touch.clientY - touchStartY;
+      const threshold = 20;
+
+      if (Math.abs(diffX) > Math.abs(diffY)) {
+        if (diffX > threshold) triggerDirection("right");
+        else if (diffX < -threshold) triggerDirection("left");
+      } else {
+        if (diffY > threshold) triggerDirection("down");
+        else if (diffY < -threshold) triggerDirection("up");
+      }
+    };
+
+    const onCanvasTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+
+    canvas.addEventListener("touchstart", onCanvasTouchStart, { passive: false });
+    canvas.addEventListener("touchend", onCanvasTouchEnd, { passive: false });
+    canvas.addEventListener("touchmove", onCanvasTouchMove, { passive: false });
 
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("arcade-move", handleCustomMove);
-      canvas.removeEventListener("pointerdown", handleCanvasFlap);
+      canvas.removeEventListener("touchstart", onCanvasTouchStart);
+      canvas.removeEventListener("touchend", onCanvasTouchEnd);
+      canvas.removeEventListener("touchmove", onCanvasTouchMove);
     };
   }, [phase, game.id, hardMode, finish, triggerDirection]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="relative flex flex-col w-full max-w-[480px] max-h-[96dvh] overflow-hidden rounded-3xl border border-white/10 bg-[#0d0718] p-3 sm:p-4 text-white shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm select-none touch-none overscroll-none">
+      <div className="relative flex flex-col w-full max-w-[460px] h-[92vh] max-h-[640px] overflow-hidden rounded-3xl border border-white/10 bg-[#0d0718] p-3 sm:p-4 text-white shadow-2xl">
         <div className="flex items-center justify-between pb-2 shrink-0">
           <div className="flex items-center gap-2">
             <game.Icon className="h-5 w-5 text-primary" />
             <span className="font-black text-sm sm:text-base">{game.title}</span>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-90 transition-transform"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {phase === "intro" && (
-          <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
             <div className="grid h-16 w-16 sm:h-20 sm:w-20 place-items-center rounded-3xl bg-primary/20 text-primary">
               <game.Icon className="h-9 w-9 sm:h-10 sm:w-10" />
             </div>
@@ -544,62 +600,85 @@ function ArcadeScreen({
         )}
 
         {phase === "playing" && (
-          <div className="flex-1 flex flex-col items-center justify-between gap-3 overflow-hidden">
-            {/* Área do Jogo / Canvas */}
-            <div className="relative aspect-square w-full max-h-[50dvh] sm:max-h-[55dvh] touch-none overflow-hidden rounded-2xl bg-black border border-white/5">
-              <canvas ref={canvasRef} width={560} height={560} className="h-full w-full object-contain" />
+          <div className="flex-1 flex flex-col items-center justify-between gap-2 overflow-hidden">
+            {/* Área do Jogo / Canvas Estável sem tremulação */}
+            <div className="relative aspect-square w-full max-h-[46vh] sm:max-h-[50vh] touch-none select-none overflow-hidden rounded-2xl bg-black border border-white/5 flex items-center justify-center">
+              <canvas
+                ref={canvasRef}
+                width={560}
+                height={560}
+                className="h-full w-full object-contain touch-none select-none"
+              />
             </div>
 
             {/* Controles para Celular */}
-            <div className="w-full flex flex-col items-center justify-center shrink-0 pt-1">
+            <div className="w-full flex flex-col items-center justify-center shrink-0 pt-1 pb-1">
               {(game.id === "snake" || game.id === "pacman") && (
-                <div className="grid grid-cols-3 gap-1.5 w-44">
+                <div className="grid grid-cols-3 gap-2 w-48 touch-none">
                   <div />
                   <button
                     type="button"
-                    onPointerDown={() => triggerDirection("up")}
-                    className="h-11 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-manipulation shadow"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      triggerDirection("up");
+                    }}
+                    className="h-12 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-none select-none shadow"
                   >
-                    <ArrowUp className="h-5 w-5" />
+                    <ArrowUp className="h-6 w-6" />
                   </button>
                   <div />
                   <button
                     type="button"
-                    onPointerDown={() => triggerDirection("left")}
-                    className="h-11 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-manipulation shadow"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      triggerDirection("left");
+                    }}
+                    className="h-12 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-none select-none shadow"
                   >
-                    <ArrowLeft className="h-5 w-5" />
+                    <ArrowLeft className="h-6 w-6" />
                   </button>
                   <button
                     type="button"
-                    onPointerDown={() => triggerDirection("down")}
-                    className="h-11 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-manipulation shadow"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      triggerDirection("down");
+                    }}
+                    className="h-12 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-none select-none shadow"
                   >
-                    <ArrowDown className="h-5 w-5" />
+                    <ArrowDown className="h-6 w-6" />
                   </button>
                   <button
                     type="button"
-                    onPointerDown={() => triggerDirection("right")}
-                    className="h-11 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-manipulation shadow"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      triggerDirection("right");
+                    }}
+                    className="h-12 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center touch-none select-none shadow"
                   >
-                    <ArrowRight className="h-5 w-5" />
+                    <ArrowRight className="h-6 w-6" />
                   </button>
                 </div>
               )}
 
               {game.id === "highway" && (
-                <div className="flex items-center justify-center gap-4 w-full px-4">
+                <div className="flex items-center justify-center gap-4 w-full px-2 touch-none">
                   <button
                     type="button"
-                    onPointerDown={() => triggerDirection("left")}
-                    className="flex-1 h-12 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center gap-2 font-bold touch-manipulation shadow"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      triggerDirection("left");
+                    }}
+                    className="flex-1 h-12 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center gap-2 font-bold touch-none select-none shadow"
                   >
                     <ArrowLeft className="h-5 w-5" /> Esquerda
                   </button>
                   <button
                     type="button"
-                    onPointerDown={() => triggerDirection("right")}
-                    className="flex-1 h-12 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center gap-2 font-bold touch-manipulation shadow"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      triggerDirection("right");
+                    }}
+                    className="flex-1 h-12 rounded-xl bg-white/15 hover:bg-white/25 active:bg-primary flex items-center justify-center gap-2 font-bold touch-none select-none shadow"
                   >
                     Direita <ArrowRight className="h-5 w-5" />
                   </button>
@@ -607,13 +686,14 @@ function ArcadeScreen({
               )}
 
               {game.id === "flappy" && (
-                <div className="w-full px-4">
+                <div className="w-full px-2 touch-none">
                   <button
                     type="button"
-                    onPointerDown={() => {
+                    onPointerDown={(e) => {
+                      e.preventDefault();
                       window.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
                     }}
-                    className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 active:scale-95 flex items-center justify-center font-black tracking-wide touch-manipulation shadow"
+                    className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 active:scale-95 flex items-center justify-center font-black tracking-wide touch-none select-none shadow"
                   >
                     TOQUE PARA BATER AS ASAS 🕊️
                   </button>
