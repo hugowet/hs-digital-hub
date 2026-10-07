@@ -141,6 +141,72 @@ const PRICE_RANGES = [
   { id: "d", label: "Acima de R$ 200", min: 200, max: Infinity },
 ];
 
+// ===== BUSCA INTELIGENTE (novo) =====
+const SEARCH_STOPWORDS = new Set([
+  "de", "da", "do", "das", "dos", "para", "por", "com", "em", "no", "na",
+  "os", "as", "um", "uma", "uns", "umas", "e", "o", "a", "the", "of",
+]);
+
+const normalizeText = (value: string) =>
+  (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const queryTokens = (rawQuery: string) =>
+  normalizeText(rawQuery)
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 2 && !SEARCH_STOPWORDS.has(token));
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j++) {
+      current[j] = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    previous = current;
+  }
+  return previous[b.length];
+}
+
+// O produto corresponde ao termo? Palavra-chave em título, descrição, categoria e especificações
+function productMatchesQuery(
+  product: { title?: string | null; description?: string | null; category?: string | null; specifications?: unknown },
+  rawQuery: string,
+) {
+  const tokens = queryTokens(rawQuery);
+  if (tokens.length === 0) return true;
+
+  const haystack = normalizeText(
+    [
+      product.title ?? "",
+      product.description ?? "",
+      product.category ?? "",
+      typeof product.specifications === "string"
+        ? product.specifications
+        : JSON.stringify(product.specifications ?? {}),
+    ].join(" "),
+  );
+  const words = haystack.split(/[^a-z0-9]+/).filter(Boolean);
+
+  // Basta UMA palavra-chave bater (igual Mercado Livre: busca aberta, não restritiva)
+  return tokens.some((token) => {
+    if (haystack.includes(token)) return true;
+    // Parecido com erro de digitação: compara palavra por palavra
+    const tolerance = token.length <= 4 ? 1 : token.length <= 8 ? 2 : 3;
+    return words.some((word) => Math.abs(word.length - token.length) <= tolerance && levenshtein(token, word) <= tolerance);
+  });
+}
+// ===== FIM DA BUSCA INTELIGENTE =====
+
 function BuyerGamesPromoLink() {
   const [visible, setVisible] = useState(false);
 
@@ -220,13 +286,8 @@ export function Home() {
       if (search.category && product.category !== search.category) {
         return false;
       }
-      if (search.q) {
-        const queryTerm = search.q.toLowerCase().trim();
-        const titleMatch = (product.title || "").toLowerCase().includes(queryTerm);
-        const categoryMatch = (product.category || "").toLowerCase().includes(queryTerm);
-        if (!titleMatch && !categoryMatch) {
-          return false;
-        }
+      if (search.q && !productMatchesQuery(product, search.q)) {
+        return false;
       }
       const price = Number(product.price);
       return price >= selectedRange.min && price <= selectedRange.max;
@@ -240,9 +301,57 @@ export function Home() {
   }, [products, search.category, search.q, search.range, search.sort]);
 
   const hasSearchQuery = Boolean(search.q && search.q.trim().length > 0);
+  const noResults = hasSearchQuery && filtered.length === 0;
+
+  // Plano B: quando a busca inteligente não acha nada, varre o catálogo procurando produtos PARECIDOS
+  const { data: fuzzyData } = useQuery({
+    queryKey: ["catalog-fuzzy", search.q],
+    enabled: noResults,
+    queryFn: async () => {
+      const pages = await Promise.all(
+        [0, 1, 2, 3, 4].map((page) =>
+          fetchCatalogPage({
+            data: {
+              page,
+              pageSize: 100,
+              query: "",
+              category: null,
+              range: "all",
+              sort: "popular",
+              onlyFreeShipping: false,
+            },
+          }),
+        ),
+      );
+      return pages.flatMap((page) => page.products);
+    },
+    staleTime: 60_000,
+  });
+
+  const fuzzyFiltered = useMemo(() => {
+    if (!noResults || !fuzzyData) return [];
+    const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
+      id: "all",
+      label: "Todos os preços",
+      min: 0,
+      max: Infinity,
+    };
+    const result = fuzzyData.filter((product) => {
+      if (search.category && product.category !== search.category) return false;
+      if (!productMatchesQuery(product, search.q)) return false;
+      const price = Number(product.price);
+      return price >= selectedRange.min && price <= selectedRange.max;
+    });
+    return [...result].sort((a, b) => (b.sold_count ?? 0) - (a.sold_count ?? 0));
+  }, [noResults, fuzzyData, search.category, search.q, search.range]);
+
+  const showingSimilar = noResults && fuzzyFiltered.length > 0;
+  const displayList = showingSimilar ? fuzzyFiltered : filtered;
 
   const categoryLabel = hasSearchQuery
-    ? `Resultados para "${search.q}"`
+    ? showingSimilar
+      ? `Produtos parecidos com "${search.q}"`
+      : `Resultados para "${search.q}"`
     : search.free
       ? "Produtos com Frete Grátis"
       : search.category
@@ -403,7 +512,7 @@ export function Home() {
                   {hasSearchQuery && <Search className="h-4 w-4 text-[#3483fa]" />}
                   {categoryLabel}
                 </h2>
-                <p className="text-xs text-gray-500">{filtered.length} produtos correspondentes</p>
+                <p className="text-xs text-gray-500">{displayList.length} produtos correspondentes</p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -445,7 +554,7 @@ export function Home() {
               </div>
             </div>
 
-            {filtered.length === 0 ? (
+            {displayList.length === 0 ? (
               <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
                 <p className="text-base font-bold text-gray-700">
                   Nenhum produto encontrado para {hasSearchQuery ? `"${search.q}"` : "esta categoria"}.
@@ -464,13 +573,13 @@ export function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-4">
-                {filtered.map((product) => (
+                {displayList.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
             )}
 
-            {hasNextPage && (
+            {hasNextPage && !showingSimilar && (
               <div className="flex justify-center pt-6">
                 <Button
                   onClick={() => fetchNextPage()}
