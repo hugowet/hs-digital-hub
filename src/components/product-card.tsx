@@ -111,33 +111,44 @@ export function ProductCard({ product }: { product: Product }) {
           <Link
             to="/produto/$productId"
             params={{ productId: product.id }}
-            className="hover:text-primary"
-            title={displayTitle}
+            className="hover:text-primary transition-colors"
           >
             {displayTitle}
           </Link>
         </h3>
 
-        <p className="text-[11px] text-muted-foreground">{product.stores?.name ?? "HS Digital"}</p>
+        {/* Loja / Vendedor */}
+        {product.stores && (
+          <p className="text-[11px] text-muted-foreground">
+            Vendido por <span className="font-medium text-foreground">{product.stores.name}</span>
+          </p>
+        )}
 
+        {/* Avaliações */}
+        <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-muted-foreground">
+          <Stars rating={Number(product.rating ?? 4.5)} />
+          <span>({product.review_count ?? 12})</span>
+        </div>
+
+        {/* Preços e Parcelamento */}
         <div className="mt-auto pt-2">
-          <div className="flex items-baseline gap-2">
-            <span className="text-base md:text-lg font-black text-foreground">{brl(product.price)}</span>
-            {product.compare_at_price && product.compare_at_price > product.price && (
-              <span className="text-xs text-muted-foreground line-through">{brl(product.compare_at_price)}</span>
-            )}
+          {discount > 0 && product.compare_at_price && (
+            <span className="text-[11px] text-muted-foreground line-through">
+              {brl(Number(product.compare_at_price))}
+            </span>
+          )}
+
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-lg md:text-xl font-extrabold text-[#3483fa]">
+              {brl(Number(product.price))}
+            </span>
           </div>
 
-          {/* Regra de parcelamento inteligente */}
-          <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            {getInstallmentText(product.price)}
+          <p className="text-[11px] font-medium text-emerald-600">
+            {getInstallmentText(Number(product.price))}
           </p>
 
-          <div className="mt-2 flex items-center justify-between gap-1 text-[11px] text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Stars rating={product.rating ?? 4.8} />
-              <span>({compact(product.reviews_count ?? 120)})</span>
-            </div>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
             <span>{compact(product.sold_count ?? 45)} vendidos</span>
           </div>
 
@@ -157,11 +168,11 @@ export function ProductCard({ product }: { product: Product }) {
                   title: displayTitle,
                   price: Number(product.price),
                   imageUrl: product.image_url ?? null,
-                  maxStock: product.stock ?? 99,
-                  freeShipping: product.free_shipping,
+                  freeShipping: Boolean(product.free_shipping),
                   storeId: product.store_id,
                   storeName: product.stores?.name ?? "HS Digital",
                   productType: (product.product_type as "physical" | "digital") ?? "physical",
+                  stock: product.stock ?? 99,
                 },
                 1,
               );
