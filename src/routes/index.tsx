@@ -210,8 +210,8 @@ export function Home() {
       max: Infinity,
     };
 
-    const result = products.filter((product) => {
-      // Limpeza estrita: se uma categoria foi clicada, ignora qualquer item fora dela
+    // 1. Filtragem básica por faixa de preço e categoria específica (se selecionada)
+    const baseList = products.filter((product) => {
       if (search.category && product.category !== search.category) {
         return false;
       }
@@ -219,7 +219,36 @@ export function Home() {
       return price >= selectedRange.min && price <= selectedRange.max;
     });
 
-    return [...result].sort((a, b) => {
+    // 2. Se estiver em "Todas" (sem categoria selecionada) no modo popular, DIVERSIFICA entre categorias
+    if (!search.category && search.sort === "popular") {
+      const byCategory = new Map<string, typeof products>();
+      for (const p of baseList) {
+        const cat = p.category || "geral";
+        if (!byCategory.has(cat)) byCategory.set(cat, []);
+        byCategory.get(cat)!.push(p);
+      }
+
+      const diversified: typeof products = [];
+      const categoryBuckets = Array.from(byCategory.values());
+      let hasMore = true;
+      let depth = 0;
+
+      while (hasMore) {
+        hasMore = false;
+        for (const bucket of categoryBuckets) {
+          if (depth < bucket.length) {
+            diversified.push(bucket[depth]);
+            hasMore = true;
+          }
+        }
+        depth++;
+      }
+
+      return diversified;
+    }
+
+    // 3. Caso o usuário ordene por preço ou esteja em uma categoria específica
+    return [...baseList].sort((a, b) => {
       if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
       if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
       return (b.sold_count ?? 0) - (a.sold_count ?? 0);
