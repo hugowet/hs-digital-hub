@@ -212,51 +212,17 @@ export function Home() {
       min: 0,
       max: Infinity,
     };
-
-    // 1. Filtragem básica por faixa de preço e categoria específica (se selecionada)
-    const baseList = products.filter((product) => {
-      if (search.category && product.category !== search.category) {
-        return false;
-      }
+    const result = products.filter((product) => {
       const price = Number(product.price);
       return price >= selectedRange.min && price <= selectedRange.max;
     });
 
-    // 2. Se estiver em "Todas" (sem categoria selecionada) no modo popular, DIVERSIFICA entre categorias
-    if (!search.category && search.sort === "popular") {
-      const byCategory = new Map<string, typeof products>();
-      for (const p of baseList) {
-        const cat = p.category || "geral";
-        if (!byCategory.has(cat)) byCategory.set(cat, []);
-        byCategory.get(cat)!.push(p);
-      }
-
-      const diversified: typeof products = [];
-      const categoryBuckets = Array.from(byCategory.values());
-      let hasMore = true;
-      let depth = 0;
-
-      while (hasMore) {
-        hasMore = false;
-        for (const bucket of categoryBuckets) {
-          if (depth < bucket.length) {
-            diversified.push(bucket[depth]);
-            hasMore = true;
-          }
-        }
-        depth++;
-      }
-
-      return diversified;
-    }
-
-    // 3. Caso o usuário ordene por preço ou esteja em uma categoria específica
-    return [...baseList].sort((a, b) => {
+    return [...result].sort((a, b) => {
       if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
       if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
       return (b.sold_count ?? 0) - (a.sold_count ?? 0);
     });
-  }, [products, search.category, search.range, search.sort]);
+  }, [products, search.range, search.sort]);
 
   const categoryLabel = search.free
     ? "Produtos com Frete Grátis"
@@ -391,7 +357,7 @@ export function Home() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-lg border border-gray-100">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-gray-900">{categoryLabel}</h2>
-                <p className="text-xs text-gray-500">{filtered.length} produtos disponíveis para entrega</p>
+                <p className="text-xs text-gray-500">{total} produtos disponíveis para entrega</p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -408,27 +374,11 @@ export function Home() {
               </div>
             </div>
 
-            {filtered.length === 0 ? (
-              <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
-                <p className="text-sm font-medium text-gray-600">
-                  Nenhum produto encontrado nesta categoria no momento.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4 text-xs font-semibold"
-                  onClick={() => setSearch({ category: null, free: false })}
-                >
-                  Ver todas as ofertas
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-4">
-                {filtered.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            )}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-4">
+              {filtered.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
 
             {hasNextPage && (
               <div className="flex justify-center pt-6">
