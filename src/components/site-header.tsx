@@ -75,7 +75,10 @@ export function SiteHeader({
     supabase.auth.getUser().then(async ({ data }) => {
       setSignedIn(!!data.user);
       if (data.user) {
-        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id);
         setIsAdmin(Boolean(roles?.some((item) => item.role === "admin")));
         const { count: unread } = await supabase
           .from("order_messages")
@@ -183,7 +186,9 @@ export function SiteHeader({
                     >
                       <div className="flex items-center gap-2 truncate">
                         <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-xs sm:text-sm truncate text-foreground">{item.title}</span>
+                        <span className="text-xs sm:text-sm truncate text-foreground">
+                          {item.title}
+                        </span>
                       </div>
                       <span className="text-[10px] text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded shrink-0">
                         {item.category}
