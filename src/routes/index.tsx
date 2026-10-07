@@ -153,10 +153,7 @@ function BuyerGamesPromoLink() {
         setVisible(false);
         return;
       }
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.user.id);
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
       const isSeller = roles?.some((item) => item.role === "seller") ?? false;
       const isBuyer = roles?.some((item) => item.role === "buyer") ?? false;
       setVisible(isBuyer && !isSeller);
@@ -212,7 +209,12 @@ export function Home() {
       min: 0,
       max: Infinity,
     };
+
     const result = products.filter((product) => {
+      // Limpeza estrita: se uma categoria foi clicada, ignora qualquer item fora dela
+      if (search.category && product.category !== search.category) {
+        return false;
+      }
       const price = Number(product.price);
       return price >= selectedRange.min && price <= selectedRange.max;
     });
@@ -222,7 +224,7 @@ export function Home() {
       if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
       return (b.sold_count ?? 0) - (a.sold_count ?? 0);
     });
-  }, [products, search.range, search.sort]);
+  }, [products, search.category, search.range, search.sort]);
 
   const categoryLabel = search.free
     ? "Produtos com Frete Grátis"
@@ -260,9 +262,7 @@ export function Home() {
 
               <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
                 <Gift className="h-4 w-4" />
-                <span>
-                  FRETE GRÁTIS AUTOMÁTICO NA SUA 1ª COMPRA
-                </span>
+                <span>FRETE GRÁTIS AUTOMÁTICO NA SUA 1ª COMPRA</span>
               </div>
               <div>
                 <BuyerGamesPromoLink />
@@ -357,7 +357,7 @@ export function Home() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-lg border border-gray-100">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-gray-900">{categoryLabel}</h2>
-                <p className="text-xs text-gray-500">{total} produtos disponíveis para entrega</p>
+                <p className="text-xs text-gray-500">{filtered.length} produtos disponíveis para entrega</p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -374,11 +374,27 @@ export function Home() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-4">
-              {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            {filtered.length === 0 ? (
+              <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
+                <p className="text-sm font-medium text-gray-600">
+                  Nenhum produto encontrado nesta categoria no momento.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4 text-xs font-semibold"
+                  onClick={() => setSearch({ category: null, free: false })}
+                >
+                  Ver todas as ofertas
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-4">
+                {filtered.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            )}
 
             {hasNextPage && (
               <div className="flex justify-center pt-6">
