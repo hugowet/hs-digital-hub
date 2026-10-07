@@ -13,9 +13,7 @@ function isStoredMediaPath(value: string) {
 
 async function signProductBatch(products: Product[]) {
   const storedProducts = products.filter((product) => {
-    const urls = [product.image_url, ...(product.gallery_urls ?? [])].filter((value): value is string =>
-      Boolean(value),
-    );
+    const urls = [product.image_url, ...(product.gallery_urls ?? [])].filter((value): value is string => Boolean(value));
     return urls.some(isStoredMediaPath);
   });
   if (storedProducts.length === 0) return products.map((product) => ({ ...product, media: [] }));
@@ -48,7 +46,7 @@ async function signProductBatch(products: Product[]) {
         media,
       };
     }
-    const signLegacy = (value: string) => (isStoredMediaPath(value) ? (signedByPath.get(value) ?? value) : value);
+    const signLegacy = (value: string) => (isStoredMediaPath(value) ? signedByPath.get(value) ?? value : value);
     return {
       ...product,
       image_url: product.image_url ? signLegacy(product.image_url) : null,
@@ -173,8 +171,7 @@ export const fetchProduct = createServerFn({ method: "GET" })
       global: {
         fetch: (input, init) => {
           const headers = new Headers(init?.headers);
-          if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`)
-            headers.delete("Authorization");
+          if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
           headers.set("apikey", key);
           return fetch(input, { ...init, headers });
         },
