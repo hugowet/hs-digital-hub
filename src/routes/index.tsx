@@ -55,7 +55,9 @@ const normalizeSearch = (search: Record<string, unknown>): HomeSearch => ({
   ...(typeof search["q"] === "string" && search["q"] ? { q: search["q"].slice(0, 100) } : {}),
   ...(typeof search["category"] === "string" && search["category"] ? { category: search["category"] } : {}),
   ...(["a", "b", "c", "d"].includes(String(search["range"])) ? { range: search["range"] as HomeSearch["range"] } : {}),
-  ...(["price-asc", "price-desc"].includes(String(search["sort"])) ? { sort: search["sort"] as HomeSearch["sort"] } : {}),
+  ...(["price-asc", "price-desc"].includes(String(search["sort"]))
+    ? { sort: search["sort"] as HomeSearch["sort"] }
+    : {}),
   ...(search["free"] === true || search["free"] === "true" ? { free: true as const } : {}),
 });
 
@@ -168,7 +170,9 @@ export function Home() {
   const routeSearch = Route.useSearch();
   const search = resolveSearch(routeSearch);
   const navigate = Route.useNavigate();
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(catalogQueryOptions(routeSearch));
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
+    catalogQueryOptions(routeSearch),
+  );
   const products = data.pages.flatMap((page) => page.products);
 
   // Busca dinamicamente quais categorias têm produtos reais no banco
@@ -228,7 +232,7 @@ export function Home() {
   const categoryLabel = search.free
     ? "Produtos com Frete Grátis"
     : search.category
-      ? activeCategories.find((item) => item.slug === search.category)?.label ?? search.category
+      ? (activeCategories.find((item) => item.slug === search.category)?.label ?? search.category)
       : "Todas as ofertas";
 
   const suggestions = useMemo(() => {
