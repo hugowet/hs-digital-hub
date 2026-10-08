@@ -123,6 +123,38 @@ function ArcadeScreen({
   const input = useRef({ x: 1, y: 0, flap: false, lane: 1 });
   const touchStart = useRef<Point | null>(null);
 
+  const onCoinsRef = useRef(onCoins);
+  useEffect(() => {
+    onCoinsRef.current = onCoins;
+  }, [onCoins]);
+
+  const finish = useCallback(
+    async (earned: number) => {
+      if (!sessionRef.current) return;
+      const sessionId = sessionRef.current;
+      sessionRef.current = null;
+      setPhase("over");
+      try {
+        const result = await finishServer({ data: { sessionId, coins: earned } });
+        if (result) {
+          onCoinsRef.current(result.total_coins);
+          setCoins(result.accepted_coins);
+          if (result.coupon_code) {
+            toast.success("Parabéns! Você alcançou 1.000 moedas e ganhou 10% no frete!");
+          }
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Não foi possível registrar as moedas.");
+      }
+    },
+    [finishServer],
+  );
+
+  const finishRef = useRef(finish);
+  useEffect(() => {
+    finishRef.current = finish;
+  }, [finish]);
+
   const move = useCallback(
     (x: number, y: number) => {
       if (phase !== "playing") return;
@@ -135,7 +167,6 @@ function ArcadeScreen({
         if (x > 0) input.current.lane = Math.min(2, input.current.lane + 1);
         return;
       }
-      // Cobrinha e Pacman: impede inversão direta instantânea
       if (x !== 0 && input.current.x === -x) return;
       if (y !== 0 && input.current.y === -y) return;
       input.current.x = x;
@@ -171,28 +202,6 @@ function ArcadeScreen({
     touchStart.current = null;
   };
 
-  const finish = useCallback(
-    async (earned: number) => {
-      if (!sessionRef.current) return;
-      const sessionId = sessionRef.current;
-      sessionRef.current = null;
-      setPhase("over");
-      try {
-        const result = await finishServer({ data: { sessionId, coins: earned } });
-        if (result) {
-          onCoins(result.total_coins);
-          setCoins(result.accepted_coins);
-          if (result.coupon_code) {
-            toast.success("Parabéns! Você alcançou 1.000 moedas e ganhou 10% no frete!");
-          }
-        }
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Não foi possível registrar as moedas.");
-      }
-    },
-    [finishServer, onCoins],
-  );
-
   const start = async () => {
     setBusy(true);
     try {
@@ -223,7 +232,7 @@ function ArcadeScreen({
     return () => window.removeEventListener("keydown", handleKey);
   }, [move, phase]);
 
-  // Loop do jogo
+  // Loop do jogo isolado (nunca reinicia por re-render pai)
   useEffect(() => {
     if (phase !== "playing") return;
     const canvas = canvasRef.current;
@@ -259,21 +268,23 @@ function ArcadeScreen({
     let coinItems: Array<{ lane: number; y: number }> = [];
     let trafficTimer = 0;
 
-    const loop = (now: number) => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const tickInterval = hardMode ? 90 : 120;
 
+    const loop = (time: number) => {
+      const delta = time - lastTick;
+
+      // 1. Cobrinha
       if (game.id === "snake") {
-        // Velocidade suave: começa em 210ms (bem devagar) e vai até 85ms
-        const step = Math.max(85, 210 - Math.min(125, score * 4));
-        if (now - lastTick >= step) {
-          lastTick = now;
-          const head = { ...snake[0] };
-          head.x = (head.x + input.current.x + 28) % 28;
-          head.y = (head.y + input.current.y + 28) % 28;
+        if (delta >= tickInterval) {
+          lastTick = time;
+          const head = { x: snake[0].x + input.current.x, y: snake[0].y + input.current.y };
 
-          // Colisão com o corpo
-          if (snake.slice(1).some((s) => s.x === head.x && s.y === head.y)) {
-            void finish(score);
+          if (head.x < 0 || head.x >= 28 || head.y < 0 || head.y >= 28) {
+            finishRef.current(score);
+            return;
+          }
+          if (snake.some((seg) => seg.x === head.x && seg.y === head.y)) {
+            finishRef.current(score);
             return;
           }
 
@@ -289,73 +300,73 @@ function ArcadeScreen({
           }
         }
 
-        // Render Cobrinha
-        ctx.fillStyle = "#0c0414";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#0c0617";
+        ctx.fillRect(0, 0, 560, 560);
 
-        // Grade sutil
         ctx.strokeStyle = "#ffffff08";
-        for (let i = 0; i < 560; i += 20) {
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 560; i += 20) {
           ctx.beginPath();
           ctx.moveTo(i, 0);
           ctx.lineTo(i, 560);
           ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, i);
+          ctx.lineTo(560, i);
+          ctx.stroke();
         }
 
-        // Comida / Moeda
         ctx.fillStyle = "#facc15";
         ctx.beginPath();
         ctx.arc(food.x * 20 + 10, food.y * 20 + 10, 8, 0, Math.PI * 2);
         ctx.fill();
 
-        // Corpo
-        snake.forEach((part, index) => {
-          ctx.fillStyle = index === 0 ? "#a855f7" : "#c084fc";
-          ctx.fillRect(part.x * 20 + 1, part.y * 20 + 1, 18, 18);
+        snake.forEach((seg, index) => {
+          ctx.fillStyle = index === 0 ? "#a855f7" : "#7c3aed";
+          ctx.fillRect(seg.x * 20 + 2, seg.y * 20 + 2, 16, 16);
         });
-      } else if (game.id === "pacman") {
-        const step = Math.max(70, 160 - Math.min(80, score * 3));
-        if (now - lastTick >= step) {
-          lastTick = now;
-          pac.x = Math.max(20, Math.min(520, pac.x + input.current.x * 16));
-          pac.y = Math.max(20, Math.min(520, pac.y + input.current.y * 16));
+      }
 
-          // Fantasma persegue devagar no início
-          const gSpeed = Math.min(9, 3 + Math.floor(score / 5));
-          if (ghost.x < pac.x) ghost.x += gSpeed;
-          else if (ghost.x > pac.x) ghost.x -= gSpeed;
-          if (ghost.y < pac.y) ghost.y += gSpeed;
-          else if (ghost.y > pac.y) ghost.y -= gSpeed;
+      // 2. Come-Come
+      else if (game.id === "pacman") {
+        const step = hardMode ? 2.5 : 2;
+        pac.x = Math.max(16, Math.min(544, pac.x + input.current.x * step));
+        pac.y = Math.max(16, Math.min(544, pac.y + input.current.y * step));
 
-          // Moedas
+        const gSpeed = hardMode ? 1.6 : 1.2;
+        if (ghost.x < pac.x) ghost.x += gSpeed;
+        if (ghost.x > pac.x) ghost.x -= gSpeed;
+        if (ghost.y < pac.y) ghost.y += gSpeed;
+        if (ghost.y > pac.y) ghost.y -= gSpeed;
+
+        if (delta > 300) {
           score += 1;
-
-          // Colisão com fantasma
-          if (Math.hypot(pac.x - ghost.x, pac.y - ghost.y) < 26) {
-            void finish(score);
-            return;
-          }
+          lastTick = time;
         }
 
-        ctx.fillStyle = "#07030e";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const dist = Math.hypot(pac.x - ghost.x, pac.y - ghost.y);
+        if (dist < 26) {
+          finishRef.current(score);
+          return;
+        }
 
-        // Come-come
+        ctx.fillStyle = "#030712";
+        ctx.fillRect(0, 0, 560, 560);
+
         ctx.fillStyle = "#facc15";
         ctx.beginPath();
-        ctx.arc(pac.x, pac.y, 16, 0.2 * Math.PI, 1.8 * Math.PI);
+        ctx.arc(pac.x, pac.y, 14, 0.2 * Math.PI, 1.8 * Math.PI);
         ctx.lineTo(pac.x, pac.y);
         ctx.fill();
 
-        // Fantasma
         ctx.fillStyle = "#ef4444";
         ctx.beginPath();
-        ctx.arc(ghost.x, ghost.y - 4, 15, Math.PI, 0, false);
-        ctx.lineTo(ghost.x + 15, ghost.y + 14);
-        ctx.lineTo(ghost.x - 15, ghost.y + 14);
+        ctx.arc(ghost.x, ghost.y, 14, 0, Math.PI * 2);
         ctx.fill();
-      } else if (game.id === "flappy") {
-        // Gravidade e salto suaves
+      }
+
+      // 3. Pássaro Voador
+      else if (game.id === "flappy") {
         if (input.current.flap) {
           birdVel = -6.5;
           input.current.flap = false;
@@ -363,112 +374,106 @@ function ArcadeScreen({
         birdVel += 0.32;
         birdY += birdVel;
 
-        pipeTimer += 1;
-        // Intervalo de canos mais espaçado no começo
-        if (pipeTimer > 110) {
+        pipeTimer += delta;
+        if (pipeTimer > (hardMode ? 1400 : 1800)) {
           pipeTimer = 0;
-          const gap = Math.max(140, 190 - Math.min(50, score * 3));
-          const top = Math.random() * (canvas.height - gap - 80) + 40;
-          pipes.push({ x: canvas.width, top, bottom: top + gap, passed: false });
+          const gap = hardMode ? 130 : 160;
+          const top = Math.floor(Math.random() * 220) + 60;
+          pipes.push({ x: 560, top, bottom: top + gap, passed: false });
         }
 
-        const pipeSpeed = Math.min(5, 2.5 + score * 0.1);
         pipes.forEach((p) => {
-          p.x -= pipeSpeed;
-          if (!p.passed && p.x < 100) {
+          p.x -= hardMode ? 3.2 : 2.5;
+          if (!p.passed && p.x + 50 < 100) {
             p.passed = true;
-            score += 1;
+            score += 2;
           }
         });
-        pipes = pipes.filter((p) => p.x > -80);
+        pipes = pipes.filter((p) => p.x > -60);
 
-        // Colisões
-        if (birdY < 0 || birdY > canvas.height - 20) {
-          void finish(score);
+        if (birdY < 0 || birdY > 550) {
+          finishRef.current(score);
           return;
         }
         for (const p of pipes) {
-          if (p.x < 120 && p.x + 60 > 80) {
-            if (birdY < p.top || birdY > p.bottom) {
-              void finish(score);
+          if (p.x < 130 && p.x + 50 > 90) {
+            if (birdY - 14 < p.top || birdY + 14 > p.bottom) {
+              finishRef.current(score);
               return;
             }
           }
         }
 
-        ctx.fillStyle = "#1e1035";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#020617";
+        ctx.fillRect(0, 0, 560, 560);
 
-        // Canos
-        ctx.fillStyle = "#10b981";
+        ctx.fillStyle = "#22c55e";
         pipes.forEach((p) => {
-          ctx.fillRect(p.x, 0, 56, p.top);
-          ctx.fillRect(p.x, p.bottom, 56, canvas.height - p.bottom);
+          ctx.fillRect(p.x, 0, 50, p.top);
+          ctx.fillRect(p.x, p.bottom, 50, 560 - p.bottom);
         });
 
-        // Pássaro
-        ctx.fillStyle = "#f59e0b";
+        ctx.fillStyle = "#facc15";
         ctx.beginPath();
-        ctx.arc(100, birdY, 14, 0, Math.PI * 2);
+        ctx.arc(110, birdY, 14, 0, Math.PI * 2);
         ctx.fill();
-      } else if (game.id === "highway") {
-        playerLane = input.current.lane;
-        trafficTimer += 1;
+      }
 
-        if (trafficTimer % 65 === 0) {
-          const l = Math.floor(Math.random() * 3);
-          traffic.push({ lane: l, y: -80, speed: Math.min(7, 3 + score * 0.15) });
-        }
-        if (trafficTimer % 45 === 0) {
-          const l = Math.floor(Math.random() * 3);
-          coinItems.push({ lane: l, y: -30 });
+      // 4. Highway
+      else if (game.id === "highway") {
+        playerLane = input.current.lane;
+
+        trafficTimer += delta;
+        if (trafficTimer > (hardMode ? 700 : 1000)) {
+          trafficTimer = 0;
+          const lane = Math.floor(Math.random() * 3);
+          traffic.push({ lane, y: -80, speed: Math.random() * 2 + (hardMode ? 4 : 3) });
+          if (Math.random() > 0.4) {
+            const coinLane = (lane + 1) % 3;
+            coinItems.push({ lane: coinLane, y: -60 });
+          }
         }
 
         traffic.forEach((t) => (t.y += t.speed));
-        coinItems.forEach((c) => (c.y += 4));
+        coinItems.forEach((c) => (c.y += 3));
 
-        // Coleta moedas
-        coinItems = coinItems.filter((c) => {
-          if (c.lane === playerLane && Math.abs(c.y - 460) < 30) {
+        for (const c of coinItems) {
+          if (c.lane === playerLane && Math.abs(c.y - 480) < 40) {
             score += 1;
-            return false;
+            c.y = 999;
           }
-          return c.y < canvas.height + 40;
-        });
+        }
 
-        // Colisão carro
         for (const t of traffic) {
-          if (t.lane === playerLane && Math.abs(t.y - 460) < 40) {
-            void finish(score);
+          if (t.lane === playerLane && Math.abs(t.y - 480) < 60) {
+            finishRef.current(score);
             return;
           }
         }
-        traffic = traffic.filter((t) => t.y < canvas.height + 80);
 
-        // Desenhar pista
-        ctx.fillStyle = "#18181b";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        traffic = traffic.filter((t) => t.y < 620);
+        coinItems = coinItems.filter((c) => c.y < 620);
 
-        // Faixas divisórias
-        ctx.strokeStyle = "#e4e4e7";
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(0, 0, 560, 560);
+
+        ctx.strokeStyle = "#ffffff30";
         ctx.lineWidth = 4;
         ctx.setLineDash([20, 20]);
         ctx.beginPath();
         ctx.moveTo(186, 0);
-        ctx.lineTo(186, canvas.height);
+        ctx.lineTo(186, 560);
         ctx.moveTo(373, 0);
-        ctx.lineTo(373, canvas.height);
+        ctx.lineTo(373, 560);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Carros do tráfego
         ctx.fillStyle = "#ef4444";
         traffic.forEach((t) => {
           const x = 50 + t.lane * 186;
           ctx.fillRect(x, t.y, 60, 80);
         });
 
-        // Moedas na pista
         ctx.fillStyle = "#facc15";
         coinItems.forEach((c) => {
           const x = 80 + c.lane * 186;
@@ -477,13 +482,11 @@ function ArcadeScreen({
           ctx.fill();
         });
 
-        // Jogador
         ctx.fillStyle = "#3b82f6";
         const playerX = 50 + playerLane * 186;
         ctx.fillRect(playerX, 460, 60, 80);
       }
 
-      // Painel de pontuação no topo do canvas
       ctx.fillStyle = "#000000a0";
       ctx.fillRect(16, 16, 170, 42);
       ctx.fillStyle = "#facc15";
@@ -495,11 +498,10 @@ function ArcadeScreen({
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [finish, game.id, phase]);
+  }, [game.id, hardMode, phase]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/95 text-white backdrop-blur-md">
-      {/* Barra superior */}
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/20 text-primary">
@@ -515,7 +517,6 @@ function ArcadeScreen({
         </Button>
       </div>
 
-      {/* Área central do jogo */}
       <div className="relative flex flex-1 items-center justify-center p-2 sm:p-4">
         {phase === "intro" && (
           <div className="max-w-md p-6 text-center">
@@ -542,7 +543,6 @@ function ArcadeScreen({
 
         {phase === "playing" && (
           <div className="relative flex h-full w-full items-center justify-center">
-            {/* Aviso flutuante de instrução nos primeiros segundos */}
             {showTip && (
               <div className="pointer-events-none absolute top-4 z-20 flex animate-bounce items-center gap-2 rounded-full bg-primary/90 px-5 py-2.5 text-xs font-black text-white shadow-xl backdrop-blur">
                 <Touchpad className="h-4 w-4" />
