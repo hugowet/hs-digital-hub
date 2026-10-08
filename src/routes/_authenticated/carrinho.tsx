@@ -122,7 +122,10 @@ function CartPage() {
     try {
       const result = await quoteShipping({ data: {
         postalCode: normalized,
-        items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+        items: items
+  .map((item: any) => ({ productId: item.productId ?? item.product_id ?? item.id, quantity: Number(item.quantity) || 1 }))
+  .filter((item) => typeof item.productId === "string" && item.productId.length > 0),
+
       } });
       setQuotes(result);
       setSelectedQuotes(Object.fromEntries(result.map((group) => {
