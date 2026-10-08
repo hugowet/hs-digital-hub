@@ -1,10 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { infiniteQueryOptions, useSuspenseInfiniteQuery } from "@tanstack/react-query";
+import { infiniteQueryOptions, useQuery, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import {
   Baby,
   CarFront,
-  ChevronLeft,
-  ChevronRight,
   Drill,
   Dumbbell,
   Files,
@@ -13,16 +11,13 @@ import {
   GraduationCap,
   Keyboard,
   LampDesk,
-  Rocket,
   ShieldCheck,
   Shirt,
   ShoppingBasket,
-  ShoppingCart,
   Smartphone,
   Sofa,
   Sparkles,
   Store,
-  Tag,
   Truck,
   Tv,
   Watch,
@@ -60,9 +55,7 @@ const normalizeSearch = (search: Record<string, unknown>): HomeSearch => ({
   ...(typeof search["q"] === "string" && search["q"] ? { q: search["q"].slice(0, 100) } : {}),
   ...(typeof search["category"] === "string" && search["category"] ? { category: search["category"] } : {}),
   ...(["a", "b", "c", "d"].includes(String(search["range"])) ? { range: search["range"] as HomeSearch["range"] } : {}),
-  ...(["price-asc", "price-desc"].includes(String(search["sort"]))
-    ? { sort: search["sort"] as HomeSearch["sort"] }
-    : {}),
+  ...(["price-asc", "price-desc"].includes(String(search["sort"])) ? { sort: search["sort"] as HomeSearch["sort"] } : {}),
   ...(search["free"] === true || search["free"] === "true" ? { free: true as const } : {}),
 });
 
@@ -153,10 +146,7 @@ function BuyerGamesPromoLink() {
         setVisible(false);
         return;
       }
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.user.id);
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
       const isSeller = roles?.some((item) => item.role === "seller") ?? false;
       const isBuyer = roles?.some((item) => item.role === "buyer") ?? false;
       setVisible(isBuyer && !isSeller);
@@ -178,11 +168,25 @@ export function Home() {
   const routeSearch = Route.useSearch();
   const search = resolveSearch(routeSearch);
   const navigate = Route.useNavigate();
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
-    catalogQueryOptions(routeSearch),
-  );
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(catalogQueryOptions(routeSearch));
   const products = data.pages.flatMap((page) => page.products);
-  const total = data.pages[0]?.total ?? 0;
+
+  // Busca dinamicamente quais categorias têm produtos reais no banco
+  const { data: activeCategories = [] } = useQuery({
+    queryKey: ["active-store-categories"],
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("category").eq("is_active", true);
+      const uniqueSlugs = Array.from(new Set(data?.map((p) => p.category).filter(Boolean)));
+
+      return uniqueSlugs.map((slug) => {
+        const found = CATEGORIES.find((c) => c.slug === slug);
+        if (found) return found;
+        const formatted = slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+        return { slug, label: formatted, icon: "ShoppingBasket" };
+      });
+    },
+    staleTime: 5 * 60_000,
+  });
 
   const setSearch = (changes: HomeSearchUpdate) =>
     navigate({
@@ -197,14 +201,7 @@ export function Home() {
       },
     });
 
-  const promoProducts = useMemo(() => {
-    return products.filter((p) => (p.compare_at_price && p.compare_at_price > p.price) || (p.sold_count ?? 0) > 10);
-  }, [products]);
-
-  const freeShippingProducts = useMemo(() => {
-    return products.filter((p) => p.free_shipping || Number(p.price) >= 79);
-  }, [products]);
-
+  // Filtro estrito: se selecionou categoria, limpa todos os outros itens
   const filtered = useMemo(() => {
     const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
       id: "all",
@@ -213,8 +210,7 @@ export function Home() {
       max: Infinity,
     };
 
-    // 1. Filtragem básica por faixa de preço e categoria específica (se selecionada)
-    const baseList = products.filter((product) => {
+    const result = products.filter((product) => {
       if (search.category && product.category !== search.category) {
         return false;
       }
@@ -222,36 +218,7 @@ export function Home() {
       return price >= selectedRange.min && price <= selectedRange.max;
     });
 
-    // 2. Se estiver em "Todas" (sem categoria selecionada) no modo popular, DIVERSIFICA entre categorias
-    if (!search.category && search.sort === "popular") {
-      const byCategory = new Map<string, typeof products>();
-      for (const p of baseList) {
-        const cat = p.category || "geral";
-        if (!byCategory.has(cat)) byCategory.set(cat, []);
-        byCategory.get(cat)!.push(p);
-      }
-
-      const diversified: typeof products = [];
-      const categoryBuckets = Array.from(byCategory.values());
-      let hasMore = true;
-      let depth = 0;
-
-      while (hasMore) {
-        hasMore = false;
-        for (const bucket of categoryBuckets) {
-          if (depth < bucket.length) {
-            diversified.push(bucket[depth]);
-            hasMore = true;
-          }
-        }
-        depth++;
-      }
-
-      return diversified;
-    }
-
-    // 3. Caso o usuário ordene por preço ou esteja em uma categoria específica
-    return [...baseList].sort((a, b) => {
+    return [...result].sort((a, b) => {
       if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
       if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
       return (b.sold_count ?? 0) - (a.sold_count ?? 0);
@@ -261,16 +228,16 @@ export function Home() {
   const categoryLabel = search.free
     ? "Produtos com Frete Grátis"
     : search.category
-      ? CATEGORIES.find((item) => item.slug === search.category)?.label
+      ? activeCategories.find((item) => item.slug === search.category)?.label ?? search.category
       : "Todas as ofertas";
 
   const suggestions = useMemo(() => {
     return products.slice(0, 50).map((p) => ({
       id: p.id,
       title: p.title,
-      category: CATEGORIES.find((c) => c.slug === p.category)?.label ?? p.category ?? "Geral",
+      category: activeCategories.find((c) => c.slug === p.category)?.label ?? p.category ?? "Geral",
     }));
-  }, [products]);
+  }, [products, activeCategories]);
 
   return (
     <div className="min-h-screen bg-[#ebebeb] text-gray-900">
@@ -294,9 +261,7 @@ export function Home() {
 
               <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
                 <Gift className="h-4 w-4" />
-                <span>
-                  FRETE GRÁTIS AUTOMÁTICO NA SUA 1ª COMPRA
-                </span>
+                <span>FRETE GRÁTIS AUTOMÁTICO NA SUA 1ª COMPRA</span>
               </div>
               <div>
                 <BuyerGamesPromoLink />
@@ -336,12 +301,10 @@ export function Home() {
         </section>
 
         <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-6 space-y-8">
-          {/* CATEGORIAS EM ROLAGEM HORIZONTAL PERFEITA NO CELULAR */}
+          {/* ABAS DE CATEGORIAS AUTOMÁTICAS: APENAS COM PRODUTOS REAIS */}
           <section id="categorias" className="rounded-xl bg-white p-3 sm:p-4 shadow-sm border border-gray-100">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-gray-700">
-                Categorias em destaque
-              </h2>
+              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-gray-700">Categorias</h2>
               <Button
                 variant="ghost"
                 size="sm"
@@ -365,7 +328,7 @@ export function Home() {
                 <span className="text-[11px] leading-tight text-center">Todas</span>
               </button>
 
-              {CATEGORIES.map((item) => {
+              {activeCategories.map((item) => {
                 const Icon = ICONS[item.icon] ?? Smartphone;
                 const isSelected = search.category === item.slug;
                 return (
@@ -391,7 +354,7 @@ export function Home() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-lg border border-gray-100">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-gray-900">{categoryLabel}</h2>
-                <p className="text-xs text-gray-500">{filtered.length} produtos disponíveis para entrega</p>
+                <p className="text-xs text-gray-500">{filtered.length} produtos exibidos</p>
               </div>
 
               <div className="flex items-center gap-2">
