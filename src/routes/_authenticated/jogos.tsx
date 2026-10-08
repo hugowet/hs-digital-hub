@@ -25,11 +25,11 @@ export const Route = createFileRoute("/_authenticated/jogos")({
   head: () => ({
     meta: [
       { title: "Jogos & Prêmios · HS Digital" },
-      { name: "description", content: "Jogue diariamente e ganhe cupons de frete na HS Digital." },
+      { name: "description", content: "Jogue diariamente e ganhe cupons de desconto na HS Digital." },
       { property: "og:title", content: "Jogos & Prêmios · HS Digital" },
       {
         property: "og:description",
-        content: "Roleta, raspadinha e cobrinha com prêmios na HS Digital.",
+        content: "Roleta, raspadinha e arcade com prêmios e descontos exclusivos na HS Digital.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -113,7 +113,7 @@ function GamesPage() {
             </p>
             <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Jogos & Prêmios</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Ganhe descontos para usar no frete. 1 giro e 1 raspadinha por dia. Cada prêmio vale por 24 horas.
+              Ganhe descontos exclusivos para usar nas suas compras. 1 giro e 1 raspadinha por dia.
             </p>
           </div>
           <Button asChild variant="outline">
@@ -203,13 +203,13 @@ function WheelGame({
                 Não foi dessa vez
               </span>
               <span className="absolute right-[4%] top-1/2 w-[34%] -translate-y-1/2 text-center text-sm font-black leading-tight text-foreground sm:text-xl">
-                5% no frete
+                5% nas compras
               </span>
               <span className="absolute bottom-[16%] left-1/2 w-[42%] -translate-x-1/2 text-center text-sm font-black leading-tight text-primary-foreground drop-shadow-md sm:text-xl">
-                10% no frete
+                10% nas compras
               </span>
               <span className="absolute left-[4%] top-1/2 w-[34%] -translate-y-1/2 text-center text-sm font-black leading-tight text-foreground sm:text-xl">
-                Frete grátis
+                Desconto R$ 30
               </span>
             </div>
           </div>
@@ -240,56 +240,173 @@ function ScratchGame({
   const play = useServerFn(playDailyGame);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isScratching = useRef(false);
+  const lastPoint = useRef<{ x: number; y: number } | null>(null);
+  const checkCounter = useRef(0);
+  const outcomeRef = useRef<Outcome | null>(null);
+
   const [outcome, setOutcome] = useState<Outcome | null>(null);
-  const [revealed, setRevealed] = useState(false);
+  const [scratchProgress, setScratchProgress] = useState(0);
+  const [completed, setCompleted] = useState(played);
   const [loading, setLoading] = useState(false);
 
+  // Inicializa o visual prateado da raspadinha
   const initScratch = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
     ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "#94a3b8";
+
+    // Gradiente metálico prateado
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, "#cbd5e1");
+    grad.addColorStop(0.3, "#94a3b8");
+    grad.addColorStop(0.7, "#64748b");
+    grad.addColorStop(1, "#94a3b8");
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#475569";
-    ctx.font = "bold 16px sans-serif";
+
+    // Detalhes brilhantes
+    ctx.fillStyle = "#ffffff33";
+    for (let i = 0; i < 30; i++) {
+      ctx.beginPath();
+      ctx.arc(
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        Math.random() * 3 + 1,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
+
+    ctx.fillStyle = "#1e293b";
+    ctx.font = "bold 18px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Raspe aqui para revelar!", canvas.width / 2, canvas.height / 2);
+    ctx.fillText("✨ Raspe aqui para revelar ✨", canvas.width / 2, canvas.height / 2 - 10);
+    ctx.font = "12px sans-serif";
+    ctx.fillStyle = "#334155";
+    ctx.fillText("Raspe com o dedo ou mouse", canvas.width / 2, canvas.height / 2 + 16);
   }, []);
 
   useEffect(() => {
-    if (!played && !revealed) {
+    if (!played && !completed) {
       initScratch();
     }
-  }, [played, revealed, initScratch]);
+  }, [played, completed, initScratch]);
 
-  const scratch = (e: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!isScratching.current || revealed || played) return;
+  // Calcula a porcentagem real raspada
+  const checkScratchedPercentage = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    try {
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imgData.data;
+      let transparentPixels = 0;
+      // Passo de 16 pixels para verificação rápida sem travamentos
+      const step = 16;
+      const totalSamples = Math.floor(data.length / (4 * step));
+
+      for (let i = 3; i < data.length; i += 4 * step) {
+        if (data[i] === 0) {
+          transparentPixels++;
+        }
+      }
+
+      const percent = Math.min(100, Math.round((transparentPixels / totalSamples) * 100));
+      setScratchProgress(percent);
+
+      // Requer pelo menos 50% raspado para revelar
+      if (percent >= 50 && !completed) {
+        setCompleted(true);
+        if (outcomeRef.current) {
+          onPlayed(outcomeRef.current);
+          if (outcomeRef.current !== "none") {
+            toast.success("Parabéns pelo prêmio revelado!");
+          }
+        }
+      }
+    } catch {
+      // Ignora erro eventual de leitura
+    }
+  }, [completed, onPlayed]);
+
+  const drawScratchLine = (x: number, y: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.lineWidth = 36;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    if (lastPoint.current) {
+      ctx.beginPath();
+      ctx.moveTo(lastPoint.current.x, lastPoint.current.y);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(x, y, 18, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    lastPoint.current = { x, y };
+  };
+
+  const startScratching = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (completed || played) return;
+    isScratching.current = true;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(x, y, 20, 0, Math.PI * 2);
-    ctx.fill();
+    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+    lastPoint.current = { x, y };
+    drawScratchLine(x, y);
 
-    if (!outcome && !loading) {
+    // Carrega o prêmio em segundo plano na primeira raspada sem revelar imediatamente
+    if (!outcomeRef.current && !loading) {
       setLoading(true);
       play({ data: { gameType: "scratch" } })
         .then((reward) => {
           const out = reward.outcome as Outcome;
+          outcomeRef.current = out;
           setOutcome(out);
-          onPlayed(out);
         })
         .catch((err) => {
-          toast.error(err instanceof Error ? err.message : "Erro ao raspar.");
+          toast.error(err instanceof Error ? err.message : "Erro ao consultar raspadinha.");
         })
         .finally(() => setLoading(false));
+    }
+  };
+
+  const handlePointerMove = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!isScratching.current || completed || played) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+
+    drawScratchLine(x, y);
+
+    checkCounter.current += 1;
+    if (checkCounter.current % 6 === 0) {
+      checkScratchedPercentage();
+    }
+  };
+
+  const stopScratching = () => {
+    isScratching.current = false;
+    lastPoint.current = null;
+    if (!completed && !played) {
+      checkScratchedPercentage();
     }
   };
 
@@ -307,31 +424,60 @@ function ScratchGame({
         </div>
       </div>
       <div className="p-5 sm:p-7">
-        <div className="relative mx-auto flex aspect-square w-full max-w-md items-center justify-center overflow-hidden rounded-2xl border bg-muted">
-          <div className="text-center p-6">
+        <div className="relative mx-auto flex aspect-square w-full max-w-md items-center justify-center overflow-hidden rounded-2xl border-2 border-border bg-gradient-to-br from-amber-500/10 via-background to-primary/10 p-4 shadow-inner">
+          {/* Conteúdo oculto sob a raspadinha */}
+          <div className="flex flex-col items-center justify-center text-center p-6">
+            <span className="text-5xl mb-3">
+              {outcome === "none" ? "😢" : outcome ? "🎉" : "🎁"}
+            </span>
             <h3 className="text-2xl font-black text-primary">
-              {outcome === "free_shipping" && "Frete Grátis até R$ 30!"}
-              {outcome === "shipping_10" && "10% de desconto no frete!"}
-              {outcome === "shipping_5" && "5% de desconto no frete!"}
-              {outcome === "none" && "Tente novamente amanhã!"}
-              {!outcome && (played ? "Já jogou hoje!" : "Raspe a camada acima")}
+              {outcome === "free_shipping" && "Desconto Especial de R$ 30!"}
+              {outcome === "shipping_10" && "10% de desconto nas compras!"}
+              {outcome === "shipping_5" && "5% de desconto nas compras!"}
+              {outcome === "none" && "Não foi dessa vez!"}
+              {!outcome && (played ? "Já jogou hoje!" : "Continue raspando...")}
             </h3>
+            {outcome && outcome !== "none" && (
+              <p className="mt-2 text-xs text-muted-foreground font-semibold">
+                Cupom liberado para utilizar na sua próxima compra!
+              </p>
+            )}
           </div>
-          {!played && (
+
+          {/* Camada raspável */}
+          {!played && !completed && (
             <canvas
               ref={canvasRef}
-              width={340}
-              height={340}
-              onPointerDown={() => (isScratching.current = true)}
-              onPointerUp={() => (isScratching.current = false)}
-              onPointerLeave={() => (isScratching.current = false)}
-              onPointerMove={scratch}
-              className="absolute inset-0 h-full w-full cursor-pointer touch-none"
+              width={360}
+              height={360}
+              onPointerDown={startScratching}
+              onPointerMove={handlePointerMove}
+              onPointerUp={stopScratching}
+              onPointerLeave={stopScratching}
+              className="absolute inset-0 h-full w-full cursor-crosshair touch-none transition-opacity duration-500"
             />
           )}
         </div>
-        <div className="mt-6 text-center">
-          {played && <p className="text-sm font-medium text-muted-foreground">Volta em {countdownText}</p>}
+
+        {/* Indicador de progresso dinâmico */}
+        <div className="mt-5 text-center">
+          {!played && !completed ? (
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs font-bold text-muted-foreground">
+                <span>Progresso da raspagem</span>
+                <span>{scratchProgress}% / 50%</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full bg-primary transition-all duration-150"
+                  style={{ width: `${Math.min(100, (scratchProgress / 50) * 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Raspe mais da metade do cartão para desbloquear</p>
+            </div>
+          ) : (
+            <p className="text-sm font-medium text-muted-foreground">Volta em {countdownText}</p>
+          )}
         </div>
       </div>
     </section>
