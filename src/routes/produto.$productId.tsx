@@ -2,20 +2,29 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
+  Camera,
+  CheckCircle2,
   ChevronRight,
+  CreditCard,
   Heart,
+  Image as ImageIcon,
   MessageSquare,
   Minus,
   Plus,
+  QrCode,
   Send,
   Share2,
   ShieldCheck,
   ShoppingCart,
   Star,
+  ThumbsUp,
   Truck,
+  Upload,
+  Video,
+  X,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteFooter } from "@/components/site-footer";
@@ -23,7 +32,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart";
-import { fetchProduct, fetchProducts } from "@/lib/catalog.functions";
+import { fetchProduct } from "@/lib/catalog.functions";
 import { brl } from "@/lib/format";
 
 export const Route = createFileRoute("/produto/$productId")({
@@ -74,6 +83,23 @@ interface QuestionItem {
   created_at: string;
 }
 
+interface ReviewMedia {
+  url: string;
+  type: "image" | "video";
+}
+
+interface ReviewItem {
+  id: string;
+  author: string;
+  rating: number;
+  date: string;
+  title?: string;
+  comment: string;
+  media?: ReviewMedia[];
+  helpfulCount: number;
+  verified: boolean;
+}
+
 export function ProductDetailPage() {
   const { productId } = Route.useParams();
   const navigate = useNavigate();
@@ -84,6 +110,7 @@ export function ProductDetailPage() {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
+  // Perguntas e Respostas
   const [newQuestion, setNewQuestion] = useState("");
   const [questions, setQuestions] = useState<QuestionItem[]>(() => {
     try {
@@ -100,9 +127,61 @@ export function ProductDetailPage() {
       {
         id: "q2",
         question: "Qual o prazo para envio após o pagamento?",
-        answer:
-          "O envio é realizado em até 24h úteis após a confirmação. O código de rastreamento é enviado por e-mail.",
+        answer: "O envio é realizado em até 24h úteis após a confirmação. O código de rastreamento é enviado por e-mail.",
         created_at: "há 3 dias",
+      },
+    ];
+  });
+
+  // Avaliações de Usuários (com fotos e vídeos estilo Mercado Livre)
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewName, setReviewName] = useState("");
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewMediaList, setReviewMediaList] = useState<ReviewMedia[]>([]);
+  const [filterRating, setFilterRating] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<"helpful" | "recent">("recent");
+  const [lightboxMedia, setLightboxMedia] = useState<ReviewMedia | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [reviews, setReviews] = useState<ReviewItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(`reviews_${productId}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      {
+        id: "rev_1",
+        author: "Camila R.",
+        rating: 5,
+        date: "Há 1 semana",
+        comment: "Chegou muito rápido e muito bem embalado! A qualidade me surpreendeu positivamente. Podem comprar sem medo.",
+        verified: true,
+        helpfulCount: 8,
+        media: [
+          {
+            type: "image",
+            url: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop&q=80",
+          },
+        ],
+      },
+      {
+        id: "rev_2",
+        author: "Marcos Vinicius",
+        rating: 5,
+        date: "Há 3 semanas",
+        comment: "Excelente custo-benefício. Fácil de usar e funciona exatamente como descrito no anúncio.",
+        verified: true,
+        helpfulCount: 4,
+      },
+      {
+        id: "rev_3",
+        author: "Fernanda L.",
+        rating: 4,
+        date: "Há 1 mês",
+        comment: "Produto muito bom, material resistente. O rastreio atualizou certinho.",
+        verified: true,
+        helpfulCount: 2,
       },
     ];
   });
@@ -132,6 +211,12 @@ export function ProductDetailPage() {
       localStorage.setItem(`questions_${productId}`, JSON.stringify(questions));
     } catch {}
   }, [questions, productId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`reviews_${productId}`, JSON.stringify(reviews));
+    } catch {}
+  }, [reviews, productId]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -183,6 +268,73 @@ export function ProductDetailPage() {
     toast.success("Pergunta enviada ao vendedor!");
   };
 
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      const isVideo = file.type.startsWith("video/");
+      const isImage = file.type.startsWith("image/");
+      if (!isImage && !isVideo) {
+        toast.error("Formato inválido. Envie fotos ou vídeos.");
+        return;
+      }
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error("O arquivo é muito grande (máximo 25MB).");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const result = uploadEvent.target?.result as string;
+        if (result) {
+          setReviewMediaList((prev) => [...prev, { url: result, type: isVideo ? "video" : "image" }]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleRemoveMedia = (index: number) => {
+    setReviewMediaList((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitReview = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewComment.trim()) {
+      toast.error("Escreva um comentário sobre sua experiência.");
+      return;
+    }
+
+    const newRev: ReviewItem = {
+      id: `rev_${Date.now()}`,
+      author: reviewName.trim() || "Cliente HS Digital",
+      rating: reviewRating,
+      date: "Hoje",
+      comment: reviewComment.trim(),
+      media: reviewMediaList.length > 0 ? [...reviewMediaList] : undefined,
+      verified: true,
+      helpfulCount: 0,
+    };
+
+    setReviews((prev) => [newRev, ...prev]);
+    setShowReviewModal(false);
+    setReviewComment("");
+    setReviewName("");
+    setReviewRating(5);
+    setReviewMediaList([]);
+    toast.success("Avaliação enviada com sucesso! Obrigado por compartilhar.");
+  };
+
+  const handleToggleHelpful = (reviewId: string) => {
+    setReviews((prev) =>
+      prev.map((r) => (r.id === reviewId ? { ...r, helpfulCount: r.helpfulCount + 1 } : r)),
+    );
+    toast.success("Obrigado pelo feedback!");
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -225,6 +377,30 @@ export function ProductDetailPage() {
   const maxInstallments = 10;
   const installmentValue = product.price / maxInstallments;
   const isDigital = product.product_type === "digital" || !product.supplier;
+
+  // Cálculo das estatísticas de avaliação
+  const totalReviewsCount = reviews.length;
+  const averageRating =
+    totalReviewsCount > 0
+      ? reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviewsCount
+      : product.rating || 5;
+
+  const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  reviews.forEach((r) => {
+    const star = Math.min(5, Math.max(1, Math.round(r.rating))) as 1 | 2 | 3 | 4 | 5;
+    ratingCounts[star] = (ratingCounts[star] || 0) + 1;
+  });
+
+  const allPhotosAndVideos = reviews.flatMap((r) =>
+    (r.media || []).map((m) => ({ ...m, reviewId: r.id, rating: r.rating })),
+  );
+
+  const filteredReviews = reviews
+    .filter((r) => (filterRating ? r.rating === filterRating : true))
+    .sort((a, b) => {
+      if (sortBy === "helpful") return b.helpfulCount - a.helpfulCount;
+      return 0;
+    });
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24 sm:pb-8">
@@ -269,7 +445,7 @@ export function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="rounded-full bg-white/90 p-2 text-foreground shadow-md backdrop-blur transition hover:text-primary"
+                  className="rounded-full bg-white/95 p-2 text-foreground shadow-md backdrop-blur transition hover:text-primary"
                   title="Compartilhar produto"
                 >
                   <Share2 className="h-4 w-4" />
@@ -280,7 +456,7 @@ export function ProductDetailPage() {
                     setIsFavorite(!isFavorite);
                     toast.success(isFavorite ? "Removido dos favoritos" : "Salvo nos favoritos!");
                   }}
-                  className={`rounded-full bg-white/90 p-2 shadow-md backdrop-blur transition ${
+                  className={`rounded-full bg-white/95 p-2 shadow-md backdrop-blur transition ${
                     isFavorite ? "text-rose-500" : "text-foreground hover:text-rose-500"
                   }`}
                   title="Favoritar"
@@ -315,7 +491,7 @@ export function ProductDetailPage() {
                     }}
                     className={`relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-xl border-2 transition ${
                       selectedImage === index
-                        ? "border-primary shadow-sm"
+                        ? "border-primary shadow-sm ring-1 ring-primary"
                         : "border-border/80 opacity-70 hover:opacity-100"
                     }`}
                   >
@@ -347,57 +523,79 @@ export function ProductDetailPage() {
                 {product.title}
               </h1>
 
-              {/* Avaliação */}
+              {/* Avaliação Cabeçalho */}
               <div className="mt-2 flex items-center gap-1.5">
                 <div className="flex items-center text-amber-400">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
                       className={`h-3.5 w-3.5 ${
-                        i < Math.floor(product.rating || 5) ? "fill-current" : "opacity-30"
+                        i < Math.floor(averageRating) ? "fill-current" : "opacity-30"
                       }`}
                     />
                   ))}
                 </div>
                 <span className="text-xs font-bold text-foreground">
-                  {(product.rating || 5).toFixed(1)}
+                  {averageRating.toFixed(1)}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  ({product.reviews_count || 12} avaliações)
-                </span>
+                <a href="#opinioes" className="text-xs text-primary underline underline-offset-2">
+                  ({totalReviewsCount} avaliações)
+                </a>
               </div>
 
-              {/* Caixa de Preço */}
-              <div className="mt-4 rounded-2xl bg-muted/30 p-4 border border-border">
+              {/* Caixa de Preço e Formas de Pagamento (Estilo Visual Exato) */}
+              <div className="mt-4 rounded-2xl bg-card p-4 border border-border shadow-sm">
                 {product.compare_at_price && product.compare_at_price > product.price && (
                   <p className="text-xs text-muted-foreground line-through">
-                    {brl(product.compare_at_price)}
+                    De {brl(product.compare_at_price)}
                   </p>
                 )}
-                <div className="flex items-baseline gap-2">
+                
+                <div className="flex items-baseline gap-2 mt-0.5">
                   <span className="text-3xl font-black text-primary">
                     {brl(product.price)}
                   </span>
-                  <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600">
+                  <span className="rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 text-xs font-black uppercase tracking-wide">
                     no Pix
                   </span>
                 </div>
-                {product.price >= 30 && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    ou em até {maxInstallments}x de {brl(installmentValue)} sem juros
-                  </p>
-                )}
+
+                <p className="mt-1 text-xs font-medium text-foreground">
+                  ou em até <span className="font-bold">{maxInstallments}x de {brl(installmentValue)}</span> no cartão
+                </p>
+
+                {/* Ícones de formas de pagamento */}
+                <div className="mt-3 pt-3 border-t border-border/80 flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <QrCode className="h-3.5 w-3.5 text-emerald-600" /> Pix imediato
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CreditCard className="h-3.5 w-3.5 text-primary" /> Cartão de Crédito
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" /> Boleto
+                  </span>
+                </div>
               </div>
 
+              {/* Botão de Compartilhar */}
+              <Button
+                variant="outline"
+                onClick={handleShare}
+                className="mt-3 w-full border-border text-foreground hover:bg-muted font-semibold text-xs h-9"
+              >
+                <Share2 className="h-3.5 w-3.5 mr-1.5" /> Compartilhar produto
+              </Button>
+
               {/* Garantias */}
-              <div className="mt-4 space-y-2 rounded-xl bg-card p-3 border border-border text-xs text-muted-foreground">
+              <div className="mt-3 space-y-2 rounded-xl bg-muted/40 p-3 border border-border/60 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span>Compra 100% Protegida com garantia e suporte</span>
+                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>Compra 100% Protegida com garantia de entrega ou dinheiro de volta</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Truck className="h-4 w-4 text-primary shrink-0" />
-                  <span>Envio com código de rastreamento oficial no e-mail</span>
+                  <span>Código de rastreamento oficial enviado para o seu e-mail</span>
                 </div>
               </div>
             </div>
@@ -457,6 +655,230 @@ export function ProductDetailPage() {
           </div>
         </section>
 
+        {/* ========================================================= */}
+        {/* SEÇÃO: OPINIÕES DO PRODUTO (Estilo Mercado Livre da Imagem 2) */}
+        {/* ========================================================= */}
+        <section id="opinioes" className="mt-8 rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border">
+            <div>
+              <h2 className="text-lg sm:text-xl font-black text-foreground">Opiniões do produto</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Avaliações de clientes que compraram este produto
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowReviewModal(true)}
+              className="bg-primary hover:bg-primary/90 text-white font-bold h-10 px-5 text-sm shadow"
+            >
+              <Star className="h-4 w-4 mr-1.5 fill-current" /> Avaliar produto
+            </Button>
+          </div>
+
+          {/* Resumo da Nota e Gráfico de Barras */}
+          <div className="mt-6 grid gap-6 md:grid-cols-12 items-center">
+            <div className="md:col-span-4 flex items-center gap-4">
+              <div className="text-5xl font-black text-primary leading-none">
+                {averageRating.toFixed(1)}
+              </div>
+              <div>
+                <div className="flex items-center text-amber-400">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-4 w-4 ${
+                        i < Math.floor(averageRating) ? "fill-current" : "opacity-30"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {totalReviewsCount} {totalReviewsCount === 1 ? "avaliação" : "avaliações"}
+                </p>
+              </div>
+            </div>
+
+            {/* Barras de Qualificação 5★ a 1★ */}
+            <div className="md:col-span-8 space-y-1.5">
+              {[5, 4, 3, 2, 1].map((star) => {
+                const count = ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0;
+                const percentage = totalReviewsCount > 0 ? (count / totalReviewsCount) * 100 : 0;
+                return (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setFilterRating(filterRating === star ? null : star)}
+                    className="w-full flex items-center gap-2 text-xs group hover:opacity-80 transition"
+                  >
+                    <span className="w-6 text-right font-semibold text-muted-foreground">{star}★</span>
+                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          filterRating === star ? "bg-primary" : "bg-primary/70"
+                        }`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <span className="w-8 text-left text-muted-foreground font-medium">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Opiniões com Fotos e Vídeos (Carrossel Horizontal) */}
+          {allPhotosAndVideos.length > 0 && (
+            <div className="mt-8 pt-6 border-t border-border">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-foreground">Opiniões com fotos e vídeos</h3>
+                <span className="text-xs text-muted-foreground">{allPhotosAndVideos.length} mídias</span>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+                {allPhotosAndVideos.map((m, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setLightboxMedia(m)}
+                    className="relative h-28 w-28 sm:h-32 sm:w-32 shrink-0 overflow-hidden rounded-xl border border-border group bg-black"
+                  >
+                    {m.type === "video" ? (
+                      <video src={m.url} className="h-full w-full object-cover" />
+                    ) : (
+                      <img src={m.url} alt="" className="h-full w-full object-cover group-hover:scale-105 transition" />
+                    )}
+                    <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur flex items-center gap-0.5">
+                      {m.rating} <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                    </span>
+                    {m.type === "video" && (
+                      <span className="absolute top-1.5 right-1.5 rounded-full bg-black/70 p-1 text-white">
+                        <Video className="h-3 w-3" />
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Filtros e Ordenação */}
+          <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setFilterRating(null)}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition border ${
+                  filterRating === null
+                    ? "bg-primary text-white border-primary"
+                    : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                }`}
+              >
+                Todas ({totalReviewsCount})
+              </button>
+              {[5, 4, 3].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setFilterRating(filterRating === star ? null : star)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition border ${
+                    filterRating === star
+                      ? "bg-primary text-white border-primary"
+                      : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                >
+                  {star} estrelas ({ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0})
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground">Ordenar:</span>
+              <button
+                type="button"
+                onClick={() => setSortBy("recent")}
+                className={`font-bold ${sortBy === "recent" ? "text-primary" : "text-muted-foreground"}`}
+              >
+                Mais recentes
+              </button>
+              <span className="text-muted-foreground">•</span>
+              <button
+                type="button"
+                onClick={() => setSortBy("helpful")}
+                className={`font-bold ${sortBy === "helpful" ? "text-primary" : "text-muted-foreground"}`}
+              >
+                Mais úteis
+              </button>
+            </div>
+          </div>
+
+          {/* Lista de Avaliações */}
+          <div className="mt-5 divide-y divide-border">
+            {filteredReviews.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Nenhuma avaliação encontrada com os filtros selecionados.
+              </p>
+            ) : (
+              filteredReviews.map((rev) => (
+                <div key={rev.id} className="py-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="flex text-amber-400">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-3 w-3 ${i < rev.rating ? "fill-current" : "opacity-30"}`}
+                          />
+                        ))}
+                      </div>
+                      <span className="font-bold text-xs text-foreground">{rev.author}</span>
+                      {rev.verified && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                          <CheckCircle2 className="h-3 w-3" /> Compra verificada
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{rev.date}</span>
+                  </div>
+
+                  <p className="text-sm text-foreground/90 leading-relaxed">{rev.comment}</p>
+
+                  {/* Fotos e Vídeos do Comentário */}
+                  {rev.media && rev.media.length > 0 && (
+                    <div className="flex gap-2 pt-1 overflow-x-auto">
+                      {rev.media.map((m, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setLightboxMedia(m)}
+                          className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border group"
+                        >
+                          {m.type === "video" ? (
+                            <video src={m.url} className="h-full w-full object-cover" />
+                          ) : (
+                            <img
+                              src={m.url}
+                              alt=""
+                              className="h-full w-full object-cover group-hover:scale-105 transition"
+                            />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleHelpful(rev.id)}
+                      className="text-xs text-muted-foreground hover:text-primary transition flex items-center gap-1"
+                    >
+                      <ThumbsUp className="h-3.5 w-3.5" /> É útil ({rev.helpfulCount})
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
         {/* Perguntas e Dúvidas */}
         <section className="mt-6 rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
           <div className="flex items-center gap-2">
@@ -491,6 +913,170 @@ export function ProductDetailPage() {
           </div>
         </section>
       </main>
+
+      {/* Modal / Diálogo para Avaliar Produto com Fotos e Vídeos */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="relative w-full max-w-lg rounded-2xl bg-card p-6 shadow-2xl border border-border max-h-[90vh] overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setShowReviewModal(false)}
+              className="absolute top-4 right-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <h3 className="text-lg font-black text-foreground">Avaliar este produto</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Conte o que achou do produto e ajude outros compradores.
+            </p>
+
+            <form onSubmit={handleSubmitReview} className="mt-4 space-y-4">
+              {/* Seletor de Estrelas */}
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1.5">Sua nota</label>
+                <div className="flex items-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="p-1 hover:scale-110 transition"
+                    >
+                      <Star
+                        className={`h-7 w-7 ${
+                          star <= reviewRating
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-muted-foreground/40"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <span className="ml-2 text-xs font-bold text-foreground">
+                    {reviewRating === 5
+                      ? "Excelente!"
+                      : reviewRating === 4
+                        ? "Muito bom"
+                        : reviewRating === 3
+                          ? "Bom"
+                          : reviewRating === 2
+                            ? "Ruim"
+                            : "Péssimo"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Nome */}
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">Seu nome ou apelido</label>
+                <Input
+                  value={reviewName}
+                  onChange={(e) => setReviewName(e.target.value)}
+                  placeholder="Ex: João da Silva"
+                  className="h-10 text-sm"
+                />
+              </div>
+
+              {/* Comentário */}
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">Sua opinião</label>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="O que você mais gostou no produto? Chegou rápido? O material é de qualidade?"
+                  className="w-full rounded-xl border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[90px]"
+                  required
+                />
+              </div>
+
+              {/* Upload de Fotos e Vídeos */}
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1.5">
+                  Fotos e Vídeos do produto (opcional)
+                </label>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,video/*"
+                  onChange={handleMediaUpload}
+                  className="hidden"
+                  id="review-media-upload"
+                />
+
+                <div className="flex flex-wrap gap-2 items-center">
+                  <label
+                    htmlFor="review-media-upload"
+                    className="flex flex-col items-center justify-center h-20 w-20 rounded-xl border-2 border-dashed border-border hover:border-primary bg-muted/30 cursor-pointer transition"
+                  >
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-[10px] font-bold text-muted-foreground mt-1">Anexar</span>
+                  </label>
+
+                  {reviewMediaList.map((m, idx) => (
+                    <div key={idx} className="relative h-20 w-20 rounded-xl overflow-hidden border border-border group bg-black">
+                      {m.type === "video" ? (
+                        <video src={m.url} className="h-full w-full object-cover" />
+                      ) : (
+                        <img src={m.url} alt="" className="h-full w-full object-cover" />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMedia(idx)}
+                        className="absolute top-1 right-1 rounded-full bg-rose-600 text-white p-0.5 shadow"
+                        title="Remover"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 text-[9px] text-white">
+                        {m.type === "video" ? "Vídeo" : "Foto"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowReviewModal(false)}
+                  className="text-xs font-bold"
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white font-bold text-xs">
+                  Publicar Avaliação
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox / Visualizador de Mídia em Tela Cheia */}
+      {lightboxMedia && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setLightboxMedia(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxMedia(null)}
+            className="absolute top-4 right-4 rounded-full bg-white/20 p-2 text-white hover:bg-white/40"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <div className="max-h-[85vh] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+            {lightboxMedia.type === "video" ? (
+              <video src={lightboxMedia.url} controls autoPlay className="max-h-[80vh] rounded-xl" />
+            ) : (
+              <img src={lightboxMedia.url} alt="" className="max-h-[80vh] rounded-xl object-contain" />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Barra Fixa de Compra Rápida no Mobile (estilo Shopee / Mercado Livre) */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-lg sm:hidden">
