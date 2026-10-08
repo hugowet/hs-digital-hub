@@ -1,7 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  Bell,
   Gamepad2,
   Home,
   LogIn,
@@ -46,7 +45,6 @@ export function SiteHeader({
   const [open, setOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isBuyer, setIsBuyer] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   const [localQuery, setLocalQuery] = useState(query);
@@ -77,11 +75,11 @@ export function SiteHeader({
     supabase.auth.getUser().then(async ({ data }) => {
       setSignedIn(!!data.user);
       if (data.user) {
-        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id);
         setIsAdmin(Boolean(roles?.some((item) => item.role === "admin")));
-        setIsBuyer(
-          Boolean(roles?.some((item) => item.role === "buyer") && !roles?.some((item) => item.role === "seller")),
-        );
         const { count: unread } = await supabase
           .from("order_messages")
           .select("id,order_conversations!inner(buyer_id)", { count: "exact", head: true })
@@ -96,7 +94,6 @@ export function SiteHeader({
         setSignedIn(!!session?.user);
         if (!session?.user) {
           setIsAdmin(false);
-          setIsBuyer(false);
           setUnreadMessages(0);
           clear();
         }
@@ -124,13 +121,16 @@ export function SiteHeader({
 
   return (
     <header className="sticky top-0 z-50 brand-gradient text-primary-foreground shadow-md">
-      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2.5 sm:py-3">
+      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2 sm:py-2.5">
         <div className="flex items-center gap-2 sm:gap-3">
-          <Link to="/" className="flex shrink-0 items-center gap-2">
+          {/* Logotipo */}
+          <Link to="/" className="flex shrink-0 items-center gap-2 transition hover:opacity-95">
             <img
               src={logoAsset.url}
               alt="HS Digital"
-              className="h-7 sm:h-9 w-auto max-w-[120px] sm:max-w-[160px] object-contain drop-shadow"
+              loading="eager"
+              decoding="async"
+              className="h-8 sm:h-10 w-auto max-w-[130px] sm:max-w-[180px] object-contain select-none [image-rendering:-webkit-optimize-contrast] [image-rendering:crisp-edges]"
             />
           </Link>
 
@@ -186,7 +186,9 @@ export function SiteHeader({
                     >
                       <div className="flex items-center gap-2 truncate">
                         <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-xs sm:text-sm truncate text-foreground">{item.title}</span>
+                        <span className="text-xs sm:text-sm truncate text-foreground">
+                          {item.title}
+                        </span>
                       </div>
                       <span className="text-[10px] text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded shrink-0">
                         {item.category}
@@ -210,7 +212,7 @@ export function SiteHeader({
               to="/jogos"
               className="px-3 py-1.5 rounded-full bg-amber-400 text-slate-950 hover:bg-amber-300 font-black transition flex items-center gap-1.5 shadow-md animate-pulse"
             >
-              <Gamepad2 className="h-4 w-4 text-slate-950 fill-slate-950" />
+              <Gamepad2 className="h-4 w-4 fill-slate-950" />
               <span>Jogos & Prêmios</span>
             </Link>
 
@@ -223,7 +225,7 @@ export function SiteHeader({
 
             {signedIn && (
               <Link
-                to="/pedidos"
+                to="/compras"
                 className="px-2.5 py-1.5 rounded-md hover:bg-white/10 transition font-medium flex items-center gap-1.5 relative"
               >
                 <ShoppingBag className="h-4 w-4" /> Minhas Compras
@@ -281,7 +283,7 @@ export function SiteHeader({
                   <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/pedidos" className="flex items-center gap-2 cursor-pointer">
+                    <Link to="/compras" className="flex items-center gap-2 cursor-pointer">
                       <ShoppingBag className="h-4 w-4" /> Minhas Compras
                     </Link>
                   </DropdownMenuItem>
@@ -296,7 +298,7 @@ export function SiteHeader({
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/enderecos" className="flex items-center gap-2 cursor-pointer">
+                    <Link to="/conta" className="flex items-center gap-2 cursor-pointer">
                       <MapPin className="h-4 w-4" /> Meus Endereços
                     </Link>
                   </DropdownMenuItem>
@@ -347,7 +349,7 @@ export function SiteHeader({
               onClick={() => setOpen(false)}
               className="px-3 py-2 rounded-lg bg-amber-400 text-slate-950 font-black flex items-center gap-2 shadow"
             >
-              <Gamepad2 className="h-4 w-4 fill-slate-950" /> Jogos & Prêmios (Ganhe Frete Grátis)
+              <Gamepad2 className="h-4 w-4 fill-slate-950" /> Jogos & Prêmios
             </Link>
             <Link
               to="/cupons"
@@ -358,7 +360,7 @@ export function SiteHeader({
             </Link>
             {signedIn && (
               <Link
-                to="/pedidos"
+                to="/compras"
                 onClick={() => setOpen(false)}
                 className="px-3 py-2 rounded-md hover:bg-white/10 font-medium flex items-center gap-2 justify-between"
               >
