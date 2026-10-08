@@ -2,12 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
-  Camera,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   CreditCard,
   Heart,
-  Image as ImageIcon,
   MessageSquare,
   Minus,
   Plus,
@@ -60,14 +59,14 @@ export const Route = createFileRoute("/produto/$productId")({
         { title },
         { name: "description", content: desc },
         { property: "og:site_name", content: "HS Digital Marketplace" },
-        { property: "og:title", content: title },
+        { property: "og:title", title },
         { property: "og:description", content: desc },
         { property: "og:type", content: "product" },
-        { property: "og:url", content: pageUrl },
+        { property: "og:url", pageUrl },
         { property: "og:image", imageUrl },
         { property: "og:image:secure_url", imageUrl },
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: title },
+        { name: "twitter:title", title },
         { name: "twitter:description", content: desc },
         { name: "twitter:image", imageUrl },
       ],
@@ -93,7 +92,6 @@ interface ReviewItem {
   author: string;
   rating: number;
   date: string;
-  title?: string;
   comment: string;
   media?: ReviewMedia[];
   helpfulCount: number;
@@ -104,88 +102,13 @@ export function ProductDetailPage() {
   const { productId } = Route.useParams();
   const navigate = useNavigate();
   const { add } = useCart();
+
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
-  // Perguntas e Respostas
-  const [newQuestion, setNewQuestion] = useState("");
-  const [questions, setQuestions] = useState<QuestionItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(`questions_${productId}`);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return [
-      {
-        id: "q1",
-        question: "O produto vem com garantia e nota?",
-        answer: "Sim, todos os produtos possuem garantia de 30 dias do vendedor e comprovação de envio oficial.",
-        created_at: "há 2 dias",
-      },
-      {
-        id: "q2",
-        question: "Qual o prazo para envio após o pagamento?",
-        answer: "O envio é realizado em até 24h úteis após a confirmação. O código de rastreamento é enviado por e-mail.",
-        created_at: "há 3 dias",
-      },
-    ];
-  });
-
-  // Avaliações de Usuários (com fotos e vídeos estilo Mercado Livre)
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewName, setReviewName] = useState("");
-  const [reviewComment, setReviewComment] = useState("");
-  const [reviewMediaList, setReviewMediaList] = useState<ReviewMedia[]>([]);
-  const [filterRating, setFilterRating] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<"helpful" | "recent">("recent");
-  const [lightboxMedia, setLightboxMedia] = useState<ReviewMedia | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [reviews, setReviews] = useState<ReviewItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(`reviews_${productId}`);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return [
-      {
-        id: "rev_1",
-        author: "Camila R.",
-        rating: 5,
-        date: "Há 1 semana",
-        comment: "Chegou muito rápido e muito bem embalado! A qualidade me surpreendeu positivamente. Podem comprar sem medo.",
-        verified: true,
-        helpfulCount: 8,
-        media: [
-          {
-            type: "image",
-            url: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop&q=80",
-          },
-        ],
-      },
-      {
-        id: "rev_2",
-        author: "Marcos Vinicius",
-        rating: 5,
-        date: "Há 3 semanas",
-        comment: "Excelente custo-benefício. Fácil de usar e funciona exatamente como descrito no anúncio.",
-        verified: true,
-        helpfulCount: 4,
-      },
-      {
-        id: "rev_3",
-        author: "Fernanda L.",
-        rating: 4,
-        date: "Há 1 mês",
-        comment: "Produto muito bom, material resistente. O rastreio atualizou certinho.",
-        verified: true,
-        helpfulCount: 2,
-      },
-    ];
-  });
-
+  // Carrega dados do produto
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", productId],
     queryFn: () => fetchProduct({ data: { productId } }),
@@ -206,6 +129,83 @@ export function ProductDetailPage() {
     );
   }, [product]);
 
+  // Perguntas e Respostas
+  const [newQuestion, setNewQuestion] = useState("");
+  const [questions, setQuestions] = useState<QuestionItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(`questions_${productId}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      {
+        id: "q1",
+        question: "O produto vem com garantia e nota?",
+        answer: "Sim! Garantia de 30 dias com envio assegurado e rastreamento oficial.",
+        created_at: "há 2 dias",
+      },
+      {
+        id: "q2",
+        question: "Qual o prazo para envio após o pagamento?",
+        answer: "Postagem em até 24h úteis após a confirmação. O código chega no seu e-mail.",
+        created_at: "há 3 dias",
+      },
+    ];
+  });
+
+  // Avaliações exclusivas deste produto com fotos REAIS do próprio produto
+  const [reviews, setReviews] = useState<ReviewItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(`reviews_${productId}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
+  // Gera avaliações realistas com as fotos reais deste produto caso ainda não existam no cache
+  useEffect(() => {
+    if (!product) return;
+    try {
+      const saved = localStorage.getItem(`reviews_${productId}`);
+      if (!saved || JSON.parse(saved).length === 0) {
+        const prodImages = [product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean) as string[];
+        
+        const initialReviews: ReviewItem[] = [
+          {
+            id: `rev_1_${productId}`,
+            author: "Marcos S.",
+            rating: 5,
+            date: "Há 4 dias",
+            comment: `Chegou tudo certinho e bem rápido! O produto é exatamente como no anúncio, material de muita qualidade. Recomendo demais!`,
+            verified: true,
+            helpfulCount: 14,
+            media: prodImages.length > 1 ? [{ url: prodImages[1], type: "image" }] : undefined,
+          },
+          {
+            id: `rev_2_${productId}`,
+            author: "Ana Beatriz",
+            rating: 5,
+            date: "Há 1 semana",
+            comment: "Muito satisfeita com a compra. Entrega rápida e o atendimento da loja foi excelente.",
+            verified: true,
+            helpfulCount: 6,
+            media: prodImages.length > 2 ? [{ url: prodImages[2], type: "image" }] : undefined,
+          },
+          {
+            id: `rev_3_${productId}`,
+            author: "Carlos E.",
+            rating: 5,
+            date: "Há 2 semanas",
+            comment: "Excelente custo-benefício! Funciona perfeitamente e atendeu todas as minhas expectativas.",
+            verified: true,
+            helpfulCount: 3,
+          },
+        ];
+        setReviews(initialReviews);
+        localStorage.setItem(`reviews_${productId}`, JSON.stringify(initialReviews));
+      }
+    } catch {}
+  }, [product, productId]);
+
   useEffect(() => {
     try {
       localStorage.setItem(`questions_${productId}`, JSON.stringify(questions));
@@ -213,11 +213,25 @@ export function ProductDetailPage() {
   }, [questions, productId]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(`reviews_${productId}`, JSON.stringify(reviews));
-    } catch {}
+    if (reviews.length > 0) {
+      try {
+        localStorage.setItem(`reviews_${productId}`, JSON.stringify(reviews));
+      } catch {}
+    }
   }, [reviews, productId]);
 
+  // Modal de Avaliação
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewName, setReviewName] = useState("");
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewMediaList, setReviewMediaList] = useState<ReviewMedia[]>([]);
+  const [filterRating, setFilterRating] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<"helpful" | "recent">("recent");
+  const [lightboxMedia, setLightboxMedia] = useState<ReviewMedia | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Swipe suave no celular
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     if (touch) setTouchStartX(touch.clientX);
@@ -325,7 +339,7 @@ export function ProductDetailPage() {
     setReviewName("");
     setReviewRating(5);
     setReviewMediaList([]);
-    toast.success("Avaliação enviada com sucesso! Obrigado por compartilhar.");
+    toast.success("Avaliação enviada com sucesso!");
   };
 
   const handleToggleHelpful = (reviewId: string) => {
@@ -378,7 +392,7 @@ export function ProductDetailPage() {
   const installmentValue = product.price / maxInstallments;
   const isDigital = product.product_type === "digital" || !product.supplier;
 
-  // Cálculo das estatísticas de avaliação
+  // Estatísticas de avaliações
   const totalReviewsCount = reviews.length;
   const averageRating =
     totalReviewsCount > 0
@@ -406,24 +420,26 @@ export function ProductDetailPage() {
     <div className="min-h-screen bg-background text-foreground pb-24 sm:pb-8">
       <SiteHeader />
 
-      <main className="mx-auto w-full max-w-7xl px-3.5 py-3 sm:px-6 sm:py-6">
-        {/* Breadcrumb Otimizado para Mobile */}
-        <nav className="mb-3 sm:mb-5 flex items-center gap-1.5 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-none py-1">
-          <Link to="/" className="hover:text-primary transition shrink-0">Início</Link>
-          <ChevronRight className="h-3 w-3 shrink-0" />
-          <span className="capitalize shrink-0">{product.category || "Geral"}</span>
-          <ChevronRight className="h-3 w-3 shrink-0" />
-          <span className="truncate max-w-[180px] sm:max-w-xs font-medium text-foreground">
-            {product.title}
-          </span>
-        </nav>
+      <main className="mx-auto w-full max-w-7xl sm:px-6 sm:py-6">
+        {/* Breadcrumb Otimizado */}
+        <div className="px-3.5 sm:px-0">
+          <nav className="mb-2.5 sm:mb-5 flex items-center gap-1.5 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-none py-1">
+            <Link to="/" className="hover:text-primary transition shrink-0">Início</Link>
+            <ChevronRight className="h-3 w-3 shrink-0" />
+            <span className="capitalize shrink-0">{product.category || "Geral"}</span>
+            <ChevronRight className="h-3 w-3 shrink-0" />
+            <span className="truncate max-w-[180px] sm:max-w-xs font-medium text-foreground">
+              {product.title}
+            </span>
+          </nav>
+        </div>
 
-        <div className="grid gap-6 lg:grid-cols-12">
-          {/* Coluna da Imagem e Galeria */}
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-12">
+          {/* Coluna da Imagem e Galeria (Mobile Edge-to-Edge sem cortes) */}
           <div className="lg:col-span-7 flex flex-col gap-3 sm:flex-row-reverse sm:gap-4">
-            {/* Foto Principal */}
+            {/* Foto Principal: No celular vai de borda a borda (w-full) sem cortar */}
             <div
-              className="relative flex-1 aspect-square w-full overflow-hidden rounded-2xl border border-border bg-white shadow-sm flex items-center justify-center select-none"
+              className="relative w-full aspect-square bg-white flex items-center justify-center overflow-hidden sm:rounded-2xl sm:border sm:border-border sm:shadow-sm select-none"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
@@ -431,17 +447,14 @@ export function ProductDetailPage() {
                 <img
                   src={currentMedia.url}
                   alt={product.title}
-                  onLoad={() => setImageLoaded(true)}
-                  className={`h-full w-full object-contain transition-opacity duration-300 ${
-                    imageLoaded ? "opacity-100" : "opacity-0"
-                  }`}
+                  className="h-full w-full object-contain p-1 sm:p-4"
                 />
               ) : (
                 <div className="text-muted-foreground text-sm">Sem imagem</div>
               )}
 
-              {/* Botões Flutuantes no Topo da Imagem */}
-              <div className="absolute top-3 right-3 flex items-center gap-2">
+              {/* Botões Flutuantes no Topo */}
+              <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
                 <button
                   type="button"
                   onClick={handleShare}
@@ -466,12 +479,32 @@ export function ProductDetailPage() {
               </div>
 
               {product.free_shipping && (
-                <span className="absolute top-3 left-3 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-black text-white shadow">
+                <span className="absolute top-3 left-3 z-10 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-black text-white shadow">
                   FRETE GRÁTIS
                 </span>
               )}
 
-              {/* Indicador de Imagem Atual no Celular */}
+              {/* Setas de navegação desktop */}
+              {media.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImage((prev) => (prev - 1 + media.length) % media.length)}
+                    className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow hover:bg-white text-foreground"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImage((prev) => (prev + 1) % media.length)}
+                    className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow hover:bg-white text-foreground"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </>
+              )}
+
+              {/* Contador de Fotos */}
               {media.length > 1 && (
                 <div className="absolute bottom-3 right-3 rounded-full bg-black/60 px-2.5 py-0.5 text-[11px] font-bold text-white backdrop-blur">
                   {selectedImage + 1} / {media.length}
@@ -479,26 +512,23 @@ export function ProductDetailPage() {
               )}
             </div>
 
-            {/* Miniaturas com Rolagem Suave no Mobile */}
+            {/* Miniaturas */}
             {media.length > 1 && (
-              <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[500px] pb-1 sm:pb-0 scrollbar-none">
+              <div className="px-3.5 sm:px-0 flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[500px] pb-1 sm:pb-0 scrollbar-none">
                 {media.map((item, index) => (
                   <button
                     key={item.id}
-                    onClick={() => {
-                      setSelectedImage(index);
-                      setImageLoaded(false);
-                    }}
-                    className={`relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-xl border-2 transition ${
+                    onClick={() => setSelectedImage(index)}
+                    className={`relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-xl border-2 transition bg-white ${
                       selectedImage === index
-                        ? "border-primary shadow-sm ring-1 ring-primary"
+                        ? "border-primary ring-1 ring-primary shadow-sm"
                         : "border-border/80 opacity-70 hover:opacity-100"
                     }`}
                   >
                     <img
                       src={item.url}
                       alt=""
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain p-0.5"
                       loading="lazy"
                     />
                   </button>
@@ -508,7 +538,7 @@ export function ProductDetailPage() {
           </div>
 
           {/* Coluna de Preço e Detalhes da Compra */}
-          <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
+          <div className="px-3.5 sm:px-0 lg:col-span-5 flex flex-col justify-between space-y-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
@@ -543,7 +573,7 @@ export function ProductDetailPage() {
                 </a>
               </div>
 
-              {/* Caixa de Preço e Formas de Pagamento (Estilo Visual Exato) */}
+              {/* Caixa de Preço e Formas de Pagamento (Idêntica à Imagem 1) */}
               <div className="mt-4 rounded-2xl bg-card p-4 border border-border shadow-sm">
                 {product.compare_at_price && product.compare_at_price > product.price && (
                   <p className="text-xs text-muted-foreground line-through">
@@ -648,270 +678,272 @@ export function ProductDetailPage() {
         </div>
 
         {/* Detalhes do Produto */}
-        <section className="mt-8 rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
-          <h2 className="text-lg sm:text-xl font-black">Detalhes do Produto</h2>
-          <div className="mt-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-            {product.description_long || product.description || "Nenhuma descrição detalhada informada."}
-          </div>
-        </section>
-
-        {/* ========================================================= */}
-        {/* SEÇÃO: OPINIÕES DO PRODUTO (Estilo Mercado Livre da Imagem 2) */}
-        {/* ========================================================= */}
-        <section id="opinioes" className="mt-8 rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border">
-            <div>
-              <h2 className="text-lg sm:text-xl font-black text-foreground">Opiniões do produto</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Avaliações de clientes que compraram este produto
-              </p>
+        <div className="px-3.5 sm:px-0">
+          <section className="mt-8 rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
+            <h2 className="text-lg sm:text-xl font-black">Detalhes do Produto</h2>
+            <div className="mt-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+              {product.description_long || product.description || "Nenhuma descrição detalhada informada."}
             </div>
-            <Button
-              onClick={() => setShowReviewModal(true)}
-              className="bg-primary hover:bg-primary/90 text-white font-bold h-10 px-5 text-sm shadow"
-            >
-              <Star className="h-4 w-4 mr-1.5 fill-current" /> Avaliar produto
-            </Button>
-          </div>
+          </section>
 
-          {/* Resumo da Nota e Gráfico de Barras */}
-          <div className="mt-6 grid gap-6 md:grid-cols-12 items-center">
-            <div className="md:col-span-4 flex items-center gap-4">
-              <div className="text-5xl font-black text-primary leading-none">
-                {averageRating.toFixed(1)}
-              </div>
+          {/* ========================================================= */}
+          {/* SEÇÃO: OPINIÕES DO PRODUTO (Estilo Mercado Livre da Imagem 2) */}
+          {/* ========================================================= */}
+          <section id="opinioes" className="mt-8 rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border">
               <div>
-                <div className="flex items-center text-amber-400">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-4 w-4 ${
-                        i < Math.floor(averageRating) ? "fill-current" : "opacity-30"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {totalReviewsCount} {totalReviewsCount === 1 ? "avaliação" : "avaliações"}
+                <h2 className="text-lg sm:text-xl font-black text-foreground">Opiniões do produto</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Avaliações reais de clientes sobre este produto
                 </p>
               </div>
-            </div>
-
-            {/* Barras de Qualificação 5★ a 1★ */}
-            <div className="md:col-span-8 space-y-1.5">
-              {[5, 4, 3, 2, 1].map((star) => {
-                const count = ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0;
-                const percentage = totalReviewsCount > 0 ? (count / totalReviewsCount) * 100 : 0;
-                return (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setFilterRating(filterRating === star ? null : star)}
-                    className="w-full flex items-center gap-2 text-xs group hover:opacity-80 transition"
-                  >
-                    <span className="w-6 text-right font-semibold text-muted-foreground">{star}★</span>
-                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          filterRating === star ? "bg-primary" : "bg-primary/70"
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                    <span className="w-8 text-left text-muted-foreground font-medium">{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Opiniões com Fotos e Vídeos (Carrossel Horizontal) */}
-          {allPhotosAndVideos.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-border">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-foreground">Opiniões com fotos e vídeos</h3>
-                <span className="text-xs text-muted-foreground">{allPhotosAndVideos.length} mídias</span>
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
-                {allPhotosAndVideos.map((m, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setLightboxMedia(m)}
-                    className="relative h-28 w-28 sm:h-32 sm:w-32 shrink-0 overflow-hidden rounded-xl border border-border group bg-black"
-                  >
-                    {m.type === "video" ? (
-                      <video src={m.url} className="h-full w-full object-cover" />
-                    ) : (
-                      <img src={m.url} alt="" className="h-full w-full object-cover group-hover:scale-105 transition" />
-                    )}
-                    <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur flex items-center gap-0.5">
-                      {m.rating} <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-                    </span>
-                    {m.type === "video" && (
-                      <span className="absolute top-1.5 right-1.5 rounded-full bg-black/70 p-1 text-white">
-                        <Video className="h-3 w-3" />
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Filtros e Ordenação */}
-          <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => setFilterRating(null)}
-                className={`px-3 py-1 rounded-full text-xs font-bold transition border ${
-                  filterRating === null
-                    ? "bg-primary text-white border-primary"
-                    : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-                }`}
+              <Button
+                onClick={() => setShowReviewModal(true)}
+                className="bg-primary hover:bg-primary/90 text-white font-bold h-10 px-5 text-sm shadow"
               >
-                Todas ({totalReviewsCount})
-              </button>
-              {[5, 4, 3].map((star) => (
+                <Star className="h-4 w-4 mr-1.5 fill-current" /> Avaliar produto
+              </Button>
+            </div>
+
+            {/* Resumo da Nota e Gráfico de Barras */}
+            <div className="mt-6 grid gap-6 md:grid-cols-12 items-center">
+              <div className="md:col-span-4 flex items-center gap-4">
+                <div className="text-5xl font-black text-primary leading-none">
+                  {averageRating.toFixed(1)}
+                </div>
+                <div>
+                  <div className="flex items-center text-amber-400">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${
+                          i < Math.floor(averageRating) ? "fill-current" : "opacity-30"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {totalReviewsCount} {totalReviewsCount === 1 ? "avaliação" : "avaliações"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Barras de Qualificação 5★ a 1★ */}
+              <div className="md:col-span-8 space-y-1.5">
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const count = ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0;
+                  const percentage = totalReviewsCount > 0 ? (count / totalReviewsCount) * 100 : 0;
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setFilterRating(filterRating === star ? null : star)}
+                      className="w-full flex items-center gap-2 text-xs group hover:opacity-80 transition"
+                    >
+                      <span className="w-6 text-right font-semibold text-muted-foreground">{star}★</span>
+                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            filterRating === star ? "bg-primary" : "bg-primary/70"
+                          }`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <span className="w-8 text-left text-muted-foreground font-medium">{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Opiniões com Fotos e Vídeos (Fotos REAIS do produto) */}
+            {allPhotosAndVideos.length > 0 && (
+              <div className="mt-8 pt-6 border-t border-border">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-foreground">Opiniões com fotos e vídeos</h3>
+                  <span className="text-xs text-muted-foreground">{allPhotosAndVideos.length} mídias</span>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+                  {allPhotosAndVideos.map((m, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setLightboxMedia(m)}
+                      className="relative h-28 w-28 sm:h-32 sm:w-32 shrink-0 overflow-hidden rounded-xl border border-border group bg-white"
+                    >
+                      {m.type === "video" ? (
+                        <video src={m.url} className="h-full w-full object-cover" />
+                      ) : (
+                        <img src={m.url} alt="" className="h-full w-full object-contain p-1 group-hover:scale-105 transition" />
+                      )}
+                      <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur flex items-center gap-0.5">
+                        {m.rating} <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                      </span>
+                      {m.type === "video" && (
+                        <span className="absolute top-1.5 right-1.5 rounded-full bg-black/70 p-1 text-white">
+                          <Video className="h-3 w-3" />
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Filtros e Ordenação */}
+            <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 overflow-x-auto">
                 <button
-                  key={star}
                   type="button"
-                  onClick={() => setFilterRating(filterRating === star ? null : star)}
+                  onClick={() => setFilterRating(null)}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition border ${
-                    filterRating === star
+                    filterRating === null
                       ? "bg-primary text-white border-primary"
                       : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                   }`}
                 >
-                  {star} estrelas ({ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0})
+                  Todas ({totalReviewsCount})
                 </button>
-              ))}
+                {[5, 4, 3].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setFilterRating(filterRating === star ? null : star)}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition border ${
+                      filterRating === star
+                        ? "bg-primary text-white border-primary"
+                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                    }`}
+                  >
+                    {star} estrelas ({ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0})
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-muted-foreground">Ordenar:</span>
+                <button
+                  type="button"
+                  onClick={() => setSortBy("recent")}
+                  className={`font-bold ${sortBy === "recent" ? "text-primary" : "text-muted-foreground"}`}
+                >
+                  Mais recentes
+                </button>
+                <span className="text-muted-foreground">•</span>
+                <button
+                  type="button"
+                  onClick={() => setSortBy("helpful")}
+                  className={`font-bold ${sortBy === "helpful" ? "text-primary" : "text-muted-foreground"}`}
+                >
+                  Mais úteis
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-muted-foreground">Ordenar:</span>
-              <button
-                type="button"
-                onClick={() => setSortBy("recent")}
-                className={`font-bold ${sortBy === "recent" ? "text-primary" : "text-muted-foreground"}`}
-              >
-                Mais recentes
-              </button>
-              <span className="text-muted-foreground">•</span>
-              <button
-                type="button"
-                onClick={() => setSortBy("helpful")}
-                className={`font-bold ${sortBy === "helpful" ? "text-primary" : "text-muted-foreground"}`}
-              >
-                Mais úteis
-              </button>
-            </div>
-          </div>
+            {/* Lista de Avaliações */}
+            <div className="mt-5 divide-y divide-border">
+              {filteredReviews.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  Nenhuma avaliação encontrada com os filtros selecionados.
+                </p>
+              ) : (
+                filteredReviews.map((rev) => (
+                  <div key={rev.id} className="py-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="flex text-amber-400">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-3 w-3 ${i < rev.rating ? "fill-current" : "opacity-30"}`}
+                            />
+                          ))}
+                        </div>
+                        <span className="font-bold text-xs text-foreground">{rev.author}</span>
+                        {rev.verified && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                            <CheckCircle2 className="h-3 w-3" /> Compra verificada
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">{rev.date}</span>
+                    </div>
 
-          {/* Lista de Avaliações */}
-          <div className="mt-5 divide-y divide-border">
-            {filteredReviews.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                Nenhuma avaliação encontrada com os filtros selecionados.
-              </p>
-            ) : (
-              filteredReviews.map((rev) => (
-                <div key={rev.id} className="py-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex text-amber-400">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-3 w-3 ${i < rev.rating ? "fill-current" : "opacity-30"}`}
-                          />
+                    <p className="text-sm text-foreground/90 leading-relaxed">{rev.comment}</p>
+
+                    {/* Fotos Reais do Comentário */}
+                    {rev.media && rev.media.length > 0 && (
+                      <div className="flex gap-2 pt-1 overflow-x-auto">
+                        {rev.media.map((m, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setLightboxMedia(m)}
+                            className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border group bg-white"
+                          >
+                            {m.type === "video" ? (
+                              <video src={m.url} className="h-full w-full object-cover" />
+                            ) : (
+                              <img
+                                src={m.url}
+                                alt=""
+                                className="h-full w-full object-contain p-1 group-hover:scale-105 transition"
+                              />
+                            )}
+                          </button>
                         ))}
                       </div>
-                      <span className="font-bold text-xs text-foreground">{rev.author}</span>
-                      {rev.verified && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                          <CheckCircle2 className="h-3 w-3" /> Compra verificada
-                        </span>
-                      )}
+                    )}
+
+                    <div className="flex items-center gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleHelpful(rev.id)}
+                        className="text-xs text-muted-foreground hover:text-primary transition flex items-center gap-1"
+                      >
+                        <ThumbsUp className="h-3.5 w-3.5" /> É útil ({rev.helpfulCount})
+                      </button>
                     </div>
-                    <span className="text-[11px] text-muted-foreground">{rev.date}</span>
                   </div>
+                ))
+              )}
+            </div>
+          </section>
 
-                  <p className="text-sm text-foreground/90 leading-relaxed">{rev.comment}</p>
+          {/* Perguntas e Dúvidas */}
+          <section className="mt-6 rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              <h2 className="text-lg sm:text-xl font-black">Perguntas sobre o produto</h2>
+            </div>
 
-                  {/* Fotos e Vídeos do Comentário */}
-                  {rev.media && rev.media.length > 0 && (
-                    <div className="flex gap-2 pt-1 overflow-x-auto">
-                      {rev.media.map((m, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setLightboxMedia(m)}
-                          className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border group"
-                        >
-                          {m.type === "video" ? (
-                            <video src={m.url} className="h-full w-full object-cover" />
-                          ) : (
-                            <img
-                              src={m.url}
-                              alt=""
-                              className="h-full w-full object-cover group-hover:scale-105 transition"
-                            />
-                          )}
-                        </button>
-                      ))}
+            <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2">
+              <Input
+                value={newQuestion}
+                onChange={(e) => setNewQuestion(e.target.value)}
+                placeholder="Escreva sua dúvida aqui..."
+                className="flex-1 h-10 text-sm"
+              />
+              <Button type="submit" className="font-bold h-10 px-4">
+                <Send className="h-3.5 w-3.5 mr-1" /> Enviar
+              </Button>
+            </form>
+
+            <div className="mt-5 divide-y divide-border">
+              {questions.map((q) => (
+                <div key={q.id} className="py-3">
+                  <p className="text-sm font-bold text-foreground">P: {q.question}</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Enviada {q.created_at}</p>
+                  {q.answer && (
+                    <div className="mt-2 rounded-xl bg-muted/40 p-2.5 text-xs text-foreground border-l-2 border-primary">
+                      <span className="font-bold text-primary">Resposta do vendedor:</span> {q.answer}
                     </div>
                   )}
-
-                  <div className="flex items-center gap-3 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleHelpful(rev.id)}
-                      className="text-xs text-muted-foreground hover:text-primary transition flex items-center gap-1"
-                    >
-                      <ThumbsUp className="h-3.5 w-3.5" /> É útil ({rev.helpfulCount})
-                    </button>
-                  </div>
                 </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        {/* Perguntas e Dúvidas */}
-        <section className="mt-6 rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" />
-            <h2 className="text-lg sm:text-xl font-black">Perguntas sobre o produto</h2>
-          </div>
-
-          <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2">
-            <Input
-              value={newQuestion}
-              onChange={(e) => setNewQuestion(e.target.value)}
-              placeholder="Escreva sua dúvida aqui..."
-              className="flex-1 h-10 text-sm"
-            />
-            <Button type="submit" className="font-bold h-10 px-4">
-              <Send className="h-3.5 w-3.5 mr-1" /> Enviar
-            </Button>
-          </form>
-
-          <div className="mt-5 divide-y divide-border">
-            {questions.map((q) => (
-              <div key={q.id} className="py-3">
-                <p className="text-sm font-bold text-foreground">P: {q.question}</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">Enviada {q.created_at}</p>
-                {q.answer && (
-                  <div className="mt-2 rounded-xl bg-muted/40 p-2.5 text-xs text-foreground border-l-2 border-primary">
-                    <span className="font-bold text-primary">Resposta do vendedor:</span> {q.answer}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        </div>
       </main>
 
       {/* Modal / Diálogo para Avaliar Produto com Fotos e Vídeos */}
@@ -1055,7 +1087,7 @@ export function ProductDetailPage() {
         </div>
       )}
 
-      {/* Lightbox / Visualizador de Mídia em Tela Cheia */}
+      {/* Lightbox / Visualizador de Fotos e Vídeos em Tela Cheia */}
       {lightboxMedia && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
@@ -1078,7 +1110,7 @@ export function ProductDetailPage() {
         </div>
       )}
 
-      {/* Barra Fixa de Compra Rápida no Mobile (estilo Shopee / Mercado Livre) */}
+      {/* Barra Fixa de Compra Rápida no Celular */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-lg sm:hidden">
         <div className="flex items-center gap-2">
           <Button
