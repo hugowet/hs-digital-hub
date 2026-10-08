@@ -1,16 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Clock,
   Gift,
   RotateCw,
   Sparkles,
   TicketPercent,
-  Trophy,
 } from "lucide-react";
 import {
   useCallback,
@@ -45,14 +39,7 @@ export const Route = createFileRoute("/_authenticated/jogos")({
 });
 
 type Outcome = "shipping_5" | "shipping_10" | "free_shipping" | "none";
-type Direction = "up" | "down" | "left" | "right";
 
-const rewardText: Record<Outcome, string> = {
-  shipping_5: "5% de desconto no frete",
-  shipping_10: "10% de desconto no frete",
-  free_shipping: "Frete grátis até R$ 30",
-  none: "Não foi dessa vez",
-};
 const wheelPosition: Record<Outcome, number> = {
   shipping_5: 90,
   shipping_10: 180,
@@ -62,7 +49,6 @@ const wheelPosition: Record<Outcome, number> = {
 
 function getTimeUntilMidnight(): { hours: number; minutes: number; seconds: number; isMidnight: boolean } {
   const now = new Date();
-  // Converte para horário de Brasília
   const spString = now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
   const spDate = new Date(spString);
   const midnight = new Date(spDate);
@@ -94,6 +80,10 @@ function GamesPage() {
       .then(setStatus)
       .catch(() => undefined);
   }, [statusFn]);
+
+  const handleCoinsUpdate = useCallback((coins: number) => {
+    setStatus((current) => ({ ...current, coins }));
+  }, []);
 
   useEffect(() => {
     refreshStatus();
@@ -147,7 +137,7 @@ function GamesPage() {
         </div>
         <ArcadeHall
           initialCoins={status.coins}
-          onCoins={(coins) => setStatus((current) => ({ ...current, coins }))}
+          onCoins={handleCoinsUpdate}
         />
       </main>
       <SiteFooter />
@@ -167,7 +157,8 @@ function WheelGame({
   const play = useServerFn(playDailyGame);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [result, setResult] = useState<Outcome | null>(null);
+  const [, setResult] = useState<Outcome | null>(null);
+
   const spin = async () => {
     setSpinning(true);
     try {
@@ -185,6 +176,7 @@ function WheelGame({
       toast.error(error instanceof Error ? error.message : "Não foi possível girar.");
     }
   };
+
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="border-b border-border p-5">
@@ -219,49 +211,20 @@ function WheelGame({
               <span className="absolute left-[4%] top-1/2 w-[34%] -translate-y-1/2 text-center text-sm font-black leading-tight text-foreground sm:text-xl">
                 Frete grátis
               </span>
-              <div className="absolute left-1/2 top-1/2 grid h-[19%] w-[19%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 border-card bg-foreground text-wheel-gift shadow-lg">
-                <Gift className="h-1/2 w-1/2" />
-              </div>
             </div>
           </div>
         </div>
-        {result ? (
-          <Result outcome={result} />
-        ) : (
-          <div className="mt-6 space-y-2">
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={() => void spin()}
-              disabled={played || spinning}
-            >
-              {spinning ? "Girando…" : played ? "Giro diário já realizado" : "Girar agora"}
+        <div className="mt-6 flex flex-col items-center">
+          {played ? (
+            <p className="text-sm font-medium text-muted-foreground">Volta em {countdownText}</p>
+          ) : (
+            <Button size="lg" disabled={spinning} onClick={() => void spin()} className="min-w-44 font-black">
+              {spinning ? "Girando…" : "Girar roleta"}
             </Button>
-            {played && (
-              <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground font-medium text-center">
-                <Clock className="h-3.5 w-3.5" /> Próximo giro libera à meia-noite (em {countdownText})
-              </p>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
-  );
-}
-
-function Result({ outcome }: { outcome: Outcome }) {
-  return (
-    <div
-      className={`mt-5 rounded-lg border p-4 text-center animate-scale-in ${outcome === "none" ? "border-border bg-muted" : "border-primary/30 bg-primary/5"}`}
-    >
-      <Trophy
-        className={`mx-auto h-6 w-6 ${outcome === "none" ? "text-muted-foreground" : "text-primary"}`}
-      />
-      <p className="mt-2 font-bold">{rewardText[outcome]}</p>
-      {outcome !== "none" && (
-        <p className="mt-1 text-xs text-muted-foreground">Seu cupom já está em Meus cupons.</p>
-      )}
-    </div>
   );
 }
 
@@ -274,91 +237,60 @@ function ScratchGame({
   countdownText: string;
   onPlayed: (outcome: Outcome) => void;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const scratching = useRef(false);
-  const revealed = useRef(false);
-  const scratchMoves = useRef(0);
   const play = useServerFn(playDailyGame);
-  const [result, setResult] = useState<Outcome | null>(null);
-  const [progress, setProgress] = useState(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isScratching = useRef(false);
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const initCanvas = useCallback(() => {
+  const initScratch = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = "#94a3b8";
-    ctx.fillRect(0, 0, rect.width, rect.height);
-    ctx.fillStyle = "#334155";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#475569";
     ctx.font = "bold 16px sans-serif";
     ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("Raspe aqui para revelar o prêmio", rect.width / 2, rect.height / 2);
+    ctx.fillText("Raspe aqui para revelar!", canvas.width / 2, canvas.height / 2);
   }, []);
 
   useEffect(() => {
-    initCanvas();
-  }, [initCanvas]);
+    if (!played && !revealed) {
+      initScratch();
+    }
+  }, [played, revealed, initScratch]);
 
-  const scratch = (clientX: number, clientY: number) => {
+  const scratch = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!isScratching.current || revealed || played) return;
     const canvas = canvasRef.current;
-    if (!canvas || !scratching.current || revealed.current) return;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
-    ctx.arc(x, y, 22, 0, Math.PI * 2);
+    ctx.arc(x, y, 20, 0, Math.PI * 2);
     ctx.fill();
 
-    scratchMoves.current += 1;
-    if (scratchMoves.current % 12 === 0) {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      let clearPixels = 0;
-      for (let i = 3; i < data.length; i += 4) {
-        if (data[i] === 0) clearPixels++;
-      }
-      const pct = Math.round((clearPixels / (canvas.width * canvas.height)) * 100);
-      setProgress(pct);
-      if (pct > 40 && !revealed.current) {
-        revealed.current = true;
-        ctx.clearRect(0, 0, rect.width, rect.height);
-      }
+    if (!outcome && !loading) {
+      setLoading(true);
+      play({ data: { gameType: "scratch" } })
+        .then((reward) => {
+          const out = reward.outcome as Outcome;
+          setOutcome(out);
+          onPlayed(out);
+        })
+        .catch((err) => {
+          toast.error(err instanceof Error ? err.message : "Erro ao raspar.");
+        })
+        .finally(() => setLoading(false));
     }
-  };
-
-  const handlePointerDown = async (e: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (played) return;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    scratching.current = true;
-    if (!result) {
-      try {
-        const reward = await play({ data: { gameType: "scratch" } });
-        const outcome = reward.outcome as Outcome;
-        setResult(outcome);
-        onPlayed(outcome);
-      } catch (error) {
-        scratching.current = false;
-        toast.error(error instanceof Error ? error.message : "Não foi possível raspar.");
-      }
-    }
-    scratch(e.clientX, e.clientY);
-  };
-
-  const handlePointerMove = (e: ReactPointerEvent<HTMLCanvasElement>) => {
-    scratch(e.clientX, e.clientY);
-  };
-
-  const handlePointerUp = (e: ReactPointerEvent<HTMLCanvasElement>) => {
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    scratching.current = false;
   };
 
   return (
@@ -375,41 +307,32 @@ function ScratchGame({
         </div>
       </div>
       <div className="p-5 sm:p-7">
-        <div className="relative mx-auto aspect-video w-full max-w-md overflow-hidden rounded-xl border border-border bg-muted">
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-            {result ? (
-              <>
-                <Trophy
-                  className={`h-8 w-8 ${result === "none" ? "text-muted-foreground" : "text-primary"}`}
-                />
-                <p className="mt-2 text-lg font-bold">{rewardText[result]}</p>
-                {result !== "none" && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Cupom gerado e salvo em Meus cupons.
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {played ? "Você já raspou hoje!" : "Raspe para revelar o prêmio"}
-              </p>
-            )}
+        <div className="relative mx-auto flex aspect-square w-full max-w-md items-center justify-center overflow-hidden rounded-2xl border bg-muted">
+          <div className="text-center p-6">
+            <h3 className="text-2xl font-black text-primary">
+              {outcome === "free_shipping" && "Frete Grátis até R$ 30!"}
+              {outcome === "shipping_10" && "10% de desconto no frete!"}
+              {outcome === "shipping_5" && "5% de desconto no frete!"}
+              {outcome === "none" && "Tente novamente amanhã!"}
+              {!outcome && (played ? "Já jogou hoje!" : "Raspe a camada acima")}
+            </h3>
           </div>
           {!played && (
             <canvas
               ref={canvasRef}
+              width={340}
+              height={340}
+              onPointerDown={() => (isScratching.current = true)}
+              onPointerUp={() => (isScratching.current = false)}
+              onPointerLeave={() => (isScratching.current = false)}
+              onPointerMove={scratch}
               className="absolute inset-0 h-full w-full cursor-pointer touch-none"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
             />
           )}
         </div>
-        {played && (
-          <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted-foreground font-medium text-center">
-            <Clock className="h-3.5 w-3.5" /> Próxima raspadinha libera à meia-noite (em {countdownText})
-          </p>
-        )}
+        <div className="mt-6 text-center">
+          {played && <p className="text-sm font-medium text-muted-foreground">Volta em {countdownText}</p>}
+        </div>
       </div>
     </section>
   );
