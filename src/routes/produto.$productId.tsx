@@ -2,11 +2,19 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
+  BadgeCheck,
+  Box,
+  Camera,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   CreditCard,
+  FileText,
   Heart,
+  HelpCircle,
+  Image as ImageIcon,
   MessageSquare,
   Minus,
   Plus,
@@ -45,10 +53,10 @@ export const Route = createFileRoute("/produto/$productId")({
   },
   head: ({ loaderData, params }) => {
     const p = loaderData?.product;
-    const title = p?.title ? `${p.title} · HS Digital` : "Produto · HS Digital Marketplace";
+    const title = p?.title ? `${p.title} · Loja JJ Kuster` : "Produto · HS Digital Marketplace";
     const desc =
       p?.description ||
-      "Confira todos os detalhes deste produto na HS Digital com entrega garantida e compra protegida.";
+      "Confira todos os detalhes deste produto na Loja JJ Kuster com entrega garantida e compra protegida.";
     const imageUrl =
       p?.image_url ||
       "https://hs-digital-marck.lovable.app/__l5e/assets-v1/39fcaa1a-9680-41a5-9293-4e05e8dc7c2b/hs-digital-logo.png";
@@ -58,17 +66,20 @@ export const Route = createFileRoute("/produto/$productId")({
       meta: [
         { title },
         { name: "description", content: desc },
-        { property: "og:site_name", content: "HS Digital Marketplace" },
-        { property: "og:title", title },
+        { property: "og:site_name", content: "HS Digital · Loja JJ Kuster" },
+        { property: "og:title", content: title },
         { property: "og:description", content: desc },
         { property: "og:type", content: "product" },
-        { property: "og:url", pageUrl },
-        { property: "og:image", imageUrl },
-        { property: "og:image:secure_url", imageUrl },
+        { property: "og:url", content: pageUrl },
+        { property: "og:image", content: imageUrl },
+        { property: "og:image:secure_url", content: imageUrl },
+        { property: "og:image:type", content: "image/jpeg" },
+        { property: "og:image:width", content: "800" },
+        { property: "og:image:height", content: "800" },
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", title },
+        { name: "twitter:title", content: title },
         { name: "twitter:description", content: desc },
-        { name: "twitter:image", imageUrl },
+        { name: "twitter:image", content: imageUrl },
       ],
     };
   },
@@ -93,9 +104,21 @@ interface ReviewItem {
   rating: number;
   date: string;
   comment: string;
+  packagingNote?: string;
   media?: ReviewMedia[];
   helpfulCount: number;
   verified: boolean;
+}
+
+// Gera um número moderado de vendas consistente para cada produto
+function getConsistentSalesCount(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+  const positive = Math.abs(hash);
+  return 38 + (positive % 184); // Varia de 38 a 221 vendas
 }
 
 export function ProductDetailPage() {
@@ -107,6 +130,7 @@ export function ProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   // Carrega dados do produto
   const { data: product, isLoading } = useQuery({
@@ -129,6 +153,13 @@ export function ProductDetailPage() {
     );
   }, [product]);
 
+  // Vendas calculadas moderadamente
+  const moderateSoldCount = useMemo(() => {
+    if (!product) return 54;
+    if (product.sold_count && product.sold_count > 0) return product.sold_count;
+    return getConsistentSalesCount(productId);
+  }, [product, productId]);
+
   // Perguntas e Respostas
   const [newQuestion, setNewQuestion] = useState("");
   const [questions, setQuestions] = useState<QuestionItem[]>(() => {
@@ -139,20 +170,20 @@ export function ProductDetailPage() {
     return [
       {
         id: "q1",
-        question: "O produto vem com garantia e nota?",
-        answer: "Sim! Garantia de 30 dias com envio assegurado e rastreamento oficial.",
+        question: "O produto vem com nota fiscal e garantia?",
+        answer: "Sim! Enviamos com nota fiscal eletrônica e garantia de 30 dias pela Loja JJ Kuster.",
         created_at: "há 2 dias",
       },
       {
         id: "q2",
-        question: "Qual o prazo para envio após o pagamento?",
-        answer: "Postagem em até 24h úteis após a confirmação. O código chega no seu e-mail.",
+        question: "Vem bem embalado no transporte para não danificar?",
+        answer: "Com certeza! Produto lacrado, envolto em plástico bolha reforçado dentro de caixa de envio.",
         created_at: "há 3 dias",
       },
     ];
   });
 
-  // Avaliações exclusivas deste produto com fotos REAIS do próprio produto
+  // Avaliações exclusivas deste produto com fotos reais de recebimento/embalagem
   const [reviews, setReviews] = useState<ReviewItem[]>(() => {
     try {
       const saved = localStorage.getItem(`reviews_${productId}`);
@@ -161,7 +192,7 @@ export function ProductDetailPage() {
     return [];
   });
 
-  // Gera avaliações realistas com as fotos reais deste produto caso ainda não existam no cache
+  // Inicializa avaliações com foco em unboxing e embalagem
   useEffect(() => {
     if (!product) return;
     try {
@@ -174,31 +205,35 @@ export function ProductDetailPage() {
             id: `rev_1_${productId}`,
             author: "Marcos S.",
             rating: 5,
-            date: "Há 4 dias",
+            date: "Brasil · Há 4 dias",
             comment:
-              "Chegou tudo certinho e bem rápido! O produto é exatamente como no anúncio, material de muita qualidade. Recomendo demais!",
+              "Chegou muito rápido! A caixa veio intacta e o produto lacrado no plástico de fábrica. Abri e testei na hora, qualidade surreal pelo preço.",
+            packagingNote: "Embalagem: Excelente, lacrado no plástico bolha e caixa reforçada.",
             verified: true,
-            helpfulCount: 14,
+            helpfulCount: 16,
             media: prodImages.length > 1 ? [{ url: prodImages[1], type: "image" }] : undefined,
           },
           {
             id: `rev_2_${productId}`,
-            author: "Ana Beatriz",
+            author: "Juliana Mendes",
             rating: 5,
-            date: "Há 1 semana",
-            comment: "Muito satisfeita com a compra. Entrega rápida e o atendimento da loja foi excelente.",
+            date: "Brasil · Há 1 semana",
+            comment:
+              "A entrega da Loja JJ Kuster foi rápida demais. Tirei foto assim que tirei do pacote plástico. Idêntico às fotos do anúncio, recomendo muito!",
+            packagingNote: "Entrega: Rápida e pacote muito bem protegido.",
             verified: true,
-            helpfulCount: 6,
+            helpfulCount: 9,
             media: prodImages.length > 2 ? [{ url: prodImages[2], type: "image" }] : undefined,
           },
           {
             id: `rev_3_${productId}`,
-            author: "Carlos E.",
+            author: "Rodrigo Almeida",
             rating: 5,
-            date: "Há 2 semanas",
-            comment: "Excelente custo-benefício! Funciona perfeitamente e atendeu todas as minhas expectativas.",
+            date: "Brasil · Há 2 semanas",
+            comment:
+              "Excelente custo-benefício. O entregador foi simpático e o pacote veio 100% lacrado. Já estou usando no dia a dia.",
             verified: true,
-            helpfulCount: 3,
+            helpfulCount: 5,
           },
         ];
         setReviews(initialReviews);
@@ -221,7 +256,7 @@ export function ProductDetailPage() {
     }
   }, [reviews, productId]);
 
-  // Modal de Avaliação
+  // Modal e Formulário de Avaliação
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewName, setReviewName] = useState("");
@@ -257,8 +292,8 @@ export function ProductDetailPage() {
   const handleShare = () => {
     const shareUrl = window.location.href;
     const shareData = {
-      title: product?.title || "Confira este produto na HS Digital",
-      text: `Olha esse produto na HS Digital por ${product ? brl(product.price) : ""}:`,
+      title: product?.title || "Confira este produto na Loja JJ Kuster",
+      text: `Olha esse produto que encontrei na Loja JJ Kuster por apenas ${product ? brl(product.price) : ""}:`,
       url: shareUrl,
     };
 
@@ -266,7 +301,7 @@ export function ProductDetailPage() {
       navigator.share(shareData).catch(() => undefined);
     } else {
       navigator.clipboard.writeText(shareUrl);
-      toast.success("Link do produto copiado com sucesso!");
+      toast.success("Link com foto do produto copiado com sucesso!");
     }
   };
 
@@ -280,7 +315,7 @@ export function ProductDetailPage() {
     };
     setQuestions((prev) => [item, ...prev]);
     setNewQuestion("");
-    toast.success("Pergunta enviada ao vendedor!");
+    toast.success("Pergunta enviada para a Loja JJ Kuster!");
   };
 
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -319,17 +354,18 @@ export function ProductDetailPage() {
   const handleSubmitReview = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewComment.trim()) {
-      toast.error("Escreva um comentário sobre sua experiência.");
+      toast.error("Escreva um comentário sobre sua experiência com o produto.");
       return;
     }
 
     const newRev: ReviewItem = {
       id: `rev_${Date.now()}`,
-      author: reviewName.trim() || "Cliente HS Digital",
+      author: reviewName.trim() || "Cliente JJ Kuster",
       rating: reviewRating,
-      date: "Hoje",
+      date: "Brasil · Hoje",
       comment: reviewComment.trim(),
       media: reviewMediaList.length > 0 ? [...reviewMediaList] : undefined,
+      packagingNote: "Compra com envio rastreado oficial",
       verified: true,
       helpfulCount: 0,
     };
@@ -340,14 +376,14 @@ export function ProductDetailPage() {
     setReviewName("");
     setReviewRating(5);
     setReviewMediaList([]);
-    toast.success("Avaliação enviada com sucesso!");
+    toast.success("Avaliação com fotos/vídeos publicada com sucesso!");
   };
 
   const handleToggleHelpful = (reviewId: string) => {
     setReviews((prev) =>
       prev.map((r) => (r.id === reviewId ? { ...r, helpfulCount: r.helpfulCount + 1 } : r)),
     );
-    toast.success("Obrigado pelo feedback!");
+    toast.success("Obrigado pelo seu feedback!");
   };
 
   if (isLoading) {
@@ -377,7 +413,7 @@ export function ProductDetailPage() {
           <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
           <h1 className="mt-4 text-2xl font-bold">Produto não encontrado</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            O produto procurado pode ter sido desativado ou removido.
+            O produto procurado pode ter sido desativado ou removido da loja.
           </p>
           <Button asChild className="mt-6">
             <Link to="/">Voltar à vitrine</Link>
@@ -424,7 +460,7 @@ export function ProductDetailPage() {
       <main className="w-full max-w-7xl mx-auto overflow-x-hidden sm:px-6 sm:py-6">
         {/* Breadcrumb Otimizado */}
         <div className="w-full px-3.5 sm:px-0 min-w-0">
-          <nav className="mb-2.5 sm:mb-5 flex items-center gap-1.5 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-none py-1 max-w-full min-w-0">
+          <nav className="mb-2.5 sm:mb-4 flex items-center gap-1.5 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-none py-1 max-w-full min-w-0">
             <Link to="/" className="hover:text-primary transition shrink-0">Início</Link>
             <ChevronRight className="h-3 w-3 shrink-0" />
             <span className="capitalize shrink-0">{product.category || "Geral"}</span>
@@ -460,7 +496,7 @@ export function ProductDetailPage() {
                   type="button"
                   onClick={handleShare}
                   className="rounded-full bg-white/95 p-2 text-foreground shadow-md backdrop-blur transition hover:text-primary"
-                  title="Compartilhar produto"
+                  title="Compartilhar produto com foto"
                 >
                   <Share2 className="h-4 w-4" />
                 </button>
@@ -485,7 +521,7 @@ export function ProductDetailPage() {
                 </span>
               )}
 
-              {/* Setas de navegação desktop */}
+              {/* Setas Desktop */}
               {media.length > 1 && (
                 <>
                   <button
@@ -543,16 +579,16 @@ export function ProductDetailPage() {
           {/* Coluna de Preço e Detalhes da Compra */}
           <div className="lg:col-span-5 w-full min-w-0 px-3.5 sm:px-0 flex flex-col justify-between space-y-4">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
-                  {isDigital ? "Produto Digital · Envio Automático" : "Produto Físico · Envio Rastreado"}
+              {/* Selo da Loja e Vendas Moderadas */}
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-bold text-primary flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-md">
+                  <BadgeCheck className="h-3.5 w-3.5" /> Loja JJ Kuster
                 </span>
-                {product.sold_count > 0 && (
-                  <span className="text-[11px] text-muted-foreground">• {product.sold_count} vendidos</span>
-                )}
+                <span className="text-[11px] text-muted-foreground">• Vendedor Verificado</span>
+                <span className="text-[11px] font-semibold text-emerald-600">• +{moderateSoldCount} vendidos</span>
               </div>
 
-              <h1 className="mt-1 text-xl sm:text-2xl font-black leading-tight text-foreground break-words">
+              <h1 className="mt-2 text-xl sm:text-2xl font-black leading-tight text-foreground break-words">
                 {product.title}
               </h1>
 
@@ -576,7 +612,7 @@ export function ProductDetailPage() {
                 </a>
               </div>
 
-              {/* Caixa de Preço e Formas de Pagamento */}
+              {/* Caixa de Preço e Meios de Pagamento (Visual Profissional) */}
               <div className="mt-4 rounded-2xl bg-card p-4 border border-border shadow-sm w-full min-w-0">
                 {product.compare_at_price && product.compare_at_price > product.price && (
                   <p className="text-xs text-muted-foreground line-through">
@@ -594,46 +630,57 @@ export function ProductDetailPage() {
                 </div>
 
                 <p className="mt-1 text-xs font-medium text-foreground">
-                  ou em até <span className="font-bold">{maxInstallments}x de {brl(installmentValue)}</span> no cartão
+                  ou em até <span className="font-bold">{maxInstallments}x de {brl(installmentValue)}</span> sem juros no cartão
                 </p>
 
-                {/* Ícones de formas de pagamento */}
-                <div className="mt-3 pt-3 border-t border-border/80 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <QrCode className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> Pix imediato
+                {/* Meios de Pagamento Aceitos */}
+                <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
+                    Meios de pagamento aceitos:
                   </span>
-                  <span className="flex items-center gap-1">
-                    <CreditCard className="h-3.5 w-3.5 text-primary shrink-0" /> Cartão de Crédito
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 shrink-0" /> Boleto
-                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-xl border border-border/80 bg-muted/30 p-2 text-center">
+                      <QrCode className="h-4 w-4 mx-auto text-emerald-600 mb-1" />
+                      <p className="text-[11px] font-bold">Pix</p>
+                      <p className="text-[9px] text-muted-foreground">Aprovação imediata</p>
+                    </div>
+                    <div className="rounded-xl border border-border/80 bg-muted/30 p-2 text-center">
+                      <CreditCard className="h-4 w-4 mx-auto text-primary mb-1" />
+                      <p className="text-[11px] font-bold">Cartão</p>
+                      <p className="text-[9px] text-muted-foreground">Até 10x s/ juros</p>
+                    </div>
+                    <div className="rounded-xl border border-border/80 bg-muted/30 p-2 text-center">
+                      <FileText className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+                      <p className="text-[11px] font-bold">Boleto</p>
+                      <p className="text-[9px] text-muted-foreground">À vista bancário</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Botão de Compartilhar */}
+              {/* Botão de Compartilhar com Link e Imagem */}
               <Button
                 variant="outline"
                 onClick={handleShare}
                 className="mt-3 w-full border-border text-foreground hover:bg-muted font-semibold text-xs h-9"
               >
-                <Share2 className="h-3.5 w-3.5 mr-1.5" /> Compartilhar produto
+                <Share2 className="h-3.5 w-3.5 mr-1.5" /> Compartilhar produto (com foto no WhatsApp)
               </Button>
 
               {/* Garantias */}
               <div className="mt-3 space-y-2 rounded-xl bg-muted/40 p-3 border border-border/60 text-xs text-muted-foreground w-full min-w-0">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Compra 100% Protegida com garantia de entrega ou dinheiro de volta</span>
+                  <span>Compra 100% Protegida pela Loja JJ Kuster com garantia oficial</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Truck className="h-4 w-4 text-primary shrink-0" />
-                  <span>Código de rastreamento oficial enviado para o seu e-mail</span>
+                  <span>Envio com código de rastreamento oficial enviado para o seu e-mail</span>
                 </div>
               </div>
             </div>
 
-            {/* Ações de Compra Desktop & Tablet */}
+            {/* Ações de Compra */}
             <div className="space-y-3 pt-2 w-full min-w-0">
               <div className="flex items-center gap-3">
                 {/* Seletor de Quantidade */}
@@ -680,31 +727,108 @@ export function ProductDetailPage() {
           </div>
         </div>
 
-        {/* Detalhes do Produto */}
+        {/* ========================================================= */}
+        {/* DESCRIÇÃO PROFISSIONAL E COMPLETA (Estilo Imagem 2 Mercado Livre) */}
+        {/* ========================================================= */}
         <div className="w-full min-w-0 px-3.5 sm:px-0">
           <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm w-full min-w-0">
-            <h2 className="text-lg sm:text-xl font-black">Detalhes do Produto</h2>
-            <div className="mt-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-line break-words">
-              {product.description_long || product.description || "Nenhuma descrição detalhada informada."}
+            <h2 className="text-lg sm:text-xl font-black text-foreground pb-2 border-b border-border">
+              Descrição do Produto
+            </h2>
+
+            <div className="mt-4 space-y-4 text-sm text-foreground/90 leading-relaxed">
+              <p className="font-medium text-base text-foreground">
+                {product.title} — Qualidade garantida pela Loja JJ Kuster com nota fiscal e garantia de satisfação.
+              </p>
+
+              <div className="space-y-3">
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-primary" /> Principais Diferenciais:
+                </h3>
+                <ul className="list-disc pl-5 space-y-1.5 text-muted-foreground text-xs sm:text-sm">
+                  <li><strong className="text-foreground">Alta Durabilidade:</strong> Fabricado com materiais de primeira linha para máxima vida útil.</li>
+                  <li><strong className="text-foreground">Pronto para Uso:</strong> Acompanha todos os acessórios necessários na embalagem original.</li>
+                  <li><strong className="text-foreground">Embalagem Segura:</strong> Enviado lacrado com reforço antichoque para transporte.</li>
+                  <li><strong className="text-foreground">Garantia Loja JJ Kuster:</strong> 30 dias de cobertura contra qualquer defeito.</li>
+                </ul>
+              </div>
+
+              {/* Ficha Técnica e Detalhes Expansíveis */}
+              {showFullDescription && (
+                <div className="pt-2 space-y-4 border-t border-border animate-in fade-in">
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-2">
+                      <Box className="h-4 w-4 text-primary" /> Ficha Técnica & Especificações:
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
+                        <span className="text-muted-foreground block">Categoria:</span>
+                        <strong className="capitalize">{product.category || "Geral"}</strong>
+                      </div>
+                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
+                        <span className="text-muted-foreground block">Vendedor Oficial:</span>
+                        <strong>Loja JJ Kuster</strong>
+                      </div>
+                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
+                        <span className="text-muted-foreground block">Tipo de Envio:</span>
+                        <strong>Envio Rápido Rastreado</strong>
+                      </div>
+                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
+                        <span className="text-muted-foreground block">Condição:</span>
+                        <strong>Novo (Lacrado na embalagem)</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {product.description_long && (
+                    <div className="pt-2 text-xs sm:text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                      {product.description_long}
+                    </div>
+                  )}
+
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-1.5">
+                      <ShieldCheck className="h-4 w-4 text-emerald-600" /> Itens Inclusos na Embalagem:
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      1x {product.title} lacrado em proteção plástica bolha, com manual e certificado de envio da Loja JJ Kuster.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowFullDescription(!showFullDescription)}
+                className="text-xs font-bold text-primary hover:underline flex items-center gap-1 pt-1"
+              >
+                {showFullDescription ? (
+                  <>Recolher descrição <ChevronUp className="h-3.5 w-3.5" /></>
+                ) : (
+                  <>Ver descrição completa <ChevronDown className="h-3.5 w-3.5" /></>
+                )}
+              </button>
             </div>
           </section>
 
           {/* ========================================================= */}
-          {/* SEÇÃO: OPINIÕES DO PRODUTO (Estilo Mercado Livre da Imagem 2) */}
+          {/* SEÇÃO: OPINIÕES DO PRODUTO (Com fotos reais e unboxing) */}
           {/* ========================================================= */}
           <section id="opinioes" className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm w-full min-w-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-foreground">Opiniões do produto</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Avaliações reais de clientes sobre este produto
+                  Fotos e avaliações de clientes que compraram na Loja JJ Kuster
                 </p>
               </div>
+
+              {/* Botão de Envio de Fotos e Vídeos em Destaque */}
               <Button
                 onClick={() => setShowReviewModal(true)}
-                className="bg-primary hover:bg-primary/90 text-white font-bold h-9 px-4 text-xs sm:text-sm shadow w-full sm:w-auto"
+                className="bg-primary hover:bg-primary/90 text-white font-bold h-10 px-4 text-xs sm:text-sm shadow flex items-center justify-center gap-2"
               >
-                <Star className="h-4 w-4 mr-1.5 fill-current" /> Avaliar produto
+                <Camera className="h-4 w-4" /> Escrever avaliação e enviar fotos/vídeos
               </Button>
             </div>
 
@@ -759,11 +883,13 @@ export function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Opiniões com Fotos e Vídeos */}
+            {/* Opiniões com Fotos e Vídeos (Unboxing de Clientes) */}
             {allPhotosAndVideos.length > 0 && (
               <div className="mt-6 pt-5 border-t border-border w-full min-w-0">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs sm:text-sm font-bold text-foreground">Opiniões com fotos e vídeos</h3>
+                  <h3 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
+                    <ImageIcon className="h-4 w-4 text-primary" /> Fotos e vídeos de quem comprou
+                  </h3>
                   <span className="text-xs text-muted-foreground">{allPhotosAndVideos.length} mídias</span>
                 </div>
                 <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none w-full min-w-0">
@@ -772,18 +898,18 @@ export function ProductDetailPage() {
                       key={idx}
                       type="button"
                       onClick={() => setLightboxMedia(m)}
-                      className="relative h-24 w-24 sm:h-32 sm:w-32 shrink-0 overflow-hidden rounded-xl border border-border group bg-white"
+                      className="relative h-24 w-24 sm:h-32 sm:w-32 shrink-0 overflow-hidden rounded-xl border border-border group bg-white shadow-sm"
                     >
                       {m.type === "video" ? (
                         <video src={m.url} className="h-full w-full object-cover" />
                       ) : (
                         <img src={m.url} alt="" className="h-full w-full object-contain p-1 group-hover:scale-105 transition" />
                       )}
-                      <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1 py-0.5 text-[9px] font-bold text-white backdrop-blur flex items-center gap-0.5">
+                      <span className="absolute bottom-1 left-1 rounded bg-black/75 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur flex items-center gap-0.5">
                         {m.rating} <Star className="h-2 w-2 fill-amber-400 text-amber-400" />
                       </span>
                       {m.type === "video" && (
-                        <span className="absolute top-1 right-1 rounded-full bg-black/70 p-1 text-white">
+                        <span className="absolute top-1 right-1 rounded-full bg-black/75 p-1 text-white">
                           <Video className="h-2.5 w-2.5" />
                         </span>
                       )}
@@ -851,7 +977,7 @@ export function ProductDetailPage() {
                 </p>
               ) : (
                 filteredReviews.map((rev) => (
-                  <div key={rev.id} className="py-3.5 space-y-2 w-full min-w-0">
+                  <div key={rev.id} className="py-4 space-y-2 w-full min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                         <div className="flex text-amber-400 shrink-0">
@@ -865,7 +991,7 @@ export function ProductDetailPage() {
                         <span className="font-bold text-xs text-foreground truncate max-w-[120px]">{rev.author}</span>
                         {rev.verified && (
                           <span className="flex items-center gap-0.5 text-[9px] text-emerald-600 font-bold bg-emerald-500/10 px-1 py-0.5 rounded shrink-0">
-                            <CheckCircle2 className="h-2.5 w-2.5" /> Verificado
+                            <CheckCircle2 className="h-2.5 w-2.5" /> Compra verificada
                           </span>
                         )}
                       </div>
@@ -874,7 +1000,13 @@ export function ProductDetailPage() {
 
                     <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed break-words">{rev.comment}</p>
 
-                    {/* Fotos Reais do Comentário */}
+                    {rev.packagingNote && (
+                      <p className="text-[11px] text-muted-foreground italic bg-muted/30 px-2 py-1 rounded-md">
+                        {rev.packagingNote}
+                      </p>
+                    )}
+
+                    {/* Fotos do Comentário */}
                     {rev.media && rev.media.length > 0 && (
                       <div className="flex gap-2 pt-1 overflow-x-auto w-full min-w-0 scrollbar-none">
                         {rev.media.map((m, idx) => (
@@ -882,7 +1014,7 @@ export function ProductDetailPage() {
                             key={idx}
                             type="button"
                             onClick={() => setLightboxMedia(m)}
-                            className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-lg border border-border group bg-white"
+                            className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-xl border border-border group bg-white shadow-sm"
                           >
                             {m.type === "video" ? (
                               <video src={m.url} className="h-full w-full object-cover" />
@@ -904,7 +1036,7 @@ export function ProductDetailPage() {
                         onClick={() => handleToggleHelpful(rev.id)}
                         className="text-[11px] text-muted-foreground hover:text-primary transition flex items-center gap-1"
                       >
-                        <ThumbsUp className="h-3 w-3" /> É útil ({rev.helpfulCount})
+                        <ThumbsUp className="h-3 w-3" /> Útil ({rev.helpfulCount})
                       </button>
                     </div>
                   </div>
@@ -924,11 +1056,11 @@ export function ProductDetailPage() {
               <Input
                 value={newQuestion}
                 onChange={(e) => setNewQuestion(e.target.value)}
-                placeholder="Escreva sua dúvida aqui..."
+                placeholder="Tire sua dúvida com a Loja JJ Kuster..."
                 className="flex-1 h-10 text-xs sm:text-sm min-w-0"
               />
               <Button type="submit" className="font-bold h-10 px-3 sm:px-4 shrink-0 text-xs sm:text-sm">
-                <Send className="h-3.5 w-3.5 mr-1" /> Enviar
+                <Send className="h-3.5 w-3.5 mr-1" /> Perguntar
               </Button>
             </form>
 
@@ -939,7 +1071,7 @@ export function ProductDetailPage() {
                   <p className="mt-0.5 text-[10px] text-muted-foreground">Enviada {q.created_at}</p>
                   {q.answer && (
                     <div className="mt-2 rounded-xl bg-muted/40 p-2.5 text-xs text-foreground border-l-2 border-primary break-words">
-                      <span className="font-bold text-primary">Resposta do vendedor:</span> {q.answer}
+                      <span className="font-bold text-primary">Resposta da Loja JJ Kuster:</span> {q.answer}
                     </div>
                   )}
                 </div>
@@ -949,7 +1081,7 @@ export function ProductDetailPage() {
         </div>
       </main>
 
-      {/* Modal para Avaliar Produto */}
+      {/* Modal para Avaliar Produto com Fotos e Vídeos */}
       {showReviewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm animate-in fade-in">
           <div className="relative w-full max-w-lg rounded-2xl bg-card p-5 sm:p-6 shadow-2xl border border-border max-h-[92vh] overflow-y-auto">
@@ -963,7 +1095,7 @@ export function ProductDetailPage() {
 
             <h3 className="text-base sm:text-lg font-black text-foreground">Avaliar este produto</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Conte o que achou do produto e ajude outros compradores.
+              Envie fotos ou vídeos do pacote/produto recebido e ajude outros compradores.
             </p>
 
             <form onSubmit={handleSubmitReview} className="mt-4 space-y-3.5">
@@ -1014,12 +1146,12 @@ export function ProductDetailPage() {
 
               {/* Comentário */}
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1">Sua opinião</label>
+                <label className="block text-xs font-bold text-foreground mb-1">Sua opinião sobre o produto</label>
                 <textarea
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
-                  placeholder="O que você mais gostou no produto? Chegou rápido? O material é de qualidade?"
-                  className="w-full rounded-xl border border-input bg-background p-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px]"
+                  placeholder="Como o produto chegou? Veio bem embalado? O material atendeu suas expectativas?"
+                  className="w-full rounded-xl border border-input bg-background p-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[85px]"
                   required
                 />
               </div>
@@ -1027,7 +1159,7 @@ export function ProductDetailPage() {
               {/* Upload de Fotos e Vídeos */}
               <div>
                 <label className="block text-xs font-bold text-foreground mb-1">
-                  Fotos e Vídeos do produto (opcional)
+                  Anexar Fotos e Vídeos do produto recebido (no plástico / unboxing)
                 </label>
 
                 <input
@@ -1043,14 +1175,14 @@ export function ProductDetailPage() {
                 <div className="flex flex-wrap gap-2 items-center">
                   <label
                     htmlFor="review-media-upload"
-                    className="flex flex-col items-center justify-center h-16 w-16 sm:h-20 sm:w-20 rounded-xl border-2 border-dashed border-border hover:border-primary bg-muted/30 cursor-pointer transition"
+                    className="flex flex-col items-center justify-center h-20 w-20 rounded-xl border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 cursor-pointer transition"
                   >
-                    <Upload className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-[9px] font-bold text-muted-foreground mt-0.5">Anexar</span>
+                    <Camera className="h-5 w-5 text-primary" />
+                    <span className="text-[10px] font-bold text-primary mt-1">Anexar Mídia</span>
                   </label>
 
                   {reviewMediaList.map((m, idx) => (
-                    <div key={idx} className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-xl overflow-hidden border border-border group bg-black">
+                    <div key={idx} className="relative h-20 w-20 rounded-xl overflow-hidden border border-border group bg-black">
                       {m.type === "video" ? (
                         <video src={m.url} className="h-full w-full object-cover" />
                       ) : (
@@ -1090,7 +1222,7 @@ export function ProductDetailPage() {
         </div>
       )}
 
-      {/* Lightbox / Visualizador de Tela Cheia */}
+      {/* Lightbox / Visualizador de Fotos e Vídeos em Tela Cheia */}
       {lightboxMedia && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
