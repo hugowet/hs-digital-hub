@@ -11,8 +11,10 @@ import { lovable } from "@/integrations/lovable/index";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
-  validateSearch: (search: Record<string, unknown>): { reason?: "login-required" } =>
-    search["reason"] === "login-required" ? { reason: "login-required" } : {},
+  validateSearch: (search: Record<string, unknown>): { reason?: "login-required"; redirect?: string } => ({
+    ...(search["reason"] === "login-required" ? { reason: "login-required" } : {}),
+    ...(typeof search["redirect"] === "string" && search["redirect"] ? { redirect: search["redirect"] } : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Entrar · HS Digital" },
@@ -31,7 +33,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { reason } = Route.useSearch();
+  const { reason, redirect: redirectUrl } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [fullName, setFullName] = useState("");
   const [accountType, setAccountType] = useState<"buyer" | "seller">("buyer");
@@ -39,11 +41,13 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+
   useEffect(() => {
     if (reason === "login-required") {
       toast.info("Faça login primeiro para acessar esta área.");
     }
   }, [reason]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -64,7 +68,7 @@ function AuthPage() {
           return;
         }
         toast.success("Conta criada com sucesso!");
-        navigate({ to: accountType === "seller" ? "/vendedor" : "/" });
+        navigate({ to: (redirectUrl as any) || (accountType === "seller" ? "/vendedor" : "/") });
         return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -73,7 +77,7 @@ function AuthPage() {
         });
         if (error) throw error;
       }
-      navigate({ to: "/" });
+      navigate({ to: (redirectUrl as any) || "/" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível continuar");
     } finally {
@@ -90,7 +94,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/" });
+    navigate({ to: (redirectUrl as any) || "/" });
   }
 
   return (
@@ -101,20 +105,21 @@ function AuthPage() {
           <h1 className="font-display text-2xl font-bold">
             {mode === "signin" ? "Entrar na HS Digital" : "Criar conta"}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Compre, acompanhe pedidos e gerencie sua loja.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Compre, acompanhe pedidos e gerencie sua loja.</p>
 
           {reason === "login-required" && (
-            <div role="alert" className="mt-4 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm font-medium text-foreground">
+            <div
+              role="alert"
+              className="mt-4 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm font-medium text-foreground"
+            >
               Faça login primeiro para acessar esta área.
             </div>
           )}
 
           {awaitingConfirmation ? (
             <div className="mt-6 rounded-md border border-border bg-muted p-4 text-sm">
-              Enviamos uma confirmação para <strong>{email.trim()}</strong>. Abra o link recebido e
-              depois entre na sua conta.
+              Enviamos uma confirmação para <strong>{email.trim()}</strong>. Abra o link recebido e depois entre na sua
+              conta.
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
