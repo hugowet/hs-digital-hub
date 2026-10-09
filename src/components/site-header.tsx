@@ -16,7 +16,6 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -29,7 +28,6 @@ import {
 import { useCart } from "@/lib/cart";
 import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
-
 export function SiteHeader({
   query = "",
   onQueryChange,
@@ -46,14 +44,11 @@ export function SiteHeader({
   const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
-
   const [localQuery, setLocalQuery] = useState(query);
   const [searchFocused, setSearchFocused] = useState(false);
-
   useEffect(() => {
     setLocalQuery(query);
   }, [query]);
-
   useEffect(() => {
     const timer = setTimeout(() => {
       if (localQuery !== query && onQueryChange) {
@@ -62,7 +57,6 @@ export function SiteHeader({
     }, 200);
     return () => clearTimeout(timer);
   }, [localQuery, onQueryChange, query]);
-
   const matches = useMemo(() => {
     const normalized = (localQuery ?? "").trim().toLowerCase();
     if (!normalized || normalized.length < 2) return [];
@@ -70,7 +64,6 @@ export function SiteHeader({
       .filter((item) => `${item.title} ${item.category}`.toLowerCase().includes(normalized))
       .slice(0, 6);
   }, [localQuery, suggestions]);
-
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       setSignedIn(!!data.user);
@@ -98,7 +91,6 @@ export function SiteHeader({
     });
     return () => data.subscription.unsubscribe();
   }, []);
-
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -106,7 +98,6 @@ export function SiteHeader({
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
-
   const triggerSearch = () => {
     setSearchFocused(false);
     if (onQueryChange) {
@@ -115,7 +106,6 @@ export function SiteHeader({
       navigate({ to: "/", search: { q: localQuery || undefined } });
     }
   };
-
   return (
     <header className="sticky top-0 z-50 brand-gradient text-primary-foreground shadow-md">
       <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2 sm:py-2.5">
@@ -130,7 +120,6 @@ export function SiteHeader({
               className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover select-none shadow-sm [image-rendering:-webkit-optimize-contrast] [image-rendering:crisp-edges]"
             />
           </Link>
-
           <div className="relative flex-1 max-w-2xl mx-1 sm:mx-3">
             <form
               onSubmit={(e) => {
@@ -156,7 +145,6 @@ export function SiteHeader({
                 <Search className="h-4 w-4" />
               </button>
             </form>
-
             {searchFocused && matches.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1.5 bg-popover text-popover-foreground rounded-xl shadow-xl border border-border overflow-hidden z-50 animate-in fade-in-50 zoom-in-95">
                 <div className="p-1">
@@ -180,7 +168,6 @@ export function SiteHeader({
               </div>
             )}
           </div>
-
           <div className="hidden lg:flex items-center gap-1 text-xs text-primary-foreground/90 shrink-0">
             <Link
               to="/jogos"
@@ -190,7 +177,6 @@ export function SiteHeader({
               <span>Jogar & Ganhar</span>
             </Link>
           </div>
-
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <Link
               to="/carrinho"
@@ -204,7 +190,6 @@ export function SiteHeader({
                 </span>
               )}
             </Link>
-
             {signedIn ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -262,7 +247,6 @@ export function SiteHeader({
                 </Button>
               </Link>
             )}
-
             <button
               type="button"
               onClick={() => setOpen(!open)}
@@ -273,25 +257,9 @@ export function SiteHeader({
             </button>
           </div>
         </div>
-
         <nav className="hidden lg:flex items-center gap-6 mt-2 pt-1 border-t border-white/10 text-xs font-medium text-primary-foreground/90">
           <Link to="/" className="hover:text-white transition-colors flex items-center gap-1">
             <Home className="h-3.5 w-3.5" /> Início
-          </Link>
-          <Link to="/" search={{ category: "Eletrônicos" }} className="hover:text-white transition-colors">
-            Eletrônicos
-          </Link>
-          <Link to="/" search={{ category: "Casa & Cozinha" }} className="hover:text-white transition-colors">
-            Casa & Cozinha
-          </Link>
-          <Link to="/" search={{ category: "Moda & Beleza" }} className="hover:text-white transition-colors">
-            Moda & Beleza
-          </Link>
-          <Link to="/" search={{ category: "Esporte & Lazer" }} className="hover:text-white transition-colors">
-            Esporte & Lazer
-          </Link>
-          <Link to="/" search={{ category: "Brinquedos" }} className="hover:text-white transition-colors">
-            Brinquedos
           </Link>
           <Link
             to="/"
@@ -307,7 +275,6 @@ export function SiteHeader({
           </div>
         </nav>
       </div>
-
       {open && (
         <div className="lg:hidden border-t border-white/10 bg-brand-navy p-4 space-y-3">
           <div className="grid grid-cols-2 gap-2 text-sm">
@@ -340,61 +307,14 @@ export function SiteHeader({
               <Store className="h-4 w-4" /> Vendedor
             </Link>
           </div>
-
-          <div className="border-t border-white/10 pt-3">
-            <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wider mb-2">Categorias</p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <Link
-                to="/"
-                search={{ category: "Eletrônicos" }}
-                onClick={() => setOpen(false)}
-                className="py-1 hover:text-accent"
-              >
-                Eletrônicos
-              </Link>
-              <Link
-                to="/"
-                search={{ category: "Casa & Cozinha" }}
-                onClick={() => setOpen(false)}
-                className="py-1 hover:text-accent"
-              >
-                Casa & Cozinha
-              </Link>
-              <Link
-                to="/"
-                search={{ category: "Moda & Beleza" }}
-                onClick={() => setOpen(false)}
-                className="py-1 hover:text-accent"
-              >
-                Moda & Beleza
-              </Link>
-              <Link
-                to="/"
-                search={{ category: "Esporte & Lazer" }}
-                onClick={() => setOpen(false)}
-                className="py-1 hover:text-accent"
-              >
-                Esporte & Lazer
-              </Link>
-              <Link
-                to="/"
-                search={{ category: "Brinquedos" }}
-                onClick={() => setOpen(false)}
-                className="py-1 hover:text-accent"
-              >
-                Brinquedos
-              </Link>
-              <Link
-                to="/"
-                search={{ freeShipping: true }}
-                onClick={() => setOpen(false)}
-                className="py-1 text-emerald-300 hover:text-emerald-200"
-              >
-                Frete Grátis
-              </Link>
-            </div>
-          </div>
-
+          <Link
+            to="/"
+            search={{ freeShipping: true }}
+            onClick={() => setOpen(false)}
+            className="p-2 rounded-lg hover:bg-white/10 flex items-center gap-2 text-sm text-emerald-300"
+          >
+            <TicketPercent className="h-4 w-4" /> Frete Grátis
+          </Link>
           <div className="border-t border-white/10 pt-3">
             {signedIn ? (
               <div className="space-y-1">
