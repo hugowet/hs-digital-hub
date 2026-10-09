@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  Bell,
   Gamepad2,
   Home,
   LogIn,
@@ -45,8 +46,10 @@ export function SiteHeader({
   const [open, setOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isBuyer, setIsBuyer] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
+  // Estado local para resposta rápida sem lag
   const [localQuery, setLocalQuery] = useState(query);
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -54,6 +57,7 @@ export function SiteHeader({
     setLocalQuery(query);
   }, [query]);
 
+  // Debounce leve para atualizar o filtro sem congelar a tela
   useEffect(() => {
     const timer = setTimeout(() => {
       if (localQuery !== query && onQueryChange) {
@@ -80,6 +84,12 @@ export function SiteHeader({
           .select("role")
           .eq("user_id", data.user.id);
         setIsAdmin(Boolean(roles?.some((item) => item.role === "admin")));
+        setIsBuyer(
+          Boolean(
+            roles?.some((item) => item.role === "buyer") &&
+            !roles?.some((item) => item.role === "seller"),
+          ),
+        );
         const { count: unread } = await supabase
           .from("order_messages")
           .select("id,order_conversations!inner(buyer_id)", { count: "exact", head: true })
@@ -94,6 +104,7 @@ export function SiteHeader({
         setSignedIn(!!session?.user);
         if (!session?.user) {
           setIsAdmin(false);
+          setIsBuyer(false);
           setUnreadMessages(0);
           clear();
         }
@@ -121,278 +132,348 @@ export function SiteHeader({
 
   return (
     <header className="sticky top-0 z-50 brand-gradient text-primary-foreground shadow-md">
-      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2 sm:py-2.5">
+      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2.5 sm:py-3">
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Logotipo Otimizado e com Nitidez Máxima */}
-          <Link to="/" className="flex shrink-0 items-center gap-2 transition hover:opacity-95">
+          <Link to="/" className="flex shrink-0 items-center gap-2">
             <img
               src={logoAsset.url}
               alt="HS Digital"
-              loading="eager"
-              decoding="async"
-              className="h-8 sm:h-10 w-auto max-w-[130px] sm:max-w-[180px] object-contain select-none [image-rendering:-webkit-optimize-contrast] [image-rendering:crisp-edges]"
+              width={40}
+              height={40}
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full ring-1 ring-white/20 object-cover"
             />
+            <span className="font-display text-base sm:text-lg font-bold tracking-tight max-sm:hidden">
+              HS Digital
+            </span>
           </Link>
 
-          <div className="relative flex-1 max-w-2xl mx-1 sm:mx-3">
+          {/* Barra de Pesquisa */}
+          <div className="relative flex-1 min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 triggerSearch();
               }}
-              className="relative w-full"
+              action="/"
+              method="get"
+              className="w-full m-0 p-0"
             >
               <input
                 type="search"
+                enterKeyHint="search"
                 value={localQuery}
                 onChange={(e) => setLocalQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
-                onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-                placeholder="Buscar produtos, marcas e mais..."
-                className="w-full rounded-full bg-white/95 text-foreground placeholder:text-muted-foreground px-3.5 sm:px-4 py-1.5 sm:py-2 pl-9 sm:pl-10 pr-9 sm:pr-10 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent shadow-inner transition"
+                onBlur={() => window.setTimeout(() => setSearchFocused(false), 200)}
+                placeholder="Buscar produtos e lojas..."
+                aria-label="Buscar produtos e lojas"
+                className="h-10 w-full rounded-full border border-white/15 bg-white pl-9 pr-9 text-sm text-foreground outline-none ring-primary-glow/60 placeholder:text-muted-foreground focus:ring-2"
               />
-              <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-muted-foreground pointer-events-none" />
-              {localQuery ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLocalQuery("");
-                    onQueryChange?.("");
-                  }}
-                  className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
             </form>
 
+            {localQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setLocalQuery("");
+                  if (onQueryChange) onQueryChange("");
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Menu de Sugestões Rápidas */}
             {searchFocused && matches.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 rounded-xl bg-card text-card-foreground shadow-2xl border border-border overflow-hidden z-50 animate-in fade-in-50 duration-150">
-                <div className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40 border-b border-border">
-                  Sugestões de busca
+              <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl">
+                <div className="bg-muted/40 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Sugestões
                 </div>
-                <div className="divide-y divide-border/50 max-h-64 overflow-y-auto">
-                  {matches.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setLocalQuery(item.title);
-                        onQueryChange?.(item.title);
-                        setSearchFocused(false);
-                      }}
-                      className="w-full text-left px-3.5 py-2 hover:bg-muted/60 transition flex items-center justify-between gap-2"
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-xs sm:text-sm truncate text-foreground">
-                          {item.title}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded shrink-0">
-                        {item.category}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                {matches.map((item) => (
+                  <Button
+                    key={item.id}
+                    type="button"
+                    variant="ghost"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setLocalQuery(item.title);
+                      if (onQueryChange) onQueryChange(item.title);
+                      setSearchFocused(false);
+                      navigate({ to: "/produto/$productId", params: { productId: item.id } });
+                    }}
+                    className="h-auto w-full justify-between rounded-none px-4 py-3 text-left text-sm hover:bg-muted/60"
+                  >
+                    <span className="truncate font-medium">{item.title}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground ml-2 capitalize">
+                      {item.category}
+                    </span>
+                  </Button>
+                ))}
               </div>
             )}
           </div>
 
-          <nav className="hidden lg:flex items-center gap-1.5 shrink-0 text-sm">
-            <Link
-              to="/"
-              className="px-2.5 py-1.5 rounded-md hover:bg-white/10 transition font-medium flex items-center gap-1.5"
-            >
-              <Home className="h-4 w-4" /> Início
-            </Link>
-
-            <Link
-              to="/jogos"
-              className="px-3 py-1.5 rounded-full bg-amber-400 text-slate-950 hover:bg-amber-300 font-black transition flex items-center gap-1.5 shadow-md animate-pulse"
-            >
-              <Gamepad2 className="h-4 w-4 fill-slate-950" />
-              <span>Jogos & Prêmios</span>
-            </Link>
-
-            <Link
-              to="/cupons"
-              className="px-2.5 py-1.5 rounded-md hover:bg-white/10 transition font-medium flex items-center gap-1.5"
-            >
-              <TicketPercent className="h-4 w-4" /> Cupons
-            </Link>
-
+          <nav className="flex items-center gap-1">
             {signedIn && (
               <Link
-                to="/pedidos"
-                className="px-2.5 py-1.5 rounded-md hover:bg-white/10 transition font-medium flex items-center gap-1.5 relative"
+                to="/carrinho"
+                className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10"
+                aria-label="Carrinho"
               >
-                <ShoppingBag className="h-4 w-4" /> Minhas Compras
-                {unreadMessages > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground">
-                    {unreadMessages}
+                <ShoppingCart className="h-5 w-5" />
+                {count > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-primary-glow px-1 text-[11px] font-bold">
+                    {count}
                   </span>
                 )}
               </Link>
             )}
-
-            <Link
-              to="/vendedor"
-              className="px-2.5 py-1.5 rounded-md hover:bg-white/10 transition font-medium flex items-center gap-1.5"
-            >
-              <Store className="h-4 w-4" /> Painel Lojista
-            </Link>
-
-            {isAdmin && (
+            {signedIn ? (
+              <>
+                <Link
+                  to="/notificacoes"
+                  className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden"
+                  aria-label="Notificações"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadMessages > 0 && (
+                    <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold">
+                      {unreadMessages}
+                    </span>
+                  )}
+                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground max-sm:hidden"
+                      aria-label="Menu da conta"
+                    >
+                      <User className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-60">
+                    <DropdownMenuLabel>Minha conta HS Digital</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
+                      <User className="mr-2 h-4 w-4" />
+                      Minha conta
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
+                      <MapPin className="mr-2 h-4 w-4" />
+                      Meus endereços
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/compras" })}>
+                      <ShoppingBag className="mr-2 h-4 w-4" />
+                      Minhas compras
+                    </DropdownMenuItem>
+                    {isBuyer && (
+                      <DropdownMenuItem onSelect={() => navigate({ to: "/cupons" })}>
+                        <TicketPercent className="mr-2 h-4 w-4" />
+                        Meus cupons
+                      </DropdownMenuItem>
+                    )}
+                    {isBuyer && (
+                      <DropdownMenuItem onSelect={() => navigate({ to: "/jogos" })}>
+                        <Gamepad2 className="mr-2 h-4 w-4" />
+                        Jogos & Prêmios
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/notificacoes" })}>
+                      <Bell className="mr-2 h-4 w-4" />
+                      Notificações
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/vendedor" })}>
+                      <Store className="mr-2 h-4 w-4" />
+                      Seller Center
+                    </DropdownMenuItem>
+                    {isAdmin && (
+                      <DropdownMenuItem onSelect={() => navigate({ to: "/admin" })}>
+                        <User className="mr-2 h-4 w-4" />
+                        Admin
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => void signOut()}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sair da conta
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
               <Link
-                to="/admin"
-                className="px-2.5 py-1.5 rounded-md bg-white/20 hover:bg-white/30 transition font-semibold"
+                to="/auth"
+                className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden"
+                aria-label="Minha conta"
               >
-                Admin
+                <User className="h-5 w-5" />
               </Link>
             )}
-          </nav>
-
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <Link
-              to="/carrinho"
-              className="relative p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition flex items-center justify-center"
-              aria-label="Carrinho"
-            >
-              <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
-              {count > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-accent text-[10px] sm:text-xs font-bold text-accent-foreground shadow">
-                  {count}
-                </span>
-              )}
-            </Link>
-
-            {signedIn ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full hover:bg-white/10 text-primary-foreground h-8 w-8 sm:h-9 sm:w-9"
-                  >
-                    <User className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/pedidos" className="flex items-center gap-2 cursor-pointer">
-                      <ShoppingBag className="h-4 w-4" /> Minhas Compras
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/cupons" className="flex items-center gap-2 cursor-pointer">
-                      <TicketPercent className="h-4 w-4" /> Meus Cupons
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/jogos" className="flex items-center gap-2 cursor-pointer font-bold text-amber-600">
-                      <Gamepad2 className="h-4 w-4" /> Jogos & Prêmios
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/enderecos" className="flex items-center gap-2 cursor-pointer">
-                      <MapPin className="h-4 w-4" /> Meus Endereços
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={signOut}
-                    className="text-destructive focus:text-destructive cursor-pointer flex items-center gap-2"
-                  >
-                    <LogOut className="h-4 w-4" /> Sair da conta
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                asChild
-                size="sm"
-                className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-full font-semibold px-2.5 sm:px-3 text-xs sm:text-sm h-7 sm:h-8"
-              >
-                <Link to="/auth" className="flex items-center gap-1 sm:gap-1.5">
-                  <LogIn className="h-3.5 w-3.5" /> Entrar
-                </Link>
-              </Button>
-            )}
-
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden text-primary-foreground hover:bg-white/10 h-8 w-8"
-              onClick={() => setOpen(!open)}
-              aria-label="Abrir menu"
+              onClick={() => setOpen((v) => !v)}
+              className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground sm:hidden"
+              aria-label="Menu"
             >
-              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <Menu className="h-5 w-5" />
             </Button>
-          </div>
+          </nav>
         </div>
 
+        {signedIn && <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
+          <Link to="/" className="hover:text-white">
+            Início
+          </Link>
+          <Link to="/compras" className="hover:text-white">
+            Minhas compras
+          </Link>
+          {isBuyer && (
+            <Link to="/jogos" className="hover:text-white">
+              Jogos & Prêmios
+            </Link>
+          )}
+          {isBuyer && (
+            <Link to="/cupons" className="hover:text-white">
+              Meus cupons
+            </Link>
+          )}
+          <Link to="/notificacoes" className="hover:text-white">
+            Notificações
+          </Link>
+          <span className="ml-auto flex items-center gap-2">
+            <Store className="h-4 w-4" />
+            <Link to="/vendedor" className="hover:text-white">
+              Venda na HS Digital
+            </Link>
+          </span>
+        </div>}
+
         {open && (
-          <div className="lg:hidden mt-3 pt-3 border-t border-white/20 flex flex-col gap-2">
+          <div className="mt-3 grid gap-1 rounded-lg border border-primary-foreground/10 bg-black/80 p-2 text-sm shadow-xl backdrop-blur sm:hidden">
             <Link
               to="/"
               onClick={() => setOpen(false)}
-              className="px-3 py-2 rounded-md hover:bg-white/10 font-medium flex items-center gap-2"
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
             >
-              <Home className="h-4 w-4" /> Início
-            </Link>
-            <Link
-              to="/jogos"
-              onClick={() => setOpen(false)}
-              className="px-3 py-2 rounded-lg bg-amber-400 text-slate-950 font-black flex items-center gap-2 shadow"
-            >
-              <Gamepad2 className="h-4 w-4 fill-slate-950" /> Jogos & Prêmios
-            </Link>
-            <Link
-              to="/cupons"
-              onClick={() => setOpen(false)}
-              className="px-3 py-2 rounded-md hover:bg-white/10 font-medium flex items-center gap-2"
-            >
-              <TicketPercent className="h-4 w-4" /> Cupons de Desconto
+              <Home className="h-4 w-4" />
+              Início
             </Link>
             {signedIn && (
-              <Link
-                to="/pedidos"
-                onClick={() => setOpen(false)}
-                className="px-3 py-2 rounded-md hover:bg-white/10 font-medium flex items-center gap-2 justify-between"
-              >
-                <span className="flex items-center gap-2">
-                  <ShoppingBag className="h-4 w-4" /> Minhas Compras
-                </span>
-                {unreadMessages > 0 && (
-                  <span className="rounded-full bg-accent text-[10px] font-bold text-accent-foreground px-2 py-0.5">
-                    {unreadMessages}
-                  </span>
+              <>
+                <Link
+                  to="/conta"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <User className="h-4 w-4" />
+                  Minha conta e endereços
+                </Link>
+                <Link
+                  to="/compras"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  Minhas compras
+                </Link>
+                {isBuyer && (
+                  <Link
+                    to="/cupons"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                  >
+                    <TicketPercent className="h-4 w-4" />
+                    Meus cupons
+                  </Link>
                 )}
+                <Link
+                  to="/notificacoes"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <Bell className="h-4 w-4" />
+                  Notificações {unreadMessages > 0 ? `(${unreadMessages})` : ""}
+                </Link>
+              </>
+            )}
+            {isBuyer && (
+              <Link
+                to="/jogos"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+              >
+                <Gamepad2 className="h-4 w-4" />
+                Jogos & Prêmios
               </Link>
             )}
-            <Link
-              to="/vendedor"
-              onClick={() => setOpen(false)}
-              className="px-3 py-2 rounded-md hover:bg-white/10 font-medium flex items-center gap-2"
-            >
-              <Store className="h-4 w-4" /> Painel Lojista
-            </Link>
+            {signedIn && (
+              <>
+                <Link
+                  to="/carrinho"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  Carrinho {count > 0 ? `(${count})` : ""}
+                </Link>
+                <Link
+                  to="/vendedor"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <Store className="h-4 w-4" />
+                  Seller Center
+                </Link>
+              </>
+            )}
             {isAdmin && (
               <Link
                 to="/admin"
                 onClick={() => setOpen(false)}
-                className="px-3 py-2 rounded-md bg-white/20 font-semibold"
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
               >
-                Painel Administrador
+                <User className="h-4 w-4" />
+                Admin
+              </Link>
+            )}
+            {signedIn ? (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setOpen(false);
+                  void signOut();
+                }}
+                className="justify-start text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
+              >
+                Sair da conta
+              </Button>
+            ) : (
+              <Link
+                to="/auth"
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-3 py-2 hover:bg-white/10"
+              >
+                Entrar / Criar conta
               </Link>
             )}
           </div>
         )}
       </div>
     </header>
+  );
+}
+
+export function AuthCta() {
+  return (
+    <Button asChild variant="secondary" size="sm">
+      <Link to="/auth">
+        <LogIn className="h-4 w-4" /> Entrar
+      </Link>
+    </Button>
   );
 }
