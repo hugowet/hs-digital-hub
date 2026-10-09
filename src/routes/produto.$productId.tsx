@@ -1,21 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertCircle,
   BadgeCheck,
   Box,
   Camera,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   CreditCard,
-  FileText,
   Heart,
-  HelpCircle,
-  Image as ImageIcon,
-  MessageSquare,
   Minus,
   Plus,
   QrCode,
@@ -24,16 +17,15 @@ import {
   ShieldCheck,
   ShoppingCart,
   Star,
-  ThumbsUp,
+  Store,
   Truck,
   Upload,
   Video,
   X,
   Zap,
 } from "lucide-react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
-
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
@@ -41,7 +33,6 @@ import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart";
 import { fetchProduct } from "@/lib/catalog.functions";
 import { brl } from "@/lib/format";
-
 export const Route = createFileRoute("/produto/$productId")({
   loader: async ({ params }) => {
     try {
@@ -62,7 +53,6 @@ export const Route = createFileRoute("/produto/$productId")({
       p?.image_url ||
       "https://hs-digital-marck.lovable.app/__l5e/assets-v1/39fcaa1a-9680-41a5-9293-4e05e8dc7c2b/hs-digital-logo.png";
     const pageUrl = `https://hs-digital-marck.lovable.app/produto/${params.productId}`;
-
     return {
       meta: [
         { title },
@@ -86,19 +76,16 @@ export const Route = createFileRoute("/produto/$productId")({
   },
   component: ProductDetailPage,
 });
-
 interface QuestionItem {
   id: string;
   question: string;
   answer?: string;
   created_at: string;
 }
-
 interface ReviewMedia {
   url: string;
   type: "image" | "video";
 }
-
 interface ReviewItem {
   id: string;
   author: string;
@@ -110,7 +97,6 @@ interface ReviewItem {
   helpfulCount: number;
   verified: boolean;
 }
-
 // Perfis realistas variados de compradores brasileiros
 const BRAZILIAN_REVIEWERS = [
   { name: "Carlos Eduardo Silva", city: "Campinas - SP" },
@@ -129,16 +115,14 @@ const BRAZILIAN_REVIEWERS = [
   { name: "Aline Cristina", city: "Londrina - PR" },
   { name: "Diego Castilho", city: "Santos - SP" },
 ];
-
 // Fotos reais de caixas, encomendas e embalagens de entrega entregues (unboxing)
 const PACKAGING_UNBOXING_PHOTOS = [
-  "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=700&auto=format&fit=crop&q=80", // Caixa de papelão com fita lacrada
-  "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=700&auto=format&fit=crop&q=80", // Encomenda entregue bem protegida
-  "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=700&auto=format&fit=crop&q=80", // Pacote de papelão unboxing
-  "https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=700&auto=format&fit=crop&q=80", // Caixa e pacote de correios / entrega
-  "https://images.unsplash.com/photo-1607344645866-009c320c5ab8?w=700&auto=format&fit=crop&q=80", // Unboxing com plástico bolha dentro da caixa
+  "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=700&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=700&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=700&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=700&auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1607344645866-009c320c5ab8?w=700&auto=format&fit=crop&q=80",
 ];
-
 const REVIEW_COMMENTS = [
   {
     comment:
@@ -169,7 +153,6 @@ const REVIEW_COMMENTS = [
     rating: 5,
   },
 ];
-
 // Gera avaliações únicas com nomes e fotos de embalagens realistas para cada produto
 function generateUniqueProductReviews(productId: string): ReviewItem[] {
   let hash = 0;
@@ -178,18 +161,14 @@ function generateUniqueProductReviews(productId: string): ReviewItem[] {
     hash |= 0;
   }
   const pos = Math.abs(hash);
-
   const reviewer1 = BRAZILIAN_REVIEWERS[pos % BRAZILIAN_REVIEWERS.length];
   const reviewer2 = BRAZILIAN_REVIEWERS[(pos + 3) % BRAZILIAN_REVIEWERS.length];
   const reviewer3 = BRAZILIAN_REVIEWERS[(pos + 7) % BRAZILIAN_REVIEWERS.length];
-
   const tpl1 = REVIEW_COMMENTS[pos % REVIEW_COMMENTS.length];
   const tpl2 = REVIEW_COMMENTS[(pos + 1) % REVIEW_COMMENTS.length];
   const tpl3 = REVIEW_COMMENTS[(pos + 2) % REVIEW_COMMENTS.length];
-
   const photo1 = PACKAGING_UNBOXING_PHOTOS[pos % PACKAGING_UNBOXING_PHOTOS.length];
   const photo2 = PACKAGING_UNBOXING_PHOTOS[(pos + 2) % PACKAGING_UNBOXING_PHOTOS.length];
-
   return [
     {
       id: `rev_1_${productId}`,
@@ -225,7 +204,6 @@ function generateUniqueProductReviews(productId: string): ReviewItem[] {
     },
   ];
 }
-
 // Gera um número moderado de vendas consistente para cada produto
 function getConsistentSalesCount(id: string): number {
   let hash = 0;
@@ -236,26 +214,23 @@ function getConsistentSalesCount(id: string): number {
   const positive = Math.abs(hash);
   return 38 + (positive % 184); // Varia de 38 a 221 vendas
 }
-
 export function ProductDetailPage() {
   const { productId } = Route.useParams();
   const loaderData = Route.useLoaderData();
   const navigate = useNavigate();
   const { add } = useCart();
-
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [showFullDescription, setShowFullDescription] = useState(false);
-
+  // Zoom que acompanha o mouse sobre a foto principal
+  const [zoom, setZoom] = useState({ active: false, x: 50, y: 50 });
   // Carrega dados do produto com SSR imediato
   const { data: product = loaderData?.product, isLoading } = useQuery({
     queryKey: ["product", productId],
     queryFn: () => fetchProduct({ data: { productId } }),
     initialData: loaderData?.product ?? undefined,
   });
-
   const media = useMemo(() => {
     if (!product) return [];
     if (product.media?.length) return product.media;
@@ -267,16 +242,22 @@ export function ProductDetailPage() {
       url,
     }));
   }, [product]);
-
   // Vendas calculadas de forma idêntica à vitrine
   const moderateSoldCount = useMemo(() => {
     if (!product) return 54;
     if (product.sold_count && product.sold_count > 0) return product.sold_count;
     return getConsistentSalesCount(productId);
   }, [product, productId]);
-
+  // Frases curtas da descrição para o bloco "O que você precisa saber"
+  const highlights = useMemo(() => {
+    const text = product?.description ?? "";
+    return text
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && line.length <= 160)
+      .slice(0, 5);
+  }, [product]);
   const storeName = product?.stores?.name ?? "Loja Oficial";
-
   // Perguntas e Respostas
   const [newQuestion, setNewQuestion] = useState("");
   const [questions, setQuestions] = useState<QuestionItem[]>(() => {
@@ -299,7 +280,6 @@ export function ProductDetailPage() {
       },
     ];
   });
-
   // Avaliações exclusivas deste produto com fotos de embalagens reais
   const [reviews, setReviews] = useState<ReviewItem[]>(() => {
     try {
@@ -308,13 +288,11 @@ export function ProductDetailPage() {
     } catch {}
     return generateUniqueProductReviews(productId);
   });
-
   useEffect(() => {
     try {
       localStorage.setItem(`questions_${productId}`, JSON.stringify(questions));
     } catch {}
   }, [questions, productId]);
-
   useEffect(() => {
     if (reviews.length > 0) {
       try {
@@ -322,7 +300,6 @@ export function ProductDetailPage() {
       } catch {}
     }
   }, [reviews, productId]);
-
   // Modal e Formulário de Avaliação
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
@@ -333,12 +310,10 @@ export function ProductDetailPage() {
   const [sortBy, setSortBy] = useState<"helpful" | "recent">("recent");
   const [lightboxMedia, setLightboxMedia] = useState<ReviewMedia | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     if (touch) setTouchStartX(touch.clientX);
   };
-
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX === null) return;
     const touch = e.changedTouches[0];
@@ -354,7 +329,15 @@ export function ProductDetailPage() {
     }
     setTouchStartX(null);
   };
-
+  const handleZoomMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setZoom({
+      active: true,
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top) / rect.height) * 100,
+    });
+  };
+  const handleZoomLeave = () => setZoom((prev) => ({ ...prev, active: false }));
   const handleShare = async () => {
     const shareData = {
       title: product?.title || `Confira este produto na ${storeName}`,
@@ -370,7 +353,6 @@ export function ProductDetailPage() {
       toast.success("Link copiado para a área de transferência!");
     }
   };
-
   const handleAskQuestion = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQuestion.trim()) return;
@@ -383,7 +365,6 @@ export function ProductDetailPage() {
     setNewQuestion("");
     toast.success(`Pergunta enviada para a ${storeName}!`);
   };
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -406,7 +387,6 @@ export function ProductDetailPage() {
       reader.readAsDataURL(file);
     });
   };
-
   const handleAddReview = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewComment.trim()) {
@@ -432,7 +412,6 @@ export function ProductDetailPage() {
     setReviewMediaList([]);
     toast.success("Avaliação enviada com sucesso!");
   };
-
   const filteredReviews = useMemo(() => {
     let list = reviews;
     if (filterRating !== null) {
@@ -443,27 +422,24 @@ export function ProductDetailPage() {
       return 0;
     });
   }, [reviews, filterRating, sortBy]);
-
   const maxInstallments = useMemo(() => {
     if (!product) return 1;
     if (product.price < 10) return 1;
     return Math.min(10, Math.floor(product.price / 5));
   }, [product]);
-
   const installmentValue = useMemo(() => {
     if (!product || maxInstallments <= 1) return product?.price ?? 0;
     return product.price / maxInstallments;
   }, [product, maxInstallments]);
-
   if (isLoading && !product) {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
         <main className="mx-auto w-full max-w-7xl px-4 py-8 animate-pulse space-y-6">
           <div className="h-8 w-1/3 rounded bg-muted" />
-          <div className="grid gap-8 lg:grid-cols-2">
-            <div className="aspect-square rounded-2xl bg-muted" />
-            <div className="space-y-4">
+          <div className="grid gap-8 lg:grid-cols-12">
+            <div className="aspect-square rounded-xl bg-muted lg:col-span-7" />
+            <div className="space-y-4 lg:col-span-5">
               <div className="h-10 w-3/4 rounded bg-muted" />
               <div className="h-6 w-1/4 rounded bg-muted" />
               <div className="h-24 w-full rounded bg-muted" />
@@ -474,7 +450,6 @@ export function ProductDetailPage() {
       </div>
     );
   }
-
   if (!product) {
     return (
       <div className="min-h-screen bg-background">
@@ -491,13 +466,26 @@ export function ProductDetailPage() {
       </div>
     );
   }
-
   const isDigital = product.product_type === "digital";
-
+  const hasDiscount = Boolean(product.compare_at_price && product.compare_at_price > product.price);
+  const discountPercent = hasDiscount
+    ? Math.round((1 - product.price / (product.compare_at_price as number)) * 100)
+    : 0;
+  const cartItem = {
+    productId: product.id,
+    title: product.title,
+    price: Number(product.price),
+    imageUrl: product.image_url ?? undefined,
+    maxStock: product.stock ?? 99,
+    freeShipping: product.free_shipping,
+    storeId: product.store_id,
+    storeName: storeName,
+    productType: isDigital ? ("digital" as const) : ("physical" as const),
+  };
+  const currentMedia = media[selectedImage];
   return (
     <div className="min-h-screen bg-background text-foreground pb-20 md:pb-8">
       <SiteHeader />
-
       {/* Breadcrumb */}
       <nav className="mx-auto w-full max-w-7xl px-4 py-3 text-xs text-muted-foreground">
         <ol className="flex items-center gap-1.5 flex-wrap">
@@ -513,24 +501,22 @@ export function ProductDetailPage() {
             </Link>
           </li>
           <li>/</li>
-          <li className="truncate max-w-[200px] sm:max-w-xs text-foreground font-medium">{product.title}</li>
+          <li className="truncate max-w-[200px] sm:max-w-xs text-foreground">{product.title}</li>
         </ol>
       </nav>
-
-      <main className="mx-auto w-full max-w-7xl px-4">
-        {/* Bloco Superior: Galeria + Detalhes do Produto */}
-        <div className="grid gap-8 lg:grid-cols-12">
-          {/* Galeria de Fotos */}
-          <div className="lg:col-span-7 flex flex-col md:flex-row gap-4">
-            {/* Miniaturas laterais (Desktop) */}
+      <main className="mx-auto w-full max-w-7xl px-0 sm:px-4">
+        <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
+          {/* Galeria: miniaturas à esquerda (desktop), foto grande e zoom */}
+          <section className="lg:col-span-7 flex flex-col md:flex-row gap-4 bg-card sm:rounded-xl sm:border sm:border-border p-3 sm:p-4">
             {media.length > 1 && (
-              <div className="hidden md:flex flex-col gap-2 max-h-[500px] overflow-y-auto scrollbar-none">
+              <div className="hidden md:flex flex-col gap-2 w-16 max-h-[560px] overflow-y-auto">
                 {media.map((item, idx) => (
                   <button
                     key={item.id}
                     onClick={() => setSelectedImage(idx)}
-                    className={`relative h-16 w-16 overflow-hidden rounded-lg border-2 transition ${
-                      selectedImage === idx ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground"
+                    onMouseEnter={() => setSelectedImage(idx)}
+                    className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 bg-white transition ${
+                      selectedImage === idx ? "border-primary" : "border-transparent hover:border-muted-foreground/40"
                     }`}
                   >
                     <img src={item.url} alt="" className="h-full w-full object-contain p-1" />
@@ -543,63 +529,68 @@ export function ProductDetailPage() {
                 ))}
               </div>
             )}
-
-            {/* Imagem Principal */}
-            <div className="relative flex-1 aspect-square max-h-[500px] overflow-hidden rounded-2xl border border-border bg-card flex items-center justify-center p-4">
+            <div className="relative flex-1 aspect-square max-h-[560px] overflow-hidden rounded-lg bg-white flex items-center justify-center">
               <div
                 className="h-full w-full flex items-center justify-center"
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
+                onMouseMove={currentMedia?.type === "video" ? undefined : handleZoomMove}
+                onMouseLeave={handleZoomLeave}
               >
-                {media[selectedImage]?.type === "video" ? (
-                  <video src={media[selectedImage].url} controls autoPlay muted className="max-h-full max-w-full rounded-lg" />
+                {currentMedia?.type === "video" ? (
+                  <video src={currentMedia.url} controls autoPlay muted className="max-h-full max-w-full rounded-lg" />
                 ) : (
                   <img
-                    src={media[selectedImage]?.url || product.image_url}
+                    src={currentMedia?.url || product.image_url || undefined}
                     alt={product.title}
-                    className="max-h-full max-w-full object-contain transition-transform duration-300 hover:scale-105"
+                    className="max-h-full max-w-full object-contain p-4 transition-transform duration-200 ease-out cursor-zoom-in"
+                    style={{
+                      transform: zoom.active ? "scale(2)" : "scale(1)",
+                      transformOrigin: `${zoom.x}% ${zoom.y}%`,
+                    }}
                   />
                 )}
               </div>
-
-              {/* Botão Favoritar / Compartilhar */}
               <div className="absolute right-3 top-3 flex flex-col gap-2">
                 <button
                   onClick={() => {
                     setIsFavorite(!isFavorite);
                     toast.success(isFavorite ? "Removido dos favoritos" : "Salvo nos seus favoritos!");
                   }}
-                  className="rounded-full bg-background/80 p-2.5 text-muted-foreground shadow-md backdrop-blur transition hover:text-red-500 hover:bg-background"
+                  className="rounded-full bg-background/90 p-2.5 text-muted-foreground shadow-md transition hover:text-red-500"
+                  aria-label="Favoritar"
                 >
                   <Heart className={`h-5 w-5 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
                 </button>
                 <button
                   onClick={handleShare}
-                  className="rounded-full bg-background/80 p-2.5 text-muted-foreground shadow-md backdrop-blur transition hover:text-primary hover:bg-background"
+                  className="rounded-full bg-background/90 p-2.5 text-muted-foreground shadow-md transition hover:text-primary"
+                  aria-label="Compartilhar"
                 >
                   <Share2 className="h-5 w-5" />
                 </button>
               </div>
-
-              {/* Navegação por setas (Desktop) */}
               {media.length > 1 && (
                 <>
                   <button
                     onClick={() => setSelectedImage((prev) => (prev > 0 ? prev - 1 : media.length - 1))}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-2 shadow backdrop-blur transition hover:bg-background"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow transition hover:bg-background"
+                    aria-label="Foto anterior"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <button
                     onClick={() => setSelectedImage((prev) => (prev < media.length - 1 ? prev + 1 : 0))}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-2 shadow backdrop-blur transition hover:bg-background"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow transition hover:bg-background"
+                    aria-label="Próxima foto"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
+                  <span className="absolute left-3 bottom-3 rounded-md bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white">
+                    {selectedImage + 1}/{media.length}
+                  </span>
                 </>
               )}
-
-              {/* Indicadores de bolinha para celular */}
               {media.length > 1 && (
                 <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 md:hidden">
                   {media.map((_, idx) => (
@@ -613,79 +604,79 @@ export function ProductDetailPage() {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Informações de Compra e Detalhes */}
-          <div className="lg:col-span-5 flex flex-col justify-between space-y-5">
-            <div>
-              {/* Badges de Destaque */}
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                {isDigital ? (
-                  <span className="flex items-center gap-1 rounded-md bg-purple-600/15 text-purple-600 px-2.5 py-0.5 font-bold">
-                    <Zap className="h-3.5 w-3.5" /> Entrega Digital Imediata
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 rounded-md bg-blue-600/15 text-blue-600 px-2.5 py-0.5 font-bold">
-                    <Truck className="h-3.5 w-3.5" /> Envio com Seguro
-                  </span>
-                )}
-
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <BadgeCheck className="h-3.5 w-3.5 text-primary" /> {storeName}
-                </span>
-
-                <span className="text-[11px] font-semibold text-emerald-600">• +{moderateSoldCount} vendidos</span>
+          </section>
+          {/* Caixa de compra fixa à direita, no estilo do Mercado Livre */}
+          <aside className="lg:col-span-5 px-3 sm:px-0">
+            <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm lg:sticky lg:top-24">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{isDigital ? "Produto digital" : "Novo"}</span>
+                <span className="font-semibold text-emerald-600">+{moderateSoldCount} vendidos</span>
               </div>
-
-              {/* Título do Produto */}
-              <h1 className="mt-2.5 text-xl sm:text-2xl font-bold leading-snug">{product.title}</h1>
-
-              {/* Avaliações médias */}
-              <div className="mt-2.5 flex items-center gap-2 text-xs">
-                <div className="flex items-center gap-0.5 text-amber-500">
+              <h1 className="text-xl sm:text-2xl font-medium leading-snug">{product.title}</h1>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <div className="flex items-center gap-0.5">
                   {[1, 2, 3, 4, 5].map((s) => (
-                    <Star key={s} className="h-4 w-4 fill-amber-400 text-amber-400" />
+                    <Star key={s} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
                 <span className="font-bold text-foreground">4.9</span>
                 <span className="text-muted-foreground">({reviews.length * 42} avaliações)</span>
               </div>
-
-              {/* Preço e Parcelas */}
-              <div className="mt-4 rounded-xl border border-border bg-card p-4">
-                {product.compare_at_price && product.compare_at_price > product.price && (
-                  <span className="text-xs text-muted-foreground line-through">{brl(product.compare_at_price)}</span>
+              <div className="space-y-1">
+                {hasDiscount && (
+                  <span className="block text-sm text-muted-foreground line-through">
+                    {brl(product.compare_at_price as number)}
+                  </span>
                 )}
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black text-foreground">{brl(product.price)}</span>
-                  {product.compare_at_price && product.compare_at_price > product.price && (
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <span className="text-3xl font-semibold text-foreground">{brl(product.price)}</span>
+                  {hasDiscount && (
                     <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-xs font-bold text-white">
-                      -{Math.round((1 - product.price / product.compare_at_price) * 100)}% OFF
+                      {discountPercent}% OFF
                     </span>
                   )}
                 </div>
-
                 {maxInstallments > 1 ? (
-                  <p className="mt-1 text-xs font-semibold text-emerald-600">
-                    ou em até {maxInstallments}x de {brl(installmentValue)} sem juros
+                  <p className="text-sm font-semibold text-emerald-600">
+                    {maxInstallments}x de {brl(installmentValue)} sem juros
                   </p>
                 ) : (
-                  <p className="mt-1 text-xs font-semibold text-emerald-600">À vista no Pix ou Cartão de Crédito</p>
+                  <p className="text-sm font-semibold text-emerald-600">À vista no Pix ou Cartão de Crédito</p>
                 )}
-
-                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                  <QrCode className="h-4 w-4 text-emerald-600" />
-                  <span>Aprovação instantânea no Pix com envio prioritário</span>
-                </div>
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <QrCode className="h-3.5 w-3.5 text-emerald-600" />
+                  Pix com aprovação instantânea
+                </p>
               </div>
-
-              {/* Seletor de Quantidade */}
-              <div className="mt-4 flex items-center gap-4">
+              <div className="space-y-2.5 rounded-lg border border-border p-3 text-sm">
+                <p className="flex items-start gap-2">
+                  <Truck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <span>
+                    {product.free_shipping ? (
+                      <>
+                        <strong className="text-emerald-600">Frete grátis</strong> para todo o Brasil
+                      </>
+                    ) : (
+                      "Envio com seguro para todo o Brasil"
+                    )}
+                  </span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span>Compra protegida pela {storeName} com garantia oficial</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span>Parcelamento e pagamento no cartão ou Pix</span>
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
                 <span className="text-sm font-medium">Quantidade:</span>
-                <div className="flex items-center rounded-lg border border-border bg-card">
+                <div className="flex items-center rounded-lg border border-border bg-background">
                   <button
                     onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
                     className="p-2 text-muted-foreground hover:text-foreground"
+                    aria-label="Diminuir quantidade"
                   >
                     <Minus className="h-4 w-4" />
                   </button>
@@ -693,95 +684,85 @@ export function ProductDetailPage() {
                   <button
                     onClick={() => setQuantity((prev) => Math.min(product.stock || 99, prev + 1))}
                     className="p-2 text-muted-foreground hover:text-foreground"
+                    aria-label="Aumentar quantidade"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
                 </div>
-                <span className="text-xs text-muted-foreground">({product.stock || 50} unidades em estoque)</span>
+                <span className="text-xs text-emerald-600 font-medium">Estoque disponível</span>
+              </div>
+              <div className="space-y-2.5 pt-1">
+                <Button
+                  size="lg"
+                  className="w-full text-base font-semibold"
+                  onClick={() => {
+                    add(cartItem, quantity);
+                    navigate({ to: "/carrinho" });
+                  }}
+                >
+                  Comprar agora
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full text-base font-semibold"
+                  onClick={() => {
+                    add(cartItem, quantity);
+                    toast.success("Adicionado ao carrinho com sucesso!");
+                  }}
+                >
+                  <ShoppingCart className="mr-2 h-5 w-5" /> Adicionar ao carrinho
+                </Button>
+              </div>
+              <div className="flex items-center gap-3 border-t border-border pt-4">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                  <Store className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{storeName}</p>
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <BadgeCheck className="h-3.5 w-3.5 text-primary" /> +{moderateSoldCount} vendas
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Zap className="h-3.5 w-3.5 text-primary" />
+                <span>{isDigital ? "Entrega digital imediata" : "Envio rastreado pela HS Digital"}</span>
               </div>
             </div>
-
-            {/* Ações de Compra */}
-            <div className="space-y-2.5 pt-4">
-              <Button
-                size="lg"
-                className="w-full text-base font-bold shadow-lg"
-                onClick={() => {
-                  add(
-                    {
-                      productId: product.id,
-                      title: product.title,
-                      price: Number(product.price),
-                      imageUrl: product.image_url ?? undefined,
-                      maxStock: product.stock ?? 99,
-                      freeShipping: product.free_shipping,
-                      storeId: product.store_id,
-                      storeName: storeName,
-                      productType: isDigital ? "digital" : "physical",
-                    },
-                    quantity,
-                  );
-                  navigate({ to: "/carrinho" });
-                }}
-              >
-                Comprar Agora
-              </Button>
-
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full text-base font-semibold"
-                onClick={() => {
-                  add(
-                    {
-                      productId: product.id,
-                      title: product.title,
-                      price: Number(product.price),
-                      imageUrl: product.image_url ?? undefined,
-                      maxStock: product.stock ?? 99,
-                      freeShipping: product.free_shipping,
-                      storeId: product.store_id,
-                      storeName: storeName,
-                      productType: isDigital ? "digital" : "physical",
-                    },
-                    quantity,
-                  );
-                  toast.success("Adicionado ao carrinho com sucesso!");
-                }}
-              >
-                <ShoppingCart className="mr-2 h-5 w-5" /> Adicionar ao Carrinho
-              </Button>
-
-              <div className="pt-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <span>Compra 100% Protegida pela {storeName} com garantia oficial</span>
-              </div>
-            </div>
-          </div>
+          </aside>
         </div>
-
+        {/* O que você precisa saber */}
+        {highlights.length > 0 && (
+          <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
+            <h2 className="text-lg font-semibold">O que você precisa saber sobre este produto</h2>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground list-disc pl-5">
+              {highlights.map((line, idx) => (
+                <li key={idx}>{line}</li>
+              ))}
+            </ul>
+          </section>
+        )}
         {/* Descrição Completa do Produto */}
-        <section className="mt-14 rounded-2xl border border-border bg-card p-6">
-          <h2 className="font-display text-lg font-bold border-b border-border pb-3">Descrição do Produto</h2>
-          <div className="mt-4 text-sm leading-relaxed text-muted-foreground space-y-4">
+        <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
+          <h2 className="text-lg font-semibold border-b border-border pb-3">Descrição do produto</h2>
+          <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
             <p className="whitespace-pre-line">{product.description_long || product.description}</p>
           </div>
         </section>
-
         {/* Avaliações com Fotos Reais de Encomendas */}
-        <section className="mt-14 rounded-2xl border border-border bg-card p-6">
+        <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
             <div>
-              <h2 className="font-display text-lg font-bold">Avaliações de Clientes Verificados</h2>
+              <h2 className="text-lg font-semibold">Avaliações de clientes verificados</h2>
               <p className="text-xs text-muted-foreground">
                 Fotos e unboxing de pacotes recebidos em compras na {storeName}
               </p>
             </div>
             <Button onClick={() => setShowReviewModal(true)} size="sm" variant="outline">
-              <Camera className="mr-2 h-4 w-4" /> Deixar Avaliação
+              <Camera className="mr-2 h-4 w-4" /> Deixar avaliação
             </Button>
           </div>
-
           <div className="mt-6 space-y-6">
             {filteredReviews.map((rev) => (
               <article key={rev.id} className="border-b border-border/60 pb-6 last:border-none last:pb-0">
@@ -790,26 +771,21 @@ export function ProductDetailPage() {
                     <span className="font-semibold text-sm">{rev.author}</span>
                     {rev.verified && (
                       <span className="flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600">
-                        <CheckCircle2 className="h-3 w-3" /> Compra Confirmada
+                        <CheckCircle2 className="h-3 w-3" /> Compra confirmada
                       </span>
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground">{rev.date}</span>
                 </div>
-
-                <div className="mt-1.5 flex items-center gap-1 text-amber-500">
+                <div className="mt-1.5 flex items-center gap-1">
                   {[...Array(rev.rating)].map((_, i) => (
                     <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-
                 <p className="mt-2 text-sm text-foreground/90 leading-relaxed">{rev.comment}</p>
-
                 {rev.packagingNote && (
                   <p className="mt-1.5 text-xs text-emerald-600 font-medium">✓ {rev.packagingNote}</p>
                 )}
-
-                {/* Fotos Reais de Unboxing / Embalagem */}
                 {rev.media && rev.media.length > 0 && (
                   <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                     {rev.media.map((m, idx) => (
@@ -827,10 +803,9 @@ export function ProductDetailPage() {
             ))}
           </div>
         </section>
-
         {/* Perguntas e Respostas */}
-        <section className="mt-14 rounded-2xl border border-border bg-card p-6">
-          <h2 className="font-display text-lg font-bold border-b border-border pb-3">Perguntas Frequentes</h2>
+        <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
+          <h2 className="text-lg font-semibold border-b border-border pb-3">Perguntas frequentes</h2>
           <form onSubmit={handleAskQuestion} className="mt-4 flex gap-2">
             <Input
               value={newQuestion}
@@ -842,7 +817,6 @@ export function ProductDetailPage() {
               <Send className="mr-2 h-4 w-4" /> Perguntar
             </Button>
           </form>
-
           <div className="mt-6 space-y-4">
             {questions.map((q) => (
               <div key={q.id} className="rounded-lg border border-border p-3.5 text-sm">
@@ -859,37 +833,31 @@ export function ProductDetailPage() {
           </div>
         </section>
       </main>
-
       {/* Modal de Avaliação */}
       {showReviewModal && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl border border-border bg-background p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="font-bold text-lg">Avaliar este produto</h3>
-              <button onClick={() => setShowReviewModal(false)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => setShowReviewModal(false)} className="text-muted-foreground hover:text-foreground" aria-label="Fechar">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleAddReview} className="mt-4 space-y-4">
               <div>
-                <label className="text-xs font-semibold">Sua Nota</label>
+                <label className="text-xs font-semibold">Sua nota</label>
                 <div className="mt-1 flex gap-1">
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setReviewRating(star)}
-                      className="p-1 text-amber-500"
-                    >
+                    <button key={star} type="button" onClick={() => setReviewRating(star)} className="p-1">
                       <Star
-                        className={`h-6 w-6 ${star <= reviewRating ? "fill-amber-400 text-amber-400" : "text-muted"}`}
+                        className={`h-6 w-6 ${star <= reviewRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"}`}
                       />
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold">Seu Nome</label>
+                <label className="text-xs font-semibold">Seu nome</label>
                 <Input
                   value={reviewName}
                   onChange={(e) => setReviewName(e.target.value)}
@@ -909,7 +877,7 @@ export function ProductDetailPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold">Adicionar Fotos do Pacote/Unboxing</label>
+                <label className="text-xs font-semibold">Adicionar fotos ou vídeos</label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -924,24 +892,27 @@ export function ProductDetailPage() {
                   onClick={() => fileInputRef.current?.click()}
                   className="mt-1 w-full"
                 >
-                  <Upload className="mr-2 h-4 w-4" /> Selecionar Foto da Embalagem
+                  <Upload className="mr-2 h-4 w-4" /> Selecionar fotos ou vídeos
                 </Button>
                 {reviewMediaList.length > 0 && (
-                  <div className="mt-2 flex gap-2">
-                    {reviewMediaList.map((m, idx) => (
-                      <img key={idx} src={m.url} alt="" className="h-12 w-12 rounded object-cover border" />
-                    ))}
+                  <div className="mt-2 flex gap-2 overflow-x-auto">
+                    {reviewMediaList.map((m, idx) =>
+                      m.type === "video" ? (
+                        <video key={idx} src={m.url} className="h-12 w-12 rounded object-cover border" muted />
+                      ) : (
+                        <img key={idx} src={m.url} alt="" className="h-12 w-12 rounded object-cover border" />
+                      ),
+                    )}
                   </div>
                 )}
               </div>
               <Button type="submit" className="w-full">
-                Enviar Avaliação
+                Enviar avaliação
               </Button>
             </form>
           </div>
         </div>
       )}
-
       {/* Lightbox para Visualizar Foto da Embalagem */}
       {lightboxMedia && (
         <div
@@ -949,17 +920,17 @@ export function ProductDetailPage() {
           className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-sm cursor-pointer"
         >
           <div className="relative max-h-[90vh] max-w-3xl overflow-hidden rounded-2xl bg-black">
-            <img src={lightboxMedia.url} alt="Embalagem Unboxing" className="max-h-[85vh] w-auto object-contain" />
+            <img src={lightboxMedia.url} alt="Embalagem" className="max-h-[85vh] w-auto object-contain" />
             <button
               onClick={() => setLightboxMedia(null)}
               className="absolute right-3 top-3 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+              aria-label="Fechar"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
       )}
-
       <SiteFooter />
     </div>
   );
