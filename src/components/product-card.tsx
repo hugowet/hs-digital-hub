@@ -45,6 +45,17 @@ function cleanTitle(title: string): string {
     .replace(/\bSmart Watch\b/gi, "Relógio Smartwatch Inteligente");
 }
 
+// Gera o mesmo número consistente de vendas exibido na página do produto
+function getConsistentSalesCount(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+  const positive = Math.abs(hash);
+  return 38 + (positive % 184); // Varia de 38 a 221 vendas
+}
+
 export function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
   const navigate = useNavigate();
@@ -57,6 +68,9 @@ export function ProductCard({ product }: { product: Product }) {
     product.compare_at_price && product.compare_at_price > product.price
       ? Math.round((1 - product.price / product.compare_at_price) * 100)
       : 0;
+
+  const soldCount =
+    product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
@@ -138,7 +152,7 @@ export function ProductCard({ product }: { product: Product }) {
               <Stars rating={product.rating ?? 4.8} />
               <span>({compact(product.reviews_count ?? 120)})</span>
             </div>
-            <span>{compact(product.sold_count ?? 45)} vendidos</span>
+            <span>+{soldCount} vendidos</span>
           </div>
 
           <Button
