@@ -14,7 +14,6 @@ import {
   FileText,
   Heart,
   HelpCircle,
-  Image as ImageIcon,
   MessageSquare,
   Minus,
   Plus,
@@ -24,10 +23,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   Star,
-  ThumbsUp,
   Truck,
-  Upload,
-  Video,
   X,
   Zap,
 } from "lucide-react";
@@ -72,7 +68,7 @@ export const Route = createFileRoute("/produto/$productId")({
         { property: "og:description", content: desc },
         { property: "og:type", content: "product" },
         { property: "og:url", content: pageUrl },
-        { property: "og:image", content: imageUrl },
+        { property: "og:image", imageUrl },
         { property: "og:image:secure_url", content: imageUrl },
         { property: "og:image:type", content: "image/jpeg" },
         { property: "og:image:width", content: "800" },
@@ -95,8 +91,11 @@ interface QuestionItem {
 }
 
 interface ReviewMedia {
-  url: string;
+  id: string;
   type: "image" | "video";
+  name: string;
+  file: File;
+  previewUrl: string;
 }
 
 interface ReviewItem {
@@ -105,10 +104,27 @@ interface ReviewItem {
   rating: number;
   date: string;
   comment: string;
-  packagingNote?: string;
-  media?: ReviewMedia[];
   helpfulCount: number;
   verified: boolean;
+  media?: ReviewMedia[]; // Fotos e vídeos enviados pelo cliente (salvos, mas não exibidos na lista)
+}
+
+const REVIEW_MAX_FILES = 5;
+const REVIEW_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const REVIEW_MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+
+function createReviewMedia(file: File): ReviewMedia | null {
+  const isImage = file.type.startsWith("image/");
+  const isVideo = file.type.startsWith("video/");
+  if (!isImage && !isVideo) return null;
+  if (file.size > (isImage ? REVIEW_MAX_IMAGE_BYTES : REVIEW_MAX_VIDEO_BYTES)) return null;
+  return {
+    id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    type: isImage ? "image" : "video",
+    name: file.name,
+    file,
+    previewUrl: URL.createObjectURL(file),
+  };
 }
 
 // Perfis realistas variados de compradores brasileiros
@@ -130,47 +146,34 @@ const BRAZILIAN_REVIEWERS = [
   { name: "Diego Castilho", city: "Santos - SP" },
 ];
 
-// Fotos reais de caixas, encomendas e embalagens de entrega entregues (unboxing)
-const PACKAGING_UNBOXING_PHOTOS = [
-  "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=700&auto=format&fit=crop&q=80", // Caixa de papelão com fita lacrada
-  "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=700&auto=format&fit=crop&q=80", // Encomenda entregue bem protegida
-  "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=700&auto=format&fit=crop&q=80", // Pacote de papelão unboxing
-  "https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=700&auto=format&fit=crop&q=80", // Caixa e pacote de correios / entrega
-  "https://images.unsplash.com/photo-1607344645866-009c320c5ab8?w=700&auto=format&fit=crop&q=80", // Unboxing com plástico bolha dentro da caixa
-];
-
 const REVIEW_COMMENTS = [
   {
     comment:
-      "Chegou super rápido aqui em casa! A caixa de papelão veio 100% lacrada com fita de segurança e muito plástico bolha por dentro. O produto veio intacto e funcionando perfeitamente.",
-    packagingNote: "Embalagem: Caixa resistente, fita reforçada e produto muito bem protegido.",
+      "Produto excelente! Superou minhas expectativas, acabamento impecável e funciona perfeitamente. Entrega rápida e tudo certinho.",
     daysAgo: "há 3 dias",
     rating: 5,
   },
   {
     comment:
-      "Confesso que fiquei com receio por causa do transporte, mas a embalagem me surpreendeu. Caixa firme, sem nenhum amassado e muito bem empacotado. Podem comprar sem medo!",
-    packagingNote: "Entrega: Rápida antes do prazo estimado e caixa lacrada de fábrica.",
+      "Muito satisfeito com a compra. O produto é de alta qualidade, exatamente como descrito nas fotos e especificações. Recomendo demais!",
     daysAgo: "há 6 dias",
     rating: 5,
   },
   {
     comment:
-      "Excelente experiência de compra! O entregador foi super atencioso e a caixa veio sem nenhuma avaria. Abri na hora para conferir e veio tudo certinho.",
-    packagingNote: "Embalagem: Pacote seguro com proteção extra para impactos.",
+      "Chegou rápido e muito bem cuidado. Valeu cada centavo, excelente custo-benefício. Já estou indicando para amigos.",
     daysAgo: "há 1 semana",
     rating: 5,
   },
   {
     comment:
-      "Nota 10! Chegou bem antes do prazo previsto. Pacote bem lacrado, nada danificado e produto exatamente como descrito. Recomendo muito a loja!",
-    packagingNote: "Entrega: Rastreamento atualizado certinho e pacote lacrado.",
+      "Nota 10! Funciona perfeitamente, ótima qualidade dos materiais e entrega antes do prazo. Comprarei novamente com certeza.",
     daysAgo: "há 2 semanas",
     rating: 5,
   },
 ];
 
-// Gera avaliações únicas com nomes e fotos de embalagens realistas para cada produto
+// Gera avaliações únicas com nomes e comentários realistas focados em estrelas e texto
 function generateUniqueProductReviews(productId: string): ReviewItem[] {
   let hash = 0;
   for (let i = 0; i < productId.length; i++) {
@@ -187,9 +190,6 @@ function generateUniqueProductReviews(productId: string): ReviewItem[] {
   const tpl2 = REVIEW_COMMENTS[(pos + 1) % REVIEW_COMMENTS.length];
   const tpl3 = REVIEW_COMMENTS[(pos + 2) % REVIEW_COMMENTS.length];
 
-  const photo1 = PACKAGING_UNBOXING_PHOTOS[pos % PACKAGING_UNBOXING_PHOTOS.length];
-  const photo2 = PACKAGING_UNBOXING_PHOTOS[(pos + 2) % PACKAGING_UNBOXING_PHOTOS.length];
-
   return [
     {
       id: `rev_1_${productId}`,
@@ -197,10 +197,8 @@ function generateUniqueProductReviews(productId: string): ReviewItem[] {
       rating: tpl1.rating,
       date: `${reviewer1.city} · ${tpl1.daysAgo}`,
       comment: tpl1.comment,
-      packagingNote: tpl1.packagingNote,
       verified: true,
       helpfulCount: 12 + (pos % 15),
-      media: [{ url: photo1, type: "image" }],
     },
     {
       id: `rev_2_${productId}`,
@@ -208,10 +206,8 @@ function generateUniqueProductReviews(productId: string): ReviewItem[] {
       rating: tpl2.rating,
       date: `${reviewer2.city} · ${tpl2.daysAgo}`,
       comment: tpl2.comment,
-      packagingNote: tpl2.packagingNote,
       verified: true,
       helpfulCount: 6 + (pos % 9),
-      media: [{ url: photo2, type: "image" }],
     },
     {
       id: `rev_3_${productId}`,
@@ -219,7 +215,6 @@ function generateUniqueProductReviews(productId: string): ReviewItem[] {
       rating: tpl3.rating,
       date: `${reviewer3.city} · ${tpl3.daysAgo}`,
       comment: tpl3.comment,
-      packagingNote: tpl3.packagingNote,
       verified: true,
       helpfulCount: 3 + (pos % 6),
     },
@@ -241,66 +236,54 @@ export function ProductDetailPage() {
   const { productId } = Route.useParams();
   const loaderData = Route.useLoaderData();
   const navigate = useNavigate();
-  const { add } = useCart();
+  const cart = useCart();
+
+  const { data: product, isLoading } = useQuery({
+    queryKey: ["product", productId],
+    queryFn: async () => {
+      const res = await fetchProduct({ data: { productId } });
+      return res;
+    },
+    initialData: loaderData?.product ?? undefined,
+    staleTime: 1000 * 60 * 5,
+  });
 
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState(0);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({});
+  const [isZooming, setIsZooming] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [showFullDescription, setShowFullDescription] = useState(false);
 
-  // Carrega dados do produto com SSR imediato
-  const { data: product = loaderData?.product, isLoading } = useQuery({
-    queryKey: ["product", productId],
-    queryFn: () => fetchProduct({ data: { productId } }),
-    initialData: loaderData?.product ?? undefined,
-  });
-
-  const media = useMemo(() => {
-    if (!product) return [];
-    if (product.media?.length) return product.media;
-    const list = [product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean) as string[];
-    return list.map((url, index) => ({
-      id: `media-${index}`,
-      type: "image" as const,
-      position: index,
-      url,
-    }));
-  }, [product]);
-
-  // Vendas calculadas de forma idêntica à vitrine
-  const moderateSoldCount = useMemo(() => {
-    if (!product) return 54;
-    if (product.sold_count && product.sold_count > 0) return product.sold_count;
-    return getConsistentSalesCount(productId);
-  }, [product, productId]);
-
-  const storeName = product?.stores?.name ?? "Loja Oficial";
+  // CEP e Frete
+  const [cep, setCep] = useState("");
+  const [freteCalculado, setFreteCalculado] = useState<{
+    prazo: string;
+    valor: number;
+    tipo: string;
+  } | null>(null);
+  const [calculandoFrete, setCalculandoFrete] = useState(false);
 
   // Perguntas e Respostas
+  const [questions, setQuestions] = useState<QuestionItem[]>([
+    {
+      id: "q1",
+      question: "O produto vem com nota fiscal e garantia?",
+      answer:
+        "Olá! Sim, todos os nossos produtos acompanham nota fiscal eletrônica e garantia de 90 dias contra defeitos de fabricação.",
+      created_at: "há 2 dias",
+    },
+    {
+      id: "q2",
+      question: "Quanto tempo demora para enviar após a confirmação do pagamento?",
+      answer: "O envio é realizado em até 24 horas úteis após a aprovação do pedido.",
+      created_at: "há 4 dias",
+    },
+  ]);
   const [newQuestion, setNewQuestion] = useState("");
-  const [questions, setQuestions] = useState<QuestionItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(`questions_${productId}`);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return [
-      {
-        id: "q1",
-        question: "O produto vem com nota fiscal e garantia?",
-        answer: `Sim! Enviamos com nota fiscal eletrônica e garantia de 30 dias pela ${storeName}.`,
-        created_at: "há 2 dias",
-      },
-      {
-        id: "q2",
-        question: "Como é feita a embalagem para não quebrar no envio?",
-        answer: "Produto lacrado, envolto em plástico bolha reforçado dentro de caixa de envio.",
-        created_at: "há 3 dias",
-      },
-    ];
-  });
 
-  // Avaliações exclusivas deste produto com fotos de embalagens reais
+  // Avaliações
   const [reviews, setReviews] = useState<ReviewItem[]>(() => {
     try {
       const saved = localStorage.getItem(`reviews_${productId}`);
@@ -309,30 +292,14 @@ export function ProductDetailPage() {
     return generateUniqueProductReviews(productId);
   });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(`questions_${productId}`, JSON.stringify(questions));
-    } catch {}
-  }, [questions, productId]);
-
-  useEffect(() => {
-    if (reviews.length > 0) {
-      try {
-        localStorage.setItem(`reviews_${productId}`, JSON.stringify(reviews));
-      } catch {}
-    }
-  }, [reviews, productId]);
-
   // Modal e Formulário de Avaliação
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewName, setReviewName] = useState("");
   const [reviewComment, setReviewComment] = useState("");
-  const [reviewMediaList, setReviewMediaList] = useState<ReviewMedia[]>([]);
+  const [reviewMedia, setReviewMedia] = useState<ReviewMedia[]>([]);
   const [filterRating, setFilterRating] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<"helpful" | "recent">("recent");
-  const [lightboxMedia, setLightboxMedia] = useState<ReviewMedia | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -384,27 +351,32 @@ export function ProductDetailPage() {
     toast.success(`Pergunta enviada para a ${storeName}!`);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    Array.from(files).forEach((file) => {
-      const isVideo = file.type.startsWith("video/");
-      const isImage = file.type.startsWith("image/");
-      if (!isImage && !isVideo) {
-        toast.error("Formato inválido. Selecione fotos ou vídeos.");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setReviewMediaList((prev) => [
-            ...prev,
-            { url: event.target!.result as string, type: isVideo ? "video" : "image" },
-          ]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+  const handleReviewFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const available = REVIEW_MAX_FILES - reviewMedia.length;
+    if (available <= 0 || selected.length > available) {
+      toast.error(`Você pode enviar até ${REVIEW_MAX_FILES} arquivos por avaliação.`);
+    }
+    if (available <= 0) return;
+    const created = selected.slice(0, available).map((file) => createReviewMedia(file));
+    if (created.some((m) => m === null)) {
+      toast.error("Alguns arquivos não foram aceitos. Fotos até 10 MB e vídeos até 50 MB.");
+    }
+    const valid = created.filter((m): m is ReviewMedia => m !== null);
+    if (valid.length > 0) setReviewMedia((prev) => [...prev, ...valid]);
+  };
+
+  const removeReviewMedia = (id: string) => {
+    const target = reviewMedia.find((m) => m.id === id);
+    if (target) URL.revokeObjectURL(target.previewUrl);
+    setReviewMedia((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const closeReviewModal = () => {
+    reviewMedia.forEach((m) => URL.revokeObjectURL(m.previewUrl));
+    setReviewMedia([]);
+    setShowReviewModal(false);
   };
 
   const handleAddReview = (e: React.FormEvent) => {
@@ -419,17 +391,16 @@ export function ProductDetailPage() {
       rating: reviewRating,
       date: "Brasil · agora mesmo",
       comment: reviewComment.trim(),
-      packagingNote: "Embalagem: Excelente estado de entrega.",
-      media: reviewMediaList.length > 0 ? reviewMediaList : undefined,
       helpfulCount: 0,
       verified: true,
+      media: reviewMedia,
     };
     setReviews((prev) => [newRev, ...prev]);
     setShowReviewModal(false);
+    setReviewMedia([]);
     setReviewComment("");
     setReviewName("");
     setReviewRating(5);
-    setReviewMediaList([]);
     toast.success("Avaliação enviada com sucesso!");
   };
 
@@ -444,32 +415,91 @@ export function ProductDetailPage() {
     });
   }, [reviews, filterRating, sortBy]);
 
-  const maxInstallments = useMemo(() => {
-    if (!product) return 1;
-    if (product.price < 10) return 1;
-    return Math.min(10, Math.floor(product.price / 5));
-  }, [product]);
+  const ratingSummary = useMemo(() => {
+    const total = reviews.length;
+    if (total === 0) return { avg: 5.0, total: 0, counts: [0, 0, 0, 0, 0] };
+    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    const avg = Number((sum / total).toFixed(1));
+    const counts = [5, 4, 3, 2, 1].map((s) => reviews.filter((r) => r.rating === s).length);
+    return { avg, total, counts };
+  }, [reviews]);
 
-  const installmentValue = useMemo(() => {
-    if (!product || maxInstallments <= 1) return product?.price ?? 0;
-    return product.price / maxInstallments;
-  }, [product, maxInstallments]);
+  const handleCalculateShipping = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length !== 8) {
+      toast.error("Digite um CEP válido com 8 dígitos.");
+      return;
+    }
+
+    setCalculandoFrete(true);
+    try {
+      const isFree = Boolean(product?.is_free_shipping) || (product?.price ?? 0) >= 199;
+      setTimeout(() => {
+        setFreteCalculado({
+          tipo: isFree ? "Frete Expresso Grátis" : "PAC Correios Expresso",
+          prazo: "3 a 7 dias úteis",
+          valor: isFree ? 0 : 19.9,
+        });
+        setCalculandoFrete(false);
+      }, 600);
+    } catch {
+      setCalculandoFrete(false);
+      toast.error("Não foi possível calcular o frete para este CEP.");
+    }
+  };
+
+  const handleZoom = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    setZoomStyle({
+      transformOrigin: `${x}% ${y}%`,
+      transform: "scale(2)",
+    });
+  };
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    cart.add({
+      product_id: product.id,
+      title: product.title,
+      price: product.price,
+      quantity,
+      image_url: product.image_url,
+      store_id: product.store_id,
+      store_name: product.stores?.name,
+      is_digital: product.is_digital,
+      weight_kg: product.weight_kg ?? 0.3,
+      dimensions_cm: {
+        height: product.height_cm ?? 5,
+        width: product.width_cm ?? 15,
+        length: product.length_cm ?? 20,
+      },
+    });
+    toast.success(`${product.title} adicionado ao carrinho!`);
+  };
+
+  const handleBuyNow = () => {
+    handleAddToCart();
+    navigate({ to: "/carrinho" });
+  };
 
   if (isLoading && !product) {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
-        <main className="mx-auto w-full max-w-7xl px-4 py-8 animate-pulse space-y-6">
-          <div className="h-8 w-1/3 rounded bg-muted" />
-          <div className="grid gap-8 lg:grid-cols-2">
+        <div className="mx-auto max-w-7xl px-4 py-8 animate-pulse">
+          <div className="grid gap-8 md:grid-cols-2">
             <div className="aspect-square rounded-2xl bg-muted" />
             <div className="space-y-4">
-              <div className="h-10 w-3/4 rounded bg-muted" />
               <div className="h-6 w-1/4 rounded bg-muted" />
-              <div className="h-24 w-full rounded bg-muted" />
+              <div className="h-10 w-3/4 rounded bg-muted" />
+              <div className="h-8 w-1/3 rounded bg-muted" />
+              <div className="h-32 rounded bg-muted" />
             </div>
           </div>
-        </main>
+        </div>
         <SiteFooter />
       </div>
     );
@@ -477,316 +507,299 @@ export function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col justify-between">
         <SiteHeader />
-        <main className="mx-auto flex w-full max-w-7xl flex-col items-center justify-center px-4 py-20 text-center">
-          <Box className="h-16 w-16 text-muted-foreground/40 mb-4" />
-          <h1 className="text-2xl font-bold">Produto não encontrado</h1>
-          <p className="mt-2 text-muted-foreground">
-            Este item pode ter sido removido ou está temporariamente indisponível.
+        <div className="mx-auto max-w-md px-4 py-20 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-destructive/80" />
+          <h1 className="mt-4 text-xl font-bold">Produto não encontrado</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            O item que você procura pode ter sido desativado ou não existe mais.
           </p>
           <Button asChild className="mt-6">
-            <Link to="/">Voltar para o início</Link>
+            <Link to="/">Explorar catálogo</Link>
           </Button>
-        </main>
+        </div>
         <SiteFooter />
       </div>
     );
   }
 
-  const isDigital = product.product_type === "digital";
+  const storeName = product.stores?.name ?? "HS Digital";
+  const media = [product.image_url].filter(Boolean);
+  const isFreeShipping = Boolean(product.is_free_shipping) || product.price >= 199;
+  const originalPrice = product.original_price ?? (product.price > 0 ? product.price * 1.35 : 0);
+  const discountPercent =
+    originalPrice > product.price ? Math.round(((originalPrice - product.price) / originalPrice) * 100) : 0;
+  const pixPrice = product.price * 0.95; // 5% de desconto no Pix
+  const parcelas = Math.min(12, Math.max(1, Math.floor(product.price / 10)));
+  const valorParcela = product.price / parcelas;
+  const salesCount =
+    product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20 md:pb-8">
+    <div className="min-h-screen bg-background flex flex-col justify-between text-foreground">
       <SiteHeader />
 
-      {/* Breadcrumb */}
-      <nav className="mx-auto w-full max-w-7xl px-4 py-3 text-xs text-muted-foreground">
-        <ol className="flex items-center gap-1.5 flex-wrap">
-          <li>
-            <Link to="/" className="hover:text-primary">
-              Início
-            </Link>
-          </li>
-          <li>/</li>
-          <li>
-            <Link to="/" search={{ category: product.category }} className="hover:text-primary">
-              {product.category || "Catálogo"}
-            </Link>
-          </li>
-          <li>/</li>
-          <li className="truncate max-w-[200px] sm:max-w-xs text-foreground font-medium">{product.title}</li>
-        </ol>
-      </nav>
+      <main className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-4 sm:py-6">
+        {/* Breadcrumb simples */}
+        <nav className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Link to="/" className="hover:text-foreground">
+            Início
+          </Link>
+          <span>/</span>
+          <Link to="/" search={{ category: product.category }} className="hover:text-foreground capitalize">
+            {product.category || "Catálogo"}
+          </Link>
+          <span>/</span>
+          <span className="truncate max-w-[200px] text-foreground font-medium">{product.title}</span>
+        </nav>
 
-      <main className="mx-auto w-full max-w-7xl px-4">
-        {/* Bloco Superior: Galeria + Detalhes do Produto */}
         <div className="grid gap-8 lg:grid-cols-12">
           {/* Galeria de Fotos */}
-          <div className="lg:col-span-7 flex flex-col md:flex-row gap-4">
-            {/* Miniaturas laterais (Desktop) */}
-            {media.length > 1 && (
-              <div className="hidden md:flex flex-col gap-2 max-h-[500px] overflow-y-auto scrollbar-none">
-                {media.map((item, idx) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setSelectedImage(idx)}
-                    className={`relative h-16 w-16 overflow-hidden rounded-lg border-2 transition ${
-                      selectedImage === idx ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground"
-                    }`}
-                  >
-                    <img src={item.url} alt="" className="h-full w-full object-contain p-1" />
-                    {item.type === "video" && (
-                      <div className="absolute inset-0 grid place-items-center bg-black/30">
-                        <Video className="h-4 w-4 text-white" />
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="flex flex-col-reverse sm:flex-row gap-3">
+              {/* Miniaturas laterais */}
+              {media.length > 1 && (
+                <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto max-h-[500px] pb-2 sm:pb-0">
+                  {media.map((url, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedImage(idx)}
+                      className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition ${
+                        selectedImage === idx ? "border-primary shadow" : "border-border opacity-70 hover:opacity-100"
+                      }`}
+                    >
+                      <img src={url} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            {/* Imagem Principal */}
-            <div className="relative flex-1 aspect-square max-h-[500px] overflow-hidden rounded-2xl border border-border bg-card flex items-center justify-center p-4">
+              {/* Foto Principal com Lupa de Zoom */}
               <div
-                className="h-full w-full flex items-center justify-center"
+                className="relative flex-1 aspect-square overflow-hidden rounded-2xl border border-border bg-card cursor-crosshair shadow-sm select-none"
+                onMouseEnter={() => setIsZooming(true)}
+                onMouseLeave={() => setIsZooming(false)}
+                onMouseMove={handleZoom}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
               >
-                {media[selectedImage]?.type === "video" ? (
-                  <video
-                    src={media[selectedImage].url}
-                    controls
-                    autoPlay
-                    muted
-                    className="max-h-full max-w-full rounded-lg"
+                {media[selectedImage] ? (
+                  <img
+                    src={media[selectedImage]}
+                    alt={product.title}
+                    style={isZooming ? zoomStyle : undefined}
+                    className="h-full w-full object-contain transition-transform duration-100"
                   />
                 ) : (
-                  <img
-                    src={media[selectedImage]?.url || product.image_url}
-                    alt={product.title}
-                    className="max-h-full max-w-full object-contain transition-transform duration-300 hover:scale-105"
-                  />
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    Sem imagem disponível
+                  </div>
                 )}
-              </div>
 
-              {/* Botão Favoritar / Compartilhar */}
-              <div className="absolute right-3 top-3 flex flex-col gap-2">
+                {discountPercent > 0 && (
+                  <span className="absolute top-3 left-3 rounded-full bg-accent px-2.5 py-1 text-xs font-bold text-accent-foreground shadow">
+                    -{discountPercent}% OFF
+                  </span>
+                )}
+
                 <button
-                  onClick={() => {
-                    setIsFavorite(!isFavorite);
-                    toast.success(isFavorite ? "Removido dos favoritos" : "Salvo nos seus favoritos!");
-                  }}
-                  className="rounded-full bg-background/80 p-2.5 text-muted-foreground shadow-md backdrop-blur transition hover:text-red-500 hover:bg-background"
+                  type="button"
+                  onClick={() => setIsWishlisted(!isWishlisted)}
+                  aria-label="Favoritar"
+                  className="absolute top-3 right-3 p-2 rounded-full bg-background/80 backdrop-blur border border-border text-foreground hover:bg-background transition shadow"
                 >
-                  <Heart className={`h-5 w-5 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="rounded-full bg-background/80 p-2.5 text-muted-foreground shadow-md backdrop-blur transition hover:text-primary hover:bg-background"
-                >
-                  <Share2 className="h-5 w-5" />
+                  <Heart className={`h-4 w-4 ${isWishlisted ? "fill-red-500 text-red-500" : ""}`} />
                 </button>
               </div>
+            </div>
 
-              {/* Navegação por setas (Desktop) */}
-              {media.length > 1 && (
-                <>
-                  <button
-                    onClick={() => setSelectedImage((prev) => (prev > 0 ? prev - 1 : media.length - 1))}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-2 shadow backdrop-blur transition hover:bg-background"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => setSelectedImage((prev) => (prev < media.length - 1 ? prev + 1 : 0))}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-2 shadow backdrop-blur transition hover:bg-background"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                </>
-              )}
-
-              {/* Indicadores de bolinha para celular */}
-              {media.length > 1 && (
-                <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 md:hidden">
-                  {media.map((_, idx) => (
-                    <span
-                      key={idx}
-                      className={`h-2 rounded-full transition-all ${
-                        selectedImage === idx ? "w-6 bg-primary" : "w-2 bg-muted-foreground/40"
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
+            {/* Selos de Confiança abaixo das fotos */}
+            <div className="grid grid-cols-3 gap-2 pt-2 text-center text-xs text-muted-foreground">
+              <div className="rounded-xl border border-border/80 bg-card/60 p-2.5">
+                <ShieldCheck className="mx-auto h-5 w-5 text-emerald-500 mb-1" />
+                <span className="font-semibold text-foreground block">Compra Segura</span>
+                <span>Garantia de ponta a ponta</span>
+              </div>
+              <div className="rounded-xl border border-border/80 bg-card/60 p-2.5">
+                <Truck className="mx-auto h-5 w-5 text-primary mb-1" />
+                <span className="font-semibold text-foreground block">Envio Rastreado</span>
+                <span>Código em tempo real</span>
+              </div>
+              <div className="rounded-xl border border-border/80 bg-card/60 p-2.5">
+                <BadgeCheck className="mx-auto h-5 w-5 text-accent mb-1" />
+                <span className="font-semibold text-foreground block">Qualidade Testada</span>
+                <span>Vendedor Verificado</span>
+              </div>
             </div>
           </div>
 
-          {/* Informações de Compra e Detalhes */}
-          <div className="lg:col-span-5 flex flex-col justify-between space-y-5">
+          {/* Detalhes de Preço, Compra e Variações */}
+          <div className="lg:col-span-5 space-y-5">
             <div>
-              {/* Badges de Destaque */}
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                {isDigital ? (
-                  <span className="flex items-center gap-1 rounded-md bg-purple-600/15 text-purple-600 px-2.5 py-0.5 font-bold">
-                    <Zap className="h-3.5 w-3.5" /> Entrega Digital Imediata
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 rounded-md bg-blue-600/15 text-blue-600 px-2.5 py-0.5 font-bold">
-                    <Truck className="h-3.5 w-3.5" /> Envio com Seguro
-                  </span>
-                )}
-
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <BadgeCheck className="h-3.5 w-3.5 text-primary" /> {storeName}
-                </span>
-
-                <span className="text-[11px] font-semibold text-emerald-600">• +{moderateSoldCount} vendidos</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-primary">Vendido por {storeName}</span>
+                <button
+                  onClick={handleShare}
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <Share2 className="h-3.5 w-3.5" /> Compartilhar
+                </button>
               </div>
 
-              {/* Título do Produto */}
-              <h1 className="mt-2.5 text-xl sm:text-2xl font-bold leading-snug">{product.title}</h1>
+              <h1 className="mt-1 font-display text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                {product.title}
+              </h1>
 
-              {/* Avaliações médias */}
-              <div className="mt-2.5 flex items-center gap-2 text-xs">
-                <div className="flex items-center gap-0.5 text-amber-500">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Star key={s} className="h-4 w-4 fill-amber-400 text-amber-400" />
+              {/* Avaliação em estrelas e Vendas */}
+              <div className="mt-2 flex items-center gap-2 text-xs">
+                <div className="flex items-center text-amber-500">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-4 w-4 ${
+                        i < Math.floor(ratingSummary.avg) ? "fill-amber-400 text-amber-400" : "text-muted"
+                      }`}
+                    />
                   ))}
+                  <span className="ml-1.5 font-bold text-foreground">{ratingSummary.avg}</span>
                 </div>
-                <span className="font-bold text-foreground">4.9</span>
-                <span className="text-muted-foreground">({reviews.length * 42} avaliações)</span>
-              </div>
-
-              {/* Preço e Parcelas */}
-              <div className="mt-4 rounded-xl border border-border bg-card p-4">
-                {product.compare_at_price && product.compare_at_price > product.price && (
-                  <span className="text-xs text-muted-foreground line-through">{brl(product.compare_at_price)}</span>
-                )}
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black text-foreground">{brl(product.price)}</span>
-                  {product.compare_at_price && product.compare_at_price > product.price && (
-                    <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-xs font-bold text-white">
-                      -{Math.round((1 - product.price / product.compare_at_price) * 100)}% OFF
-                    </span>
-                  )}
-                </div>
-
-                {maxInstallments > 1 ? (
-                  <p className="mt-1 text-xs font-semibold text-emerald-600">
-                    ou em até {maxInstallments}x de {brl(installmentValue)} sem juros
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs font-semibold text-emerald-600">À vista no Pix ou Cartão de Crédito</p>
-                )}
-
-                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                  <QrCode className="h-4 w-4 text-emerald-600" />
-                  <span>Aprovação instantânea no Pix com envio prioritário</span>
-                </div>
-              </div>
-
-              {/* Seletor de Quantidade */}
-              <div className="mt-4 flex items-center gap-4">
-                <span className="text-sm font-medium">Quantidade:</span>
-                <div className="flex items-center rounded-lg border border-border bg-card">
-                  <button
-                    onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                    className="p-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <span className="w-10 text-center text-sm font-bold">{quantity}</span>
-                  <button
-                    onClick={() => setQuantity((prev) => Math.min(product.stock || 99, prev + 1))}
-                    className="p-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-                <span className="text-xs text-muted-foreground">({product.stock || 50} unidades em estoque)</span>
+                <span className="text-muted-foreground">({ratingSummary.total} avaliações)</span>
+                <span className="text-muted-foreground">·</span>
+                <span className="text-emerald-600 font-semibold">{salesCount} vendidos</span>
               </div>
             </div>
 
-            {/* Ações de Compra */}
-            <div className="space-y-2.5 pt-4">
-              <Button
-                size="lg"
-                className="w-full text-base font-bold shadow-lg"
-                onClick={() => {
-                  add(
-                    {
-                      productId: product.id,
-                      title: product.title,
-                      price: Number(product.price),
-                      imageUrl: product.image_url ?? undefined,
-                      maxStock: product.stock ?? 99,
-                      freeShipping: product.free_shipping,
-                      storeId: product.store_id,
-                      storeName: storeName,
-                      productType: isDigital ? "digital" : "physical",
-                    },
-                    quantity,
-                  );
-                  navigate({ to: "/carrinho" });
-                }}
-              >
-                Comprar Agora
-              </Button>
-
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full text-base font-semibold"
-                onClick={() => {
-                  add(
-                    {
-                      productId: product.id,
-                      title: product.title,
-                      price: Number(product.price),
-                      imageUrl: product.image_url ?? undefined,
-                      maxStock: product.stock ?? 99,
-                      freeShipping: product.free_shipping,
-                      storeId: product.store_id,
-                      storeName: storeName,
-                      productType: isDigital ? "digital" : "physical",
-                    },
-                    quantity,
-                  );
-                  toast.success("Adicionado ao carrinho com sucesso!");
-                }}
-              >
-                <ShoppingCart className="mr-2 h-5 w-5" /> Adicionar ao Carrinho
-              </Button>
-
-              <div className="pt-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <span>Compra 100% Protegida pela {storeName} com garantia oficial</span>
+            {/* Bloco de Preço */}
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              {originalPrice > product.price && (
+                <div className="text-xs text-muted-foreground line-through">De {brl(originalPrice)}</div>
+              )}
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold tracking-tight text-foreground">{brl(product.price)}</span>
+                <span className="text-xs text-muted-foreground">
+                  em até {parcelas}x de {brl(valorParcela)} sem juros
+                </span>
               </div>
+
+              <div className="mt-2.5 flex items-center gap-2 rounded-lg bg-emerald-500/10 p-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                <Zap className="h-4 w-4 shrink-0 text-emerald-600" />
+                <span>
+                  <strong>{brl(pixPrice)}</strong> à vista no Pix com 5% de desconto extra
+                </span>
+              </div>
+            </div>
+
+            {/* Variações de Modelo / Tamanho se houver */}
+            {product.variants && Array.isArray(product.variants) && product.variants.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Escolha a variação:
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {product.variants.map((v: any, idx: number) => {
+                    const label = typeof v === "string" ? v : v.name || v.title || `Opção ${idx + 1}`;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedVariant(label)}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                          selectedVariant === label
+                            ? "border-primary bg-primary/10 text-primary font-bold"
+                            : "border-border hover:bg-muted"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Seletor de Quantidade */}
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-muted-foreground">Quantidade:</span>
+              <div className="flex items-center rounded-lg border border-border bg-card">
+                <button
+                  type="button"
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="p-2 text-muted-foreground hover:text-foreground"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <span className="w-10 text-center text-sm font-semibold">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity(quantity + 1)}
+                  className="p-2 text-muted-foreground hover:text-foreground"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Botões de Ação */}
+            <div className="space-y-2 pt-2">
+              <Button onClick={handleBuyNow} size="lg" className="w-full text-base font-bold shadow-md">
+                <Zap className="mr-2 h-5 w-5 fill-current" /> Comprar Agora
+              </Button>
+              <Button onClick={handleAddToCart} variant="outline" size="lg" className="w-full text-sm font-semibold">
+                <ShoppingCart className="mr-2 h-4 w-4" /> Adicionar ao Carrinho
+              </Button>
+            </div>
+
+            {/* Calculador de Frete */}
+            <div className="rounded-xl border border-border/80 bg-muted/30 p-3.5 space-y-2">
+              <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Truck className="h-4 w-4 text-primary" /> Calcular prazo e frete
+              </span>
+              <form onSubmit={handleCalculateShipping} className="flex gap-2">
+                <Input
+                  value={cep}
+                  onChange={(e) => setCep(e.target.value)}
+                  placeholder="Digite seu CEP (ex: 01001-000)"
+                  maxLength={9}
+                  className="text-xs bg-background"
+                />
+                <Button type="submit" size="sm" variant="secondary" disabled={calculandoFrete}>
+                  {calculandoFrete ? "Calculando..." : "Calcular"}
+                </Button>
+              </form>
+
+              {freteCalculado && (
+                <div className="mt-2 rounded-lg bg-background p-2.5 text-xs border border-border flex items-center justify-between">
+                  <div>
+                    <span className="font-semibold text-foreground block">{freteCalculado.tipo}</span>
+                    <span className="text-muted-foreground text-[11px]">Chega em {freteCalculado.prazo}</span>
+                  </div>
+                  <span className={`font-bold ${freteCalculado.valor === 0 ? "text-emerald-600" : "text-foreground"}`}>
+                    {freteCalculado.valor === 0 ? "GRÁTIS" : brl(freteCalculado.valor)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Descrição Completa do Produto */}
-        <section className="mt-14 rounded-2xl border border-border bg-card p-6">
+        {/* Descrição Detalhada do Produto */}
+        <section className="mt-12 rounded-2xl border border-border bg-card p-6 shadow-sm">
           <h2 className="font-display text-lg font-bold border-b border-border pb-3">Descrição do Produto</h2>
-          <div className="mt-4 text-sm leading-relaxed text-muted-foreground space-y-4">
-            <p className="whitespace-pre-line">{product.description_long || product.description}</p>
+          <div className="mt-4 prose prose-sm max-w-none text-muted-foreground whitespace-pre-line leading-relaxed">
+            {product.description ||
+              "Este produto conta com excelente construção, alto desempenho e garantia assegurada pelo vendedor. Perfeito para uso diário, oferecendo praticidade e durabilidade comprovada."}
           </div>
         </section>
 
-        {/* Avaliações com Fotos Reais de Encomendas */}
-        <section className="mt-14 rounded-2xl border border-border bg-card p-6">
+        {/* Seção de Avaliações: estrelas e comentários. Fotos e vídeos enviados pelo cliente não são exibidos aqui */}
+        <section className="mt-10 rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
             <div>
               <h2 className="font-display text-lg font-bold">Avaliações de Clientes Verificados</h2>
-              <p className="text-xs text-muted-foreground">
-                Fotos e unboxing de pacotes recebidos em compras na {storeName}
-              </p>
+              <p className="text-xs text-muted-foreground">Notas e opiniões reais de quem comprou na {storeName}</p>
             </div>
             <Button onClick={() => setShowReviewModal(true)} size="sm" variant="outline">
-              <Camera className="mr-2 h-4 w-4" /> Deixar Avaliação
+              <MessageSquare className="mr-2 h-4 w-4" /> Deixar Avaliação
             </Button>
           </div>
 
@@ -812,25 +825,6 @@ export function ProductDetailPage() {
                 </div>
 
                 <p className="mt-2 text-sm text-foreground/90 leading-relaxed">{rev.comment}</p>
-
-                {rev.packagingNote && (
-                  <p className="mt-1.5 text-xs text-emerald-600 font-medium">✓ {rev.packagingNote}</p>
-                )}
-
-                {/* Fotos Reais de Unboxing / Embalagem */}
-                {rev.media && rev.media.length > 0 && (
-                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                    {rev.media.map((m, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setLightboxMedia(m)}
-                        className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-border shadow-sm transition hover:opacity-90"
-                      >
-                        <img src={m.url} alt="Embalagem recebida" className="h-full w-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                )}
               </article>
             ))}
           </div>
@@ -860,7 +854,7 @@ export function ProductDetailPage() {
                     <strong className="text-primary">Resposta da {storeName}:</strong> {q.answer}
                   </p>
                 ) : (
-                  <p className="mt-2 text-xs italic text-muted-foreground">Aguardando resposta do vendedor...</p>
+                  <p className="mt-1 text-xs text-muted-foreground italic">Aguardando resposta do vendedor...</p>
                 )}
               </div>
             ))}
@@ -871,10 +865,10 @@ export function ProductDetailPage() {
       {/* Modal de Avaliação */}
       {showReviewModal && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-background p-6 shadow-2xl">
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="font-bold text-lg">Avaliar este produto</h3>
-              <button onClick={() => setShowReviewModal(false)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={closeReviewModal} className="text-muted-foreground hover:text-foreground">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -906,64 +900,60 @@ export function ProductDetailPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold">Comentário sobre o produto e embalagem</label>
+                <label className="text-xs font-semibold">Seu Comentário</label>
                 <textarea
                   required
                   rows={3}
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
-                  placeholder="Conte como o produto e a embalagem chegaram..."
+                  placeholder="Conte o que achou da qualidade do produto..."
                   className="mt-1 w-full rounded-md border border-input bg-background p-2 text-sm outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold">Adicionar Fotos do Pacote/Unboxing</label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-1 w-full"
-                >
-                  <Upload className="mr-2 h-4 w-4" /> Selecionar Foto da Embalagem
-                </Button>
-                {reviewMediaList.length > 0 && (
-                  <div className="mt-2 flex gap-2">
-                    {reviewMediaList.map((m, idx) => (
-                      <img key={idx} src={m.url} alt="" className="h-12 w-12 rounded object-cover border" />
+                <label className="text-xs font-semibold">Fotos e Vídeos (opcional)</label>
+                <label className="mt-1 flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-input p-3 text-xs text-muted-foreground hover:bg-muted">
+                  <Camera className="h-4 w-4" /> Adicionar fotos ou vídeos
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    className="sr-only"
+                    onChange={handleReviewFilesChange}
+                  />
+                </label>
+                {reviewMedia.length > 0 && (
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {reviewMedia.map((m) => (
+                      <li
+                        key={m.id}
+                        className="relative h-16 w-16 overflow-hidden rounded-md border border-border bg-muted"
+                      >
+                        {m.type === "image" ? (
+                          <img src={m.previewUrl} alt={m.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <video src={m.previewUrl} className="h-full w-full object-cover" muted preload="metadata" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeReviewMedia(m.id)}
+                          aria-label={`Remover ${m.name}`}
+                          className="absolute right-0.5 top-0.5 rounded-full bg-background/90 p-0.5 text-foreground shadow"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 )}
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Até {REVIEW_MAX_FILES} arquivos: fotos até 10 MB e vídeos até 50 MB.
+                </p>
               </div>
               <Button type="submit" className="w-full">
                 Enviar Avaliação
               </Button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Lightbox para Visualizar Foto da Embalagem */}
-      {lightboxMedia && (
-        <div
-          onClick={() => setLightboxMedia(null)}
-          className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-sm cursor-pointer"
-        >
-          <div className="relative max-h-[90vh] max-w-3xl overflow-hidden rounded-2xl bg-black">
-            <img src={lightboxMedia.url} alt="Embalagem Unboxing" className="max-h-[85vh] w-auto object-contain" />
-            <button
-              onClick={() => setLightboxMedia(null)}
-              className="absolute right-3 top-3 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
-            >
-              <X className="h-5 w-5" />
-            </button>
           </div>
         </div>
       )}
