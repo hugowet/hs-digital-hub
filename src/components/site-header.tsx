@@ -16,8 +16,7 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,7 +29,6 @@ import {
 import { useCart } from "@/lib/cart";
 import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
-
 export function SiteHeader({
   query = "",
   onQueryChange,
@@ -48,15 +46,14 @@ export function SiteHeader({
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBuyer, setIsBuyer] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
-
   // Estado local para resposta rápida sem lag
   const [localQuery, setLocalQuery] = useState(query);
   const [searchFocused, setSearchFocused] = useState(false);
-
+  // Referência do campo de busca, usada para fechar o teclado do celular
+  const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     setLocalQuery(query);
   }, [query]);
-
   // Debounce leve para atualizar o filtro sem congelar a tela
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -66,7 +63,6 @@ export function SiteHeader({
     }, 200);
     return () => clearTimeout(timer);
   }, [localQuery, onQueryChange, query]);
-
   const matches = useMemo(() => {
     const normalized = (localQuery ?? "").trim().toLowerCase();
     if (!normalized || normalized.length < 2) return [];
@@ -74,7 +70,6 @@ export function SiteHeader({
       .filter((item) => `${item.title} ${item.category}`.toLowerCase().includes(normalized))
       .slice(0, 6);
   }, [localQuery, suggestions]);
-
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       setSignedIn(!!data.user);
@@ -112,7 +107,6 @@ export function SiteHeader({
     });
     return () => data.subscription.unsubscribe();
   }, []);
-
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -120,16 +114,16 @@ export function SiteHeader({
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
-
   const triggerSearch = () => {
     setSearchFocused(false);
+    // Fecha o teclado virtual do celular ao pesquisar
+    inputRef.current?.blur();
     if (onQueryChange) {
       onQueryChange(localQuery);
     } else {
       navigate({ to: "/", search: { q: localQuery || undefined } });
     }
   };
-
   return (
     <header className="sticky top-0 z-50 brand-gradient text-primary-foreground shadow-md">
       <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2.5 sm:py-3">
@@ -146,7 +140,6 @@ export function SiteHeader({
               HS Digital
             </span>
           </Link>
-
           {/* Barra de Pesquisa */}
           <div className="relative flex-1 min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -160,6 +153,7 @@ export function SiteHeader({
               className="w-full m-0 p-0"
             >
               <input
+                ref={inputRef}
                 type="search"
                 enterKeyHint="search"
                 value={localQuery}
@@ -171,7 +165,6 @@ export function SiteHeader({
                 className="h-10 w-full rounded-full border border-white/15 bg-white pl-9 pr-9 text-sm text-foreground outline-none ring-primary-glow/60 placeholder:text-muted-foreground focus:ring-2"
               />
             </form>
-
             {localQuery && (
               <button
                 type="button"
@@ -184,7 +177,6 @@ export function SiteHeader({
                 <X className="h-4 w-4" />
               </button>
             )}
-
             {/* Menu de Sugestões Rápidas */}
             {searchFocused && matches.length > 0 && (
               <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl">
@@ -198,6 +190,8 @@ export function SiteHeader({
                     variant="ghost"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => {
+                      // Fecha o teclado virtual ao escolher uma sugestão
+                      inputRef.current?.blur();
                       setLocalQuery(item.title);
                       if (onQueryChange) onQueryChange(item.title);
                       setSearchFocused(false);
@@ -214,7 +208,6 @@ export function SiteHeader({
               </div>
             )}
           </div>
-
           <nav className="flex items-center gap-1">
             {signedIn && (
               <Link
@@ -324,7 +317,6 @@ export function SiteHeader({
             </Button>
           </nav>
         </div>
-
         {signedIn && <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
           <Link to="/" className="hover:text-white">
             Início
@@ -352,7 +344,6 @@ export function SiteHeader({
             </Link>
           </span>
         </div>}
-
         {open && (
           <div className="mt-3 grid gap-1 rounded-lg border border-primary-foreground/10 bg-black/80 p-2 text-sm shadow-xl backdrop-blur sm:hidden">
             <Link
@@ -467,7 +458,6 @@ export function SiteHeader({
     </header>
   );
 }
-
 export function AuthCta() {
   return (
     <Button asChild variant="secondary" size="sm">
