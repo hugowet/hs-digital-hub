@@ -56,11 +56,20 @@ function CartPage() {
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [quoting, setQuoting] = useState(false);
-  const [quotes, setQuotes] = useState<Array<{
-    storeId: string;
-    storeName: string;
-    options: Array<{ id: string; serviceName: string; carrierName: string; amount: number; deliveryDaysMin: number | null; deliveryDaysMax: number | null }>;
-  }>>([]);
+  const [quotes, setQuotes] = useState<
+    Array<{
+      storeId: string;
+      storeName: string;
+      options: Array<{
+        id: string;
+        serviceName: string;
+        carrierName: string;
+        amount: number;
+        deliveryDaysMin: number | null;
+        deliveryDaysMax: number | null;
+      }>;
+    }>
+  >([]);
   const [selectedQuotes, setSelectedQuotes] = useState<Record<string, string>>({});
   const [coupons, setCoupons] = useState<Awaited<ReturnType<typeof getMyCoupons>>>([]);
   const [selectedCouponId, setSelectedCouponId] = useState("");
@@ -74,7 +83,7 @@ function CartPage() {
   const requestedCouponDiscount = selectedCoupon
     ? selectedCoupon.kind === "free_shipping"
       ? Math.min(shipping, Number(selectedCoupon.max_discount))
-      : Math.min(shipping * Number(selectedCoupon.percent_off) / 100, Number(selectedCoupon.max_discount))
+      : Math.min((shipping * Number(selectedCoupon.percent_off)) / 100, Number(selectedCoupon.max_discount))
     : 0;
   const couponDiscount = Math.min(requestedCouponDiscount, subtotal * 0.12);
   const shippingDiscount = firstPurchaseEligible ? shipping : couponDiscount;
@@ -85,19 +94,30 @@ function CartPage() {
   }, [items]);
 
   useEffect(() => {
-    supabase.from("user_addresses").select("recipient_name,phone,street_address,city,state,postal_code,complement").eq("is_default", true).maybeSingle().then(({ data }) => {
-      if (!data) return;
-      setName(data.recipient_name);
-      setPhone(data.phone);
-      setAddress(`${data.street_address}${data.complement ? `, ${data.complement}` : ""}`);
-      setCity(data.city);
-      setState(data.state);
-      setPostalCode(data.postal_code ?? "");
-    });
+    supabase
+      .from("user_addresses")
+      .select("recipient_name,phone,street_address,city,state,postal_code,complement")
+      .eq("is_default", true)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setName(data.recipient_name ?? "");
+        setPhone(data.phone ?? "");
+        setAddress(`${data.street_address ?? ""}${data.complement ? `, ${data.complement}` : ""}`);
+        setCity(data.city ?? "");
+        setState(data.state ?? "");
+        setPostalCode(data.postal_code ?? "");
+      });
   }, []);
 
   useEffect(() => {
-    loadCoupons().then((items) => setCoupons(items.filter((coupon) => coupon.status === "active" && new Date(coupon.expires_at).getTime() > Date.now()))).catch(() => undefined);
+    loadCoupons()
+      .then((items) =>
+        setCoupons(
+          items.filter((coupon) => coupon.status === "active" && new Date(coupon.expires_at).getTime() > Date.now()),
+        ),
+      )
+      .catch(() => undefined);
   }, [loadCoupons]);
 
   useEffect(() => {
@@ -106,66 +126,102 @@ function CartPage() {
       .catch(() => setFirstPurchaseEligible(false));
   }, [loadFirstPurchaseEligibility]);
 
-  const cartSignature = items.map((item) => `${item.productId}:${item.quantity}`).sort().join("|");
-  useEffect(() => {
-    setQuotes([]);
-    setSelectedQuotes({});
-  }, [cartSignature, postalCode]);
+  const cartSignature = items
+    .map((item) => `${item.productId}:${item.quantity}`)
+    .sort()
+    .join("|");
 
-  const calculateShipping = async () => {
-    const normalized = postalCode.replace(/\D/g, "");
+  const calculateShipping = async (targetZip?: string): Promise<Record<string, string> | null> => {
+    const normalized = (targetZip ?? postalCode).replace(/\D/g, "");
     if (normalized.length !== 8) {
-      toast.error("Informe um CEP válido com 8 números.");
-      return;
+      if (!targetZip) toast.error("Informe um CEP válido com 8 números.");
+      return null;
     }
     setQuoting(true);
     try {
-      const result = await quoteShipping({ data: {
-        postalCode: normalized,
-        items: items
-  .map((item: any) => ({ productId: item.productId ?? item.product_id ?? item.id, quantity: Number(item.quantity) || 1 }))
-  .filter((item) => typeof item.productId === "string" && item.productId.length > 0),
+      const validItems = items
+        .map((item: any) => ({
+          productId: item.productId ?? item.product_id ?? item.id,
+          quantity: Number(item.quantity) || 1,
+        }))
+        .filter((item) => typeof item.productId === "string" && item.productId.length > 0);
 
-      } });
+      const result = await quoteShipping({
+        data: {
+          postalCode: normalized,
+          items: validItems,
+        },
+      });
+
       setQuotes(result);
-      setSelectedQuotes(Object.fromEntries(result.map((group) => {
-        const cheapest = [...group.options].sort((a, b) => a.amount - b.amount)[0];
-        return [group.storeId, cheapest?.id ?? ""];
-      })));
+      const chosen = Object.fromEntries(
+        result.map((group) => {
+          const cheapest = [...group.options].sort((a, b) => a.amount - b.amount)[0];
+          return [group.storeId, cheapest?.id ?? ""];
+        }),
+      );
+      setSelectedQuotes(chosen);
+      return chosen;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível calcular o frete.");
+      return null;
     } finally {
       setQuoting(false);
     }
   };
 
+  // Auto-cálculo de frete ao preencher ou carregar o CEP
+  useEffect(() => {
+    const normalized = postalCode.replace(/\D/g, "");
+    if (normalized.length === 8 && items.length > 0) {
+      void calculateShipping(normalized);
+    }
+  }, [postalCode, cartSignature]);
+
   const checkout = async () => {
-    const physicalStoreIds = groups.filter((group) => group.items.some((item) => item.productType !== "digital")).map((group) => group.storeId);
-    if (!name.trim() || !address.trim() || !city.trim() || state.trim().length !== 2 || postalCode.replace(/\D/g, "").length !== 8) {
+    const physicalStoreIds = groups
+      .filter((group) => group.items.some((item) => item.productType !== "digital"))
+      .map((group) => group.storeId);
+
+    const cleanZip = postalCode.replace(/\D/g, "");
+    if (!name.trim() || !address.trim() || !city.trim() || state.trim().length !== 2 || cleanZip.length !== 8) {
       toast.error("Preencha nome, endereço, cidade, UF e CEP para entrega.");
       return;
     }
-    if (physicalStoreIds.some((storeId) => !selectedQuotes[storeId])) {
-      toast.error("Calcule e escolha o frete de cada loja antes de continuar.");
+
+    let quotesToUse = { ...selectedQuotes };
+
+    // Se ainda não cotou para alguma loja física, calcula automaticamente na hora
+    if (physicalStoreIds.some((storeId) => !quotesToUse[storeId])) {
+      const freshQuotes = await calculateShipping(cleanZip);
+      if (freshQuotes) {
+        quotesToUse = freshQuotes;
+      }
+    }
+
+    if (physicalStoreIds.some((storeId) => !quotesToUse[storeId])) {
+      toast.error("Por favor, selecione uma opção de frete para continuar.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const { orderId } = await createCheckout({ data: {
-        items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
-        shippingAddress: {
-        name: name.trim(),
-        phone: phone.trim(),
-        address: address.trim(),
-        city: city.trim(),
-        state: state.trim().toUpperCase(),
-        postalCode: postalCode.replace(/\D/g, ""),
-        note: note.trim(),
+      const { orderId } = await createCheckout({
+        data: {
+          items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+          shippingAddress: {
+            name: name.trim(),
+            phone: phone.trim(),
+            address: address.trim(),
+            city: city.trim(),
+            state: state.trim().toUpperCase(),
+            postalCode: cleanZip,
+            note: note.trim(),
+          },
+          shippingQuoteIds: quotesToUse,
+          couponId: selectedCouponId || undefined,
         },
-        shippingQuoteIds: selectedQuotes,
-        couponId: selectedCouponId || undefined,
-      } });
+      });
       setSubmitting(false);
       navigate({ to: "/pedido/$orderId", params: { orderId } });
     } catch (error) {
@@ -212,9 +268,7 @@ function CartPage() {
                         )}
                         <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-sm font-medium">{item.title}</p>
-                          <p className="mt-1 font-display font-bold text-primary">
-                            {brl(item.price)}
-                          </p>
+                          <p className="mt-1 font-display font-bold text-primary">{brl(item.price)}</p>
                           {item.productType === "digital" && (
                             <span className="mt-1 inline-block rounded bg-success/10 px-1.5 py-0.5 text-[11px] font-semibold text-success">
                               Entrega digital
@@ -244,9 +298,7 @@ function CartPage() {
                               <Plus className="h-3.5 w-3.5" />
                             </Button>
                           </div>
-                          <span className="text-[11px] text-muted-foreground">
-                            {item.stock} disponíveis
-                          </span>
+                          <span className="text-[11px] text-muted-foreground">{item.stock} disponíveis</span>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -271,10 +323,23 @@ function CartPage() {
                   <dt className="text-muted-foreground">Produtos</dt>
                   <dd>{brl(subtotal)}</dd>
                 </div>
-                {shippingDiscount > 0 && <div className="flex justify-between text-success"><dt>{firstPurchaseEligible ? "Frete grátis da 1ª compra" : "Cupom de frete"}</dt><dd>− {brl(shippingDiscount)}</dd></div>}
+                {shippingDiscount > 0 && (
+                  <div className="flex justify-between text-success">
+                    <dt>{firstPurchaseEligible ? "Frete grátis da 1ª compra" : "Cupom de frete"}</dt>
+                    <dd>− {brl(shippingDiscount)}</dd>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Frete</dt>
-                  <dd>{quotes.length === 0 ? "Calcule pelo CEP" : shipping === 0 ? "Grátis" : brl(shipping)}</dd>
+                  <dd>
+                    {quotes.length === 0
+                      ? quoting
+                        ? "Calculando..."
+                        : "Informe o CEP"
+                      : shipping === 0
+                        ? "Grátis"
+                        : brl(shipping)}
+                  </dd>
                 </div>
                 <div className="flex justify-between border-t border-border pt-2 font-display text-lg font-bold">
                   <dt>Total</dt>
@@ -332,11 +397,23 @@ function CartPage() {
                 <div className="grid grid-cols-[1fr_72px] gap-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="city">Cidade *</Label>
-                    <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} maxLength={100} placeholder="Manaus" />
+                    <Input
+                      id="city"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      maxLength={100}
+                      placeholder="Cidade"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="state">UF *</Label>
-                    <Input id="state" value={state} onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))} maxLength={2} placeholder="AM" />
+                    <Input
+                      id="state"
+                      value={state}
+                      onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
+                      maxLength={2}
+                      placeholder="UF"
+                    />
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -353,15 +430,37 @@ function CartPage() {
 
               {quotes.length > 0 && (
                 <div className="mt-4 space-y-3 border-t border-border pt-4">
-                  <p className="flex items-center gap-2 text-sm font-semibold"><Truck className="h-4 w-4 text-primary" /> Escolha a entrega</p>
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <Truck className="h-4 w-4 text-primary" /> Opções de entrega
+                  </p>
                   {quotes.map((group) => (
                     <div key={group.storeId} className="space-y-2">
                       <p className="text-xs font-semibold text-muted-foreground">{group.storeName}</p>
                       {group.options.map((option) => (
-                        <label key={option.id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm ${selectedQuotes[group.storeId] === option.id ? "border-primary bg-primary/5" : "border-border"}`}>
-                          <input type="radio" name={`shipping-${group.storeId}`} checked={selectedQuotes[group.storeId] === option.id} onChange={() => setSelectedQuotes((current) => ({ ...current, [group.storeId]: option.id }))} />
-                          <span className="min-w-0 flex-1"><strong className="block">{option.serviceName}</strong><span className="text-xs text-muted-foreground">{option.carrierName}{option.deliveryDaysMax !== null ? ` · até ${option.deliveryDaysMax} dias` : ""}</span></span>
-                          <strong>{brl(option.amount)}</strong>
+                        <label
+                          key={option.id}
+                          className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition ${
+                            selectedQuotes[group.storeId] === option.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:bg-muted/40"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={`shipping-${group.storeId}`}
+                            checked={selectedQuotes[group.storeId] === option.id}
+                            onChange={() =>
+                              setSelectedQuotes((current) => ({ ...current, [group.storeId]: option.id }))
+                            }
+                          />
+                          <span className="min-w-0 flex-1">
+                            <strong className="block">{option.serviceName}</strong>
+                            <span className="text-xs text-muted-foreground">
+                              {option.carrierName}
+                              {option.deliveryDaysMax !== null ? ` · até ${option.deliveryDaysMax} dias úteis` : ""}
+                            </span>
+                          </span>
+                          <strong>{option.amount === 0 ? "Grátis" : brl(option.amount)}</strong>
                         </label>
                       ))}
                     </div>
@@ -377,26 +476,35 @@ function CartPage() {
 
               {quotes.length > 0 && coupons.length > 0 && !firstPurchaseEligible && (
                 <div className="mt-4 border-t border-border pt-4">
-                  <label htmlFor="shipping-coupon" className="flex items-center gap-2 text-sm font-semibold"><TicketPercent className="h-4 w-4 text-primary" /> Usar cupom no frete</label>
-                  <select id="shipping-coupon" value={selectedCouponId} onChange={(event) => setSelectedCouponId(event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring">
+                  <label htmlFor="shipping-coupon" className="flex items-center gap-2 text-sm font-semibold">
+                    <TicketPercent className="h-4 w-4 text-primary" /> Usar cupom no frete
+                  </label>
+                  <select
+                    id="shipping-coupon"
+                    value={selectedCouponId}
+                    onChange={(event) => setSelectedCouponId(event.target.value)}
+                    className="mt-2 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  >
                     <option value="">Não usar cupom</option>
-                    {coupons.map((coupon) => <option key={coupon.id} value={coupon.id}>{coupon.kind === "free_shipping" ? "Frete grátis" : `${Number(coupon.percent_off)}% no frete`} · {coupon.code}</option>)}
+                    {coupons.map((coupon) => (
+                      <option key={coupon.id} value={coupon.id}>
+                        {coupon.kind === "free_shipping" ? "Frete grátis" : `${Number(coupon.percent_off)}% no frete`} ·{" "}
+                        {coupon.code}
+                      </option>
+                    ))}
                   </select>
-                  <p className="mt-1.5 text-xs text-muted-foreground">O desconto sai da comissão da HS Digital, até R$ 30. O vendedor recebe o frete integral.</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    O desconto sai da comissão da HS Digital, até R$ 30. O vendedor recebe o frete integral.
+                  </p>
                 </div>
               )}
 
-              <Button
-                className="mt-4 w-full"
-                size="lg"
-                onClick={checkout}
-                disabled={submitting}
-              >
+              <Button className="mt-4 w-full" size="lg" onClick={checkout} disabled={submitting}>
                 <CreditCard className="mr-2 h-5 w-5" />
                 {submitting ? "Criando pedido…" : "Ir para o pagamento"}
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Pagamento seguro por Pix ou cartão. Carrinhos com várias lojas são pagos por loja.
+                Pagamento seguro por Pix ou cartão via Mercado Pago com proteção total.
               </p>
             </aside>
           </div>
