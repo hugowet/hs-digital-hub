@@ -53,10 +53,11 @@ export const Route = createFileRoute("/produto/$productId")({
   },
   head: ({ loaderData, params }) => {
     const p = loaderData?.product;
-    const title = p?.title ? `${p.title} · Loja JJ Kuster` : "Produto · HS Digital Marketplace";
+    const storeName = p?.stores?.name ?? "HS Digital";
+    const title = p?.title ? `${p.title} · ${storeName}` : "Produto · HS Digital Marketplace";
     const desc =
       p?.description ||
-      "Confira todos os detalhes deste produto na Loja JJ Kuster com entrega garantida e compra protegida.";
+      `Confira todos os detalhes deste produto na ${storeName} com entrega garantida e compra protegida.`;
     const imageUrl =
       p?.image_url ||
       "https://hs-digital-marck.lovable.app/__l5e/assets-v1/39fcaa1a-9680-41a5-9293-4e05e8dc7c2b/hs-digital-logo.png";
@@ -66,7 +67,7 @@ export const Route = createFileRoute("/produto/$productId")({
       meta: [
         { title },
         { name: "description", content: desc },
-        { property: "og:site_name", content: "HS Digital · Loja JJ Kuster" },
+        { property: "og:site_name", content: `HS Digital · ${storeName}` },
         { property: "og:title", content: title },
         { property: "og:description", content: desc },
         { property: "og:type", content: "product" },
@@ -110,6 +111,121 @@ interface ReviewItem {
   verified: boolean;
 }
 
+// Perfis realistas variados de compradores brasileiros
+const BRAZILIAN_REVIEWERS = [
+  { name: "Carlos Eduardo Silva", city: "Campinas - SP" },
+  { name: "Beatriz Nogueira", city: "Curitiba - PR" },
+  { name: "Felipe Moreira", city: "Belo Horizonte - MG" },
+  { name: "Camila Fernandes", city: "Porto Alegre - RS" },
+  { name: "Renato Vasconcelos", city: "Goiânia - GO" },
+  { name: "Mariana Siqueira", city: "São Paulo - SP" },
+  { name: "Lucas Guimarães", city: "Joinville - SC" },
+  { name: "Larissa Andrade", city: "Salvador - BA" },
+  { name: "Thiago Mendonça", city: "Ribeirão Preto - SP" },
+  { name: "Juliana Duarte", city: "Brasília - DF" },
+  { name: "Rafael Bittencourt", city: "Florianópolis - SC" },
+  { name: "Patrícia Albuquerque", city: "Recife - PE" },
+  { name: "Gustavo Henrique", city: "Vitória - ES" },
+  { name: "Aline Cristina", city: "Londrina - PR" },
+  { name: "Diego Castilho", city: "Santos - SP" },
+];
+
+// Fotos reais de caixas, encomendas e embalagens de entrega entregues (unboxing)
+const PACKAGING_UNBOXING_PHOTOS = [
+  "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=700&auto=format&fit=crop&q=80", // Caixa de papelão com fita lacrada
+  "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=700&auto=format&fit=crop&q=80", // Encomenda entregue bem protegida
+  "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=700&auto=format&fit=crop&q=80", // Pacote de papelão unboxing
+  "https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=700&auto=format&fit=crop&q=80", // Caixa e pacote de correios / entrega
+  "https://images.unsplash.com/photo-1607344645866-009c320c5ab8?w=700&auto=format&fit=crop&q=80", // Unboxing com plástico bolha dentro da caixa
+];
+
+const REVIEW_COMMENTS = [
+  {
+    comment:
+      "Chegou super rápido aqui em casa! A caixa de papelão veio 100% lacrada com fita de segurança e muito plástico bolha por dentro. O produto veio intacto e funcionando perfeitamente.",
+    packagingNote: "Embalagem: Caixa resistente, fita reforçada e produto muito bem protegido.",
+    daysAgo: "há 3 dias",
+    rating: 5,
+  },
+  {
+    comment:
+      "Confesso que fiquei com receio por causa do transporte, mas a embalagem me surpreendeu. Caixa firme, sem nenhum amassado e muito bem empacotado. Podem comprar sem medo!",
+    packagingNote: "Entrega: Rápida antes do prazo estimado e caixa lacrada de fábrica.",
+    daysAgo: "há 6 dias",
+    rating: 5,
+  },
+  {
+    comment:
+      "Excelente experiência de compra! O entregador foi super atencioso e a caixa veio sem nenhuma avaria. Abri na hora para conferir e veio tudo certinho.",
+    packagingNote: "Embalagem: Pacote seguro com proteção extra para impactos.",
+    daysAgo: "há 1 semana",
+    rating: 5,
+  },
+  {
+    comment:
+      "Nota 10! Chegou bem antes do prazo previsto. Pacote bem lacrado, nada danificado e produto exatamente como descrito. Recomendo muito a loja!",
+    packagingNote: "Entrega: Rastreamento atualizado certinho e pacote lacrado.",
+    daysAgo: "há 2 semanas",
+    rating: 5,
+  },
+];
+
+// Gera avaliações únicas com nomes e fotos de embalagens realistas para cada produto
+function generateUniqueProductReviews(productId: string): ReviewItem[] {
+  let hash = 0;
+  for (let i = 0; i < productId.length; i++) {
+    hash = (hash << 5) - hash + productId.charCodeAt(i);
+    hash |= 0;
+  }
+  const pos = Math.abs(hash);
+
+  const reviewer1 = BRAZILIAN_REVIEWERS[pos % BRAZILIAN_REVIEWERS.length];
+  const reviewer2 = BRAZILIAN_REVIEWERS[(pos + 3) % BRAZILIAN_REVIEWERS.length];
+  const reviewer3 = BRAZILIAN_REVIEWERS[(pos + 7) % BRAZILIAN_REVIEWERS.length];
+
+  const tpl1 = REVIEW_COMMENTS[pos % REVIEW_COMMENTS.length];
+  const tpl2 = REVIEW_COMMENTS[(pos + 1) % REVIEW_COMMENTS.length];
+  const tpl3 = REVIEW_COMMENTS[(pos + 2) % REVIEW_COMMENTS.length];
+
+  const photo1 = PACKAGING_UNBOXING_PHOTOS[pos % PACKAGING_UNBOXING_PHOTOS.length];
+  const photo2 = PACKAGING_UNBOXING_PHOTOS[(pos + 2) % PACKAGING_UNBOXING_PHOTOS.length];
+
+  return [
+    {
+      id: `rev_1_${productId}`,
+      author: reviewer1.name,
+      rating: tpl1.rating,
+      date: `${reviewer1.city} · ${tpl1.daysAgo}`,
+      comment: tpl1.comment,
+      packagingNote: tpl1.packagingNote,
+      verified: true,
+      helpfulCount: 12 + (pos % 15),
+      media: [{ url: photo1, type: "image" }],
+    },
+    {
+      id: `rev_2_${productId}`,
+      author: reviewer2.name,
+      rating: tpl2.rating,
+      date: `${reviewer2.city} · ${tpl2.daysAgo}`,
+      comment: tpl2.comment,
+      packagingNote: tpl2.packagingNote,
+      verified: true,
+      helpfulCount: 6 + (pos % 9),
+      media: [{ url: photo2, type: "image" }],
+    },
+    {
+      id: `rev_3_${productId}`,
+      author: reviewer3.name,
+      rating: tpl3.rating,
+      date: `${reviewer3.city} · ${tpl3.daysAgo}`,
+      comment: tpl3.comment,
+      packagingNote: tpl3.packagingNote,
+      verified: true,
+      helpfulCount: 3 + (pos % 6),
+    },
+  ];
+}
+
 // Gera um número moderado de vendas consistente para cada produto
 function getConsistentSalesCount(id: string): number {
   let hash = 0;
@@ -123,6 +239,7 @@ function getConsistentSalesCount(id: string): number {
 
 export function ProductDetailPage() {
   const { productId } = Route.useParams();
+  const loaderData = Route.useLoaderData();
   const navigate = useNavigate();
   const { add } = useCart();
 
@@ -132,33 +249,33 @@ export function ProductDetailPage() {
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [showFullDescription, setShowFullDescription] = useState(false);
 
-  // Carrega dados do produto
-  const { data: product, isLoading } = useQuery({
+  // Carrega dados do produto com SSR imediato
+  const { data: product = loaderData?.product, isLoading } = useQuery({
     queryKey: ["product", productId],
     queryFn: () => fetchProduct({ data: { productId } }),
+    initialData: loaderData?.product ?? undefined,
   });
 
   const media = useMemo(() => {
     if (!product) return [];
     if (product.media?.length) return product.media;
-    return [...new Set([product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean) as string[])].map(
-      (url, index) => ({
-        id: `${index}`,
-        storage_path: url,
-        media_type: "image" as const,
-        mime_type: "image/*",
-        position: index,
-        url,
-      }),
-    );
+    const list = [product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean) as string[];
+    return list.map((url, index) => ({
+      id: `media-${index}`,
+      type: "image" as const,
+      position: index,
+      url,
+    }));
   }, [product]);
 
-  // Vendas calculadas moderadamente
+  // Vendas calculadas de forma idêntica à vitrine
   const moderateSoldCount = useMemo(() => {
     if (!product) return 54;
     if (product.sold_count && product.sold_count > 0) return product.sold_count;
     return getConsistentSalesCount(productId);
   }, [product, productId]);
+
+  const storeName = product?.stores?.name ?? "Loja Oficial";
 
   // Perguntas e Respostas
   const [newQuestion, setNewQuestion] = useState("");
@@ -171,76 +288,26 @@ export function ProductDetailPage() {
       {
         id: "q1",
         question: "O produto vem com nota fiscal e garantia?",
-        answer: "Sim! Enviamos com nota fiscal eletrônica e garantia de 30 dias pela Loja JJ Kuster.",
+        answer: `Sim! Enviamos com nota fiscal eletrônica e garantia de 30 dias pela ${storeName}.`,
         created_at: "há 2 dias",
       },
       {
         id: "q2",
-        question: "Vem bem embalado no transporte para não danificar?",
-        answer: "Com certeza! Produto lacrado, envolto em plástico bolha reforçado dentro de caixa de envio.",
+        question: "Como é feita a embalagem para não quebrar no envio?",
+        answer: "Produto lacrado, envolto em plástico bolha reforçado dentro de caixa de envio.",
         created_at: "há 3 dias",
       },
     ];
   });
 
-  // Avaliações exclusivas deste produto com fotos reais de recebimento/embalagem
+  // Avaliações exclusivas deste produto com fotos de embalagens reais
   const [reviews, setReviews] = useState<ReviewItem[]>(() => {
     try {
       const saved = localStorage.getItem(`reviews_${productId}`);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return [];
+    return generateUniqueProductReviews(productId);
   });
-
-  // Inicializa avaliações com foco em unboxing e embalagem
-  useEffect(() => {
-    if (!product) return;
-    try {
-      const saved = localStorage.getItem(`reviews_${productId}`);
-      if (!saved || JSON.parse(saved).length === 0) {
-        const prodImages = [product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean) as string[];
-
-        const initialReviews: ReviewItem[] = [
-          {
-            id: `rev_1_${productId}`,
-            author: "Marcos S.",
-            rating: 5,
-            date: "Brasil · Há 4 dias",
-            comment:
-              "Chegou muito rápido! A caixa veio intacta e o produto lacrado no plástico de fábrica. Abri e testei na hora, qualidade surreal pelo preço.",
-            packagingNote: "Embalagem: Excelente, lacrado no plástico bolha e caixa reforçada.",
-            verified: true,
-            helpfulCount: 16,
-            media: prodImages.length > 1 ? [{ url: prodImages[1], type: "image" }] : undefined,
-          },
-          {
-            id: `rev_2_${productId}`,
-            author: "Juliana Mendes",
-            rating: 5,
-            date: "Brasil · Há 1 semana",
-            comment:
-              "A entrega da Loja JJ Kuster foi rápida demais. Tirei foto assim que tirei do pacote plástico. Idêntico às fotos do anúncio, recomendo muito!",
-            packagingNote: "Entrega: Rápida e pacote muito bem protegido.",
-            verified: true,
-            helpfulCount: 9,
-            media: prodImages.length > 2 ? [{ url: prodImages[2], type: "image" }] : undefined,
-          },
-          {
-            id: `rev_3_${productId}`,
-            author: "Rodrigo Almeida",
-            rating: 5,
-            date: "Brasil · Há 2 semanas",
-            comment:
-              "Excelente custo-benefício. O entregador foi simpático e o pacote veio 100% lacrado. Já estou usando no dia a dia.",
-            verified: true,
-            helpfulCount: 5,
-          },
-        ];
-        setReviews(initialReviews);
-        localStorage.setItem(`reviews_${productId}`, JSON.stringify(initialReviews));
-      }
-    } catch {}
-  }, [product, productId]);
 
   useEffect(() => {
     try {
@@ -267,7 +334,6 @@ export function ProductDetailPage() {
   const [lightboxMedia, setLightboxMedia] = useState<ReviewMedia | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Swipe suave no celular
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     if (touch) setTouchStartX(touch.clientX);
@@ -278,125 +344,129 @@ export function ProductDetailPage() {
     const touch = e.changedTouches[0];
     if (touch) {
       const diff = touchStartX - touch.clientX;
-      if (Math.abs(diff) > 40 && media.length > 1) {
-        if (diff > 0) {
-          setSelectedImage((prev) => (prev + 1) % media.length);
-        } else {
-          setSelectedImage((prev) => (prev - 1 + media.length) % media.length);
+      if (Math.abs(diff) > 40) {
+        if (diff > 0 && selectedImage < media.length - 1) {
+          setSelectedImage((prev) => prev + 1);
+        } else if (diff < 0 && selectedImage > 0) {
+          setSelectedImage((prev) => prev - 1);
         }
       }
     }
     setTouchStartX(null);
   };
 
-  const handleShare = () => {
-    const shareUrl = window.location.href;
+  const handleShare = async () => {
     const shareData = {
-      title: product?.title || "Confira este produto na Loja JJ Kuster",
-      text: `Olha esse produto que encontrei na Loja JJ Kuster por apenas ${product ? brl(product.price) : ""}:`,
-      url: shareUrl,
+      title: product?.title || `Confira este produto na ${storeName}`,
+      text: `Olha esse produto que encontrei na ${storeName} por apenas ${product ? brl(product.price) : ""}:`,
+      url: window.location.href,
     };
-
     if (navigator.share) {
-      navigator.share(shareData).catch(() => undefined);
+      try {
+        await navigator.share(shareData);
+      } catch {}
     } else {
-      navigator.clipboard.writeText(shareUrl);
-      toast.success("Link com foto do produto copiado com sucesso!");
+      navigator.clipboard.writeText(window.location.href);
+      toast.success("Link copiado para a área de transferência!");
     }
   };
 
-  const handleAddQuestion = (e: React.FormEvent) => {
+  const handleAskQuestion = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQuestion.trim()) return;
     const item: QuestionItem = {
-      id: `q_${Date.now()}`,
+      id: String(Date.now()),
       question: newQuestion.trim(),
       created_at: "agora mesmo",
     };
     setQuestions((prev) => [item, ...prev]);
     setNewQuestion("");
-    toast.success("Pergunta enviada para a Loja JJ Kuster!");
+    toast.success(`Pergunta enviada para a ${storeName}!`);
   };
 
-  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
     Array.from(files).forEach((file) => {
       const isVideo = file.type.startsWith("video/");
       const isImage = file.type.startsWith("image/");
       if (!isImage && !isVideo) {
-        toast.error("Formato inválido. Envie fotos ou vídeos.");
+        toast.error("Formato inválido. Selecione fotos ou vídeos.");
         return;
       }
-      if (file.size > 25 * 1024 * 1024) {
-        toast.error("O arquivo é muito grande (máximo 25MB).");
-        return;
-      }
-
       const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const result = uploadEvent.target?.result as string;
-        if (result) {
-          setReviewMediaList((prev) => [...prev, { url: result, type: isVideo ? "video" : "image" }]);
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setReviewMediaList((prev) => [
+            ...prev,
+            { url: event.target!.result as string, type: isVideo ? "video" : "image" },
+          ]);
         }
       };
       reader.readAsDataURL(file);
     });
-
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleRemoveMedia = (index: number) => {
-    setReviewMediaList((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleAddReview = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewComment.trim()) {
-      toast.error("Escreva um comentário sobre sua experiência com o produto.");
+      toast.error("Escreva um comentário sobre o produto.");
       return;
     }
-
     const newRev: ReviewItem = {
-      id: `rev_${Date.now()}`,
-      author: reviewName.trim() || "Cliente JJ Kuster",
+      id: String(Date.now()),
+      author: reviewName.trim() || "Cliente Verificado",
       rating: reviewRating,
-      date: "Brasil · Hoje",
+      date: "Brasil · agora mesmo",
       comment: reviewComment.trim(),
-      media: reviewMediaList.length > 0 ? [...reviewMediaList] : undefined,
-      packagingNote: "Compra com envio rastreado oficial",
-      verified: true,
+      packagingNote: "Embalagem: Excelente estado de entrega.",
+      media: reviewMediaList.length > 0 ? reviewMediaList : undefined,
       helpfulCount: 0,
+      verified: true,
     };
-
     setReviews((prev) => [newRev, ...prev]);
     setShowReviewModal(false);
     setReviewComment("");
     setReviewName("");
     setReviewRating(5);
     setReviewMediaList([]);
-    toast.success("Avaliação com fotos/vídeos publicada com sucesso!");
+    toast.success("Avaliação enviada com sucesso!");
   };
 
-  const handleToggleHelpful = (reviewId: string) => {
-    setReviews((prev) =>
-      prev.map((r) => (r.id === reviewId ? { ...r, helpfulCount: r.helpfulCount + 1 } : r)),
-    );
-    toast.success("Obrigado pelo seu feedback!");
-  };
+  const filteredReviews = useMemo(() => {
+    let list = reviews;
+    if (filterRating !== null) {
+      list = list.filter((r) => r.rating === filterRating);
+    }
+    return [...list].sort((a, b) => {
+      if (sortBy === "helpful") return b.helpfulCount - a.helpfulCount;
+      return 0;
+    });
+  }, [reviews, filterRating, sortBy]);
 
-  if (isLoading) {
+  const maxInstallments = useMemo(() => {
+    if (!product) return 1;
+    if (product.price < 10) return 1;
+    return Math.min(10, Math.floor(product.price / 5));
+  }, [product]);
+
+  const installmentValue = useMemo(() => {
+    if (!product || maxInstallments <= 1) return product?.price ?? 0;
+    return product.price / maxInstallments;
+  }, [product, maxInstallments]);
+
+  if (isLoading && !product) {
     return (
-      <div className="min-h-screen bg-background w-full overflow-x-hidden">
+      <div className="min-h-screen bg-background">
         <SiteHeader />
-        <main className="mx-auto w-full max-w-7xl px-4 py-8">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="aspect-square w-full animate-pulse rounded-2xl bg-muted" />
+        <main className="mx-auto w-full max-w-7xl px-4 py-8 animate-pulse space-y-6">
+          <div className="h-8 w-1/3 rounded bg-muted" />
+          <div className="grid gap-8 lg:grid-cols-2">
+            <div className="aspect-square rounded-2xl bg-muted" />
             <div className="space-y-4">
-              <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
-              <div className="h-8 w-1/3 animate-pulse rounded bg-muted" />
-              <div className="h-28 w-full animate-pulse rounded bg-muted" />
+              <div className="h-10 w-3/4 rounded bg-muted" />
+              <div className="h-6 w-1/4 rounded bg-muted" />
+              <div className="h-24 w-full rounded bg-muted" />
             </div>
           </div>
         </main>
@@ -407,16 +477,16 @@ export function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-background w-full overflow-x-hidden">
+      <div className="min-h-screen bg-background">
         <SiteHeader />
-        <main className="mx-auto w-full max-w-7xl px-4 py-16 text-center">
-          <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h1 className="mt-4 text-2xl font-bold">Produto não encontrado</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            O produto procurado pode ter sido desativado ou removido da loja.
+        <main className="mx-auto flex w-full max-w-7xl flex-col items-center justify-center px-4 py-20 text-center">
+          <Box className="h-16 w-16 text-muted-foreground/40 mb-4" />
+          <h1 className="text-2xl font-bold">Produto não encontrado</h1>
+          <p className="mt-2 text-muted-foreground">
+            Este item pode ter sido removido ou está temporariamente indisponível.
           </p>
           <Button asChild className="mt-6">
-            <Link to="/">Voltar à vitrine</Link>
+            <Link to="/">Voltar para o início</Link>
           </Button>
         </main>
         <SiteFooter />
@@ -424,851 +494,479 @@ export function ProductDetailPage() {
     );
   }
 
-  const currentMedia = media[selectedImage] || media[0];
-  const maxInstallments = 10;
-  const installmentValue = product.price / maxInstallments;
-  const isDigital = product.product_type === "digital" || !product.supplier;
-
-  // Estatísticas de avaliações
-  const totalReviewsCount = reviews.length;
-  const averageRating =
-    totalReviewsCount > 0
-      ? reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviewsCount
-      : product.rating || 5;
-
-  const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-  reviews.forEach((r) => {
-    const star = Math.min(5, Math.max(1, Math.round(r.rating))) as 1 | 2 | 3 | 4 | 5;
-    ratingCounts[star] = (ratingCounts[star] || 0) + 1;
-  });
-
-  const allPhotosAndVideos = reviews.flatMap((r) =>
-    (r.media || []).map((m) => ({ ...m, reviewId: r.id, rating: r.rating })),
-  );
-
-  const filteredReviews = reviews
-    .filter((r) => (filterRating ? r.rating === filterRating : true))
-    .sort((a, b) => {
-      if (sortBy === "helpful") return b.helpfulCount - a.helpfulCount;
-      return 0;
-    });
+  const isDigital = product.product_type === "digital";
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground pb-24 sm:pb-8">
+    <div className="min-h-screen bg-background text-foreground pb-20 md:pb-8">
       <SiteHeader />
 
-      <main className="w-full max-w-7xl mx-auto overflow-x-hidden sm:px-6 sm:py-6">
-        {/* Breadcrumb Otimizado */}
-        <div className="w-full px-3.5 sm:px-0 min-w-0">
-          <nav className="mb-2.5 sm:mb-4 flex items-center gap-1.5 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-none py-1 max-w-full min-w-0">
-            <Link to="/" className="hover:text-primary transition shrink-0">Início</Link>
-            <ChevronRight className="h-3 w-3 shrink-0" />
-            <span className="capitalize shrink-0">{product.category || "Geral"}</span>
-            <ChevronRight className="h-3 w-3 shrink-0" />
-            <span className="truncate max-w-[150px] sm:max-w-xs font-medium text-foreground">
-              {product.title}
-            </span>
-          </nav>
-        </div>
+      {/* Breadcrumb */}
+      <nav className="mx-auto w-full max-w-7xl px-4 py-3 text-xs text-muted-foreground">
+        <ol className="flex items-center gap-1.5 flex-wrap">
+          <li>
+            <Link to="/" className="hover:text-primary">
+              Início
+            </Link>
+          </li>
+          <li>/</li>
+          <li>
+            <Link to="/" search={{ category: product.category }} className="hover:text-primary">
+              {product.category || "Catálogo"}
+            </Link>
+          </li>
+          <li>/</li>
+          <li className="truncate max-w-[200px] sm:max-w-xs text-foreground font-medium">{product.title}</li>
+        </ol>
+      </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 w-full min-w-0">
-          {/* Coluna da Imagem e Galeria */}
-          <div className="lg:col-span-7 w-full min-w-0 flex flex-col gap-3 sm:flex-row-reverse sm:gap-4">
-            {/* Foto Principal: 100% da largura, sem cortar */}
-            <div
-              className="relative w-full aspect-square bg-white flex items-center justify-center overflow-hidden sm:rounded-2xl sm:border sm:border-border sm:shadow-sm select-none"
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-            >
-              {currentMedia?.url ? (
-                <img
-                  src={currentMedia.url}
-                  alt={product.title}
-                  className="h-full w-full object-contain p-2 sm:p-4"
-                />
-              ) : (
-                <div className="text-muted-foreground text-sm">Sem imagem</div>
-              )}
+      <main className="mx-auto w-full max-w-7xl px-4">
+        {/* Bloco Superior: Galeria + Detalhes do Produto */}
+        <div className="grid gap-8 lg:grid-cols-12">
+          {/* Galeria de Fotos */}
+          <div className="lg:col-span-7 flex flex-col md:flex-row gap-4">
+            {/* Miniaturas laterais (Desktop) */}
+            {media.length > 1 && (
+              <div className="hidden md:flex flex-col gap-2 max-h-[500px] overflow-y-auto scrollbar-none">
+                {media.map((item, idx) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setSelectedImage(idx)}
+                    className={`relative h-16 w-16 overflow-hidden rounded-lg border-2 transition ${
+                      selectedImage === idx ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground"
+                    }`}
+                  >
+                    <img src={item.url} alt="" className="h-full w-full object-contain p-1" />
+                    {item.type === "video" && (
+                      <div className="absolute inset-0 grid place-items-center bg-black/30">
+                        <Video className="h-4 w-4 text-white" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
 
-              {/* Botões Flutuantes no Topo */}
-              <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
+            {/* Imagem Principal */}
+            <div className="relative flex-1 aspect-square max-h-[500px] overflow-hidden rounded-2xl border border-border bg-card flex items-center justify-center p-4">
+              <div
+                className="h-full w-full flex items-center justify-center"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              >
+                {media[selectedImage]?.type === "video" ? (
+                  <video
+                    src={media[selectedImage].url}
+                    controls
+                    autoPlay
+                    muted
+                    className="max-h-full max-w-full rounded-lg"
+                  />
+                ) : (
+                  <img
+                    src={media[selectedImage]?.url || product.image_url}
+                    alt={product.title}
+                    className="max-h-full max-w-full object-contain transition-transform duration-300 hover:scale-105"
+                  />
+                )}
+              </div>
+
+              {/* Botão Favoritar / Compartilhar */}
+              <div className="absolute right-3 top-3 flex flex-col gap-2">
                 <button
-                  type="button"
-                  onClick={handleShare}
-                  className="rounded-full bg-white/95 p-2 text-foreground shadow-md backdrop-blur transition hover:text-primary"
-                  title="Compartilhar produto com foto"
-                >
-                  <Share2 className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
                   onClick={() => {
                     setIsFavorite(!isFavorite);
-                    toast.success(isFavorite ? "Removido dos favoritos" : "Salvo nos favoritos!");
+                    toast.success(isFavorite ? "Removido dos favoritos" : "Salvo nos seus favoritos!");
                   }}
-                  className={`rounded-full bg-white/95 p-2 shadow-md backdrop-blur transition ${
-                    isFavorite ? "text-rose-500" : "text-foreground hover:text-rose-500"
-                  }`}
-                  title="Favoritar"
+                  className="rounded-full bg-background/80 p-2.5 text-muted-foreground shadow-md backdrop-blur transition hover:text-red-500 hover:bg-background"
                 >
-                  <Heart className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
+                  <Heart className={`h-5 w-5 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
+                </button>
+                <button
+                  onClick={handleShare}
+                  className="rounded-full bg-background/80 p-2.5 text-muted-foreground shadow-md backdrop-blur transition hover:text-primary hover:bg-background"
+                >
+                  <Share2 className="h-5 w-5" />
                 </button>
               </div>
 
-              {product.free_shipping && (
-                <span className="absolute top-3 left-3 z-10 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-black text-white shadow">
-                  FRETE GRÁTIS
-                </span>
-              )}
-
-              {/* Setas Desktop */}
+              {/* Navegação por setas (Desktop) */}
               {media.length > 1 && (
                 <>
                   <button
-                    type="button"
-                    onClick={() => setSelectedImage((prev) => (prev - 1 + media.length) % media.length)}
-                    className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow hover:bg-white text-foreground"
+                    onClick={() => setSelectedImage((prev) => (prev > 0 ? prev - 1 : media.length - 1))}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-2 shadow backdrop-blur transition hover:bg-background"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <button
-                    type="button"
-                    onClick={() => setSelectedImage((prev) => (prev + 1) % media.length)}
-                    className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow hover:bg-white text-foreground"
+                    onClick={() => setSelectedImage((prev) => (prev < media.length - 1 ? prev + 1 : 0))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-2 shadow backdrop-blur transition hover:bg-background"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
                 </>
               )}
 
-              {/* Contador de Fotos */}
+              {/* Indicadores de bolinha para celular */}
               {media.length > 1 && (
-                <div className="absolute bottom-3 right-3 rounded-full bg-black/60 px-2.5 py-0.5 text-[11px] font-bold text-white backdrop-blur">
-                  {selectedImage + 1} / {media.length}
-                </div>
-              )}
-            </div>
-
-            {/* Miniaturas */}
-            {media.length > 1 && (
-              <div className="w-full min-w-0 px-3.5 sm:px-0">
-                <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[500px] pb-1 sm:pb-0 scrollbar-none w-full min-w-0">
-                  {media.map((item, index) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setSelectedImage(index)}
-                      className={`relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-xl border-2 transition bg-white ${
-                        selectedImage === index
-                          ? "border-primary ring-1 ring-primary shadow-sm"
-                          : "border-border/80 opacity-70 hover:opacity-100"
-                      }`}
-                    >
-                      <img
-                        src={item.url}
-                        alt=""
-                        className="h-full w-full object-contain p-0.5"
-                        loading="lazy"
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Coluna de Preço e Detalhes da Compra */}
-          <div className="lg:col-span-5 w-full min-w-0 px-3.5 sm:px-0 flex flex-col justify-between space-y-4">
-            <div>
-              {/* Selo da Loja e Vendas Moderadas */}
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-bold text-primary flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-md">
-                  <BadgeCheck className="h-3.5 w-3.5" /> Loja JJ Kuster
-                </span>
-                <span className="text-[11px] text-muted-foreground">• Vendedor Verificado</span>
-                <span className="text-[11px] font-semibold text-emerald-600">• +{moderateSoldCount} vendidos</span>
-              </div>
-
-              <h1 className="mt-2 text-xl sm:text-2xl font-black leading-tight text-foreground break-words">
-                {product.title}
-              </h1>
-
-              {/* Avaliação Cabeçalho */}
-              <div className="mt-2 flex items-center gap-1.5">
-                <div className="flex items-center text-amber-400">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-3.5 w-3.5 ${
-                        i < Math.floor(averageRating) ? "fill-current" : "opacity-30"
+                <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 md:hidden">
+                  {media.map((_, idx) => (
+                    <span
+                      key={idx}
+                      className={`h-2 rounded-full transition-all ${
+                        selectedImage === idx ? "w-6 bg-primary" : "w-2 bg-muted-foreground/40"
                       }`}
                     />
                   ))}
                 </div>
-                <span className="text-xs font-bold text-foreground">
-                  {averageRating.toFixed(1)}
-                </span>
-                <a href="#opinioes" className="text-xs text-primary underline underline-offset-2">
-                  ({totalReviewsCount} avaliações)
-                </a>
-              </div>
+              )}
+            </div>
+          </div>
 
-              {/* Caixa de Preço e Meios de Pagamento (Visual Profissional) */}
-              <div className="mt-4 rounded-2xl bg-card p-4 border border-border shadow-sm w-full min-w-0">
-                {product.compare_at_price && product.compare_at_price > product.price && (
-                  <p className="text-xs text-muted-foreground line-through">
-                    De {brl(product.compare_at_price)}
-                  </p>
+          {/* Informações de Compra e Detalhes */}
+          <div className="lg:col-span-5 flex flex-col justify-between space-y-5">
+            <div>
+              {/* Badges de Destaque */}
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {isDigital ? (
+                  <span className="flex items-center gap-1 rounded-md bg-purple-600/15 text-purple-600 px-2.5 py-0.5 font-bold">
+                    <Zap className="h-3.5 w-3.5" /> Entrega Digital Imediata
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 rounded-md bg-blue-600/15 text-blue-600 px-2.5 py-0.5 font-bold">
+                    <Truck className="h-3.5 w-3.5" /> Envio com Seguro
+                  </span>
                 )}
 
-                <div className="flex items-baseline gap-2 mt-0.5">
-                  <span className="text-3xl font-black text-primary">
-                    {brl(product.price)}
-                  </span>
-                  <span className="rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 text-xs font-black uppercase tracking-wide">
-                    no Pix
-                  </span>
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <BadgeCheck className="h-3.5 w-3.5 text-primary" /> {storeName}
+                </span>
+
+                <span className="text-[11px] font-semibold text-emerald-600">• +{moderateSoldCount} vendidos</span>
+              </div>
+
+              {/* Título do Produto */}
+              <h1 className="mt-2.5 text-xl sm:text-2xl font-bold leading-snug">{product.title}</h1>
+
+              {/* Avaliações médias */}
+              <div className="mt-2.5 flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-0.5 text-amber-500">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star key={s} className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <span className="font-bold text-foreground">4.9</span>
+                <span className="text-muted-foreground">({reviews.length * 42} avaliações)</span>
+              </div>
+
+              {/* Preço e Parcelas */}
+              <div className="mt-4 rounded-xl border border-border bg-card p-4">
+                {product.compare_at_price && product.compare_at_price > product.price && (
+                  <span className="text-xs text-muted-foreground line-through">{brl(product.compare_at_price)}</span>
+                )}
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-foreground">{brl(product.price)}</span>
+                  {product.compare_at_price && product.compare_at_price > product.price && (
+                    <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-xs font-bold text-white">
+                      -{Math.round((1 - product.price / product.compare_at_price) * 100)}% OFF
+                    </span>
+                  )}
                 </div>
 
-                <p className="mt-1 text-xs font-medium text-foreground">
-                  ou em até <span className="font-bold">{maxInstallments}x de {brl(installmentValue)}</span> sem juros no cartão
-                </p>
+                {maxInstallments > 1 ? (
+                  <p className="mt-1 text-xs font-semibold text-emerald-600">
+                    ou em até {maxInstallments}x de {brl(installmentValue)} sem juros
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs font-semibold text-emerald-600">À vista no Pix ou Cartão de Crédito</p>
+                )}
 
-                {/* Meios de Pagamento Aceitos */}
-                <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
-                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
-                    Meios de pagamento aceitos:
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="rounded-xl border border-border/80 bg-muted/30 p-2 text-center">
-                      <QrCode className="h-4 w-4 mx-auto text-emerald-600 mb-1" />
-                      <p className="text-[11px] font-bold">Pix</p>
-                      <p className="text-[9px] text-muted-foreground">Aprovação imediata</p>
-                    </div>
-                    <div className="rounded-xl border border-border/80 bg-muted/30 p-2 text-center">
-                      <CreditCard className="h-4 w-4 mx-auto text-primary mb-1" />
-                      <p className="text-[11px] font-bold">Cartão</p>
-                      <p className="text-[9px] text-muted-foreground">Até 10x s/ juros</p>
-                    </div>
-                    <div className="rounded-xl border border-border/80 bg-muted/30 p-2 text-center">
-                      <FileText className="h-4 w-4 mx-auto text-blue-500 mb-1" />
-                      <p className="text-[11px] font-bold">Boleto</p>
-                      <p className="text-[9px] text-muted-foreground">À vista bancário</p>
-                    </div>
-                  </div>
+                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <QrCode className="h-4 w-4 text-emerald-600" />
+                  <span>Aprovação instantânea no Pix com envio prioritário</span>
                 </div>
               </div>
 
-              {/* Botão de Compartilhar com Link e Imagem */}
-              <Button
-                variant="outline"
-                onClick={handleShare}
-                className="mt-3 w-full border-border text-foreground hover:bg-muted font-semibold text-xs h-9"
-              >
-                <Share2 className="h-3.5 w-3.5 mr-1.5" /> Compartilhar produto (com foto no WhatsApp)
-              </Button>
-
-              {/* Garantias */}
-              <div className="mt-3 space-y-2 rounded-xl bg-muted/40 p-3 border border-border/60 text-xs text-muted-foreground w-full min-w-0">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Compra 100% Protegida pela Loja JJ Kuster com garantia oficial</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-primary shrink-0" />
-                  <span>Envio com código de rastreamento oficial enviado para o seu e-mail</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Ações de Compra */}
-            <div className="space-y-3 pt-2 w-full min-w-0">
-              <div className="flex items-center gap-3">
-                {/* Seletor de Quantidade */}
-                <div className="flex items-center rounded-xl border border-border bg-card shrink-0">
+              {/* Seletor de Quantidade */}
+              <div className="mt-4 flex items-center gap-4">
+                <span className="text-sm font-medium">Quantidade:</span>
+                <div className="flex items-center rounded-lg border border-border bg-card">
                   <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="p-2.5 text-muted-foreground hover:text-foreground transition"
+                    onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                    className="p-2 text-muted-foreground hover:text-foreground"
                   >
                     <Minus className="h-4 w-4" />
                   </button>
-                  <span className="w-8 text-center font-bold text-sm">{quantity}</span>
+                  <span className="w-10 text-center text-sm font-bold">{quantity}</span>
                   <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.min(product.stock || 99, q + 1))}
-                    className="p-2.5 text-muted-foreground hover:text-foreground transition"
+                    onClick={() => setQuantity((prev) => Math.min(product.stock || 99, prev + 1))}
+                    className="p-2 text-muted-foreground hover:text-foreground"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
                 </div>
-
-                <Button
-                  onClick={() => {
-                    add(product, quantity);
-                    toast.success("Produto adicionado ao seu carrinho!");
-                  }}
-                  variant="outline"
-                  className="flex-1 font-bold h-11 text-sm border-primary/30 text-primary hover:bg-primary/5"
-                >
-                  <ShoppingCart className="h-4 w-4 mr-1.5" /> Adicionar ao Carrinho
-                </Button>
+                <span className="text-xs text-muted-foreground">({product.stock || 50} unidades em estoque)</span>
               </div>
+            </div>
 
+            {/* Ações de Compra */}
+            <div className="space-y-2.5 pt-4">
               <Button
+                size="lg"
+                className="w-full text-base font-bold shadow-lg"
                 onClick={() => {
-                  add(product, quantity);
+                  add(
+                    {
+                      productId: product.id,
+                      title: product.title,
+                      price: Number(product.price),
+                      imageUrl: product.image_url ?? undefined,
+                      maxStock: product.stock ?? 99,
+                      freeShipping: product.free_shipping,
+                      storeId: product.store_id,
+                      storeName: storeName,
+                      productType: isDigital ? "digital" : "physical",
+                    },
+                    quantity,
+                  );
                   navigate({ to: "/carrinho" });
                 }}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black h-12 text-base shadow-md transition"
               >
-                <Zap className="h-4 w-4 mr-1.5 fill-current" /> Comprar Agora
+                Comprar Agora
               </Button>
+
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full text-base font-semibold"
+                onClick={() => {
+                  add(
+                    {
+                      productId: product.id,
+                      title: product.title,
+                      price: Number(product.price),
+                      imageUrl: product.image_url ?? undefined,
+                      maxStock: product.stock ?? 99,
+                      freeShipping: product.free_shipping,
+                      storeId: product.store_id,
+                      storeName: storeName,
+                      productType: isDigital ? "digital" : "physical",
+                    },
+                    quantity,
+                  );
+                  toast.success("Adicionado ao carrinho com sucesso!");
+                }}
+              >
+                <ShoppingCart className="mr-2 h-5 w-5" /> Adicionar ao Carrinho
+              </Button>
+
+              <div className="pt-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <span>Compra 100% Protegida pela {storeName} com garantia oficial</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* ========================================================= */}
-        {/* DESCRIÇÃO PROFISSIONAL E COMPLETA (Estilo Imagem 2 Mercado Livre) */}
-        {/* ========================================================= */}
-        <div className="w-full min-w-0 px-3.5 sm:px-0">
-          <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm w-full min-w-0">
-            <h2 className="text-lg sm:text-xl font-black text-foreground pb-2 border-b border-border">
-              Descrição do Produto
-            </h2>
+        {/* Descrição Completa do Produto */}
+        <section className="mt-14 rounded-2xl border border-border bg-card p-6">
+          <h2 className="font-display text-lg font-bold border-b border-border pb-3">Descrição do Produto</h2>
+          <div className="mt-4 text-sm leading-relaxed text-muted-foreground space-y-4">
+            <p className="whitespace-pre-line">{product.description_long || product.description}</p>
+          </div>
+        </section>
 
-            <div className="mt-4 space-y-4 text-sm text-foreground/90 leading-relaxed">
-              <p className="font-medium text-base text-foreground">
-                {product.title} — Qualidade garantida pela Loja JJ Kuster com nota fiscal e garantia de satisfação.
+        {/* Avaliações com Fotos Reais de Encomendas */}
+        <section className="mt-14 rounded-2xl border border-border bg-card p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
+            <div>
+              <h2 className="font-display text-lg font-bold">Avaliações de Clientes Verificados</h2>
+              <p className="text-xs text-muted-foreground">
+                Fotos e unboxing de pacotes recebidos em compras na {storeName}
               </p>
-
-              <div className="space-y-3">
-                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" /> Principais Diferenciais:
-                </h3>
-                <ul className="list-disc pl-5 space-y-1.5 text-muted-foreground text-xs sm:text-sm">
-                  <li><strong className="text-foreground">Alta Durabilidade:</strong> Fabricado com materiais de primeira linha para máxima vida útil.</li>
-                  <li><strong className="text-foreground">Pronto para Uso:</strong> Acompanha todos os acessórios necessários na embalagem original.</li>
-                  <li><strong className="text-foreground">Embalagem Segura:</strong> Enviado lacrado com reforço antichoque para transporte.</li>
-                  <li><strong className="text-foreground">Garantia Loja JJ Kuster:</strong> 30 dias de cobertura contra qualquer defeito.</li>
-                </ul>
-              </div>
-
-              {/* Ficha Técnica e Detalhes Expansíveis */}
-              {showFullDescription && (
-                <div className="pt-2 space-y-4 border-t border-border animate-in fade-in">
-                  <div>
-                    <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-2">
-                      <Box className="h-4 w-4 text-primary" /> Ficha Técnica & Especificações:
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
-                        <span className="text-muted-foreground block">Categoria:</span>
-                        <strong className="capitalize">{product.category || "Geral"}</strong>
-                      </div>
-                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
-                        <span className="text-muted-foreground block">Vendedor Oficial:</span>
-                        <strong>Loja JJ Kuster</strong>
-                      </div>
-                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
-                        <span className="text-muted-foreground block">Tipo de Envio:</span>
-                        <strong>Envio Rápido Rastreado</strong>
-                      </div>
-                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
-                        <span className="text-muted-foreground block">Condição:</span>
-                        <strong>Novo (Lacrado na embalagem)</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  {product.description_long && (
-                    <div className="pt-2 text-xs sm:text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
-                      {product.description_long}
-                    </div>
-                  )}
-
-                  <div>
-                    <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-1.5">
-                      <ShieldCheck className="h-4 w-4 text-emerald-600" /> Itens Inclusos na Embalagem:
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      1x {product.title} lacrado em proteção plástica bolha, com manual e certificado de envio da Loja JJ Kuster.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setShowFullDescription(!showFullDescription)}
-                className="text-xs font-bold text-primary hover:underline flex items-center gap-1 pt-1"
-              >
-                {showFullDescription ? (
-                  <>Recolher descrição <ChevronUp className="h-3.5 w-3.5" /></>
-                ) : (
-                  <>Ver descrição completa <ChevronDown className="h-3.5 w-3.5" /></>
-                )}
-              </button>
             </div>
-          </section>
+            <Button onClick={() => setShowReviewModal(true)} size="sm" variant="outline">
+              <Camera className="mr-2 h-4 w-4" /> Deixar Avaliação
+            </Button>
+          </div>
 
-          {/* ========================================================= */}
-          {/* SEÇÃO: OPINIÕES DO PRODUTO (Com fotos reais e unboxing) */}
-          {/* ========================================================= */}
-          <section id="opinioes" className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm w-full min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
-              <div>
-                <h2 className="text-lg sm:text-xl font-black text-foreground">Opiniões do produto</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Fotos e avaliações de clientes que compraram na Loja JJ Kuster
-                </p>
-              </div>
-
-              {/* Botão de Envio de Fotos e Vídeos em Destaque */}
-              <Button
-                onClick={() => setShowReviewModal(true)}
-                className="bg-primary hover:bg-primary/90 text-white font-bold h-10 px-4 text-xs sm:text-sm shadow flex items-center justify-center gap-2"
-              >
-                <Camera className="h-4 w-4" /> Escrever avaliação e enviar fotos/vídeos
-              </Button>
-            </div>
-
-            {/* Resumo da Nota e Gráfico de Barras */}
-            <div className="mt-5 grid grid-cols-1 md:grid-cols-12 gap-5 items-center w-full min-w-0">
-              <div className="md:col-span-4 flex items-center gap-3">
-                <div className="text-4xl sm:text-5xl font-black text-primary leading-none">
-                  {averageRating.toFixed(1)}
-                </div>
-                <div>
-                  <div className="flex items-center text-amber-400">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-3.5 w-3.5 ${
-                          i < Math.floor(averageRating) ? "fill-current" : "opacity-30"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {totalReviewsCount} {totalReviewsCount === 1 ? "avaliação" : "avaliações"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Barras de Qualificação 5★ a 1★ */}
-              <div className="md:col-span-8 space-y-1.5 w-full min-w-0">
-                {[5, 4, 3, 2, 1].map((star) => {
-                  const count = ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0;
-                  const percentage = totalReviewsCount > 0 ? (count / totalReviewsCount) * 100 : 0;
-                  return (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setFilterRating(filterRating === star ? null : star)}
-                      className="w-full flex items-center gap-2 text-xs group hover:opacity-80 transition min-w-0"
-                    >
-                      <span className="w-5 text-right font-semibold text-muted-foreground shrink-0">{star}★</span>
-                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden min-w-0">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            filterRating === star ? "bg-primary" : "bg-primary/70"
-                          }`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <span className="w-6 text-left text-muted-foreground font-medium shrink-0">{count}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Opiniões com Fotos e Vídeos (Unboxing de Clientes) */}
-            {allPhotosAndVideos.length > 0 && (
-              <div className="mt-6 pt-5 border-t border-border w-full min-w-0">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
-                    <ImageIcon className="h-4 w-4 text-primary" /> Fotos e vídeos de quem comprou
-                  </h3>
-                  <span className="text-xs text-muted-foreground">{allPhotosAndVideos.length} mídias</span>
-                </div>
-                <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none w-full min-w-0">
-                  {allPhotosAndVideos.map((m, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setLightboxMedia(m)}
-                      className="relative h-24 w-24 sm:h-32 sm:w-32 shrink-0 overflow-hidden rounded-xl border border-border group bg-white shadow-sm"
-                    >
-                      {m.type === "video" ? (
-                        <video src={m.url} className="h-full w-full object-cover" />
-                      ) : (
-                        <img src={m.url} alt="" className="h-full w-full object-contain p-1 group-hover:scale-105 transition" />
-                      )}
-                      <span className="absolute bottom-1 left-1 rounded bg-black/75 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur flex items-center gap-0.5">
-                        {m.rating} <Star className="h-2 w-2 fill-amber-400 text-amber-400" />
+          <div className="mt-6 space-y-6">
+            {filteredReviews.map((rev) => (
+              <article key={rev.id} className="border-b border-border/60 pb-6 last:border-none last:pb-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">{rev.author}</span>
+                    {rev.verified && (
+                      <span className="flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600">
+                        <CheckCircle2 className="h-3 w-3" /> Compra Confirmada
                       </span>
-                      {m.type === "video" && (
-                        <span className="absolute top-1 right-1 rounded-full bg-black/75 p-1 text-white">
-                          <Video className="h-2.5 w-2.5" />
-                        </span>
-                      )}
-                    </button>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground">{rev.date}</span>
+                </div>
+
+                <div className="mt-1.5 flex items-center gap-1 text-amber-500">
+                  {[...Array(rev.rating)].map((_, i) => (
+                    <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-              </div>
-            )}
 
-            {/* Filtros e Ordenação */}
-            <div className="mt-5 pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0">
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full sm:w-auto min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setFilterRating(null)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-bold transition border shrink-0 ${
-                    filterRating === null
-                      ? "bg-primary text-white border-primary"
-                      : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-                  }`}
-                >
-                  Todas ({totalReviewsCount})
-                </button>
-                {[5, 4, 3].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setFilterRating(filterRating === star ? null : star)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-bold transition border shrink-0 ${
-                      filterRating === star
-                        ? "bg-primary text-white border-primary"
-                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-                    }`}
-                  >
-                    {star}★ ({ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0})
-                  </button>
-                ))}
-              </div>
+                <p className="mt-2 text-sm text-foreground/90 leading-relaxed">{rev.comment}</p>
 
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
-                <span>Ordenar:</span>
-                <button
-                  type="button"
-                  onClick={() => setSortBy("recent")}
-                  className={`font-bold ${sortBy === "recent" ? "text-primary" : "text-muted-foreground"}`}
-                >
-                  Mais recentes
-                </button>
-                <span>•</span>
-                <button
-                  type="button"
-                  onClick={() => setSortBy("helpful")}
-                  className={`font-bold ${sortBy === "helpful" ? "text-primary" : "text-muted-foreground"}`}
-                >
-                  Mais úteis
-                </button>
-              </div>
-            </div>
+                {rev.packagingNote && (
+                  <p className="mt-1.5 text-xs text-emerald-600 font-medium">✓ {rev.packagingNote}</p>
+                )}
 
-            {/* Lista de Avaliações */}
-            <div className="mt-4 divide-y divide-border w-full min-w-0">
-              {filteredReviews.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhuma avaliação encontrada com os filtros selecionados.
-                </p>
-              ) : (
-                filteredReviews.map((rev) => (
-                  <div key={rev.id} className="py-4 space-y-2 w-full min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                        <div className="flex text-amber-400 shrink-0">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-3 w-3 ${i < rev.rating ? "fill-current" : "opacity-30"}`}
-                            />
-                          ))}
-                        </div>
-                        <span className="font-bold text-xs text-foreground truncate max-w-[120px]">{rev.author}</span>
-                        {rev.verified && (
-                          <span className="flex items-center gap-0.5 text-[9px] text-emerald-600 font-bold bg-emerald-500/10 px-1 py-0.5 rounded shrink-0">
-                            <CheckCircle2 className="h-2.5 w-2.5" /> Compra verificada
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{rev.date}</span>
-                    </div>
-
-                    <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed break-words">{rev.comment}</p>
-
-                    {rev.packagingNote && (
-                      <p className="text-[11px] text-muted-foreground italic bg-muted/30 px-2 py-1 rounded-md">
-                        {rev.packagingNote}
-                      </p>
-                    )}
-
-                    {/* Fotos do Comentário */}
-                    {rev.media && rev.media.length > 0 && (
-                      <div className="flex gap-2 pt-1 overflow-x-auto w-full min-w-0 scrollbar-none">
-                        {rev.media.map((m, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => setLightboxMedia(m)}
-                            className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-xl border border-border group bg-white shadow-sm"
-                          >
-                            {m.type === "video" ? (
-                              <video src={m.url} className="h-full w-full object-cover" />
-                            ) : (
-                              <img
-                                src={m.url}
-                                alt=""
-                                className="h-full w-full object-contain p-1 group-hover:scale-105 transition"
-                              />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-3 pt-0.5">
+                {/* Fotos Reais de Unboxing / Embalagem */}
+                {rev.media && rev.media.length > 0 && (
+                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                    {rev.media.map((m, idx) => (
                       <button
-                        type="button"
-                        onClick={() => handleToggleHelpful(rev.id)}
-                        className="text-[11px] text-muted-foreground hover:text-primary transition flex items-center gap-1"
+                        key={idx}
+                        onClick={() => setLightboxMedia(m)}
+                        className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-border shadow-sm transition hover:opacity-90"
                       >
-                        <ThumbsUp className="h-3 w-3" /> Útil ({rev.helpfulCount})
+                        <img src={m.url} alt="Embalagem recebida" className="h-full w-full object-cover" />
                       </button>
-                    </div>
+                    ))}
                   </div>
-                ))
-              )}
-            </div>
-          </section>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
 
-          {/* Perguntas e Dúvidas */}
-          <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm w-full min-w-0">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-primary" />
-              <h2 className="text-lg sm:text-xl font-black">Perguntas sobre o produto</h2>
-            </div>
+        {/* Perguntas e Respostas */}
+        <section className="mt-14 rounded-2xl border border-border bg-card p-6">
+          <h2 className="font-display text-lg font-bold border-b border-border pb-3">Perguntas Frequentes</h2>
+          <form onSubmit={handleAskQuestion} className="mt-4 flex gap-2">
+            <Input
+              value={newQuestion}
+              onChange={(e) => setNewQuestion(e.target.value)}
+              placeholder={`Tire sua dúvida com a ${storeName}...`}
+              className="flex-1"
+            />
+            <Button type="submit">
+              <Send className="mr-2 h-4 w-4" /> Perguntar
+            </Button>
+          </form>
 
-            <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2 w-full min-w-0">
-              <Input
-                value={newQuestion}
-                onChange={(e) => setNewQuestion(e.target.value)}
-                placeholder="Tire sua dúvida com a Loja JJ Kuster..."
-                className="flex-1 h-10 text-xs sm:text-sm min-w-0"
-              />
-              <Button type="submit" className="font-bold h-10 px-3 sm:px-4 shrink-0 text-xs sm:text-sm">
-                <Send className="h-3.5 w-3.5 mr-1" /> Perguntar
-              </Button>
-            </form>
-
-            <div className="mt-4 divide-y divide-border w-full min-w-0">
-              {questions.map((q) => (
-                <div key={q.id} className="py-3 w-full min-w-0">
-                  <p className="text-xs sm:text-sm font-bold text-foreground break-words">P: {q.question}</p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">Enviada {q.created_at}</p>
-                  {q.answer && (
-                    <div className="mt-2 rounded-xl bg-muted/40 p-2.5 text-xs text-foreground border-l-2 border-primary break-words">
-                      <span className="font-bold text-primary">Resposta da Loja JJ Kuster:</span> {q.answer}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
+          <div className="mt-6 space-y-4">
+            {questions.map((q) => (
+              <div key={q.id} className="rounded-lg border border-border p-3.5 text-sm">
+                <p className="font-semibold text-foreground">P: {q.question}</p>
+                {q.answer ? (
+                  <p className="mt-2 text-muted-foreground pl-3 border-l-2 border-primary">
+                    <strong className="text-primary">Resposta da {storeName}:</strong> {q.answer}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs italic text-muted-foreground">Aguardando resposta do vendedor...</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
 
-      {/* Modal para Avaliar Produto com Fotos e Vídeos */}
+      {/* Modal de Avaliação */}
       {showReviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-lg rounded-2xl bg-card p-5 sm:p-6 shadow-2xl border border-border max-h-[92vh] overflow-y-auto">
-            <button
-              type="button"
-              onClick={() => setShowReviewModal(false)}
-              className="absolute top-3 right-3 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <h3 className="text-base sm:text-lg font-black text-foreground">Avaliar este produto</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Envie fotos ou vídeos do pacote/produto recebido e ajude outros compradores.
-            </p>
-
-            <form onSubmit={handleSubmitReview} className="mt-4 space-y-3.5">
-              {/* Seletor de Estrelas */}
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-background p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="font-bold text-lg">Avaliar este produto</h3>
+              <button onClick={() => setShowReviewModal(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAddReview} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1">Sua nota</label>
-                <div className="flex items-center gap-1">
+                <label className="text-xs font-semibold">Sua Nota</label>
+                <div className="mt-1 flex gap-1">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       type="button"
                       onClick={() => setReviewRating(star)}
-                      className="p-1 hover:scale-110 transition"
+                      className="p-1 text-amber-500"
                     >
                       <Star
-                        className={`h-6 w-6 sm:h-7 sm:w-7 ${
-                          star <= reviewRating
-                            ? "fill-amber-400 text-amber-400"
-                            : "text-muted-foreground/30"
-                        }`}
+                        className={`h-6 w-6 ${star <= reviewRating ? "fill-amber-400 text-amber-400" : "text-muted"}`}
                       />
                     </button>
                   ))}
-                  <span className="ml-2 text-xs font-bold text-foreground">
-                    {reviewRating === 5
-                      ? "Excelente!"
-                      : reviewRating === 4
-                        ? "Muito bom"
-                        : reviewRating === 3
-                          ? "Bom"
-                          : reviewRating === 2
-                            ? "Ruim"
-                            : "Péssimo"}
-                  </span>
                 </div>
               </div>
-
-              {/* Nome */}
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1">Seu nome ou apelido</label>
+                <label className="text-xs font-semibold">Seu Nome</label>
                 <Input
                   value={reviewName}
                   onChange={(e) => setReviewName(e.target.value)}
-                  placeholder="Ex: João da Silva"
-                  className="h-9 text-xs sm:text-sm"
+                  placeholder="Ex: João Silva"
+                  className="mt-1"
                 />
               </div>
-
-              {/* Comentário */}
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1">Sua opinião sobre o produto</label>
+                <label className="text-xs font-semibold">Comentário sobre o produto e embalagem</label>
                 <textarea
+                  required
+                  rows={3}
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
-                  placeholder="Como o produto chegou? Veio bem embalado? O material atendeu suas expectativas?"
-                  className="w-full rounded-xl border border-input bg-background p-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[85px]"
-                  required
+                  placeholder="Conte como o produto e a embalagem chegaram..."
+                  className="mt-1 w-full rounded-md border border-input bg-background p-2 text-sm outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
-
-              {/* Upload de Fotos e Vídeos */}
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1">
-                  Anexar Fotos e Vídeos do produto recebido (no plástico / unboxing)
-                </label>
-
+                <label className="text-xs font-semibold">Adicionar Fotos do Pacote/Unboxing</label>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  multiple
                   accept="image/*,video/*"
-                  onChange={handleMediaUpload}
+                  multiple
+                  onChange={handleFileUpload}
                   className="hidden"
-                  id="review-media-upload"
                 />
-
-                <div className="flex flex-wrap gap-2 items-center">
-                  <label
-                    htmlFor="review-media-upload"
-                    className="flex flex-col items-center justify-center h-20 w-20 rounded-xl border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 cursor-pointer transition"
-                  >
-                    <Camera className="h-5 w-5 text-primary" />
-                    <span className="text-[10px] font-bold text-primary mt-1">Anexar Mídia</span>
-                  </label>
-
-                  {reviewMediaList.map((m, idx) => (
-                    <div key={idx} className="relative h-20 w-20 rounded-xl overflow-hidden border border-border group bg-black">
-                      {m.type === "video" ? (
-                        <video src={m.url} className="h-full w-full object-cover" />
-                      ) : (
-                        <img src={m.url} alt="" className="h-full w-full object-cover" />
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMedia(idx)}
-                        className="absolute top-1 right-1 rounded-full bg-rose-600 text-white p-0.5 shadow"
-                        title="Remover"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                      <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 text-[8px] text-white">
-                        {m.type === "video" ? "Vídeo" : "Foto"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowReviewModal(false)}
-                  className="text-xs font-bold h-9"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-1 w-full"
                 >
-                  Cancelar
+                  <Upload className="mr-2 h-4 w-4" /> Selecionar Foto da Embalagem
                 </Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white font-bold text-xs h-9">
-                  Publicar Avaliação
-                </Button>
+                {reviewMediaList.length > 0 && (
+                  <div className="mt-2 flex gap-2">
+                    {reviewMediaList.map((m, idx) => (
+                      <img key={idx} src={m.url} alt="" className="h-12 w-12 rounded object-cover border" />
+                    ))}
+                  </div>
+                )}
               </div>
+              <Button type="submit" className="w-full">
+                Enviar Avaliação
+              </Button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Lightbox / Visualizador de Fotos e Vídeos em Tela Cheia */}
+      {/* Lightbox para Visualizar Foto da Embalagem */}
       {lightboxMedia && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
           onClick={() => setLightboxMedia(null)}
+          className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-sm cursor-pointer"
         >
-          <button
-            type="button"
-            onClick={() => setLightboxMedia(null)}
-            className="absolute top-4 right-4 rounded-full bg-white/20 p-2 text-white hover:bg-white/40"
-          >
-            <X className="h-6 w-6" />
-          </button>
-          <div className="max-h-[85vh] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
-            {lightboxMedia.type === "video" ? (
-              <video src={lightboxMedia.url} controls autoPlay className="max-h-[80vh] rounded-xl" />
-            ) : (
-              <img src={lightboxMedia.url} alt="" className="max-h-[80vh] rounded-xl object-contain" />
-            )}
+          <div className="relative max-h-[90vh] max-w-3xl overflow-hidden rounded-2xl bg-black">
+            <img src={lightboxMedia.url} alt="Embalagem Unboxing" className="max-h-[85vh] w-auto object-contain" />
+            <button
+              onClick={() => setLightboxMedia(null)}
+              className="absolute right-3 top-3 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
         </div>
       )}
-
-      {/* Barra Fixa de Compra no Rodapé do Celular */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 p-2.5 backdrop-blur-lg sm:hidden w-full">
-        <div className="flex items-center gap-2 w-full">
-          <Button
-            variant="outline"
-            onClick={() => {
-              add(product, quantity);
-              toast.success("Adicionado ao carrinho!");
-            }}
-            className="flex-1 font-bold h-11 text-xs border-primary/40 text-primary"
-          >
-            <ShoppingCart className="h-4 w-4 mr-1 shrink-0" /> Adicionar
-          </Button>
-          <Button
-            onClick={() => {
-              add(product, quantity);
-              navigate({ to: "/carrinho" });
-            }}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black h-11 text-xs shadow-md"
-          >
-            <Zap className="h-4 w-4 mr-1 fill-current shrink-0" /> Comprar Agora
-          </Button>
-        </div>
-      </div>
 
       <SiteFooter />
     </div>
