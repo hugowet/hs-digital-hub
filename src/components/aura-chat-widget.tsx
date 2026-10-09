@@ -80,7 +80,6 @@ export function AuraChatWidget() {
         const transcript = event.results[0][0].transcript;
         if (transcript) {
           setInput(transcript);
-          // Opcional: dispara automaticamente a busca por voz
           handleSend(transcript);
         }
       };
@@ -233,7 +232,7 @@ export function AuraChatWidget() {
       else if (q.includes("login") || q.includes("entrar") || q.includes("minha conta") || q.includes("cadastro")) {
         responseText =
           "Acesse sua conta para conferir seus cupons exclusivos, histórico de transações e promoções personalizadas:";
-        linkAction = { label: "Fazer Login / Cadastrar", url: "/entrar" };
+        linkAction = { label: "Fazer Login / Cadastrar", url: "/auth" };
         actionTag = "Acesso Rápido";
       }
       // Resposta persuasiva padrão
@@ -357,7 +356,13 @@ export function AuraChatWidget() {
                     <button
                       onClick={() => {
                         setIsOpen(false);
-                        navigate({ to: m.link!.url as any });
+                        if (m.link!.url.includes("?")) {
+                          const [path, searchStr] = m.link!.url.split("?");
+                          const params = Object.fromEntries(new URLSearchParams(searchStr));
+                          navigate({ to: path as any, search: params as any });
+                        } else {
+                          navigate({ to: m.link!.url as any });
+                        }
                       }}
                       className="mt-2.5 flex w-full items-center justify-between rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-2 text-[11px] font-semibold text-white shadow transition hover:from-purple-700 hover:to-indigo-700 active:scale-[0.98]"
                     >
