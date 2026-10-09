@@ -232,6 +232,25 @@ function getConsistentSalesCount(id: string): number {
   return 38 + (positive % 184); // Varia de 38 a 221 vendas
 }
 
+// Junta a foto principal com as demais fotos do produto (sem duplicar)
+function getProductImages(product: any): string[] {
+  const extra: unknown[] = [
+    ...(Array.isArray(product?.images) ? product.images : []),
+    ...(Array.isArray(product?.image_urls) ? product.image_urls : []),
+    ...(Array.isArray(product?.gallery) ? product.gallery : []),
+    ...(Array.isArray(product?.product_images) ? product.product_images : []),
+  ];
+  const raw: unknown[] = [product?.image_url, ...extra];
+  const urls = raw
+    .map((item) => {
+      if (typeof item === "string") return item;
+      const obj = item as any;
+      return obj?.url ?? obj?.image_url ?? obj?.src;
+    })
+    .filter((u): u is string => typeof u === "string" && u.trim().length > 0);
+  return Array.from(new Set(urls));
+}
+
 export function ProductDetailPage() {
   const { productId } = Route.useParams();
   const loaderData = Route.useLoaderData();
@@ -251,9 +270,9 @@ export function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState(0);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({});
   const [isZooming, setIsZooming] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   // CEP e Frete
@@ -320,6 +339,16 @@ export function ProductDetailPage() {
       }
     }
     setTouchStartX(null);
+  };
+
+  const handleZoom = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    setZoomStyle({
+      transformOrigin: `${x}% ${y}%`,
+      transform: "scale(2)",
+    });
   };
 
   const handleShare = async () => {
@@ -449,16 +478,6 @@ export function ProductDetailPage() {
     }
   };
 
-  const handleZoom = (e: React.MouseEvent<HTMLDivElement>) => {
-    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - left) / width) * 100;
-    const y = ((e.clientY - top) / height) * 100;
-    setZoomStyle({
-      transformOrigin: `${x}% ${y}%`,
-      transform: "scale(2)",
-    });
-  };
-
   const handleAddToCart = () => {
     if (!product) return;
     cart.add({
@@ -525,7 +544,9 @@ export function ProductDetailPage() {
   }
 
   const storeName = product.stores?.name ?? "HS Digital";
-  const media = [product.image_url].filter(Boolean);
+  const media = getProductImages(product);
+  const activeIndex = Math.min(selectedImage, Math.max(media.length - 1, 0));
+  const activeImage = media[activeIndex];
   const isFreeShipping = Boolean(product.is_free_shipping) || product.price >= 199;
   const originalPrice = product.original_price ?? (product.price > 0 ? product.price * 1.35 : 0);
   const discountPercent =
@@ -558,15 +579,17 @@ export function ProductDetailPage() {
           {/* Galeria de Fotos */}
           <div className="lg:col-span-7 space-y-4">
             <div className="flex flex-col-reverse sm:flex-row gap-3">
-              {/* Miniaturas laterais */}
+              {/* Miniaturas: todas as fotos do produto */}
               {media.length > 1 && (
                 <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto max-h-[500px] pb-2 sm:pb-0">
                   {media.map((url, idx) => (
                     <button
-                      key={idx}
+                      key={`${url}-${idx}`}
+                      type="button"
                       onClick={() => setSelectedImage(idx)}
+                      aria-label={`Ver foto ${idx + 1}`}
                       className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition ${
-                        selectedImage === idx ? "border-primary shadow" : "border-border opacity-70 hover:opacity-100"
+                        activeIndex === idx ? "border-primary shadow" : "border-border opacity-70 hover:opacity-100"
                       }`}
                     >
                       <img src={url} alt="" className="h-full w-full object-cover" />
@@ -575,7 +598,7 @@ export function ProductDetailPage() {
                 </div>
               )}
 
-              {/* Foto Principal com Lupa de Zoom */}
+              {/* Foto principal com lupa de zoom */}
               <div
                 className="relative flex-1 aspect-square overflow-hidden rounded-2xl border border-border bg-card cursor-crosshair shadow-sm select-none"
                 onMouseEnter={() => setIsZooming(true)}
@@ -584,9 +607,9 @@ export function ProductDetailPage() {
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
               >
-                {media[selectedImage] ? (
+                {activeImage ? (
                   <img
-                    src={media[selectedImage]}
+                    src={activeImage}
                     alt={product.title}
                     style={isZooming ? zoomStyle : undefined}
                     className="h-full w-full object-contain transition-transform duration-100"
@@ -595,6 +618,32 @@ export function ProductDetailPage() {
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                     Sem imagem disponível
                   </div>
+                )}
+
+                {media.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImage(Math.max(0, activeIndex - 1))}
+                      disabled={activeIndex === 0}
+                      aria-label="Foto anterior"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full border border-border bg-background/80 p-1.5 shadow disabled:opacity-30"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImage(Math.min(media.length - 1, activeIndex + 1))}
+                      disabled={activeIndex === media.length - 1}
+                      aria-label="Próxima foto"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-border bg-background/80 p-1.5 shadow disabled:opacity-30"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    <span className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-background/80 px-2.5 py-0.5 text-xs font-semibold shadow">
+                      {activeIndex + 1} / {media.length}
+                    </span>
+                  </>
                 )}
 
                 {discountPercent > 0 && (
