@@ -270,6 +270,8 @@ export function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({});
+  const [isZooming, setIsZooming] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
@@ -337,6 +339,16 @@ export function ProductDetailPage() {
       }
     }
     setTouchStartX(null);
+  };
+
+  const handleZoom = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    setZoomStyle({
+      transformOrigin: `${x}% ${y}%`,
+      transform: "scale(2)",
+    });
   };
 
   const handleShare = async () => {
@@ -586,14 +598,22 @@ export function ProductDetailPage() {
                 </div>
               )}
 
-              {/* Foto principal (sem zoom) */}
+              {/* Foto principal com lupa de zoom */}
               <div
-                className="relative flex-1 aspect-square overflow-hidden rounded-2xl border border-border bg-card shadow-sm select-none"
+                className="relative flex-1 aspect-square overflow-hidden rounded-2xl border border-border bg-card cursor-crosshair shadow-sm select-none"
+                onMouseEnter={() => setIsZooming(true)}
+                onMouseLeave={() => setIsZooming(false)}
+                onMouseMove={handleZoom}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
               >
                 {activeImage ? (
-                  <img src={activeImage} alt={product.title} className="h-full w-full object-contain" />
+                  <img
+                    src={activeImage}
+                    alt={product.title}
+                    style={isZooming ? zoomStyle : undefined}
+                    className="h-full w-full object-contain transition-transform duration-100"
+                  />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                     Sem imagem disponível
