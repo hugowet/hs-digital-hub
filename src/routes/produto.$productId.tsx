@@ -115,14 +115,6 @@ const BRAZILIAN_REVIEWERS = [
   { name: "Aline Cristina", city: "Londrina - PR" },
   { name: "Diego Castilho", city: "Santos - SP" },
 ];
-// Fotos reais de caixas, encomendas e embalagens de entrega entregues (unboxing)
-const PACKAGING_UNBOXING_PHOTOS = [
-  "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=700&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=700&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=700&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=700&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1607344645866-009c320c5ab8?w=700&auto=format&fit=crop&q=80",
-];
 const REVIEW_COMMENTS = [
   {
     comment:
@@ -167,8 +159,6 @@ function generateUniqueProductReviews(productId: string): ReviewItem[] {
   const tpl1 = REVIEW_COMMENTS[pos % REVIEW_COMMENTS.length];
   const tpl2 = REVIEW_COMMENTS[(pos + 1) % REVIEW_COMMENTS.length];
   const tpl3 = REVIEW_COMMENTS[(pos + 2) % REVIEW_COMMENTS.length];
-  const photo1 = PACKAGING_UNBOXING_PHOTOS[pos % PACKAGING_UNBOXING_PHOTOS.length];
-  const photo2 = PACKAGING_UNBOXING_PHOTOS[(pos + 2) % PACKAGING_UNBOXING_PHOTOS.length];
   return [
     {
       id: `rev_1_${productId}`,
@@ -179,7 +169,6 @@ function generateUniqueProductReviews(productId: string): ReviewItem[] {
       packagingNote: tpl1.packagingNote,
       verified: true,
       helpfulCount: 12 + (pos % 15),
-      media: [{ url: photo1, type: "image" }],
     },
     {
       id: `rev_2_${productId}`,
@@ -190,7 +179,6 @@ function generateUniqueProductReviews(productId: string): ReviewItem[] {
       packagingNote: tpl2.packagingNote,
       verified: true,
       helpfulCount: 6 + (pos % 9),
-      media: [{ url: photo2, type: "image" }],
     },
     {
       id: `rev_3_${productId}`,
