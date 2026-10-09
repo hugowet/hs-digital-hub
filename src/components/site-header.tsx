@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
+  Gamepad2,
   Home,
   LogIn,
   LogOut,
@@ -11,6 +12,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   Store,
+  TicketPercent,
   User,
   X,
 } from "lucide-react";
@@ -38,12 +40,13 @@ export function SiteHeader({
   onQueryChange?: (value: string) => void;
   suggestions?: Array<{ id: string; title: string; category: string }>;
 }) {
-  const { count } = useCart();
+  const { count, clear } = useCart();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isBuyer, setIsBuyer] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   // Estado local para resposta rápida sem lag
@@ -76,13 +79,17 @@ export function SiteHeader({
     supabase.auth.getUser().then(async ({ data }) => {
       setSignedIn(!!data.user);
       if (data.user) {
-        const { data: role } = await supabase
+        const { data: roles } = await supabase
           .from("user_roles")
           .select("role")
-          .eq("user_id", data.user.id)
-          .eq("role", "admin")
-          .maybeSingle();
-        setIsAdmin(Boolean(role));
+          .eq("user_id", data.user.id);
+        setIsAdmin(Boolean(roles?.some((item) => item.role === "admin")));
+        setIsBuyer(
+          Boolean(
+            roles?.some((item) => item.role === "buyer") &&
+            !roles?.some((item) => item.role === "seller"),
+          ),
+        );
         const { count: unread } = await supabase
           .from("order_messages")
           .select("id,order_conversations!inner(buyer_id)", { count: "exact", head: true })
@@ -95,7 +102,12 @@ export function SiteHeader({
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
         setSignedIn(!!session?.user);
-        if (!session?.user) setIsAdmin(false);
+        if (!session?.user) {
+          setIsAdmin(false);
+          setIsBuyer(false);
+          setUnreadMessages(0);
+          clear();
+        }
       }
     });
     return () => data.subscription.unsubscribe();
@@ -104,6 +116,7 @@ export function SiteHeader({
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
+    clear();
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
@@ -129,7 +142,9 @@ export function SiteHeader({
               height={40}
               className="h-9 w-9 sm:h-10 sm:w-10 rounded-full ring-1 ring-white/20 object-cover"
             />
-            <span className="font-display text-base sm:text-lg font-bold tracking-tight max-sm:hidden">HS Digital</span>
+            <span className="font-display text-base sm:text-lg font-bold tracking-tight max-sm:hidden">
+              HS Digital
+            </span>
           </Link>
 
           {/* Barra de Pesquisa */}
@@ -191,7 +206,9 @@ export function SiteHeader({
                     className="h-auto w-full justify-between rounded-none px-4 py-3 text-left text-sm hover:bg-muted/60"
                   >
                     <span className="truncate font-medium">{item.title}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground ml-2 capitalize">{item.category}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground ml-2 capitalize">
+                      {item.category}
+                    </span>
                   </Button>
                 ))}
               </div>
@@ -199,18 +216,20 @@ export function SiteHeader({
           </div>
 
           <nav className="flex items-center gap-1">
-            <Link
-              to="/carrinho"
-              className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10"
-              aria-label="Carrinho"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {count > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-primary-glow px-1 text-[11px] font-bold">
-                  {count}
-                </span>
-              )}
-            </Link>
+            {signedIn && (
+              <Link
+                to="/carrinho"
+                className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10"
+                aria-label="Carrinho"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {count > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-primary-glow px-1 text-[11px] font-bold">
+                    {count}
+                  </span>
+                )}
+              </Link>
+            )}
             {signedIn ? (
               <>
                 <Link
@@ -239,42 +258,42 @@ export function SiteHeader({
                   <DropdownMenuContent align="end" className="w-60">
                     <DropdownMenuLabel>Minha conta HS Digital</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/conta">
-                        <User className="mr-2 h-4 w-4" />
-                        Minha conta
-                      </Link>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
+                      <User className="mr-2 h-4 w-4" />
+                      Minha conta
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/conta">
-                        <MapPin className="mr-2 h-4 w-4" />
-                        Meus endereços
-                      </Link>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
+                      <MapPin className="mr-2 h-4 w-4" />
+                      Meus endereços
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/compras">
-                        <ShoppingBag className="mr-2 h-4 w-4" />
-                        Minhas compras
-                      </Link>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/compras" })}>
+                      <ShoppingBag className="mr-2 h-4 w-4" />
+                      Minhas compras
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/notificacoes">
-                        <Bell className="mr-2 h-4 w-4" />
-                        Notificações
-                      </Link>
+                    {isBuyer && (
+                      <DropdownMenuItem onSelect={() => navigate({ to: "/cupons" })}>
+                        <TicketPercent className="mr-2 h-4 w-4" />
+                        Meus cupons
+                      </DropdownMenuItem>
+                    )}
+                    {isBuyer && (
+                      <DropdownMenuItem onSelect={() => navigate({ to: "/jogos" })}>
+                        <Gamepad2 className="mr-2 h-4 w-4" />
+                        Jogos & Prêmios
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/notificacoes" })}>
+                      <Bell className="mr-2 h-4 w-4" />
+                      Notificações
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/vendedor">
-                        <Store className="mr-2 h-4 w-4" />
-                        Seller Center
-                      </Link>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/vendedor" })}>
+                      <Store className="mr-2 h-4 w-4" />
+                      Seller Center
                     </DropdownMenuItem>
                     {isAdmin && (
-                      <DropdownMenuItem asChild>
-                        <Link to="/admin">
-                          <User className="mr-2 h-4 w-4" />
-                          Admin
-                        </Link>
+                      <DropdownMenuItem onSelect={() => navigate({ to: "/admin" })}>
+                        <User className="mr-2 h-4 w-4" />
+                        Admin
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
@@ -306,13 +325,23 @@ export function SiteHeader({
           </nav>
         </div>
 
-        <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
+        {signedIn && <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
           <Link to="/" className="hover:text-white">
             Início
           </Link>
           <Link to="/compras" className="hover:text-white">
             Minhas compras
           </Link>
+          {isBuyer && (
+            <Link to="/jogos" className="hover:text-white">
+              Jogos & Prêmios
+            </Link>
+          )}
+          {isBuyer && (
+            <Link to="/cupons" className="hover:text-white">
+              Meus cupons
+            </Link>
+          )}
           <Link to="/notificacoes" className="hover:text-white">
             Notificações
           </Link>
@@ -322,7 +351,7 @@ export function SiteHeader({
               Venda na HS Digital
             </Link>
           </span>
-        </div>
+        </div>}
 
         {open && (
           <div className="mt-3 grid gap-1 rounded-lg border border-primary-foreground/10 bg-black/80 p-2 text-sm shadow-xl backdrop-blur sm:hidden">
@@ -352,6 +381,16 @@ export function SiteHeader({
                   <ShoppingBag className="h-4 w-4" />
                   Minhas compras
                 </Link>
+                {isBuyer && (
+                  <Link
+                    to="/cupons"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                  >
+                    <TicketPercent className="h-4 w-4" />
+                    Meus cupons
+                  </Link>
+                )}
                 <Link
                   to="/notificacoes"
                   onClick={() => setOpen(false)}
@@ -362,22 +401,36 @@ export function SiteHeader({
                 </Link>
               </>
             )}
-            <Link
-              to="/carrinho"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              Carrinho {count > 0 ? `(${count})` : ""}
-            </Link>
-            <Link
-              to="/vendedor"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
-            >
-              <Store className="h-4 w-4" />
-              Seller Center
-            </Link>
+            {isBuyer && (
+              <Link
+                to="/jogos"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+              >
+                <Gamepad2 className="h-4 w-4" />
+                Jogos & Prêmios
+              </Link>
+            )}
+            {signedIn && (
+              <>
+                <Link
+                  to="/carrinho"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  Carrinho {count > 0 ? `(${count})` : ""}
+                </Link>
+                <Link
+                  to="/vendedor"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+                >
+                  <Store className="h-4 w-4" />
+                  Seller Center
+                </Link>
+              </>
+            )}
             {isAdmin && (
               <Link
                 to="/admin"
@@ -400,7 +453,11 @@ export function SiteHeader({
                 Sair da conta
               </Button>
             ) : (
-              <Link to="/auth" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">
+              <Link
+                to="/auth"
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-3 py-2 hover:bg-white/10"
+              >
                 Entrar / Criar conta
               </Link>
             )}
