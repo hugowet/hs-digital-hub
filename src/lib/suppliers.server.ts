@@ -888,8 +888,8 @@ shippingZip: addressValue(address, "postal_code", "zip").replace(/\D/g, ""),
     fromCountryCode: "CN",
     logisticName: shipment?.service_code ?? "",
     payType: 2,
- platform: "other",
-storeName: "HS Digital",
+platform: "API",
+
 
     products,
   };
