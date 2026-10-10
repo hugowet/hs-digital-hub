@@ -525,31 +525,12 @@ export function AccountPage() {
                   className="h-8 text-xs"
                 />
               </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div>
-                <Label className="text-[11px]">Cidade *</Label>
+                <Label className="text-[11px]">Cidade/UF *</Label>
                 <Input
                   value={form.city}
                   onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  placeholder="Manaus"
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div>
-                <Label className="text-[11px]">Estado *</Label>
-                <Input
-                  value={form.state}
-                  onChange={(e) => setForm({ ...form, state: e.target.value })}
-                  placeholder="AM"
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div>
-                <Label className="text-[11px]">CEP *</Label>
-                <Input
-                  value={form.postal_code}
-                  onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
-                  placeholder="69000-000"
+                  placeholder="Manaus/AM"
                   className="h-8 text-xs"
                 />
               </div>
