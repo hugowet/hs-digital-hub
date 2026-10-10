@@ -214,7 +214,7 @@ export function AccountPage() {
     }
   };
 
-   const handleAddAddress = async (e: React.FormEvent) => {
+     const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     
     let cidadeFinal = form.city ? form.city.trim() : "";
@@ -241,6 +241,24 @@ export function AccountPage() {
       postal_code: form.postal_code || "76940-000",
       is_default: addresses.length === 0,
     });
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Endereço adicionado com sucesso!");
+      setForm({
+        label: "Casa",
+        recipient_name: "",
+        phone: "",
+        street_address: "",
+        city: "",
+        state: "",
+        postal_code: "",
+        complement: "",
+      });
+      await qc.invalidateQueries({ queryKey: ["my-addresses"] });
+    }
+  };
 
     if (error) {
       toast.error(error.message);
