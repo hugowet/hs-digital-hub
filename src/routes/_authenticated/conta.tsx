@@ -214,9 +214,21 @@ export function AccountPage() {
     }
   };
 
-  const handleAddAddress = async (e: React.FormEvent) => {
+   const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.recipient_name || !form.street_address || !form.city || !form.state) {
+    
+    let cidadeFinal = form.city ? form.city.trim() : "";
+    let estadoFinal = form.state ? form.state.trim() : "";
+
+    if (cidadeFinal.includes("/")) {
+      const partes = cidadeFinal.split("/");
+      cidadeFinal = partes[0].trim();
+      estadoFinal = partes[1].trim();
+    } else if (!estadoFinal && cidadeFinal.toLowerCase().includes("rolim de moura")) {
+      estadoFinal = "RO";
+    }
+
+    if (!form.recipient_name || !form.street_address || !cidadeFinal) {
       toast.error("Preencha todos os campos obrigatórios do endereço.");
       return;
     }
@@ -224,13 +236,16 @@ export function AccountPage() {
     const { error } = await supabase.from("user_addresses").insert({
       user_id: user.id,
       ...form,
+      city: cidadeFinal,
+      state: estadoFinal || "RO",
+      postal_code: form.postal_code || "76940-000",
       is_default: addresses.length === 0,
     });
 
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Endereço adicionado!");
+      toast.success("Endereço adicionado com sucesso!");
       setForm({
         label: "Casa",
         recipient_name: "",
@@ -242,6 +257,9 @@ export function AccountPage() {
         complement: "",
       });
       await qc.invalidateQueries({ queryKey: ["my-addresses"] });
+    }
+  };
+
     }
   };
 
