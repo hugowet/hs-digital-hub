@@ -889,8 +889,7 @@ shippingZip: addressValue(address, "postal_code", "zip").replace(/\D/g, ""),
     logisticName: shipment?.service_code ?? "",
     payType: 2,
 platform: "API",
-
-
+storeId: "CJ5881059",
     products,
   };
   if (
