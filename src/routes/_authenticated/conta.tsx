@@ -214,7 +214,7 @@ export function AccountPage() {
     }
   };
 
-     const handleAddAddress = async (e: React.FormEvent) => {
+      const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     
     let cidadeFinal = form.city ? form.city.trim() : "";
@@ -235,12 +235,34 @@ export function AccountPage() {
 
     const { error } = await supabase.from("user_addresses").insert({
       user_id: user.id,
-      ...form,
+      label: form.label,
+      recipient_name: form.recipient_name,
+      phone: form.phone,
+      street_address: form.street_address,
       city: cidadeFinal,
       state: estadoFinal || "RO",
-      postal_code: form.postal_code || "76940-000",
+      postal_code: "76940-000",
+      complement: form.complement,
       is_default: addresses.length === 0,
     });
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Endereço adicionado com sucesso!");
+      setForm({
+        label: "Casa",
+        recipient_name: "",
+        phone: "",
+        street_address: "",
+        city: "",
+        state: "",
+        postal_code: "",
+        complement: "",
+      });
+      await qc.invalidateQueries({ queryKey: ["my-addresses"] });
+    }
+  };
 
     if (error) {
       toast.error(error.message);
