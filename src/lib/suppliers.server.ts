@@ -885,7 +885,7 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
 shippingZip: addressValue(address, "postal_code", "zip").replace(/\D/g, ""),
 
     shippingPhone: addressValue(address, "phone").replace(/\D/g, ""),
-    fromCountryCode: "CHINA",
+    fromCountryCode: "CN",
     logisticName: shipment?.service_code ?? "",
     payType: 2,
     platform: "other",
