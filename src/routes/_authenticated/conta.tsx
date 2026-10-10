@@ -500,14 +500,36 @@ export function AccountPage() {
                 />
               </div>
               <div>
-                <Label className="text-[11px]">Cidade/UF *</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div>
+                <Label className="text-[11px]">Cidade *</Label>
                 <Input
                   value={form.city}
                   onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  placeholder="Manaus/AM"
+                  placeholder="Ex: Rolim de Moura"
                   className="h-8 text-xs"
                 />
               </div>
+              <div>
+                <Label className="text-[11px]">Estado *</Label>
+                <Input
+                  value={form.state}
+                  onChange={(e) => setForm({ ...form, state: e.target.value })}
+                  placeholder="Ex: RO"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-[11px]">CEP *</Label>
+                <Input
+                  value={form.postal_code}
+                  onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
+                  placeholder="Ex: 76940-000"
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+
             </div>
 
             <Button type="submit" size="sm" className="bg-[#00a650] hover:bg-[#008f45] text-white text-xs font-bold gap-1 mt-2">
