@@ -151,7 +151,7 @@ export function AccountPage() {
     setPasskeyLoading(true);
     try {
       const challenge = await beginPasskey();
-      const response = await startRegistration({ optionsJSON: JSON.parse(challenge.optionsJSON) });
+      const response = await startRegistration({ optionsJSON: challenge.options as never });
       await completePasskey({
         data: {
           challengeId: challenge.challengeId,
