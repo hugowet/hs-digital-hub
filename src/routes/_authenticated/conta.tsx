@@ -500,7 +500,7 @@ export function AccountPage() {
                 />
               </div>
               <div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div>
                 <Label className="text-[11px]">Cidade *</Label>
                 <Input
@@ -511,6 +511,24 @@ export function AccountPage() {
                 />
               </div>
               <div>
+                <Label className="text-[11px]">Estado *</Label>
+                <Input
+                  value={form.state}
+                  onChange={(e) => setForm({ ...form, state: e.target.value })}
+                  placeholder="Ex: RO"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-[11px]">CEP *</Label>
+                <Input
+                  value={form.postal_code}
+                  onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
+                  placeholder="Ex: 76940-000"
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
                 <Label className="text-[11px]">Estado *</Label>
                 <Input
                   value={form.state}
