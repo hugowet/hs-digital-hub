@@ -888,7 +888,9 @@ shippingZip: addressValue(address, "postal_code", "zip").replace(/\D/g, ""),
     fromCountryCode: "CN",
     logisticName: shipment?.service_code ?? "",
     payType: 2,
-    platform: "other",
+ platform: "other",
+storeName: "HS Digital",
+
     products,
   };
   if (
