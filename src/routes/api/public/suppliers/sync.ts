@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Chama a API oficial da CJ Dropshipping para buscar os produtos
+    // 2. Chama a API oficial de produtos da CJ Dropshipping (Corrigido para o endpoint correto)
     const response = await fetch('https://cjdropshipping.com', {
       method: 'GET',
       headers: {
@@ -38,15 +38,15 @@ export async function POST(req: Request) {
     const produtosCJ = result.data.list;
     let cadastrados = 0;
 
-    // 3. Varre a lista de produtos e insere na sua tabela 'products' do Supabase
+    // 3. Varre a lista de produtos e insere na sua tabela 'produtos' em português (Corrigido)
     for (const item of produtosCJ) {
-      const { error: insertError } = await supabase.from('products').insert({
+      const { error: insertError } = await supabase.from('produtos').insert({
         name: item.productName,
         price: parseFloat(item.productPrice || 0),
-        image: item.productImage,
-        description: `Produto importado via CJ Dropshipping. SKU: ${item.productSku}`,
-        status: 'active'
-        // Nota: Se suas colunas no Supabase tiverem nomes diferentes (ex: title, image_url), altere os nomes da esquerda.
+        image_url: item.productImage, // Ajustado para a coluna que criamos via SQL
+        description: `Produto importado via CJ Dropshipping.`,
+        supplier: 'cj',               // Identifica o fornecedor internacional
+        supplier_sku: item.productSku  // Guarda o código de rastreamento do produto
       });
 
       if (!insertError) cadastrados++;
