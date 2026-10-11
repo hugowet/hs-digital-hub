@@ -397,28 +397,24 @@ function SellerCenterPage() {
                   Conecte um fornecedor somente se quiser vender sem manter estoque próprio.
                 </p>
               </div>
-            <Button 
+     <Button 
   onClick={async () => {
     try {
       toast.info("Conectando e baixando catálogo da CJ Dropshipping...");
       
-      // 1. Busca a chave direto do Supabase local
-      const { data: setting, error: dbError } = await supabase
-        .from('site_settings')
-        .select('key_value')
-        .eq('key_name', 'cj_api_key')
-        .single();
+      // Coloque sua chave real entre as aspas simples abaixo:
+      const cjApiKey = 'CJ5920627@api@6b4ba8a3157f471fb25062f4febe6c92';
 
-      if (dbError || !setting?.key_value) {
-        toast.error("Chave API da CJ não encontrada no banco de dados.");
+      if (!cjApiKey || cjApiKey.includes('COLE_AQUI')) {
+        toast.error("Erro: Insira a chave de API correta dentro do código.");
         return;
       }
 
-      // 2. Consulta a lista de produtos diretamente na CJ
+      // 1. Consulta a lista de produtos diretamente na API oficial da CJ
       const response = await fetch('https://cjdropshipping.com', {
         method: 'GET',
         headers: {
-          'CJ-Access-Token': setting.key_value,
+          'CJ-Access-Token': cjApiKey,
           'Content-Type': 'application/json'
         }
       });
@@ -433,11 +429,32 @@ function SellerCenterPage() {
       const produtosCJ = result.data.list;
       let cadastrados = 0;
 
-      // 3. Insere os produtos direto na sua tabela 'produtos' em português
+      // 2. Insere os produtos direto na sua tabela 'produtos' do seu Supabase
       for (const item of produtosCJ) {
         const { error: insertError } = await supabase.from('produtos').insert({
           name: item.productName,
           price: parseFloat(item.productPrice || 0),
+          image_url: item.productImage,
+          description: `Produto importado via CJ Dropshipping.`,
+          supplier: 'cj',
+          supplier_sku: item.productSku
+        });
+
+        if (!insertError) cadastrados++;
+      }
+
+      toast.success(`${cadastrados} produtos sincronizados com sucesso na sua vitrine!`);
+      window.location.reload();
+
+    } catch (err) {
+      toast.error("Erro na comunicação direta com os servidores da CJ.");
+    }
+  }}
+  className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
+>
+  Sincronizar CJ
+</Button>
+
           image_url: item.productImage,
           description: `Produto importado via CJ Dropshipping.`,
           supplier: 'cj',
