@@ -1384,6 +1384,201 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
         <Button
           variant={orderFilter === "pending" ? "default" : "outline"}
           size="sm"
-          onClick={() => setOrderFilt
+          onClick={() => setOrderFilter("pending")}
+          className="gap-2"
+        >
+          <Clock className="h-4 w-4 text-amber-500" />
+          Aguardando Pagamento ({pendingOrders.length})
+        </Button>
+        <Button
+          variant={orderFilter === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setOrderFilter("all")}
+          className="gap-2"
+        >
+          Todos os Pedidos ({orders.length})
+        </Button>
+      </div>
 
-... [truncated — file is 59462 bytes, showing first 51200]
+      {displayedOrders.map((ord) => {
+        const addr = ord.shipping_address as Record<string, any> | null;
+        const lastEvent = ord.events.at(-1)?.status ?? "confirmed";
+
+        return (
+          <div key={ord.id} className="surface-card p-5 border border-border rounded-xl space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+              <div>
+                <span className="text-xs text-muted-foreground">
+                  Pedido #{ord.id.slice(0, 8).toUpperCase()}
+                </span>
+                <p className="text-sm font-semibold">
+                  {new Date(ord.created_at).toLocaleString("pt-BR")}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-2.5 py-1 text-xs rounded-full font-semibold ${ord.payment_status === "approved" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}
+                >
+                  {ord.payment_status === "approved" ? "PAGO" : "AGUARDANDO PAGAMENTO"}
+                </span>
+                <span className="px-2.5 py-1 text-xs rounded-full bg-muted font-medium capitalize">
+                  {lastEvent === "confirmed" && "Confirmado"}
+                  {lastEvent === "preparing" && "Em separação"}
+                  {lastEvent === "shipped" && "Enviado"}
+                  {lastEvent === "out_for_delivery" && "Saiu para entrega"}
+                  {lastEvent === "delivered" && "Entregue"}
+                </span>
+              </div>
+            </div>
+
+            {/* Endereço completo para postagem nos Correios */}
+            {addr && (
+              <div className="bg-muted/40 p-3 rounded-lg text-xs space-y-1">
+                <p className="font-semibold text-foreground">
+                  📦 Endereço de Entrega do Cliente (para os Correios):
+                </p>
+                <p>
+                  <strong>Destinatário:</strong>{" "}
+                  {addr["name"] || addr["recipient_name"] || "Cliente"} · Tel:{" "}
+                  {addr["phone"] || "Não informado"}
+                </p>
+                <p>
+                  <strong>Endereço:</strong> {addr["address"] || addr["street_address"]}
+                  {addr["complement"] ? `, ${addr["complement"]}` : ""} - {addr["city"]}
+                </p>
+              </div>
+            )}
+
+            {/* Itens do pedido */}
+            <div className="space-y-1 text-sm">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Itens:</p>
+              {ord.items.map((i, idx) => (
+                <div key={idx} className="flex justify-between text-xs">
+                  <span>
+                    {i.quantity}x {i.title}
+                  </span>
+                  <span className="font-semibold text-success">{brl(Number(i.seller_amount))}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Atualização de etapas e código de rastreio */}
+            {ord.fulfillments.map((fulfillment) => (
+              <div
+                key={fulfillment.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 text-xs"
+              >
+                <span>
+                  <strong>{fulfillment.provider === "cj" ? "CJ Dropshipping" : "Dropi"}</strong> ·{" "}
+                  {fulfillment.status === "submitted"
+                    ? "Pedido enviado"
+                    : fulfillment.status === "failed"
+                      ? "Falha no envio"
+                      : "Aguardando envio"}
+                  {fulfillment.tracking_code ? ` · Rastreio ${fulfillment.tracking_code}` : ""}
+                </span>
+                {fulfillment.provider === "cj" &&
+                  ["pending", "retry", "failed"].includes(fulfillment.status) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await processFulfillment({
+                            data: { fulfillmentId: fulfillment.id, storeId },
+                          });
+                          toast.success("Pedido encaminhado à CJ Dropshipping.");
+                          await qc.invalidateQueries({ queryKey: ["seller-orders", storeId] });
+                        } catch (error) {
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : "Não foi possível encaminhar o pedido.",
+                          );
+                        }
+                      }}
+                    >
+                      Enviar agora
+                    </Button>
+                  )}
+              </div>
+            ))}
+            <div className="border-t border-border pt-3 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground">
+                Atualizar envio nos Correios:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={lastEvent === "preparing" ? "secondary" : "outline"}
+                  disabled={updatingId === ord.id}
+                  onClick={() => addStatus(ord.id, "preparing", "Pedido em separação para envio")}
+                >
+                  Em separação
+                </Button>
+
+                <div className="flex flex-1 min-w-[240px] gap-1">
+                  <Input
+                    placeholder="Código de rastreio Correios (ex: AA123456789BR)"
+                    value={trackingNote[ord.id] || ""}
+                    onChange={(e) => setTrackingNote({ ...trackingNote, [ord.id]: e.target.value })}
+                    className="h-9 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={updatingId === ord.id}
+                    onClick={() =>
+                      addStatus(
+                        ord.id,
+                        "shipped",
+                        trackingNote[ord.id]
+                          ? `Rastreio Correios: ${trackingNote[ord.id]}`
+                          : "Objeto postado nos Correios",
+                      )
+                    }
+                  >
+                    Marcar Enviado
+                  </Button>
+                </div>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={updatingId === ord.id}
+                  onClick={() =>
+                    addStatus(
+                      ord.id,
+                      "out_for_delivery",
+                      "Objeto saiu para entrega ao destinatário",
+                    )
+                  }
+                >
+                  Saiu para entrega
+                </Button>
+
+                <Button
+                  size="sm"
+                  className="bg-success text-success-foreground hover:bg-success/90"
+                  disabled={updatingId === ord.id}
+                  onClick={() => addStatus(ord.id, "delivered", "Objeto entregue ao cliente")}
+                >
+                  Entregue
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {displayedOrders.length === 0 && (
+        <div className="surface-card p-8 text-center text-sm text-muted-foreground">
+          {orderFilter === "paid"
+            ? "Nenhum pedido pago aguardando envio no momento."
+            : orderFilter === "pending"
+              ? "Nenhum pedido aguardando pagamento no momento."
+              : "Nenhum pedido registrado nesta loja."}
+        </div>
+      )}
+    </div>
+  );
+}
