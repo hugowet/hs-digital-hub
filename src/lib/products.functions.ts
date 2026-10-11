@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const mediaSchema = z.object({
-  storagePath: z.string().min(10).max(500),
+  storagePath: z.string().min(5).max(500),
   mediaType: z.enum(["image", "video"]),
   mimeType: z.string().min(3).max(120),
   sizeBytes: z.number().int().positive().max(50 * 1024 * 1024),
@@ -12,39 +12,53 @@ const mediaSchema = z.object({
 });
 
 const categories = [
-  "digitais-templates", "cursos-infoprodutos", "eletronicos-gadgets",
-  "perifericos-acessorios", "casa-setup", "eletronicos", "moda", "casa",
-  "beleza", "games", "esportes", "infantil", "mercado",
+  "digitais-templates",
+  "cursos-infoprodutos",
+  "eletronicos-gadgets",
+  "celulares-tv",
+  "perifericos-acessorios",
+  "ferramentas",
+  "autos-motos",
+  "casa-setup",
+  "eletronicos",
+  "moda",
+  "casa",
+  "beleza",
+  "games",
+  "esportes",
+  "infantil",
+  "mercado",
 ] as const;
 
 const productSchema = z.object({
-  title: z.string().trim().min(2).max(160),
-  description: z.string().trim().max(5_000),
-  price: z.number().positive().max(99_999_999.99),
-  stock: z.number().int().min(0).max(1_000_000),
+  title: z.string().trim().min(2, "Título deve ter no mínimo 2 caracteres").max(160),
+  description: z.string().trim().max(5_000).default(""),
+  price: z.number().positive("Preço deve ser maior que zero").max(99_999_999.99),
+  stock: z.number().int().min(0, "Estoque deve ser positivo").max(1_000_000),
   category: z.enum(categories),
   productType: z.enum(["physical", "digital"]),
-  deliveryUrl: z.string().url().max(2_000).or(z.literal("")),
+  deliveryUrl: z.string().max(2_000).default(""),
   media: z.array(mediaSchema).max(10),
-  weightKg: z.number().positive().max(1_000).nullable(),
-  heightCm: z.number().positive().max(1_000).nullable(),
-  widthCm: z.number().positive().max(1_000).nullable(),
-  lengthCm: z.number().positive().max(1_000).nullable(),
+  weightKg: z.number().positive().max(1_000).nullable().optional(),
+  heightCm: z.number().positive().max(1_000).nullable().optional(),
+  widthCm: z.number().positive().max(1_000).nullable().optional(),
+  lengthCm: z.number().positive().max(1_000).nullable().optional(),
 }).superRefine((data, context) => {
-  if (data.productType === "digital" && !data.deliveryUrl.startsWith("https://")) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["deliveryUrl"], message: "Informe um link HTTPS de entrega válido." });
+  if (data.productType === "digital" && (!data.deliveryUrl || !data.deliveryUrl.startsWith("https://"))) {
+    context.addIssue({ 
+      code: z.ZodIssueCode.custom, 
+      path: ["deliveryUrl"], 
+      message: "Informe um link HTTPS de entrega válido." 
+    });
   }
-  data.media.forEach((item, index) => {
-    const valid = item.mediaType === "image"
-      ? item.mimeType.startsWith("image/") && item.sizeBytes <= 10 * 1024 * 1024
-      : item.mimeType.startsWith("video/") && item.sizeBytes <= 50 * 1024 * 1024;
-    if (!valid) context.addIssue({ code: z.ZodIssueCode.custom, path: ["media", index], message: "Mídia inválida." });
-  });
-  if (data.media.length > 0 && !data.media.some((item) => item.mediaType === "image")) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["media"], message: "Inclua ao menos uma foto para usar como capa." });
-  }
-  if (data.productType === "physical" && [data.weightKg, data.heightCm, data.widthCm, data.lengthCm].some((value) => value === null)) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["weightKg"], message: "Informe peso e dimensões do produto físico para calcular o frete." });
+  if (data.productType === "physical") {
+    if (!data.weightKg || !data.heightCm || !data.widthCm || !data.lengthCm) {
+      context.addIssue({ 
+        code: z.ZodIssueCode.custom, 
+        path: ["weightKg"], 
+        message: "Informe peso e dimensões do produto físico para o frete." 
+      });
+    }
   }
 });
 
