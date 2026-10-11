@@ -137,7 +137,6 @@ export function AccountPage() {
     }
   }, [profile, user.id]);
 
-  // Upload simulado de foto de perfil (converte em base64 e salva)
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -152,7 +151,6 @@ export function AccountPage() {
       const result = event.target?.result as string;
       setAvatarUrl(result);
 
-      // Salva no estado do usuário
       const current = JSON.parse(localStorage.getItem(`user_profile_meta_${user.id}`) || "{}");
       localStorage.setItem(
         `user_profile_meta_${user.id}`,
@@ -192,7 +190,6 @@ export function AccountPage() {
 
       if (error) throw error;
 
-      // Salva os metadados de verificação e foto
       const current = JSON.parse(localStorage.getItem(`user_profile_meta_${user.id}`) || "{}");
       localStorage.setItem(
         `user_profile_meta_${user.id}`,
@@ -205,8 +202,8 @@ export function AccountPage() {
         }),
       );
 
-      await qc.invalidateQueries({ queryKey: ["my-profile"] });
-      toast.success("Dados da conta atualizados e identidade validada com sucesso!");
+      await qc.invalidateQueries({ queryKey: ["my-profile", user.id] });
+      toast.success("Dados da conta atualizados com sucesso!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao atualizar dados.");
     } finally {
@@ -214,23 +211,65 @@ export function AccountPage() {
     }
   };
 
+  // Busca CEP automático via ViaCEP
+  const handlePostalCodeChange = async (value: string) => {
+    const raw = value.replace(/\D/g, "").slice(0, 8);
+    const masked = raw.length > 5 ? `${raw.slice(0, 5)}-${raw.slice(5)}` : raw;
+    
+    setForm((prev) => ({ ...prev, postal_code: masked }));
+
+    if (raw.length === 8) {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${raw}/json/`);
+        const data = await response.json();
+        if (!data.erro) {
+          setForm((prev) => ({
+            ...prev,
+            postal_code: masked,
+            street_address: data.logradouro ? `${data.logradouro}${data.bairro ? ` - ${data.bairro}` : ""}` : prev.street_address,
+            city: data.localidade || prev.city,
+            state: data.uf || prev.state,
+          }));
+        } else {
+          toast.error("CEP não encontrado.");
+        }
+      } catch {
+        // Falha silenciosa de rede no CEP
+      }
+    }
+  };
+
   const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.recipient_name || !form.street_address || !form.city || !form.state) {
-      toast.error("Preencha todos os campos obrigatórios do endereço.");
+
+    const cleanZip = form.postal_code.replace(/\D/g, "");
+    if (!form.recipient_name.trim() || !form.street_address.trim() || !form.city.trim() || !form.state.trim()) {
+      toast.error("Preencha destinatário, rua/número, cidade e estado.");
+      return;
+    }
+
+    if (form.state.trim().length !== 2) {
+      toast.error("O estado (UF) deve ter exatamente 2 letras (ex: AM, SP, RJ).");
       return;
     }
 
     const { error } = await supabase.from("user_addresses").insert({
       user_id: user.id,
-      ...form,
+      label: form.label.trim() || "Casa",
+      recipient_name: form.recipient_name.trim(),
+      phone: form.phone.trim(),
+      street_address: form.street_address.trim(),
+      city: form.city.trim(),
+      state: form.state.trim().toUpperCase(),
+      postal_code: cleanZip,
+      complement: form.complement.trim(),
       is_default: addresses.length === 0,
     });
 
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Endereço adicionado!");
+      toast.success("Endereço adicionado com sucesso!");
       setForm({
         label: "Casa",
         recipient_name: "",
@@ -241,7 +280,7 @@ export function AccountPage() {
         postal_code: "",
         complement: "",
       });
-      await qc.invalidateQueries({ queryKey: ["my-addresses"] });
+      await qc.invalidateQueries({ queryKey: ["my-addresses", user.id] });
     }
   };
 
@@ -257,10 +296,9 @@ export function AccountPage() {
           </p>
         </div>
 
-        {/* CARTÃO DE PERFIL E IDENTIDADE (PADRÃO MERCADO LIVRE / SHOPEE) */}
+        {/* CARTÃO DE PERFIL E IDENTIDADE */}
         <section className="rounded-lg border border-gray-200 bg-white p-5 sm:p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row items-center gap-5 border-b pb-6">
-            {/* Foto de Perfil com Botão de Alteração */}
             <div className="relative">
               <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-gray-200 bg-gray-100 flex items-center justify-center shadow-inner">
                 {avatarUrl ? (
@@ -355,7 +393,6 @@ export function AccountPage() {
                 />
               </div>
 
-              {/* CPF com Validação Real */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="cpf" className="text-xs">
@@ -441,7 +478,7 @@ export function AccountPage() {
                           .from("user_addresses")
                           .update({ is_default: true })
                           .eq("id", address.id);
-                        await qc.invalidateQueries({ queryKey: ["my-addresses"] });
+                        await qc.invalidateQueries({ queryKey: ["my-addresses", user.id] });
                         toast.success("Endereço definido como padrão.");
                       }}
                     >
@@ -462,7 +499,7 @@ export function AccountPage() {
                     if (error) toast.error(error.message);
                     else {
                       toast.success("Endereço removido.");
-                      await qc.invalidateQueries({ queryKey: ["my-addresses"] });
+                      await qc.invalidateQueries({ queryKey: ["my-addresses", user.id] });
                     }
                   }}
                 >
@@ -472,7 +509,7 @@ export function AccountPage() {
             ))}
           </div>
 
-          {/* Adicionar Novo Endereço */}
+          {/* Adicionar Novo Endereço com campos reais e preenchimento de CEP */}
           <form onSubmit={handleAddAddress} className="mt-6 border-t pt-5 space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">
               Adicionar novo endereço
@@ -483,6 +520,7 @@ export function AccountPage() {
                 <Input
                   value={form.label}
                   onChange={(e) => setForm({ ...form, label: e.target.value })}
+                  placeholder="Casa"
                   className="h-8 text-xs"
                 />
               </div>
@@ -491,8 +529,9 @@ export function AccountPage() {
                 <Input
                   value={form.recipient_name}
                   onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
-                  placeholder="Nome completo"
+                  placeholder="Nome completo do destinatário"
                   className="h-8 text-xs"
+                  required
                 />
               </div>
               <div>
@@ -506,14 +545,26 @@ export function AccountPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-4 text-xs">
+            <div className="grid gap-3 sm:grid-cols-5 text-xs">
+              <div>
+                <Label className="text-[11px]">CEP *</Label>
+                <Input
+                  value={form.postal_code}
+                  maxLength={9}
+                  onChange={(e) => handlePostalCodeChange(e.target.value)}
+                  placeholder="00000-000"
+                  className="h-8 text-xs"
+                  required
+                />
+              </div>
               <div className="sm:col-span-2">
                 <Label className="text-[11px]">Rua, número e bairro *</Label>
                 <Input
                   value={form.street_address}
                   onChange={(e) => setForm({ ...form, street_address: e.target.value })}
-                  placeholder="Av. Principal, 123 - Centro"
+                  placeholder="Rua, número, bairro"
                   className="h-8 text-xs"
+                  required
                 />
               </div>
               <div>
@@ -521,18 +572,32 @@ export function AccountPage() {
                 <Input
                   value={form.complement}
                   onChange={(e) => setForm({ ...form, complement: e.target.value })}
-                  placeholder="Apto 101, Bloco B"
+                  placeholder="Apto, bloco, etc."
                   className="h-8 text-xs"
                 />
               </div>
-              <div>
-                <Label className="text-[11px]">Cidade/UF *</Label>
-                <Input
-                  value={form.city}
-                  onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  placeholder="Manaus/AM"
-                  className="h-8 text-xs"
-                />
+              <div className="grid grid-cols-3 gap-1.5">
+                <div className="col-span-2">
+                  <Label className="text-[11px]">Cidade *</Label>
+                  <Input
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    placeholder="Cidade"
+                    className="h-8 text-xs"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px]">UF *</Label>
+                  <Input
+                    value={form.state}
+                    maxLength={2}
+                    onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase() })}
+                    placeholder="UF"
+                    className="h-8 text-xs uppercase"
+                    required
+                  />
+                </div>
               </div>
             </div>
 
