@@ -415,7 +415,7 @@ function SellerCenterPage() {
       }
 
       // 2. Consulta a lista de produtos diretamente na CJ
-      const response = await fetch('https://cjdropshipping.com', {
+      const response = await fetch('https://www.cjdropshipping.com/my.html#/authorize/APIStores', {
         method: 'GET',
         headers: {
           'CJ-Access-Token': setting.key_value,
