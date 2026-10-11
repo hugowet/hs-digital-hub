@@ -416,11 +416,7 @@ const response = await fetch('https://cjdropshipping.com', {
         headers: {
           'CJ-Access-Token': cjApiKey,
           'Content-Type': 'application/json'
-        }
-      });
-
       const result = await response.json();
-
       if ((result.text !== "Success" && result.message !== "Success") || !result.data?.list) {
         toast.error("Falha na autenticação da chave com a CJ Dropshipping.");
         return;
