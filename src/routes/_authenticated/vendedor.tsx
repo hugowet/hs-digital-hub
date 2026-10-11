@@ -397,10 +397,32 @@ function SellerCenterPage() {
                   Conecte um fornecedor somente se quiser vender sem manter estoque próprio.
                 </p>
               </div>
-              <Button disabled={syncingCj} onClick={() => void continueCjImport(true)}>
-                <RefreshCw className={`h-4 w-4 ${syncingCj ? "animate-spin" : ""}`} />
-                {syncingCj ? "Sincronizando…" : "Sincronizar CJ"}
-              </Button>
+              <Button 
+  onClick={async () => {
+    try {
+      toast.info("Conectando à CJ Dropshipping e importando produtos...");
+      
+      const response = await fetch('/api/public/suppliers/sync', { 
+        method: 'POST' 
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        toast.success(data.message);
+        window.location.reload();
+      } else {
+        toast.error("Erro na sincronização: " + (data.error || "Falha desconhecida."));
+      }
+    } catch (err) {
+      toast.error("Não foi possível conectar ao servidor de sincronização.");
+    }
+  }}
+  className="bg-blue-600 hover:bg-blue-700 text-white"
+>
+  Sincronizar CJ
+</Button>
+
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {supplierIntegrations.map((integration) => (
