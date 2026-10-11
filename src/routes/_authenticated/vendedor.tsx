@@ -411,12 +411,16 @@ function SellerCenterPage() {
       }
 
       // 1. Consulta a lista de produtos diretamente na API oficial da CJ
-const response = await fetch('https://cjdropshipping.com', {
+      const response = await fetch('https://cjdropshipping.com', {
         method: 'GET',
         headers: {
           'CJ-Access-Token': cjApiKey,
           'Content-Type': 'application/json'
+        }
+      });
+
       const result = await response.json();
+
       if ((result.text !== "Success" && result.message !== "Success") || !result.data?.list) {
         toast.error("Falha na autenticação da chave com a CJ Dropshipping.");
         return;
