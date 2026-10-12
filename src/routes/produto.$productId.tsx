@@ -742,89 +742,118 @@ export function ProductDetailPage() {
           )
         )}
 
-           {/* Descrição Detalhada Real e Customizada */}
+                {/* Seção Completa de Descrição e Características - HS Digital */}
         {product?.description_long && (
-          <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
-            <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              {/* --- INÍCIO DO TRATAMENTO DINÂMICO HS DIGITAL --- */}
+          <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+            <div className="text-sm leading-relaxed text-muted-foreground">
               {(() => {
                 const nomeProduto = product?.title || "Produto Especial";
                 
-                // Limpa o texto genérico indesejado se ele estiver grudado na descrição real
+                // 1. Limpa de vez qualquer frase feia do fornecedor
                 let descricaoReal = product.description_long
                   .replace("Produto real da CJ Dropshipping, selecionado entre os mais procurados da categoria.", "")
                   .replace("Produto real do catálogo CJ Dropshipping, com estoque sincronizado pelo fornecedor.", "")
                   .trim();
 
+                // 2. Transforma o texto técnico bruto da CJ em uma tabela organizada de características
+                const linhasEspecificas = descricaoReal
+                  .split(/[\n;•]+/)
+                  .map(linha => linha.trim())
+                  .filter(linha => linha.length > 3 && !linha.toLowerCase().includes("http"));
+
                 return (
-                  <div className="space-y-6 text-foreground font-sans">
-                    {/* 1. TÍTULO DO PRODUTO */}
+                  <div className="space-y-8 text-foreground font-sans">
+                    
+                    {/* TÍTULO E CAPA DA DESCRIÇÃO */}
                     <div>
-                      <h2 className="text-xl font-bold uppercase tracking-wide border-b border-border pb-2 mb-4">Descrição</h2>
-                      <p className="text-lg font-semibold text-primary uppercase mb-4">{nomeProduto}</p>
+                      <h2 className="text-xl font-bold uppercase tracking-wide border-b border-border pb-2 mb-4 text-foreground">Descrição</h2>
+                      <p className="text-lg font-semibold text-primary uppercase mb-2">{nomeProduto}</p>
                     </div>
 
-                    {/* 2. AQUI ENTRA A DESCRIÇÃO REAL DA CJ DROPSHIPPING (DADOS TÉCNICOS REAIS) */}
-                    <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-line border-b border-border pb-6 mb-6">
-                      {descricaoReal || "Confira os detalhes técnicos nas especificações do produto."}
+                    {/* TEXTO DE APRESENTAÇÃO */}
+                    <div className="text-muted-foreground leading-relaxed whitespace-pre-line border-b border-border pb-6">
+                      {descricaoReal ? (
+                        <p>{descricaoReal.split('\n')[0]}</p>
+                      ) : (
+                        <p>Produto selecionado estrategicamente pela nossa equipe, garantindo alto padrão, usabilidade ideal e o melhor acabamento para a sua rotina.</p>
+                      )}
                     </div>
 
-                    {/* 3. SEU MODELO MASSA DE POLÍTICAS E PERGUNTAS ABAIXO DA DESCRIÇÃO REAL */}
+                    {/* NOVA ABA: CARACTERÍSTICAS DO PRODUTO (ESTILO MERCADO LIVRE) */}
                     <div>
-                      <h3 className="text-base font-bold uppercase tracking-wider mb-2 text-muted-foreground">DEVOLUÇÃO FACILITADA</h3>
+                      <h3 className="text-base font-bold uppercase tracking-wider mb-4 text-foreground flex items-center gap-2">
+                        📋 Características do produto
+                      </h3>
+                      
+                      {linhasEspecificas.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 border border-border rounded-lg overflow-hidden bg-muted/10">
+                          {linhasEspecificas.map((linha, index) => {
+                            // Tenta separar por dois pontos se houver (Ex: "Material: Plástico")
+                            const partes = linha.split(/[:=-]+/);
+                            const label = partes[0]?.trim();
+                            const valor = partes.slice(1).join(":")?.trim() || "Sim";
+
+                            return (
+                              <div 
+                                key={index} 
+                                className="flex border-b border-border last:border-0 md:border-b p-3 text-sm even:bg-muted/30 md:even:bg-transparent md:[&:nth-child(4n+3)]:bg-muted/20 md:[&:nth-child(4n+4)]:bg-muted/20"
+                              >
+                                <span className="w-1/2 font-medium text-muted-foreground pr-2 break-words">{label}</span>
+                                <span className="w-1/2 text-foreground font-semibold break-words">{valor}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="border border-border p-4 rounded-lg bg-muted/20 text-muted-foreground text-center">
+                          Especificações técnicas detalhadas disponíveis no manual e imagens do anúncio.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* DEVOLUÇÃO FACILITADA */}
+                    <div className="border-t border-border pt-6">
+                      <h3 className="text-base font-bold uppercase tracking-wider mb-2 text-foreground">DEVOLUÇÃO FACILITADA</h3>
                       <p className="text-muted-foreground leading-relaxed">
-                        Não serviu ou não gostou? Basta solicitar a devolução sem custo algum diretamente pela nossa plataforma <strong>HS Digital</strong>. Qualquer dúvida ou problema, contate-nos. Nossa equipe de atendimento estará pronta para te ajudar!
+                        Não serviu ou não gostou do produto? Fique tranquilo! Você pode solicitar a devolução sem custo algum diretamente pela nossa plataforma <strong>HS Digital</strong>. Nossa equipe de suporte está pronta para te atender com total rapidez!
                       </p>
-                      <ul className="mt-4 space-y-1 text-sm font-semibold text-primary">
-                        <li>* GARANTIA CONTRA QUALQUER DEFEITO DE FABRICAÇÃO</li>
-                        <li>* FRETE GRÁTIS COMPRANDO ACIMA DE R$ 79,00</li>
+                      <ul className="mt-4 space-y-1 text-sm font-bold text-primary">
+                        <li>* GARANTIA TOTAL CONTRA QUALQUER DEFEITO DE FABRICAÇÃO</li>
+                        <li>* FRETE GRÁTIS EM COMPRAS SELECIONADAS ACIMA DE R$ 79,00</li>
                       </ul>
                     </div>
 
-                    <div className="border-t border-border pt-4 space-y-4">
-                      <h3 className="text-base font-bold uppercase tracking-wider text-muted-foreground">PERGUNTAS FREQUENTES</h3>
+                    {/* PERGUNTAS FREQUENTES */}
+                    <div className="border-t border-border pt-6 space-y-4">
+                      <h3 className="text-base font-bold uppercase tracking-wider text-foreground">PERGUNTAS FREQUENTES</h3>
                       
                       <div>
                         <p className="font-bold text-foreground">&gt; QUANDO RECEBEREI MEU PRODUTO APÓS A COMPRA?</p>
-                        <p className="text-muted-foreground pl-4">O prazo de entrega varia conforme seu endereço. Despachamos a sua encomenda rapidamente e, para saber a data máxima da entrega, consulte as informações direto no seu carrinho antes do pagamento.</p>
+                        <p className="text-muted-foreground pl-4">O prazo de entrega varia conforme o seu endereço. Despachamos a mercadoria rapidamente através do nosso centro logístico e você pode acompanhar a data máxima estimada no carrinho antes de pagar.</p>
                       </div>
 
                       <div>
-                        <p className="font-bold text-foreground">&gt; O PRODUTO É NOVO?</p>
-                        <p className="text-muted-foreground pl-4">Sim, todos os produtos são totalmente novos e distribuídos com exclusividade por vendedores parceiros e oficiais na HS Digital.</p>
+                        <p className="font-bold text-foreground">&gt; O PRODUTO É NOVO E ORIGINAL?</p>
+                        <p className="text-muted-foreground pl-4">Sim, absolutamente todos os produtos do nosso catálogo são novos, lacrados na caixa e distribuídos oficialmente pela HS Digital.</p>
                       </div>
 
                       <div>
-                        <p className="font-bold text-foreground">&gt; O PRODUTO É ORIGINAL?</p>
-                        <p className="text-muted-foreground pl-4">Sim, trabalhamos apenas com produtos originais e selecionados de alta qualidade.</p>
-                      </div>
-
-                      <div>
-                        <p className="font-bold text-foreground">&gt; TEM PRONTA ENTREGA?</p>
-                        <p className="text-muted-foreground pl-4">Sim, todos os produtos anunciados estão disponíveis para envio imediato.</p>
-                      </div>
-
-                      <div>
-                        <p className="font-bold text-foreground">&gt; ACOMPANHA NOTA FISCAL?</p>
-                        <p className="text-muted-foreground pl-4">Sim, todos os nossos produtos são enviados com a nota fiscal ou documento de envio correspondente.</p>
-                      </div>
-
-                      <div>
-                        <p className="font-bold text-foreground">&gt; O PRODUTO TEM GARANTIA?</p>
-                        <p className="text-muted-foreground pl-4">Sim, todos os produtos têm garantia de 1 mês contra defeitos de fabricação.</p>
+                        <p className="font-bold text-foreground">&gt; TEM PRONTA ENTREGA E GARANTIA?</p>
+                        <p className="text-muted-foreground pl-4">Sim, o produto anunciado encontra-se disponível em estoque de fábrica para envio imediato com garantia de 1 mês assegurada por nossa loja.</p>
                       </div>
                     </div>
 
-                    <p className="text-xs text-muted-foreground italic border-t border-border pt-4">
-                      Se ainda houver alguma dúvida, nossa equipe de atendimento está à disposição para responder de segunda-feira a sexta-feira das 08:00 às 17:00.
+                    {/* RODAPÉ DO SUPORTE */}
+                    <p className="text-xs text-muted-foreground italic border-t border-border pt-4 text-center md:text-left">
+                      Se ainda houver alguma dúvida, nossa equipe de atendimento está à total disposição de segunda-feira a sexta-feira, das 08:00 às 17:00.
                     </p>
                   </div>
                 );
               })()}
-              {/* --- FIM DO TRATAMENTO DINÂMICO HS DIGITAL --- */}
             </div>
           </section>
         )}
+
         {/* Avaliações com Fotos Reais de Encomendas */}
         <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
