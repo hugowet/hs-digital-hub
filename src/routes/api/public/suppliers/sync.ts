@@ -1,5 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Função auxiliar para higienizar o título e aplicar regras de SEO brasileiras
+function formatarTituloSEO(rawTitle: string): string {
+  if (!rawTitle) return "Produto HS Digital";
+  
+  // Remove termos inflados, códigos, anos repetitivos e vícios de dropshipping internacional
+  let cleanTitle = rawTitle.replace(/(Fashion|New|2026|2025|Drop|Hot Sale|Dropshipping|Novidade|Verão|Inverno|Original|Luxury|Premium|High Quality|Top Quality|Brand|🔥|⚡)\s?/gi, '');
+  
+  // Limpa múltiplos espaços em branco deixados pelas remoções
+  cleanTitle = cleanTitle.replace(/\s+/g, " ").trim();
+  
+  // Retorna o título capitalizado de forma elegante (Primeira letra maiúscula)
+  return cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+}
+
 export async function POST(req: Request) {
   try {
     let body: any = {};
@@ -144,7 +158,11 @@ export async function POST(req: Request) {
     // 4. Mapeamento e persistência no banco de dados na tabela 'products'
     for (const item of productList) {
       const pid = String(item.pid || item.id || "");
-      const title = String(item.productName || item.productNameEn || item.productTitle || "Produto CJ Dropshipping").trim();
+      const rawTitle = String(item.productName || item.productNameEn || item.productTitle || "Produto CJ Dropshipping").trim();
+      
+      // APLICA TRATAMENTO DE SEO NO TÍTULO
+      const title = formatarTituloSEO(rawTitle);
+
       const rawCost = parseFloat(item.sellPrice || item.productPrice || item.costPrice || "0") || 0;
 
       // REGRA DE MARGEM DE LUCRO: Multiplica o custo por 1.35 (35% de margem)
@@ -160,11 +178,31 @@ export async function POST(req: Request) {
         gallery.unshift(mainImage);
       }
 
-      // Descrição limpa
-      let description = item.description || item.productDescription || item.entryDescription || "Produto importado via CJ Dropshipping com garantia e envio seguro.";
-      if (typeof description === "string") {
-        description = description.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 1500);
+      // Descrição base higienizada
+      let baseDescription = item.description || item.productDescription || item.entryDescription || "Produto importado com alto padrão de qualidade.";
+      if (typeof baseDescription === "string") {
+        baseDescription = baseDescription.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
       }
+      if (baseDescription.length > 800) {
+        baseDescription = baseDescription.slice(0, 800) + "...";
+      }
+
+      // ESTRUTURAÇÃO DE CONFIABILIDADE EM HTML RICO PARA O CLIENTE
+      const fullRichDescription = `
+        <p>${baseDescription}</p>
+        <br />
+        <div style="border: 1px solid #e2e8f0; padding: 16px; border-radius: 8px; background-color: #f8fafc; font-family: sans-serif;">
+          <h3 style="color: #1e293b; margin-top: 0; font-size: 16px; display: flex; items-center: center; gap: 8px;">
+            <strong>🔒 COMPRA GARANTIDA HS DIGITAL</strong>
+          </h3>
+          <ul style="list-style-type: none; padding-left: 0; margin: 0; color: #475569; font-size: 14px; line-height: 1.6;">
+            <li style="margin-bottom: 8px;"><strong>• Envio Seguro:</strong> Código de rastreamento internacional gerado automaticamente e enviado por e-mail para acompanhar cada passo do transporte.</li>
+            <li style="margin-bottom: 8px;"><strong>• Processamento Rápido:</strong> Pedido integrado diretamente com o centro de distribuição da CJ Dropshipping para o menor tempo de postagem.</li>
+            <li style="margin-bottom: 8px;"><strong>• Garantia e CDC:</strong> Garantia total de 7 dias para trocas ou devoluções em Rolim de Moura e todo o Brasil, em conformidade com o Código de Defesa do Consumidor.</li>
+            <li style="margin-bottom: 0;"><strong>• Pagamento Protegido:</strong> Checkout 100% blindado via Mercado Pago com proteção total do seu saldo e transação.</li>
+          </ul>
+        </div>
+      `.trim();
 
       // Variações e vídeo
       const variations = Array.isArray(item.variants) ? item.variants : [];
@@ -176,8 +214,8 @@ export async function POST(req: Request) {
       const productPayload: Record<string, any> = {
         store_id: storeId,
         title: title.slice(0, 160),
-        description: description,
-        description_long: description,
+        description: fullRichDescription,
+        description_long: fullRichDescription,
         price: finalPrice,
         stock: parseInt(String(item.warehouseInventoryNum || item.totalVerifiedInventory || "50"), 10) || 50,
         category: category,
@@ -217,26 +255,3 @@ export async function POST(req: Request) {
         }
       }
 
-      const { error: insertErr } = await supabase.from("products").insert(productPayload);
-      if (!insertErr) {
-        cadastrados++;
-      }
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `${cadastrados} novos produtos importados e ${atualizados} atualizados com 35% de margem!`,
-      }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error: any) {
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Chave salva! Aguardando sincronização de produtos em segundo plano.",
-      }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
-  }
-}
