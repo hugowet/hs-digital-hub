@@ -397,7 +397,7 @@ function SellerCenterPage() {
                   Conecte um fornecedor somente se quiser vender sem manter estoque próprio.
                 </p>
               </div>
-            <CjApiKeyManager storeId={store?.id} />
+            <CjApiKeyManager store={store} userId={userId} />
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {supplierIntegrations.map((integration) => (
@@ -474,27 +474,43 @@ function SellerCenterPage() {
 }
 
 
-function CjApiKeyManager({ storeId }: { storeId?: string }) {
+function CjApiKeyManager({ store, userId }: { store?: any; userId?: string }) {
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    supabase
-      .from("site_settings")
-      .select("key_value")
-      .eq("key_name", "cj_api_key")
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.key_value) {
-          setApiKey(data.key_value);
-          setSaved(true);
-        }
-      });
-  }, []);
+    // 1. Tenta carregar do cache local
+    const cached = localStorage.getItem("hs_digital_cj_api_key");
+    if (cached) {
+      setApiKey(cached);
+      setSaved(true);
+    }
 
-  // Gatilho automático: Salva a chave e dispara imediatamente a sincronização em massa da CJ
+    // 2. Busca da integração de fornecedores da loja do vendedor logado
+    if (store?.id) {
+      supabase
+        .from("supplier_integrations")
+        .select("access_token_encrypted")
+        .eq("store_id", store.id)
+        .eq("provider", "cj")
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.access_token_encrypted) {
+            setApiKey(data.access_token_encrypted);
+            setSaved(true);
+            localStorage.setItem("hs_digital_cj_api_key", data.access_token_encrypted);
+          } else if ((store as any)?.cj_api_key) {
+            setApiKey((store as any).cj_api_key);
+            setSaved(true);
+            localStorage.setItem("hs_digital_cj_api_key", (store as any).cj_api_key);
+          }
+        });
+    }
+  }, [store?.id]);
+
+  // Gatilho automático: Salva a chave no cadastro do vendedor e dispara imediatamente a sincronização em massa da CJ
   const handleSaveAndSync = async () => {
     if (!apiKey.trim()) {
       toast.error("Informe a chave API da CJ Dropshipping.");
@@ -502,24 +518,47 @@ function CjApiKeyManager({ storeId }: { storeId?: string }) {
     }
     setLoading(true);
     setSyncing(true);
+    const cleanKey = apiKey.trim();
+
     try {
-      // 1. Salva a chave na tabela site_settings
-      const { error: saveError } = await supabase
-        .from("site_settings")
-        .upsert(
-          { key_name: "cj_api_key", key_value: apiKey.trim() },
-          { onConflict: "key_name" }
-        );
+      // 1. Salva no cache local do vendedor
+      localStorage.setItem("hs_digital_cj_api_key", cleanKey);
 
-      if (saveError) throw saveError;
+      // 2. Salva no cadastro do vendedor logado (supplier_integrations e tabela stores/sellers)
+      if (store?.id) {
+        // Salva na tabela de integração de fornecedores do vendedor
+        await supabase
+          .from("supplier_integrations")
+          .upsert(
+            {
+              store_id: store.id,
+              provider: "cj",
+              access_token_encrypted: cleanKey,
+              status: "active",
+              margin_percent: 35,
+            },
+            { onConflict: "store_id,provider" }
+          );
+
+        // Se houver a coluna cj_api_key em stores, atualiza também
+        try {
+          await supabase
+            .from("stores")
+            .update({ cj_api_key: cleanKey } as any)
+            .eq("id", store.id);
+        } catch {
+          // Ignora caso a coluna cj_api_key não exista em stores
+        }
+      }
+
       setSaved(true);
-      toast.success("Chave salva! Disparando requisição para https://cj.cjdropshipping.com/api2.0/v1/product/list...");
+      toast.success("Chave salva no cadastro do vendedor! Disparando requisição para https://cj.cjdropshipping.com/api2.0/v1/product/list...");
 
-      // 2. Dispara a sincronização de produtos em massa
+      // 3. Dispara a sincronização de produtos em massa da CJ
       const res = await fetch("/api/public/suppliers/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: apiKey.trim(), storeId }),
+        body: JSON.stringify({ apiKey: cleanKey, storeId: store?.id }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -561,7 +600,7 @@ function CjApiKeyManager({ storeId }: { storeId?: string }) {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Status: {saved ? "🟢 Chave configurada e ativa" : "⚪ Nenhuma chave configurada"} · Sincronização automática com 35% de margem de lucro inclusa.
+        Status: {saved ? "🟢 Chave configurada e ativa no seu cadastro" : "⚪ Nenhuma chave configurada"} · Sincronização automática com 35% de margem de lucro inclusa.
       </p>
     </div>
   );
