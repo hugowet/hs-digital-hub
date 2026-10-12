@@ -397,7 +397,7 @@ function SellerCenterPage() {
                   Conecte um fornecedor somente se quiser vender sem manter estoque próprio.
                 </p>
               </div>
-            <CjApiKeyManager />
+            <CjApiKeyManager storeId={store?.id} />
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {supplierIntegrations.map((integration) => (
@@ -474,7 +474,7 @@ function SellerCenterPage() {
 }
 
 
-function CjApiKeyManager() {
+function CjApiKeyManager({ storeId }: { storeId?: string }) {
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -494,47 +494,43 @@ function CjApiKeyManager() {
       });
   }, []);
 
-  const handleSaveKey = async () => {
+  // Gatilho automático: Salva a chave e dispara imediatamente a sincronização em massa da CJ
+  const handleSaveAndSync = async () => {
     if (!apiKey.trim()) {
       toast.error("Informe a chave API da CJ Dropshipping.");
       return;
     }
     setLoading(true);
+    setSyncing(true);
     try {
-      const { error } = await supabase
+      // 1. Salva a chave na tabela site_settings
+      const { error: saveError } = await supabase
         .from("site_settings")
         .upsert(
           { key_name: "cj_api_key", key_value: apiKey.trim() },
           { onConflict: "key_name" }
         );
 
-      if (error) throw error;
+      if (saveError) throw saveError;
       setSaved(true);
-      toast.success("Chave da CJ salva com sucesso!");
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao salvar a chave API.");
-    } finally {
-      setLoading(false);
-    }
-  };
+      toast.success("Chave salva! Disparando requisição para https://cj.cjdropshipping.com/api2.0/v1/product/list...");
 
-  const handleSyncCj = async () => {
-    setSyncing(true);
-    toast.info("Conectando à CJ Dropshipping e sincronizando catálogo...");
-    try {
+      // 2. Dispara a sincronização de produtos em massa
       const res = await fetch("/api/public/suppliers/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: apiKey.trim(), storeId }),
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Falha ao sincronizar com a CJ.");
       }
-      toast.success(data.message || "Catálogo sincronizado com sucesso!");
+      toast.success(data.message || "Catálogo sincronizado com 35% de margem com sucesso!");
       setTimeout(() => window.location.reload(), 1500);
     } catch (err: any) {
-      toast.error(err.message || "Erro na comunicação com a CJ Dropshipping.");
+      toast.error(err.message || "Erro ao conectar e sincronizar com a CJ.");
     } finally {
+      setLoading(false);
       setSyncing(false);
     }
   };
@@ -550,30 +546,22 @@ function CjApiKeyManager() {
           className="font-mono text-sm flex-1"
         />
         <Button
-          onClick={handleSaveKey}
-          disabled={loading || !apiKey.trim()}
-          variant="outline"
-          className="whitespace-nowrap"
-        >
-          {loading ? "Salvando..." : saved ? "Atualizar Chave" : "Salvar Chave"}
-        </Button>
-        <Button
-          onClick={handleSyncCj}
-          disabled={syncing || !saved}
+          onClick={handleSaveAndSync}
+          disabled={loading || syncing || !apiKey.trim()}
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium whitespace-nowrap"
         >
           {syncing ? (
             <>
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              Sincronizando...
+              Salvando e Sincronizando CJ...
             </>
           ) : (
-            "Conectar e Sincronizar CJ"
+            "Salvar e Sincronizar Produtos CJ"
           )}
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Status: {saved ? "🟢 Chave configurada" : "⚪ Nenhuma chave configurada"}
+        Status: {saved ? "🟢 Chave configurada e ativa" : "⚪ Nenhuma chave configurada"} · Sincronização automática com 35% de margem de lucro inclusa.
       </p>
     </div>
   );
@@ -1139,22 +1127,62 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         });
       }
 
-      await createProduct({
-        data: {
+      // Inserção direta na tabela products do Supabase, utilizando o campo correto 'title'
+      const coverUrl = uploaded.find((m) => m.mediaType === "image")?.storagePath || uploaded[0]?.storagePath || null;
+      const galleryUrls = uploaded.map((m) => m.storagePath);
+
+      const { data: newProd, error: insertProdError } = await supabase
+        .from("products")
+        .insert({
+          store_id: storeId,
           title: title.trim(),
-          description: description.trim(),
+          description: description.trim() || null,
+          description_long: description.trim() || null,
           price: parsedPrice,
           stock: parsedStock,
-          category: category as any,
-          productType,
-          deliveryUrl: deliveryUrl.trim(),
-          media: uploaded,
-          weightKg: parsedWeight,
-          heightCm: parsedHeight,
-          widthCm: parsedWidth,
-          lengthCm: parsedLength,
-        },
-      });
+          category: category,
+          product_type: productType,
+          image_url: coverUrl,
+          gallery_urls: galleryUrls,
+          is_active: true,
+          weight_kg: productType === "physical" ? parsedWeight : null,
+          height_cm: productType === "physical" ? parsedHeight : null,
+          width_cm: productType === "physical" ? parsedWidth : null,
+          length_cm: productType === "physical" ? parsedLength : null,
+        })
+        .select("id")
+        .single();
+
+      if (insertProdError) {
+        throw new Error(insertProdError.message || "Erro ao cadastrar produto no banco.");
+      }
+
+      // Inserção das fotos e vídeos na tabela product_media sem chamar RPC quebrado
+      if (newProd?.id && uploaded.length > 0) {
+        const mediaRows = uploaded.map((m) => ({
+          product_id: newProd.id,
+          store_id: storeId,
+          storage_path: m.storagePath,
+          media_type: m.mediaType,
+          mime_type: m.mimeType,
+          size_bytes: m.sizeBytes,
+          position: m.position,
+        }));
+
+        const { error: mediaErr } = await supabase.from("product_media").insert(mediaRows);
+        if (mediaErr) {
+          console.warn("Aviso ao salvar mídias do produto:", mediaErr.message);
+        }
+      }
+
+      // Inserção de link digital quando aplicável
+      if (newProd?.id && productType === "digital" && deliveryUrl.trim()) {
+        await supabase.from("digital_product_assets").insert({
+          product_id: newProd.id,
+          store_id: storeId,
+          delivery_url: deliveryUrl.trim(),
+        });
+      }
 
       toast.success("Produto cadastrado com sucesso!");
       setTitle("");
