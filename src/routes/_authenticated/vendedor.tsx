@@ -397,69 +397,7 @@ function SellerCenterPage() {
                   Conecte um fornecedor somente se quiser vender sem manter estoque próprio.
                 </p>
               </div>
-            <Button 
-  onClick={async () => {
-    try {
-      toast.info("Conectando e baixando catálogo da CJ Dropshipping...");
-      
-      // 1. Busca a chave direto do Supabase local
-      const { data: setting, error: dbError } = await supabase
-        .from('site_settings')
-        .select('key_value')
-        .eq('key_name', 'cj_api_key')
-        .single();
-
-      if (dbError || !setting?.key_value) {
-        toast.error("Chave API da CJ não encontrada no banco de dados.");
-        return;
-      }
-
-      // 2. Consulta a lista de produtos diretamente na CJ
-      const response = await fetch('https://www.cjdropshipping.com/my.html#/authorize/APIStores', {
-        method: 'GET',
-        headers: {
-          'CJ-Access-Token': setting.key_value,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const result = await response.json();
-
-      if ((result.text !== "Success" && result.message !== "Success") || !result.data?.list) {
-        toast.error("Falha na autenticação da chave com a CJ Dropshipping.");
-        return;
-      }
-
-      const produtosCJ = result.data.list;
-      let cadastrados = 0;
-
-      // 3. Insere os produtos direto na sua tabela 'produtos' em português
-      for (const item of produtosCJ) {
-        const { error: insertError } = await supabase.from('produtos').insert({
-          name: item.productName,
-          price: parseFloat(item.productPrice || 0),
-          image_url: item.productImage,
-          description: `Produto importado via CJ Dropshipping.`,
-          supplier: 'cj',
-          supplier_sku: item.productSku
-        });
-
-        if (!insertError) cadastrados++;
-      }
-
-      toast.success(`${cadastrados} produtos sincronizados com sucesso na vitrine!`);
-      window.location.reload();
-
-    } catch (err) {
-      toast.error("Erro na comunicação direta com os servidores da CJ.");
-    }
-  }}
-  className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
->
-  Sincronizar CJ
-</Button>
-
-
+            <CjApiKeyManager />
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {supplierIntegrations.map((integration) => (
@@ -532,6 +470,112 @@ function SellerCenterPage() {
         </TabsContent>
       </Tabs>
     </Shell>
+  );
+}
+
+
+function CjApiKeyManager() {
+  const [apiKey, setApiKey] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("site_settings")
+      .select("key_value")
+      .eq("key_name", "cj_api_key")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.key_value) {
+          setApiKey(data.key_value);
+          setSaved(true);
+        }
+      });
+  }, []);
+
+  const handleSaveKey = async () => {
+    if (!apiKey.trim()) {
+      toast.error("Informe a chave API da CJ Dropshipping.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert(
+          { key_name: "cj_api_key", key_value: apiKey.trim() },
+          { onConflict: "key_name" }
+        );
+
+      if (error) throw error;
+      setSaved(true);
+      toast.success("Chave da CJ salva com sucesso!");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar a chave API.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSyncCj = async () => {
+    setSyncing(true);
+    toast.info("Conectando à CJ Dropshipping e sincronizando catálogo...");
+    try {
+      const res = await fetch("/api/public/suppliers/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Falha ao sincronizar com a CJ.");
+      }
+      toast.success(data.message || "Catálogo sincronizado com sucesso!");
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err: any) {
+      toast.error(err.message || "Erro na comunicação com a CJ Dropshipping.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <div className="w-full space-y-3 pt-3">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Input
+          type="password"
+          placeholder="Cole sua chave API (CJ-Access-Token) aqui..."
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          className="font-mono text-sm flex-1"
+        />
+        <Button
+          onClick={handleSaveKey}
+          disabled={loading || !apiKey.trim()}
+          variant="outline"
+          className="whitespace-nowrap"
+        >
+          {loading ? "Salvando..." : saved ? "Atualizar Chave" : "Salvar Chave"}
+        </Button>
+        <Button
+          onClick={handleSyncCj}
+          disabled={syncing || !saved}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium whitespace-nowrap"
+        >
+          {syncing ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Sincronizando...
+            </>
+          ) : (
+            "Conectar e Sincronizar CJ"
+          )}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Status: {saved ? "🟢 Chave configurada" : "⚪ Nenhuma chave configurada"}
+      </p>
+    </div>
   );
 }
 
@@ -1054,17 +1098,17 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       let parsedWidth: number | null = null;
       let parsedLength: number | null = null;
 
-      if (productType === "physical") {
-        parsedWeight = parseNumber(weightKg);
-        parsedHeight = parseNumber(heightCm);
-        parsedWidth = parseNumber(widthCm);
-        parsedLength = parseNumber(lengthCm);
+      // Valores padrão automáticos para frete, impedindo travamento se o usuário não preencher
+      let parsedWeight: number | null = null;
+      let parsedHeight: number | null = null;
+      let parsedWidth: number | null = null;
+      let parsedLength: number | null = null;
 
-        if (parsedWeight <= 0 || parsedHeight <= 0 || parsedWidth <= 0 || parsedLength <= 0) {
-          toast.error("Preencha peso e dimensões válidos (maiores que zero) para calcular o frete.");
-          setSubmitting(false);
-          return;
-        }
+      if (productType === "physical") {
+        parsedWeight = parseNumber(weightKg) > 0 ? parseNumber(weightKg) : 0.3;
+        parsedHeight = parseNumber(heightCm) > 0 ? parseNumber(heightCm) : 5;
+        parsedWidth = parseNumber(widthCm) > 0 ? parseNumber(widthCm) : 15;
+        parsedLength = parseNumber(lengthCm) > 0 ? parseNumber(lengthCm) : 20;
       }
 
       const uploaded: Array<{
@@ -1314,7 +1358,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
             .from("orders")
             .select("id,created_at,payment_status,total,shipping_address")
             .in("id", orderIds)
-            .order("created_at", { ascending: false }),
+                        .order("created_at", { ascending: false }),
           supabase
             .from("order_tracking_events")
             .select("order_id,status,note,created_at")
