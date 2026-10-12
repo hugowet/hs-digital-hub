@@ -1093,11 +1093,6 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         }
       }
 
-      let parsedWeight: number | null = null;
-      let parsedHeight: number | null = null;
-      let parsedWidth: number | null = null;
-      let parsedLength: number | null = null;
-
       // Valores padrão automáticos para frete, impedindo travamento se o usuário não preencher
       let parsedWeight: number | null = null;
       let parsedHeight: number | null = null;
