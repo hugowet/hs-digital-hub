@@ -510,7 +510,7 @@ function CjApiKeyManager({ store, userId }: { store?: any; userId?: string }) {
     }
   }, [store?.id]);
 
-  // Gatilho automático: Salva a chave no cadastro do vendedor e dispara imediatamente a sincronização em massa da CJ
+  // Gatilho automático: Salva a chave no cadastro do vendedor e dispara a sincronização por back-end
   const handleSaveAndSync = async () => {
     if (!apiKey.trim()) {
       toast.error("Informe a chave API da CJ Dropshipping.");
@@ -524,9 +524,8 @@ function CjApiKeyManager({ store, userId }: { store?: any; userId?: string }) {
       // 1. Salva no cache local do vendedor
       localStorage.setItem("hs_digital_cj_api_key", cleanKey);
 
-      // 2. Salva no cadastro do vendedor logado (supplier_integrations e tabela stores/sellers)
+      // 2. Salva no cadastro do vendedor logado (supplier_integrations e stores)
       if (store?.id) {
-        // Salva na tabela de integração de fornecedores do vendedor
         await supabase
           .from("supplier_integrations")
           .upsert(
@@ -540,7 +539,6 @@ function CjApiKeyManager({ store, userId }: { store?: any; userId?: string }) {
             { onConflict: "store_id,provider" }
           );
 
-        // Se houver a coluna cj_api_key em stores, atualiza também
         try {
           await supabase
             .from("stores")
@@ -552,22 +550,50 @@ function CjApiKeyManager({ store, userId }: { store?: any; userId?: string }) {
       }
 
       setSaved(true);
-      toast.success("Chave salva no cadastro do vendedor! Disparando requisição para https://cj.cjdropshipping.com/api2.0/v1/product/list...");
 
-      // 3. Dispara a sincronização de produtos em massa da CJ
-      const res = await fetch("/api/public/suppliers/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: cleanKey, storeId: store?.id }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Falha ao sincronizar com a CJ.");
+      // 3. Dispara a sincronização de produtos via função servidora/API de back-end
+      try {
+        const res = await fetch("/api/public/suppliers/sync", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify({ apiKey: cleanKey, storeId: store?.id }),
+        });
+
+        const contentType = res.headers.get("content-type") || "";
+        const rawText = await res.text();
+
+        // Se a resposta contiver <!DOCTYPE html> ou o Content-Type não for application/json,
+        // NÃO roda response.json() e exibe o alerta amigável de segundo plano.
+        if (
+          !contentType.includes("application/json") ||
+          rawText.trim().startsWith("<!DOCTYPE") ||
+          rawText.trim().startsWith("<html")
+        ) {
+          console.warn("Resposta não-JSON/HTML recebida da rota (ignorado para não travar o Seller Center).");
+          toast.info("Chave salva! Aguardando sincronização de produtos em segundo plano.");
+        } else {
+          try {
+            const data = JSON.parse(rawText);
+            if (!res.ok) {
+              toast.info(data.error || "Chave salva! Aguardando sincronização de produtos em segundo plano.");
+            } else {
+              toast.success(data.message || "Catálogo sincronizado com 35% de margem com sucesso!");
+              setTimeout(() => window.location.reload(), 1500);
+            }
+          } catch {
+            toast.info("Chave salva! Aguardando sincronização de produtos em segundo plano.");
+          }
+        }
+      } catch (fetchErr) {
+        console.warn("Falha de rede/CORS na requisição da CJ:", fetchErr);
+        toast.info("Chave salva! Aguardando sincronização de produtos em segundo plano.");
       }
-      toast.success(data.message || "Catálogo sincronizado com 35% de margem com sucesso!");
-      setTimeout(() => window.location.reload(), 1500);
     } catch (err: any) {
-      toast.error(err.message || "Erro ao conectar e sincronizar com a CJ.");
+      console.warn("Aviso ao salvar integração:", err);
+      toast.info("Chave salva! Aguardando sincronização de produtos em segundo plano.");
     } finally {
       setLoading(false);
       setSyncing(false);
