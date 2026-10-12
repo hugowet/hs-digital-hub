@@ -825,15 +825,6 @@ export function ProductDetailPage() {
             </div>
           </section>
         )}
-
-                // Caso o produto já tenha uma descrição real e tratada, mantém o texto original do banco
-                return <p className="whitespace-pre-line">{product.description_long}</p>;
-              })()}
-              {/* --- FIM DA AJUSTE DA HS DIGITAL --- */}
-            </div>
-          </section>
-        )}
-
         {/* Avaliações com Fotos Reais de Encomendas */}
         <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
