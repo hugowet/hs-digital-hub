@@ -966,3 +966,5 @@ export function ProductDetailPage() {
     </div>
   );
 }
+
+{/* PRODUTOS RELACIONADOS */} {relatedProducts.length > 0 && ( <div className="mt-12 border-t pt-8"> <h2 className="text-lg font-bold text-gray-900 mb-4">Quem comprou este produto também viu</h2> <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"> {relatedProducts.map((p) => ( <ProductCard key={p.id} product={p} /> ))} </div> </div> )} </div> </main> <SiteFooter /> </div> ); }
