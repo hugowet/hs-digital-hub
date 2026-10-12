@@ -56,6 +56,8 @@ export const Route = createFileRoute("/produto/$productId")({
       meta: [
         { title },
         { name: "description", content: desc },
+
+        // Metadados OpenGraph para WhatsApp, Facebook, Telegram
         { property: "og:site_name", content: "HS Digital Marketplace" },
         { property: "og:title", content: title },
         { property: "og:description", content: desc },
@@ -63,6 +65,8 @@ export const Route = createFileRoute("/produto/$productId")({
         { property: "og:url", content: pageUrl },
         { property: "og:image", content: imageUrl },
         { property: "og:image:secure_url", content: imageUrl },
+
+        // Twitter Card
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: desc },
@@ -186,7 +190,7 @@ export function ProductDetailPage() {
       navigator.share(shareData).catch(() => undefined);
     } else {
       navigator.clipboard.writeText(shareUrl);
-      toast.success("Link do produto copiado com sucesso!");
+      toast.success("Link do produto copiado com sucesso! Agora é só colar no WhatsApp.");
     }
   };
 
@@ -314,7 +318,7 @@ export function ProductDetailPage() {
                   type="button"
                   onClick={handleShare}
                   className="rounded-full bg-background/80 p-2.5 text-foreground shadow backdrop-blur transition hover:bg-background hover:text-primary"
-                  title="Compartilhar produto"
+                  title="Compartilhar produto no WhatsApp"
                 >
                   <Share2 className="h-5 w-5" />
                 </button>
@@ -398,14 +402,14 @@ export function ProductDetailPage() {
                 )}
               </div>
 
-              {/* Botão de Compartilhar */}
+              {/* Botão Especial de Compartilhar */}
               <div className="mt-4">
                 <Button
                   variant="outline"
                   onClick={handleShare}
                   className="w-full border-primary/30 text-primary hover:bg-primary/5 font-bold flex items-center justify-center gap-2 h-10"
                 >
-                  <Share2 className="h-4 w-4" /> Compartilhar produto
+                  <Share2 className="h-4 w-4" /> Compartilhar no WhatsApp com Foto
                 </Button>
               </div>
 
