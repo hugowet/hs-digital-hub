@@ -742,12 +742,41 @@ export function ProductDetailPage() {
           )
         )}
 
-        {/* Descrição Detalhada do Fornecedor */}
+               {/* Descrição Detalhada do Fornecedor */}
         {product?.description_long && product.description_long !== product.description && (
           <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
             <h2 className="text-lg font-semibold border-b border-border pb-3">Descrição Detalhada</h2>
             <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              <p className="whitespace-pre-line">{product.description_long}</p>
+              {/* --- INÍCIO DA AJUSTE DA HS DIGITAL --- */}
+              {(() => {
+                const nomeProduto = product?.title || "Produto Especial";
+                
+                // Se a descrição contiver texto do fornecedor ou for muito genérica, exibe o modelo magnético
+                if (product.description_long.includes("CJ Dropshipping") || product.description_long.includes("catálogo")) {
+                  return (
+                    <div className="space-y-4">
+                      <p>
+                        O <strong>{nomeProduto}</strong> foi selecionado entre os mais procurados da categoria na <strong>HS Digital</strong>, unindo alta qualidade, praticidade e excelente custo-benefício.
+                      </p>
+                      
+                      <h3 className="font-semibold text-foreground pt-2">🚀 Destaques do Produto</h3>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li><strong>Praticidade:</strong> Perfeito para facilitar o seu dia a dia.</li>
+                        <li><strong>Qualidade:</strong> Testado e aprovado para garantir a melhor experiência.</li>
+                        <li><strong>Destaque:</strong> Um dos itens mais acessados da nossa loja esta semana.</li>
+                      </ul>
+                      
+                      <h3 className="font-semibold text-foreground pt-2">🛡️ Garantia da HS Digital</h3>
+                      <p>📦 <strong>Estoque de Fábrica:</strong> Disponibilidade e envio monitorados diretamente pelo nosso Seller Center.</p>
+                      <p>💳 <strong>Compra 100% Segura:</strong> Pagamento processado via Mercado Pago com garantia de entrega ou seu dinheiro de volta.</p>
+                    </div>
+                  );
+                }
+
+                // Caso o produto já tenha uma descrição real e tratada, mantém o texto original do banco
+                return <p className="whitespace-pre-line">{product.description_long}</p>;
+              })()}
+              {/* --- FIM DA AJUSTE DA HS DIGITAL --- */}
             </div>
           </section>
         )}
