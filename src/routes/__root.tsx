@@ -138,6 +138,11 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="pt-BR">
       <head>
         <HeadContent />
+        <script 
+          async 
+          src="https://googlesyndication.com"
+          crossOrigin="anonymous"
+        ></script>
       </head>
       <body>
         {children}
