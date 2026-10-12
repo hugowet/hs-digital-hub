@@ -1,4 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
+// Caminho relativo direto para evitar qualquer falha no resolvedor de caminhos (@) da Lovable
+import { supabase } from "../../../integrations/supabase/client";
 
 // Função auxiliar para higienizar o título e aplicar regras de SEO brasileiras
 function formatarTituloSEO(rawTitle: string): string {
@@ -238,7 +239,7 @@ export async function POST(req: Request) {
         productPayload.video_url = productVideo;
       }
 
-      // Verifica se o product já existe para atualizar ou inserir
+      // Verifica se o produto já existe para atualizar ou inserir
       if (pid) {
         const { data: existing } = await supabase
           .from("products")
@@ -254,26 +255,27 @@ export async function POST(req: Request) {
           continue;
         }
       }
-
       const { error: insertErr } = await supabase.from("products").insert(productPayload);
       if (!insertErr) {
-cadastrados++;
+        cadastrados++;
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: `${cadastrados} novos produtos importados e ${atualizados} atualizados com 35% de margem e descrições otimizadas para conversão!`,
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (error: any) {
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "Chave salva! Aguardando sincronização de produtos em segundo plano.",
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
 }
-}
-return new Response(
-JSON.stringify({
-success: true,
-message: ${cadastrados} novos produtos importados e ${atualizados} atualizados com 35% de margem e descrições otimizadas para conversão!,
-}),
-{ status: 200, headers: { "Content-Type": "application/json" } }
-);
-} catch (error: any) {
-return new Response(
-JSON.stringify({
-success: true,
-message: "Chave salva! Aguardando sincronização de produtos em segundo plano.",
-}),
-{ status: 200, headers: { "Content-Type": "application/json" } }
-);
-}
-}
+
