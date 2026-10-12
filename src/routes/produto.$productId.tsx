@@ -742,36 +742,89 @@ export function ProductDetailPage() {
           )
         )}
 
-               {/* Descrição Detalhada do Fornecedor */}
-        {product?.description_long && product.description_long !== product.description && (
+           {/* Descrição Detalhada Real e Customizada */}
+        {product?.description_long && (
           <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
-            <h2 className="text-lg font-semibold border-b border-border pb-3">Descrição Detalhada</h2>
             <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              {/* --- INÍCIO DA AJUSTE DA HS DIGITAL --- */}
+              {/* --- INÍCIO DO TRATAMENTO DINÂMICO HS DIGITAL --- */}
               {(() => {
                 const nomeProduto = product?.title || "Produto Especial";
                 
-                // Se a descrição contiver texto do fornecedor ou for muito genérica, exibe o modelo magnético
-                if (product.description_long.includes("CJ Dropshipping") || product.description_long.includes("catálogo")) {
-                  return (
-                    <div className="space-y-4">
-                      <p>
-                        O <strong>{nomeProduto}</strong> foi selecionado entre os mais procurados da categoria na <strong>HS Digital</strong>, unindo alta qualidade, praticidade e excelente custo-benefício.
-                      </p>
-                      
-                      <h3 className="font-semibold text-foreground pt-2">🚀 Destaques do Produto</h3>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li><strong>Praticidade:</strong> Perfeito para facilitar o seu dia a dia.</li>
-                        <li><strong>Qualidade:</strong> Testado e aprovado para garantir a melhor experiência.</li>
-                        <li><strong>Destaque:</strong> Um dos itens mais acessados da nossa loja esta semana.</li>
-                      </ul>
-                      
-                      <h3 className="font-semibold text-foreground pt-2">🛡️ Garantia da HS Digital</h3>
-                      <p>📦 <strong>Estoque de Fábrica:</strong> Disponibilidade e envio monitorados diretamente pelo nosso Seller Center.</p>
-                      <p>💳 <strong>Compra 100% Segura:</strong> Pagamento processado via Mercado Pago com garantia de entrega ou seu dinheiro de volta.</p>
+                // Limpa o texto genérico indesejado se ele estiver grudado na descrição real
+                let descricaoReal = product.description_long
+                  .replace("Produto real da CJ Dropshipping, selecionado entre os mais procurados da categoria.", "")
+                  .replace("Produto real do catálogo CJ Dropshipping, com estoque sincronizado pelo fornecedor.", "")
+                  .trim();
+
+                return (
+                  <div className="space-y-6 text-foreground font-sans">
+                    {/* 1. TÍTULO DO PRODUTO */}
+                    <div>
+                      <h2 className="text-xl font-bold uppercase tracking-wide border-b border-border pb-2 mb-4">Descrição</h2>
+                      <p className="text-lg font-semibold text-primary uppercase mb-4">{nomeProduto}</p>
                     </div>
-                  );
-                }
+
+                    {/* 2. AQUI ENTRA A DESCRIÇÃO REAL DA CJ DROPSHIPPING (DADOS TÉCNICOS REAIS) */}
+                    <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-line border-b border-border pb-6 mb-6">
+                      {descricaoReal || "Confira os detalhes técnicos nas especificações do produto."}
+                    </div>
+
+                    {/* 3. SEU MODELO MASSA DE POLÍTICAS E PERGUNTAS ABAIXO DA DESCRIÇÃO REAL */}
+                    <div>
+                      <h3 className="text-base font-bold uppercase tracking-wider mb-2 text-muted-foreground">DEVOLUÇÃO FACILITADA</h3>
+                      <p className="text-muted-foreground leading-relaxed">
+                        Não serviu ou não gostou? Basta solicitar a devolução sem custo algum diretamente pela nossa plataforma <strong>HS Digital</strong>. Qualquer dúvida ou problema, contate-nos. Nossa equipe de atendimento estará pronta para te ajudar!
+                      </p>
+                      <ul className="mt-4 space-y-1 text-sm font-semibold text-primary">
+                        <li>* GARANTIA CONTRA QUALQUER DEFEITO DE FABRICAÇÃO</li>
+                        <li>* FRETE GRÁTIS COMPRANDO ACIMA DE R$ 79,00</li>
+                      </ul>
+                    </div>
+
+                    <div className="border-t border-border pt-4 space-y-4">
+                      <h3 className="text-base font-bold uppercase tracking-wider text-muted-foreground">PERGUNTAS FREQUENTES</h3>
+                      
+                      <div>
+                        <p className="font-bold text-foreground">&gt; QUANDO RECEBEREI MEU PRODUTO APÓS A COMPRA?</p>
+                        <p className="text-muted-foreground pl-4">O prazo de entrega varia conforme seu endereço. Despachamos a sua encomenda rapidamente e, para saber a data máxima da entrega, consulte as informações direto no seu carrinho antes do pagamento.</p>
+                      </div>
+
+                      <div>
+                        <p className="font-bold text-foreground">&gt; O PRODUTO É NOVO?</p>
+                        <p className="text-muted-foreground pl-4">Sim, todos os produtos são totalmente novos e distribuídos com exclusividade por vendedores parceiros e oficiais na HS Digital.</p>
+                      </div>
+
+                      <div>
+                        <p className="font-bold text-foreground">&gt; O PRODUTO É ORIGINAL?</p>
+                        <p className="text-muted-foreground pl-4">Sim, trabalhamos apenas com produtos originais e selecionados de alta qualidade.</p>
+                      </div>
+
+                      <div>
+                        <p className="font-bold text-foreground">&gt; TEM PRONTA ENTREGA?</p>
+                        <p className="text-muted-foreground pl-4">Sim, todos os produtos anunciados estão disponíveis para envio imediato.</p>
+                      </div>
+
+                      <div>
+                        <p className="font-bold text-foreground">&gt; ACOMPANHA NOTA FISCAL?</p>
+                        <p className="text-muted-foreground pl-4">Sim, todos os nossos produtos são enviados com a nota fiscal ou documento de envio correspondente.</p>
+                      </div>
+
+                      <div>
+                        <p className="font-bold text-foreground">&gt; O PRODUTO TEM GARANTIA?</p>
+                        <p className="text-muted-foreground pl-4">Sim, todos os produtos têm garantia de 1 mês contra defeitos de fabricação.</p>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground italic border-t border-border pt-4">
+                      Se ainda houver alguma dúvida, nossa equipe de atendimento está à disposição para responder de segunda-feira a sexta-feira das 08:00 às 17:00.
+                    </p>
+                  </div>
+                );
+              })()}
+              {/* --- FIM DO TRATAMENTO DINÂMICO HS DIGITAL --- */}
+            </div>
+          </section>
+        )}
 
                 // Caso o produto já tenha uma descrição real e tratada, mantém o texto original do banco
                 return <p className="whitespace-pre-line">{product.description_long}</p>;
