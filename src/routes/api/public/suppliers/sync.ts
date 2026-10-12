@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     const cleanApiKey = cjApiKey.trim();
 
     // 3. Endpoint oficial público de API da CJ Dropshipping (chamada via back-end/servidor para evitar CORS)
-    const cjApiUrl = "https://developers.cjdropshipping.com/api2.0/v1/product/list?pageNum=1&pageSize=50";
+    const cjApiUrl = "https://cjdropshipping.com";
 
     let response: Response;
     try {
@@ -192,7 +192,7 @@ export async function POST(req: Request) {
         <p>${baseDescription}</p>
         <br />
         <div style="border: 1px solid #e2e8f0; padding: 16px; border-radius: 8px; background-color: #f8fafc; font-family: sans-serif;">
-          <h3 style="color: #1e293b; margin-top: 0; font-size: 16px; display: flex; items-center: center; gap: 8px;">
+          <h3 style="color: #1e293b; margin-top: 0; font-size: 16px;">
             <strong>🔒 COMPRA GARANTIDA HS DIGITAL</strong>
           </h3>
           <ul style="list-style-type: none; padding-left: 0; margin: 0; color: #475569; font-size: 14px; line-height: 1.6;">
@@ -238,7 +238,7 @@ export async function POST(req: Request) {
         productPayload.video_url = productVideo;
       }
 
-      // Verifica se o produto já existe para atualizar ou inserir
+      // Verifica se o product já existe para atualizar ou inserir
       if (pid) {
         const { data: existing } = await supabase
           .from("products")
@@ -255,3 +255,5 @@ export async function POST(req: Request) {
         }
       }
 
+      const { error: insertErr } = await supabase.from("products").insert(productPayload);
+      if (!insertErr) {
