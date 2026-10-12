@@ -98,7 +98,6 @@ interface ReviewItem {
   verified: boolean;
 }
 // Perfis realistas variados de compradores brasileiros
-// 1. Lista de Perfis Brasileiros expandida e realista (45 usuários)
 const BRAZILIAN_REVIEWERS = [
   { name: "Carlos Eduardo Silva", city: "Campinas - SP" },
   { name: "Beatriz Nogueira", city: "Curitiba - PR" },
@@ -115,100 +114,37 @@ const BRAZILIAN_REVIEWERS = [
   { name: "Gustavo Henrique", city: "Vitória - ES" },
   { name: "Aline Cristina", city: "Londrina - PR" },
   { name: "Diego Castilho", city: "Santos - SP" },
-  { name: "Rodrigo Antunes", city: "Rolim de Moura - RO" },
-  { name: "Amanda Cavalcante", city: "Cacoal - RO" },
-  { name: "Bruno Mantovani", city: "Porto Velho - RO" },
-  { name: "Fernanda Lima", city: "Rio de Janeiro - RJ" },
-  { name: "Gabriel Souza", city: "Niterói - RJ" },
-  { name: "Larissa Manoela Melo", city: "Fortaleza - CE" },
-  { name: "Mateus Oliveira", city: "Manaus - AM" },
-  { name: "Letícia Rossi", city: "Ribeirão Preto - SP" },
-  { name: "Henrique Almeida", city: "Uberlândia - MG" },
-  { name: "Isabela Rios", city: "Aracaju - SE" },
-  { name: "Daniel Cordeiro", city: "Cuiabá - MT" },
-  { name: "Caroline Vignoli", city: "Blumenau - SC" },
-  { name: "Murilo Peixoto", city: "Maringá - PR" },
-  { name: "Vanessa Diniz", city: "Natal - RN" },
-  { name: "Leonardo Frota", city: "São Luís - MA" },
-  { name: "Talita Werneck", city: "Osasco - SP" },
-  { name: "Samuel Santos", city: "Belém - PA" },
-  { name: "Priscila Novaes", city: "Piracicaba - SP" },
-  { name: "Douglas Costa", city: "Pelotas - RS" },
-  { name: "Jéssica Ramos", city: "Maceió - AL" },
-  { name: "Arthur Abrantes", city: "João Pessoa - PB" },
-  { name: "Gabriela Toledo", city: "Juiz de Fora - MG" },
-  { name: "Vinícius Teodoro", city: "Anápolis - GO" },
-  { name: "Monique Padilha", city: "Vila Velha - ES" },
-  { name: "Caio Castro Marins", city: "Sorocaba - SP" },
-  { name: "Bianca Andrade", city: "Teresina - PI" },
-  { name: "Eduardo Camargo", city: "Campo Grande - MS" },
-  { name: "Sabrina Sato Ramos", city: "Penápolis - SP" },
-  { name: "Otávio Mesquita", city: "Guarulhos - SP" },
-  { name: "Karina Bacchi", city: "São José dos Campos - SP" }
 ];
-
-// 2. Banco variado de textos de comentários para rotacionar e não ficar genérico
 const REVIEW_COMMENTS = [
-  "Chegou super rápido! O produto veio bem embalado e superou minhas expectativas. Recomendo muito a loja.",
-  "Muito bom o custo-benefício. Uso todos os dias e até agora não tive nenhum problema. Nota 10!",
-  "Material de excelente qualidade. Dá pra ver que é bem resistente. Valeu cada centavo.",
-  "Gostei muito da experiência de compra. O atendimento foi ótimo e a entrega foi antes do prazo.",
-  "Produto cumpre 100% o que promete no anúncio. Muito prático e fácil de usar. Comprarei mais vezes.",
-  "Excelente! Estava com receio por não conhecer a marca, mas me surpreendi positivamente com a qualidade.",
-  "Funciona perfeitamente. O acabamento é impecável e a cor é idêntica à da foto. Muito satisfeito.",
-  "Comprei para dar de presente e a pessoa adorou. A qualidade é visível. Podem comprar sem medo!",
-  "Simplesmente perfeito! Chegou tudo certinho e sem nenhum arranhão. Recomendo fortemente a HS Digital.",
-  "Estou usando há uma semana e a durabilidade é sensacional. O produto é muito robusto e bem feito."
+  {
+    comment:
+      "Chegou super rápido aqui em casa! A caixa de papelão veio 100% lacrada com fita de segurança e muito plástico bolha por dentro. O produto veio intacto e funcionando perfeitamente.",
+    packagingNote: "Embalagem: Caixa resistente, fita reforçada e produto muito bem protegido.",
+    daysAgo: "há 3 dias",
+    rating: 5,
+  },
+  {
+    comment:
+      "Confesso que fiquei com receio por causa do transporte, mas a embalagem me surpreendeu. Caixa firme, sem nenhum amassado e muito bem empacotado. Podem comprar sem medo!",
+    packagingNote: "Entrega: Rápida antes do prazo estimado e caixa lacrada de fábrica.",
+    daysAgo: "há 6 dias",
+    rating: 5,
+  },
+  {
+    comment:
+      "Excelente experiência de compra! O entregador foi super atencioso e a caixa veio sem nenhuma avaria. Abri na hora para conferir e veio tudo certinho.",
+    packagingNote: "Embalagem: Pacote seguro com proteção extra para impactos.",
+    daysAgo: "há 1 semana",
+    rating: 5,
+  },
+  {
+    comment:
+      "Nota 10! Chegou bem antes do prazo previsto. Pacote bem lacrado, nada danificado e produto exatamente como descrito. Recomendo muito a loja!",
+    packagingNote: "Entrega: Rastreamento atualizado certinho e pacote lacrado.",
+    daysAgo: "há 2 semanas",
+    rating: 5,
+  },
 ];
-
-// 3. Função Inteligente que gera avaliações exclusivas sem repetir usuários entre produtos
-export function generateUniqueReviews(productId: string) {
-  // Transforma o ID do produto em um número estável (hash simples)
-  let idHash = 0;
-  if (productId) {
-    for (let i = 0; i < productId.length; i++) {
-      idHash = productId.charCodeAt(i) + ((idHash << 5) - idHash);
-    }
-  }
-  idHash = Math.abs(idHash);
-
-  // Define a quantidade de comentários de forma estável baseada no ID: vai dar 3, 5 ou 6
-  const preDefinedSizes =;
-  const totalReviews = preDefinedSizes[idHash % preDefinedSizes.length];
-
-  const reviews = [];
-  
-  // O ponto inicial dos usuários muda de acordo com o produto para NUNCA repetir o mesmo usuário
-  const userStartIndex = idHash % BRAZILIAN_REVIEWERS.length;
-  const commentStartIndex = idHash % REVIEW_COMMENTS.length;
-
-  for (let i = 0; i < totalReviews; i++) {
-    // Garante que o índice fique dentro do limite da lista de usuários usando o resto (%)
-    const userIndex = (userStartIndex + i) % BRAZILIAN_REVIEWERS.length;
-    const commentIndex = (commentStartIndex + i) % REVIEW_COMMENTS.length;
-    
-    // Gera uma nota estável variando entre 4 e 5 estrelas
-    const rating = (idHash + i) % 5 === 0 ? 4 : 5;
-
-    // Calcula uma data realista retroativa (há alguns dias atrás)
-    const daysAgo = (idHash + i) % 15 + 1;
-    const date = new Date();
-    date.setDate(date.getDate() - daysAgo);
-
-    reviews.push({
-      id: `${productId}-rev-${i}`,
-      name: BRAZILIAN_REVIEWERS[userIndex].name,
-      city: BRAZILIAN_REVIEWERS[userIndex].city,
-      rating: rating,
-      comment: REVIEW_COMMENTS[commentIndex],
-      date: date.toLocaleDateString('pt-BR'),
-      images: [] // ❌ Explicitamente vazio para cumprir sua regra de NÃO exibir fotos!
-    });
-  }
-
-  return reviews;
-}
-
 // Gera avaliações únicas com nomes e fotos de embalagens realistas para cada produto
 function generateUniqueProductReviews(productId: string): ReviewItem[] {
   let hash = 0;
@@ -806,41 +742,12 @@ export function ProductDetailPage() {
           )
         )}
 
-               {/* Descrição Detalhada do Fornecedor */}
+        {/* Descrição Detalhada do Fornecedor */}
         {product?.description_long && product.description_long !== product.description && (
           <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
             <h2 className="text-lg font-semibold border-b border-border pb-3">Descrição Detalhada</h2>
             <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              {/* --- INÍCIO DA AJUSTE DA HS DIGITAL --- */}
-              {(() => {
-                const nomeProduto = product?.title || "Produto Especial";
-                
-                // Se a descrição contiver texto do fornecedor ou for muito genérica, exibe o modelo magnético
-                if (product.description_long.includes("CJ Dropshipping") || product.description_long.includes("catálogo")) {
-                  return (
-                    <div className="space-y-4">
-                      <p>
-                        O <strong>{nomeProduto}</strong> foi selecionado entre os mais procurados da categoria na <strong>HS Digital</strong>, unindo alta qualidade, praticidade e excelente custo-benefício.
-                      </p>
-                      
-                      <h3 className="font-semibold text-foreground pt-2">🚀 Destaques do Produto</h3>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li><strong>Praticidade:</strong> Perfeito para facilitar o seu dia a dia.</li>
-                        <li><strong>Qualidade:</strong> Testado e aprovado para garantir a melhor experiência.</li>
-                        <li><strong>Destaque:</strong> Um dos itens mais acessados da nossa loja esta semana.</li>
-                      </ul>
-                      
-                      <h3 className="font-semibold text-foreground pt-2">🛡️ Garantia da HS Digital</h3>
-                      <p>📦 <strong>Estoque de Fábrica:</strong> Disponibilidade e envio monitorados diretamente pelo nosso Seller Center.</p>
-                      <p>💳 <strong>Compra 100% Segura:</strong> Pagamento processado via Mercado Pago com garantia de entrega ou seu dinheiro de volta.</p>
-                    </div>
-                  );
-                }
-
-                // Caso o produto já tenha uma descrição real e tratada, mantém o texto original do banco
-                return <p className="whitespace-pre-line">{product.description_long}</p>;
-              })()}
-              {/* --- FIM DA AJUSTE DA HS DIGITAL --- */}
+              <p className="whitespace-pre-line">{product.description_long}</p>
             </div>
           </section>
         )}
