@@ -742,60 +742,73 @@ export function ProductDetailPage() {
           )
         )}
 
-                {/* Seção Completa de Descrição e Características - HS Digital */}
+                        {/* Seção Dinâmica de Descrição e Características Específicas - HS Digital */}
         {product?.description_long && (
           <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border border-border bg-card p-5 sm:p-6 shadow-sm">
             <div className="text-sm leading-relaxed text-muted-foreground">
               {(() => {
                 const nomeProduto = product?.title || "Produto Especial";
                 
-                // 1. Limpa de vez qualquer frase feia do fornecedor
+                // 1. Limpa as tags de fornecedor do texto bruto da CJ
                 let descricaoReal = product.description_long
                   .replace("Produto real da CJ Dropshipping, selecionado entre os mais procurados da categoria.", "")
                   .replace("Produto real do catálogo CJ Dropshipping, com estoque sincronizado pelo fornecedor.", "")
                   .trim();
 
-                // 2. Transforma o texto técnico bruto da CJ em uma tabela organizada de características
+                // 2. Mapeia e divide as linhas de especificações reais enviadas pela CJ para este produto específico
                 const linhasEspecificas = descricaoReal
                   .split(/[\n;•]+/)
                   .map(linha => linha.trim())
-                  .filter(linha => linha.length > 3 && !linha.toLowerCase().includes("http"));
+                  .filter(linha => {
+                    // Ignora linhas vazias, links ou avisos repetidos
+                    return linha.length > 2 && !linha.toLowerCase().includes("http") && !linha.toLowerCase().includes("catálogo");
+                  });
 
                 return (
                   <div className="space-y-8 text-foreground font-sans">
                     
-                    {/* TÍTULO E CAPA DA DESCRIÇÃO */}
+                    {/* TÍTULO DA DESCRIÇÃO */}
                     <div>
                       <h2 className="text-xl font-bold uppercase tracking-wide border-b border-border pb-2 mb-4 text-foreground">Descrição</h2>
                       <p className="text-lg font-semibold text-primary uppercase mb-2">{nomeProduto}</p>
                     </div>
 
-                    {/* TEXTO DE APRESENTAÇÃO */}
+                    {/* TEXTO REAL DO PRODUTO (VEM DO BANCO ESPECÍFICO) */}
                     <div className="text-muted-foreground leading-relaxed whitespace-pre-line border-b border-border pb-6">
                       {descricaoReal ? (
-                        <p>{descricaoReal.split('\n')[0]}</p>
+                        <p>{descricaoReal}</p>
                       ) : (
-                        <p>Produto selecionado estrategicamente pela nossa equipe, garantindo alto padrão, usabilidade ideal e o melhor acabamento para a sua rotina.</p>
+                        <p>Consulte todos os detalhes técnicos e especificações completas deste item nas características abaixo e nas imagens oficiais do anúncio.</p>
                       )}
                     </div>
 
-                    {/* NOVA ABA: CARACTERÍSTICAS DO PRODUTO (ESTILO MERCADO LIVRE) */}
+                    {/* ABA DINÂMICA: CARACTERÍSTICAS EXCLUSIVAS DESTE PRODUTO */}
                     <div>
                       <h3 className="text-base font-bold uppercase tracking-wider mb-4 text-foreground flex items-center gap-2">
                         📋 Características do produto
                       </h3>
                       
-                      {linhasEspecificas.length > 0 ? (
+                      {/* Se o produto tiver atributos na tabela ou linhas de texto, monta o layout estilo Mercado Livre */}
+                      {(product?.attributes && Object.keys(product.attributes).length > 0) || linhasEspecificas.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 border border-border rounded-lg overflow-hidden bg-muted/10">
-                          {linhasEspecificas.map((linha, index) => {
-                            // Tenta separar por dois pontos se houver (Ex: "Material: Plástico")
+                          
+                          {/* Primeiro tenta renderizar caso existam atributos estruturados no banco */}
+                          {product?.attributes && Object.entries(product.attributes).map(([chave, valor], idx) => (
+                            <div key={`attr-${idx}`} className="flex border-b border-border last:border-0 p-3 text-sm even:bg-muted/30">
+                              <span className="w-1/2 font-medium text-muted-foreground pr-2 break-words capitalize">{chave.replace(/_/g, ' ')}</span>
+                              <span className="w-1/2 text-foreground font-semibold break-words">{String(valor)}</span>
+                            </div>
+                          ))}
+
+                          {/* Se não tiver os atributos separados, ele quebra o texto longo em formato de tabela técnica */}
+                          {(!product?.attributes || Object.keys(product.attributes).length === 0) && linhasEspecificas.map((linha, index) => {
                             const partes = linha.split(/[:=-]+/);
                             const label = partes[0]?.trim();
-                            const valor = partes.slice(1).join(":")?.trim() || "Sim";
+                            const valor = partes.slice(1).join(":")?.trim() || "Disponível";
 
                             return (
                               <div 
-                                key={index} 
+                                key={`line-${index}`} 
                                 className="flex border-b border-border last:border-0 md:border-b p-3 text-sm even:bg-muted/30 md:even:bg-transparent md:[&:nth-child(4n+3)]:bg-muted/20 md:[&:nth-child(4n+4)]:bg-muted/20"
                               >
                                 <span className="w-1/2 font-medium text-muted-foreground pr-2 break-words">{label}</span>
@@ -806,12 +819,12 @@ export function ProductDetailPage() {
                         </div>
                       ) : (
                         <div className="border border-border p-4 rounded-lg bg-muted/20 text-muted-foreground text-center">
-                          Especificações técnicas detalhadas disponíveis no manual e imagens do anúncio.
+                          Especificações técnicas e variações detalhadas diretamente nas imagens do anúncio.
                         </div>
                       )}
                     </div>
 
-                    {/* DEVOLUÇÃO FACILITADA */}
+                    {/* DEVOLUÇÃO FACILITADA (SEM MENÇÃO A FORNECEDORES) */}
                     <div className="border-t border-border pt-6">
                       <h3 className="text-base font-bold uppercase tracking-wider mb-2 text-foreground">DEVOLUÇÃO FACILITADA</h3>
                       <p className="text-muted-foreground leading-relaxed">
@@ -819,7 +832,6 @@ export function ProductDetailPage() {
                       </p>
                       <ul className="mt-4 space-y-1 text-sm font-bold text-primary">
                         <li>* GARANTIA TOTAL CONTRA QUALQUER DEFEITO DE FABRICAÇÃO</li>
-                        <li>* FRETE GRÁTIS EM COMPRAS SELECIONADAS ACIMA DE R$ 79,00</li>
                       </ul>
                     </div>
 
@@ -843,10 +855,6 @@ export function ProductDetailPage() {
                       </div>
                     </div>
 
-                    {/* RODAPÉ DO SUPORTE */}
-                    <p className="text-xs text-muted-foreground italic border-t border-border pt-4 text-center md:text-left">
-                      Se ainda houver alguma dúvida, nossa equipe de atendimento está à total disposição de segunda-feira a sexta-feira, das 08:00 às 17:00.
-                    </p>
                   </div>
                 );
               })()}
