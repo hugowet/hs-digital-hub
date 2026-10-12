@@ -2,11 +2,19 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
+  BadgeCheck,
+  Box,
+  Camera,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   CreditCard,
+  FileText,
   Heart,
+  HelpCircle,
+  Image as ImageIcon,
   MessageSquare,
   Minus,
   Plus,
@@ -45,10 +53,10 @@ export const Route = createFileRoute("/produto/$productId")({
   },
   head: ({ loaderData, params }) => {
     const p = loaderData?.product;
-    const title = p?.title ? `${p.title} · HS Digital` : "Produto · HS Digital Marketplace";
+    const title = p?.title ? `${p.title} · Loja JJ Kuster` : "Produto · HS Digital Marketplace";
     const desc =
       p?.description ||
-      "Confira todos os detalhes deste produto na HS Digital com entrega garantida e compra protegida.";
+      "Confira todos os detalhes deste produto na Loja JJ Kuster com entrega garantida e compra protegida.";
     const imageUrl =
       p?.image_url ||
       "https://hs-digital-marck.lovable.app/__l5e/assets-v1/39fcaa1a-9680-41a5-9293-4e05e8dc7c2b/hs-digital-logo.png";
@@ -58,17 +66,20 @@ export const Route = createFileRoute("/produto/$productId")({
       meta: [
         { title },
         { name: "description", content: desc },
-        { property: "og:site_name", content: "HS Digital Marketplace" },
-        { property: "og:title", title },
+        { property: "og:site_name", content: "HS Digital · Loja JJ Kuster" },
+        { property: "og:title", content: title },
         { property: "og:description", content: desc },
         { property: "og:type", content: "product" },
-        { property: "og:url", pageUrl },
-        { property: "og:image", imageUrl },
-        { property: "og:image:secure_url", imageUrl },
+        { property: "og:url", content: pageUrl },
+        { property: "og:image", content: imageUrl },
+        { property: "og:image:secure_url", content: imageUrl },
+        { property: "og:image:type", content: "image/jpeg" },
+        { property: "og:image:width", content: "800" },
+        { property: "og:image:height", content: "800" },
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", title },
+        { name: "twitter:title", content: title },
         { name: "twitter:description", content: desc },
-        { name: "twitter:image", imageUrl },
+        { name: "twitter:image", content: imageUrl },
       ],
     };
   },
@@ -93,9 +104,21 @@ interface ReviewItem {
   rating: number;
   date: string;
   comment: string;
+  packagingNote?: string;
   media?: ReviewMedia[];
   helpfulCount: number;
   verified: boolean;
+}
+
+// Gera um número moderado de vendas consistente para cada produto
+function getConsistentSalesCount(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+  const positive = Math.abs(hash);
+  return 38 + (positive % 184); // Varia de 38 a 221 vendas
 }
 
 export function ProductDetailPage() {
@@ -107,6 +130,7 @@ export function ProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   // Carrega dados do produto
   const { data: product, isLoading } = useQuery({
@@ -129,6 +153,13 @@ export function ProductDetailPage() {
     );
   }, [product]);
 
+  // Vendas calculadas moderadamente
+  const moderateSoldCount = useMemo(() => {
+    if (!product) return 54;
+    if (product.sold_count && product.sold_count > 0) return product.sold_count;
+    return getConsistentSalesCount(productId);
+  }, [product, productId]);
+
   // Perguntas e Respostas
   const [newQuestion, setNewQuestion] = useState("");
   const [questions, setQuestions] = useState<QuestionItem[]>(() => {
@@ -139,20 +170,20 @@ export function ProductDetailPage() {
     return [
       {
         id: "q1",
-        question: "O produto vem com garantia e nota?",
-        answer: "Sim! Garantia de 30 dias com envio assegurado e rastreamento oficial.",
+        question: "O produto vem com nota fiscal e garantia?",
+        answer: "Sim! Enviamos com nota fiscal eletrônica e garantia de 30 dias pela Loja JJ Kuster.",
         created_at: "há 2 dias",
       },
       {
         id: "q2",
-        question: "Qual o prazo para envio após o pagamento?",
-        answer: "Postagem em até 24h úteis após a confirmação. O código chega no seu e-mail.",
+        question: "Vem bem embalado no transporte para não danificar?",
+        answer: "Com certeza! Produto lacrado, envolto em plástico bolha reforçado dentro de caixa de envio.",
         created_at: "há 3 dias",
       },
     ];
   });
 
-  // Avaliações exclusivas deste produto com fotos REAIS do próprio produto
+  // Avaliações exclusivas deste produto com fotos reais de recebimento/embalagem
   const [reviews, setReviews] = useState<ReviewItem[]>(() => {
     try {
       const saved = localStorage.getItem(`reviews_${productId}`);
@@ -161,43 +192,48 @@ export function ProductDetailPage() {
     return [];
   });
 
-  // Gera avaliações realistas com as fotos reais deste produto caso ainda não existam no cache
+  // Inicializa avaliações com foco em unboxing e embalagem
   useEffect(() => {
     if (!product) return;
     try {
       const saved = localStorage.getItem(`reviews_${productId}`);
       if (!saved || JSON.parse(saved).length === 0) {
         const prodImages = [product.image_url, ...(product.gallery_urls ?? [])].filter(Boolean) as string[];
-        
+
         const initialReviews: ReviewItem[] = [
           {
             id: `rev_1_${productId}`,
             author: "Marcos S.",
             rating: 5,
-            date: "Há 4 dias",
-            comment: `Chegou tudo certinho e bem rápido! O produto é exatamente como no anúncio, material de muita qualidade. Recomendo demais!`,
+            date: "Brasil · Há 4 dias",
+            comment:
+              "Chegou muito rápido! A caixa veio intacta e o produto lacrado no plástico de fábrica. Abri e testei na hora, qualidade surreal pelo preço.",
+            packagingNote: "Embalagem: Excelente, lacrado no plástico bolha e caixa reforçada.",
             verified: true,
-            helpfulCount: 14,
+            helpfulCount: 16,
             media: prodImages.length > 1 ? [{ url: prodImages[1], type: "image" }] : undefined,
           },
           {
             id: `rev_2_${productId}`,
-            author: "Ana Beatriz",
+            author: "Juliana Mendes",
             rating: 5,
-            date: "Há 1 semana",
-            comment: "Muito satisfeita com a compra. Entrega rápida e o atendimento da loja foi excelente.",
+            date: "Brasil · Há 1 semana",
+            comment:
+              "A entrega da Loja JJ Kuster foi rápida demais. Tirei foto assim que tirei do pacote plástico. Idêntico às fotos do anúncio, recomendo muito!",
+            packagingNote: "Entrega: Rápida e pacote muito bem protegido.",
             verified: true,
-            helpfulCount: 6,
+            helpfulCount: 9,
             media: prodImages.length > 2 ? [{ url: prodImages[2], type: "image" }] : undefined,
           },
           {
             id: `rev_3_${productId}`,
-            author: "Carlos E.",
+            author: "Rodrigo Almeida",
             rating: 5,
-            date: "Há 2 semanas",
-            comment: "Excelente custo-benefício! Funciona perfeitamente e atendeu todas as minhas expectativas.",
+            date: "Brasil · Há 2 semanas",
+            comment:
+              "Excelente custo-benefício. O entregador foi simpático e o pacote veio 100% lacrado. Já estou usando no dia a dia.",
             verified: true,
-            helpfulCount: 3,
+            helpfulCount: 5,
           },
         ];
         setReviews(initialReviews);
@@ -220,7 +256,7 @@ export function ProductDetailPage() {
     }
   }, [reviews, productId]);
 
-  // Modal de Avaliação
+  // Modal e Formulário de Avaliação
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewName, setReviewName] = useState("");
@@ -256,8 +292,8 @@ export function ProductDetailPage() {
   const handleShare = () => {
     const shareUrl = window.location.href;
     const shareData = {
-      title: product?.title || "Confira este produto na HS Digital",
-      text: `Olha esse produto na HS Digital por ${product ? brl(product.price) : ""}:`,
+      title: product?.title || "Confira este produto na Loja JJ Kuster",
+      text: `Olha esse produto que encontrei na Loja JJ Kuster por apenas ${product ? brl(product.price) : ""}:`,
       url: shareUrl,
     };
 
@@ -265,7 +301,7 @@ export function ProductDetailPage() {
       navigator.share(shareData).catch(() => undefined);
     } else {
       navigator.clipboard.writeText(shareUrl);
-      toast.success("Link do produto copiado com sucesso!");
+      toast.success("Link com foto do produto copiado com sucesso!");
     }
   };
 
@@ -279,7 +315,7 @@ export function ProductDetailPage() {
     };
     setQuestions((prev) => [item, ...prev]);
     setNewQuestion("");
-    toast.success("Pergunta enviada ao vendedor!");
+    toast.success("Pergunta enviada para a Loja JJ Kuster!");
   };
 
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -318,17 +354,18 @@ export function ProductDetailPage() {
   const handleSubmitReview = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewComment.trim()) {
-      toast.error("Escreva um comentário sobre sua experiência.");
+      toast.error("Escreva um comentário sobre sua experiência com o produto.");
       return;
     }
 
     const newRev: ReviewItem = {
       id: `rev_${Date.now()}`,
-      author: reviewName.trim() || "Cliente HS Digital",
+      author: reviewName.trim() || "Cliente JJ Kuster",
       rating: reviewRating,
-      date: "Hoje",
+      date: "Brasil · Hoje",
       comment: reviewComment.trim(),
       media: reviewMediaList.length > 0 ? [...reviewMediaList] : undefined,
+      packagingNote: "Compra com envio rastreado oficial",
       verified: true,
       helpfulCount: 0,
     };
@@ -339,19 +376,19 @@ export function ProductDetailPage() {
     setReviewName("");
     setReviewRating(5);
     setReviewMediaList([]);
-    toast.success("Avaliação enviada com sucesso!");
+    toast.success("Avaliação com fotos/vídeos publicada com sucesso!");
   };
 
   const handleToggleHelpful = (reviewId: string) => {
     setReviews((prev) =>
       prev.map((r) => (r.id === reviewId ? { ...r, helpfulCount: r.helpfulCount + 1 } : r)),
     );
-    toast.success("Obrigado pelo feedback!");
+    toast.success("Obrigado pelo seu feedback!");
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background w-full overflow-x-hidden">
         <SiteHeader />
         <main className="mx-auto w-full max-w-7xl px-4 py-8">
           <div className="grid gap-6 lg:grid-cols-2">
@@ -370,13 +407,13 @@ export function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background w-full overflow-x-hidden">
         <SiteHeader />
         <main className="mx-auto w-full max-w-7xl px-4 py-16 text-center">
           <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
           <h1 className="mt-4 text-2xl font-bold">Produto não encontrado</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            O produto procurado pode ter sido desativado ou removido.
+            O produto procurado pode ter sido desativado ou removido da loja.
           </p>
           <Button asChild className="mt-6">
             <Link to="/">Voltar à vitrine</Link>
@@ -417,27 +454,27 @@ export function ProductDetailPage() {
     });
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-24 sm:pb-8">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground pb-24 sm:pb-8">
       <SiteHeader />
 
-      <main className="mx-auto w-full max-w-7xl sm:px-6 sm:py-6">
+      <main className="w-full max-w-7xl mx-auto overflow-x-hidden sm:px-6 sm:py-6">
         {/* Breadcrumb Otimizado */}
-        <div className="px-3.5 sm:px-0">
-          <nav className="mb-2.5 sm:mb-5 flex items-center gap-1.5 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-none py-1">
+        <div className="w-full px-3.5 sm:px-0 min-w-0">
+          <nav className="mb-2.5 sm:mb-4 flex items-center gap-1.5 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-none py-1 max-w-full min-w-0">
             <Link to="/" className="hover:text-primary transition shrink-0">Início</Link>
             <ChevronRight className="h-3 w-3 shrink-0" />
             <span className="capitalize shrink-0">{product.category || "Geral"}</span>
             <ChevronRight className="h-3 w-3 shrink-0" />
-            <span className="truncate max-w-[180px] sm:max-w-xs font-medium text-foreground">
+            <span className="truncate max-w-[150px] sm:max-w-xs font-medium text-foreground">
               {product.title}
             </span>
           </nav>
         </div>
 
-        <div className="grid gap-4 sm:gap-6 lg:grid-cols-12">
-          {/* Coluna da Imagem e Galeria (Mobile Edge-to-Edge sem cortes) */}
-          <div className="lg:col-span-7 flex flex-col gap-3 sm:flex-row-reverse sm:gap-4">
-            {/* Foto Principal: No celular vai de borda a borda (w-full) sem cortar */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 w-full min-w-0">
+          {/* Coluna da Imagem e Galeria */}
+          <div className="lg:col-span-7 w-full min-w-0 flex flex-col gap-3 sm:flex-row-reverse sm:gap-4">
+            {/* Foto Principal: 100% da largura, sem cortar */}
             <div
               className="relative w-full aspect-square bg-white flex items-center justify-center overflow-hidden sm:rounded-2xl sm:border sm:border-border sm:shadow-sm select-none"
               onTouchStart={handleTouchStart}
@@ -447,7 +484,7 @@ export function ProductDetailPage() {
                 <img
                   src={currentMedia.url}
                   alt={product.title}
-                  className="h-full w-full object-contain p-1 sm:p-4"
+                  className="h-full w-full object-contain p-2 sm:p-4"
                 />
               ) : (
                 <div className="text-muted-foreground text-sm">Sem imagem</div>
@@ -459,7 +496,7 @@ export function ProductDetailPage() {
                   type="button"
                   onClick={handleShare}
                   className="rounded-full bg-white/95 p-2 text-foreground shadow-md backdrop-blur transition hover:text-primary"
-                  title="Compartilhar produto"
+                  title="Compartilhar produto com foto"
                 >
                   <Share2 className="h-4 w-4" />
                 </button>
@@ -484,7 +521,7 @@ export function ProductDetailPage() {
                 </span>
               )}
 
-              {/* Setas de navegação desktop */}
+              {/* Setas Desktop */}
               {media.length > 1 && (
                 <>
                   <button
@@ -514,42 +551,44 @@ export function ProductDetailPage() {
 
             {/* Miniaturas */}
             {media.length > 1 && (
-              <div className="px-3.5 sm:px-0 flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[500px] pb-1 sm:pb-0 scrollbar-none">
-                {media.map((item, index) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setSelectedImage(index)}
-                    className={`relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-xl border-2 transition bg-white ${
-                      selectedImage === index
-                        ? "border-primary ring-1 ring-primary shadow-sm"
-                        : "border-border/80 opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <img
-                      src={item.url}
-                      alt=""
-                      className="h-full w-full object-contain p-0.5"
-                      loading="lazy"
-                    />
-                  </button>
-                ))}
+              <div className="w-full min-w-0 px-3.5 sm:px-0">
+                <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[500px] pb-1 sm:pb-0 scrollbar-none w-full min-w-0">
+                  {media.map((item, index) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setSelectedImage(index)}
+                      className={`relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-xl border-2 transition bg-white ${
+                        selectedImage === index
+                          ? "border-primary ring-1 ring-primary shadow-sm"
+                          : "border-border/80 opacity-70 hover:opacity-100"
+                      }`}
+                    >
+                      <img
+                        src={item.url}
+                        alt=""
+                        className="h-full w-full object-contain p-0.5"
+                        loading="lazy"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
           {/* Coluna de Preço e Detalhes da Compra */}
-          <div className="px-3.5 sm:px-0 lg:col-span-5 flex flex-col justify-between space-y-4">
+          <div className="lg:col-span-5 w-full min-w-0 px-3.5 sm:px-0 flex flex-col justify-between space-y-4">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
-                  {isDigital ? "Produto Digital · Envio Automático" : "Produto Físico · Envio Rastreado"}
+              {/* Selo da Loja e Vendas Moderadas */}
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-bold text-primary flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-md">
+                  <BadgeCheck className="h-3.5 w-3.5" /> Loja JJ Kuster
                 </span>
-                {product.sold_count > 0 && (
-                  <span className="text-[11px] text-muted-foreground">• {product.sold_count} vendidos</span>
-                )}
+                <span className="text-[11px] text-muted-foreground">• Vendedor Verificado</span>
+                <span className="text-[11px] font-semibold text-emerald-600">• +{moderateSoldCount} vendidos</span>
               </div>
 
-              <h1 className="mt-1 text-xl sm:text-2xl font-black leading-tight text-foreground">
+              <h1 className="mt-2 text-xl sm:text-2xl font-black leading-tight text-foreground break-words">
                 {product.title}
               </h1>
 
@@ -573,14 +612,14 @@ export function ProductDetailPage() {
                 </a>
               </div>
 
-              {/* Caixa de Preço e Formas de Pagamento (Idêntica à Imagem 1) */}
-              <div className="mt-4 rounded-2xl bg-card p-4 border border-border shadow-sm">
+              {/* Caixa de Preço e Meios de Pagamento (Visual Profissional) */}
+              <div className="mt-4 rounded-2xl bg-card p-4 border border-border shadow-sm w-full min-w-0">
                 {product.compare_at_price && product.compare_at_price > product.price && (
                   <p className="text-xs text-muted-foreground line-through">
                     De {brl(product.compare_at_price)}
                   </p>
                 )}
-                
+
                 <div className="flex items-baseline gap-2 mt-0.5">
                   <span className="text-3xl font-black text-primary">
                     {brl(product.price)}
@@ -591,50 +630,61 @@ export function ProductDetailPage() {
                 </div>
 
                 <p className="mt-1 text-xs font-medium text-foreground">
-                  ou em até <span className="font-bold">{maxInstallments}x de {brl(installmentValue)}</span> no cartão
+                  ou em até <span className="font-bold">{maxInstallments}x de {brl(installmentValue)}</span> sem juros no cartão
                 </p>
 
-                {/* Ícones de formas de pagamento */}
-                <div className="mt-3 pt-3 border-t border-border/80 flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <QrCode className="h-3.5 w-3.5 text-emerald-600" /> Pix imediato
+                {/* Meios de Pagamento Aceitos */}
+                <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
+                    Meios de pagamento aceitos:
                   </span>
-                  <span className="flex items-center gap-1">
-                    <CreditCard className="h-3.5 w-3.5 text-primary" /> Cartão de Crédito
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" /> Boleto
-                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-xl border border-border/80 bg-muted/30 p-2 text-center">
+                      <QrCode className="h-4 w-4 mx-auto text-emerald-600 mb-1" />
+                      <p className="text-[11px] font-bold">Pix</p>
+                      <p className="text-[9px] text-muted-foreground">Aprovação imediata</p>
+                    </div>
+                    <div className="rounded-xl border border-border/80 bg-muted/30 p-2 text-center">
+                      <CreditCard className="h-4 w-4 mx-auto text-primary mb-1" />
+                      <p className="text-[11px] font-bold">Cartão</p>
+                      <p className="text-[9px] text-muted-foreground">Até 10x s/ juros</p>
+                    </div>
+                    <div className="rounded-xl border border-border/80 bg-muted/30 p-2 text-center">
+                      <FileText className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+                      <p className="text-[11px] font-bold">Boleto</p>
+                      <p className="text-[9px] text-muted-foreground">À vista bancário</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Botão de Compartilhar */}
+              {/* Botão de Compartilhar com Link e Imagem */}
               <Button
                 variant="outline"
                 onClick={handleShare}
                 className="mt-3 w-full border-border text-foreground hover:bg-muted font-semibold text-xs h-9"
               >
-                <Share2 className="h-3.5 w-3.5 mr-1.5" /> Compartilhar produto
+                <Share2 className="h-3.5 w-3.5 mr-1.5" /> Compartilhar produto (com foto no WhatsApp)
               </Button>
 
               {/* Garantias */}
-              <div className="mt-3 space-y-2 rounded-xl bg-muted/40 p-3 border border-border/60 text-xs text-muted-foreground">
+              <div className="mt-3 space-y-2 rounded-xl bg-muted/40 p-3 border border-border/60 text-xs text-muted-foreground w-full min-w-0">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Compra 100% Protegida com garantia de entrega ou dinheiro de volta</span>
+                  <span>Compra 100% Protegida pela Loja JJ Kuster com garantia oficial</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Truck className="h-4 w-4 text-primary shrink-0" />
-                  <span>Código de rastreamento oficial enviado para o seu e-mail</span>
+                  <span>Envio com código de rastreamento oficial enviado para o seu e-mail</span>
                 </div>
               </div>
             </div>
 
-            {/* Ações de Compra Desktop & Tablet */}
-            <div className="space-y-3 pt-2">
+            {/* Ações de Compra */}
+            <div className="space-y-3 pt-2 w-full min-w-0">
               <div className="flex items-center gap-3">
                 {/* Seletor de Quantidade */}
-                <div className="flex items-center rounded-xl border border-border bg-card">
+                <div className="flex items-center rounded-xl border border-border bg-card shrink-0">
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -677,38 +727,115 @@ export function ProductDetailPage() {
           </div>
         </div>
 
-        {/* Detalhes do Produto */}
-        <div className="px-3.5 sm:px-0">
-          <section className="mt-8 rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
-            <h2 className="text-lg sm:text-xl font-black">Detalhes do Produto</h2>
-            <div className="mt-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-              {product.description_long || product.description || "Nenhuma descrição detalhada informada."}
+        {/* ========================================================= */}
+        {/* DESCRIÇÃO PROFISSIONAL E COMPLETA (Estilo Imagem 2 Mercado Livre) */}
+        {/* ========================================================= */}
+        <div className="w-full min-w-0 px-3.5 sm:px-0">
+          <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm w-full min-w-0">
+            <h2 className="text-lg sm:text-xl font-black text-foreground pb-2 border-b border-border">
+              Descrição do Produto
+            </h2>
+
+            <div className="mt-4 space-y-4 text-sm text-foreground/90 leading-relaxed">
+              <p className="font-medium text-base text-foreground">
+                {product.title} — Qualidade garantida pela Loja JJ Kuster com nota fiscal e garantia de satisfação.
+              </p>
+
+              <div className="space-y-3">
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-primary" /> Principais Diferenciais:
+                </h3>
+                <ul className="list-disc pl-5 space-y-1.5 text-muted-foreground text-xs sm:text-sm">
+                  <li><strong className="text-foreground">Alta Durabilidade:</strong> Fabricado com materiais de primeira linha para máxima vida útil.</li>
+                  <li><strong className="text-foreground">Pronto para Uso:</strong> Acompanha todos os acessórios necessários na embalagem original.</li>
+                  <li><strong className="text-foreground">Embalagem Segura:</strong> Enviado lacrado com reforço antichoque para transporte.</li>
+                  <li><strong className="text-foreground">Garantia Loja JJ Kuster:</strong> 30 dias de cobertura contra qualquer defeito.</li>
+                </ul>
+              </div>
+
+              {/* Ficha Técnica e Detalhes Expansíveis */}
+              {showFullDescription && (
+                <div className="pt-2 space-y-4 border-t border-border animate-in fade-in">
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-2">
+                      <Box className="h-4 w-4 text-primary" /> Ficha Técnica & Especificações:
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
+                        <span className="text-muted-foreground block">Categoria:</span>
+                        <strong className="capitalize">{product.category || "Geral"}</strong>
+                      </div>
+                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
+                        <span className="text-muted-foreground block">Vendedor Oficial:</span>
+                        <strong>Loja JJ Kuster</strong>
+                      </div>
+                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
+                        <span className="text-muted-foreground block">Tipo de Envio:</span>
+                        <strong>Envio Rápido Rastreado</strong>
+                      </div>
+                      <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
+                        <span className="text-muted-foreground block">Condição:</span>
+                        <strong>Novo (Lacrado na embalagem)</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {product.description_long && (
+                    <div className="pt-2 text-xs sm:text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                      {product.description_long}
+                    </div>
+                  )}
+
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-1.5">
+                      <ShieldCheck className="h-4 w-4 text-emerald-600" /> Itens Inclusos na Embalagem:
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      1x {product.title} lacrado em proteção plástica bolha, com manual e certificado de envio da Loja JJ Kuster.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowFullDescription(!showFullDescription)}
+                className="text-xs font-bold text-primary hover:underline flex items-center gap-1 pt-1"
+              >
+                {showFullDescription ? (
+                  <>Recolher descrição <ChevronUp className="h-3.5 w-3.5" /></>
+                ) : (
+                  <>Ver descrição completa <ChevronDown className="h-3.5 w-3.5" /></>
+                )}
+              </button>
             </div>
           </section>
 
           {/* ========================================================= */}
-          {/* SEÇÃO: OPINIÕES DO PRODUTO (Estilo Mercado Livre da Imagem 2) */}
+          {/* SEÇÃO: OPINIÕES DO PRODUTO (Com fotos reais e unboxing) */}
           {/* ========================================================= */}
-          <section id="opinioes" className="mt-8 rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border">
+          <section id="opinioes" className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm w-full min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-foreground">Opiniões do produto</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Avaliações reais de clientes sobre este produto
+                  Fotos e avaliações de clientes que compraram na Loja JJ Kuster
                 </p>
               </div>
+
+              {/* Botão de Envio de Fotos e Vídeos em Destaque */}
               <Button
                 onClick={() => setShowReviewModal(true)}
-                className="bg-primary hover:bg-primary/90 text-white font-bold h-10 px-5 text-sm shadow"
+                className="bg-primary hover:bg-primary/90 text-white font-bold h-10 px-4 text-xs sm:text-sm shadow flex items-center justify-center gap-2"
               >
-                <Star className="h-4 w-4 mr-1.5 fill-current" /> Avaliar produto
+                <Camera className="h-4 w-4" /> Escrever avaliação e enviar fotos/vídeos
               </Button>
             </div>
 
             {/* Resumo da Nota e Gráfico de Barras */}
-            <div className="mt-6 grid gap-6 md:grid-cols-12 items-center">
-              <div className="md:col-span-4 flex items-center gap-4">
-                <div className="text-5xl font-black text-primary leading-none">
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-12 gap-5 items-center w-full min-w-0">
+              <div className="md:col-span-4 flex items-center gap-3">
+                <div className="text-4xl sm:text-5xl font-black text-primary leading-none">
                   {averageRating.toFixed(1)}
                 </div>
                 <div>
@@ -716,7 +843,7 @@ export function ProductDetailPage() {
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star
                         key={i}
-                        className={`h-4 w-4 ${
+                        className={`h-3.5 w-3.5 ${
                           i < Math.floor(averageRating) ? "fill-current" : "opacity-30"
                         }`}
                       />
@@ -729,7 +856,7 @@ export function ProductDetailPage() {
               </div>
 
               {/* Barras de Qualificação 5★ a 1★ */}
-              <div className="md:col-span-8 space-y-1.5">
+              <div className="md:col-span-8 space-y-1.5 w-full min-w-0">
                 {[5, 4, 3, 2, 1].map((star) => {
                   const count = ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0;
                   const percentage = totalReviewsCount > 0 ? (count / totalReviewsCount) * 100 : 0;
@@ -738,10 +865,10 @@ export function ProductDetailPage() {
                       key={star}
                       type="button"
                       onClick={() => setFilterRating(filterRating === star ? null : star)}
-                      className="w-full flex items-center gap-2 text-xs group hover:opacity-80 transition"
+                      className="w-full flex items-center gap-2 text-xs group hover:opacity-80 transition min-w-0"
                     >
-                      <span className="w-6 text-right font-semibold text-muted-foreground">{star}★</span>
-                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <span className="w-5 text-right font-semibold text-muted-foreground shrink-0">{star}★</span>
+                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden min-w-0">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
                             filterRating === star ? "bg-primary" : "bg-primary/70"
@@ -749,39 +876,41 @@ export function ProductDetailPage() {
                           style={{ width: `${percentage}%` }}
                         />
                       </div>
-                      <span className="w-8 text-left text-muted-foreground font-medium">{count}</span>
+                      <span className="w-6 text-left text-muted-foreground font-medium shrink-0">{count}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Opiniões com Fotos e Vídeos (Fotos REAIS do produto) */}
+            {/* Opiniões com Fotos e Vídeos (Unboxing de Clientes) */}
             {allPhotosAndVideos.length > 0 && (
-              <div className="mt-8 pt-6 border-t border-border">
+              <div className="mt-6 pt-5 border-t border-border w-full min-w-0">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-foreground">Opiniões com fotos e vídeos</h3>
+                  <h3 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
+                    <ImageIcon className="h-4 w-4 text-primary" /> Fotos e vídeos de quem comprou
+                  </h3>
                   <span className="text-xs text-muted-foreground">{allPhotosAndVideos.length} mídias</span>
                 </div>
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+                <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none w-full min-w-0">
                   {allPhotosAndVideos.map((m, idx) => (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => setLightboxMedia(m)}
-                      className="relative h-28 w-28 sm:h-32 sm:w-32 shrink-0 overflow-hidden rounded-xl border border-border group bg-white"
+                      className="relative h-24 w-24 sm:h-32 sm:w-32 shrink-0 overflow-hidden rounded-xl border border-border group bg-white shadow-sm"
                     >
                       {m.type === "video" ? (
                         <video src={m.url} className="h-full w-full object-cover" />
                       ) : (
                         <img src={m.url} alt="" className="h-full w-full object-contain p-1 group-hover:scale-105 transition" />
                       )}
-                      <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur flex items-center gap-0.5">
-                        {m.rating} <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                      <span className="absolute bottom-1 left-1 rounded bg-black/75 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur flex items-center gap-0.5">
+                        {m.rating} <Star className="h-2 w-2 fill-amber-400 text-amber-400" />
                       </span>
                       {m.type === "video" && (
-                        <span className="absolute top-1.5 right-1.5 rounded-full bg-black/70 p-1 text-white">
-                          <Video className="h-3 w-3" />
+                        <span className="absolute top-1 right-1 rounded-full bg-black/75 p-1 text-white">
+                          <Video className="h-2.5 w-2.5" />
                         </span>
                       )}
                     </button>
@@ -791,12 +920,12 @@ export function ProductDetailPage() {
             )}
 
             {/* Filtros e Ordenação */}
-            <div className="mt-6 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2 overflow-x-auto">
+            <div className="mt-5 pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full sm:w-auto min-w-0">
                 <button
                   type="button"
                   onClick={() => setFilterRating(null)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition border ${
+                  className={`px-2.5 py-1 rounded-full text-xs font-bold transition border shrink-0 ${
                     filterRating === null
                       ? "bg-primary text-white border-primary"
                       : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
@@ -809,19 +938,19 @@ export function ProductDetailPage() {
                     key={star}
                     type="button"
                     onClick={() => setFilterRating(filterRating === star ? null : star)}
-                    className={`px-3 py-1 rounded-full text-xs font-bold transition border ${
+                    className={`px-2.5 py-1 rounded-full text-xs font-bold transition border shrink-0 ${
                       filterRating === star
                         ? "bg-primary text-white border-primary"
                         : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                     }`}
                   >
-                    {star} estrelas ({ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0})
+                    {star}★ ({ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0})
                   </button>
                 ))}
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-muted-foreground">Ordenar:</span>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+                <span>Ordenar:</span>
                 <button
                   type="button"
                   onClick={() => setSortBy("recent")}
@@ -829,7 +958,7 @@ export function ProductDetailPage() {
                 >
                   Mais recentes
                 </button>
-                <span className="text-muted-foreground">•</span>
+                <span>•</span>
                 <button
                   type="button"
                   onClick={() => setSortBy("helpful")}
@@ -841,17 +970,17 @@ export function ProductDetailPage() {
             </div>
 
             {/* Lista de Avaliações */}
-            <div className="mt-5 divide-y divide-border">
+            <div className="mt-4 divide-y divide-border w-full min-w-0">
               {filteredReviews.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">
                   Nenhuma avaliação encontrada com os filtros selecionados.
                 </p>
               ) : (
                 filteredReviews.map((rev) => (
-                  <div key={rev.id} className="py-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="flex text-amber-400">
+                  <div key={rev.id} className="py-4 space-y-2 w-full min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                        <div className="flex text-amber-400 shrink-0">
                           {Array.from({ length: 5 }).map((_, i) => (
                             <Star
                               key={i}
@@ -859,27 +988,33 @@ export function ProductDetailPage() {
                             />
                           ))}
                         </div>
-                        <span className="font-bold text-xs text-foreground">{rev.author}</span>
+                        <span className="font-bold text-xs text-foreground truncate max-w-[120px]">{rev.author}</span>
                         {rev.verified && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                            <CheckCircle2 className="h-3 w-3" /> Compra verificada
+                          <span className="flex items-center gap-0.5 text-[9px] text-emerald-600 font-bold bg-emerald-500/10 px-1 py-0.5 rounded shrink-0">
+                            <CheckCircle2 className="h-2.5 w-2.5" /> Compra verificada
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-muted-foreground">{rev.date}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{rev.date}</span>
                     </div>
 
-                    <p className="text-sm text-foreground/90 leading-relaxed">{rev.comment}</p>
+                    <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed break-words">{rev.comment}</p>
 
-                    {/* Fotos Reais do Comentário */}
+                    {rev.packagingNote && (
+                      <p className="text-[11px] text-muted-foreground italic bg-muted/30 px-2 py-1 rounded-md">
+                        {rev.packagingNote}
+                      </p>
+                    )}
+
+                    {/* Fotos do Comentário */}
                     {rev.media && rev.media.length > 0 && (
-                      <div className="flex gap-2 pt-1 overflow-x-auto">
+                      <div className="flex gap-2 pt-1 overflow-x-auto w-full min-w-0 scrollbar-none">
                         {rev.media.map((m, idx) => (
                           <button
                             key={idx}
                             type="button"
                             onClick={() => setLightboxMedia(m)}
-                            className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border group bg-white"
+                            className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-xl border border-border group bg-white shadow-sm"
                           >
                             {m.type === "video" ? (
                               <video src={m.url} className="h-full w-full object-cover" />
@@ -895,13 +1030,13 @@ export function ProductDetailPage() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-3 pt-1">
+                    <div className="flex items-center gap-3 pt-0.5">
                       <button
                         type="button"
                         onClick={() => handleToggleHelpful(rev.id)}
-                        className="text-xs text-muted-foreground hover:text-primary transition flex items-center gap-1"
+                        className="text-[11px] text-muted-foreground hover:text-primary transition flex items-center gap-1"
                       >
-                        <ThumbsUp className="h-3.5 w-3.5" /> É útil ({rev.helpfulCount})
+                        <ThumbsUp className="h-3 w-3" /> Útil ({rev.helpfulCount})
                       </button>
                     </div>
                   </div>
@@ -911,32 +1046,32 @@ export function ProductDetailPage() {
           </section>
 
           {/* Perguntas e Dúvidas */}
-          <section className="mt-6 rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
+          <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm w-full min-w-0">
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
               <h2 className="text-lg sm:text-xl font-black">Perguntas sobre o produto</h2>
             </div>
 
-            <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2">
+            <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2 w-full min-w-0">
               <Input
                 value={newQuestion}
                 onChange={(e) => setNewQuestion(e.target.value)}
-                placeholder="Escreva sua dúvida aqui..."
-                className="flex-1 h-10 text-sm"
+                placeholder="Tire sua dúvida com a Loja JJ Kuster..."
+                className="flex-1 h-10 text-xs sm:text-sm min-w-0"
               />
-              <Button type="submit" className="font-bold h-10 px-4">
-                <Send className="h-3.5 w-3.5 mr-1" /> Enviar
+              <Button type="submit" className="font-bold h-10 px-3 sm:px-4 shrink-0 text-xs sm:text-sm">
+                <Send className="h-3.5 w-3.5 mr-1" /> Perguntar
               </Button>
             </form>
 
-            <div className="mt-5 divide-y divide-border">
+            <div className="mt-4 divide-y divide-border w-full min-w-0">
               {questions.map((q) => (
-                <div key={q.id} className="py-3">
-                  <p className="text-sm font-bold text-foreground">P: {q.question}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">Enviada {q.created_at}</p>
+                <div key={q.id} className="py-3 w-full min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-foreground break-words">P: {q.question}</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">Enviada {q.created_at}</p>
                   {q.answer && (
-                    <div className="mt-2 rounded-xl bg-muted/40 p-2.5 text-xs text-foreground border-l-2 border-primary">
-                      <span className="font-bold text-primary">Resposta do vendedor:</span> {q.answer}
+                    <div className="mt-2 rounded-xl bg-muted/40 p-2.5 text-xs text-foreground border-l-2 border-primary break-words">
+                      <span className="font-bold text-primary">Resposta da Loja JJ Kuster:</span> {q.answer}
                     </div>
                   )}
                 </div>
@@ -946,28 +1081,28 @@ export function ProductDetailPage() {
         </div>
       </main>
 
-      {/* Modal / Diálogo para Avaliar Produto com Fotos e Vídeos */}
+      {/* Modal para Avaliar Produto com Fotos e Vídeos */}
       {showReviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-lg rounded-2xl bg-card p-6 shadow-2xl border border-border max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm animate-in fade-in">
+          <div className="relative w-full max-w-lg rounded-2xl bg-card p-5 sm:p-6 shadow-2xl border border-border max-h-[92vh] overflow-y-auto">
             <button
               type="button"
               onClick={() => setShowReviewModal(false)}
-              className="absolute top-4 right-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
+              className="absolute top-3 right-3 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <h3 className="text-lg font-black text-foreground">Avaliar este produto</h3>
+            <h3 className="text-base sm:text-lg font-black text-foreground">Avaliar este produto</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Conte o que achou do produto e ajude outros compradores.
+              Envie fotos ou vídeos do pacote/produto recebido e ajude outros compradores.
             </p>
 
-            <form onSubmit={handleSubmitReview} className="mt-4 space-y-4">
+            <form onSubmit={handleSubmitReview} className="mt-4 space-y-3.5">
               {/* Seletor de Estrelas */}
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">Sua nota</label>
-                <div className="flex items-center gap-1.5">
+                <label className="block text-xs font-bold text-foreground mb-1">Sua nota</label>
+                <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
@@ -976,10 +1111,10 @@ export function ProductDetailPage() {
                       className="p-1 hover:scale-110 transition"
                     >
                       <Star
-                        className={`h-7 w-7 ${
+                        className={`h-6 w-6 sm:h-7 sm:w-7 ${
                           star <= reviewRating
                             ? "fill-amber-400 text-amber-400"
-                            : "text-muted-foreground/40"
+                            : "text-muted-foreground/30"
                         }`}
                       />
                     </button>
@@ -1005,26 +1140,26 @@ export function ProductDetailPage() {
                   value={reviewName}
                   onChange={(e) => setReviewName(e.target.value)}
                   placeholder="Ex: João da Silva"
-                  className="h-10 text-sm"
+                  className="h-9 text-xs sm:text-sm"
                 />
               </div>
 
               {/* Comentário */}
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1">Sua opinião</label>
+                <label className="block text-xs font-bold text-foreground mb-1">Sua opinião sobre o produto</label>
                 <textarea
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
-                  placeholder="O que você mais gostou no produto? Chegou rápido? O material é de qualidade?"
-                  className="w-full rounded-xl border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[90px]"
+                  placeholder="Como o produto chegou? Veio bem embalado? O material atendeu suas expectativas?"
+                  className="w-full rounded-xl border border-input bg-background p-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[85px]"
                   required
                 />
               </div>
 
               {/* Upload de Fotos e Vídeos */}
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">
-                  Fotos e Vídeos do produto (opcional)
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  Anexar Fotos e Vídeos do produto recebido (no plástico / unboxing)
                 </label>
 
                 <input
@@ -1040,10 +1175,10 @@ export function ProductDetailPage() {
                 <div className="flex flex-wrap gap-2 items-center">
                   <label
                     htmlFor="review-media-upload"
-                    className="flex flex-col items-center justify-center h-20 w-20 rounded-xl border-2 border-dashed border-border hover:border-primary bg-muted/30 cursor-pointer transition"
+                    className="flex flex-col items-center justify-center h-20 w-20 rounded-xl border-2 border-dashed border-primary/50 hover:border-primary bg-primary/5 cursor-pointer transition"
                   >
-                    <Upload className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-[10px] font-bold text-muted-foreground mt-1">Anexar</span>
+                    <Camera className="h-5 w-5 text-primary" />
+                    <span className="text-[10px] font-bold text-primary mt-1">Anexar Mídia</span>
                   </label>
 
                   {reviewMediaList.map((m, idx) => (
@@ -1061,7 +1196,7 @@ export function ProductDetailPage() {
                       >
                         <X className="h-3 w-3" />
                       </button>
-                      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 text-[9px] text-white">
+                      <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 text-[8px] text-white">
                         {m.type === "video" ? "Vídeo" : "Foto"}
                       </span>
                     </div>
@@ -1074,11 +1209,11 @@ export function ProductDetailPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setShowReviewModal(false)}
-                  className="text-xs font-bold"
+                  className="text-xs font-bold h-9"
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white font-bold text-xs">
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white font-bold text-xs h-9">
                   Publicar Avaliação
                 </Button>
               </div>
@@ -1110,9 +1245,9 @@ export function ProductDetailPage() {
         </div>
       )}
 
-      {/* Barra Fixa de Compra Rápida no Celular */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur-lg sm:hidden">
-        <div className="flex items-center gap-2">
+      {/* Barra Fixa de Compra no Rodapé do Celular */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 p-2.5 backdrop-blur-lg sm:hidden w-full">
+        <div className="flex items-center gap-2 w-full">
           <Button
             variant="outline"
             onClick={() => {
