@@ -720,24 +720,38 @@ export function ProductDetailPage() {
             </div>
           </aside>
         </div>
-        {/* O que você precisa saber */}
-        {highlights.length > 0 && (
+            {/* O que você precisa saber */}
+        {product?.description ? (
           <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
-            <h2 className="text-lg font-semibold">O que você precisa saber sobre este produto</h2>
-            <ul className="mt-4 space-y-2 text-sm text-muted-foreground list-disc pl-5">
-              {highlights.map((line, idx) => (
-                <li key={idx}>{line}</li>
-              ))}
-            </ul>
+            <h2 className="text-lg font-semibold border-b border-border pb-3">Informações e Garantias</h2>
+            <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
+              {/* Renderiza o box de segurança com as listas HTML da CJ */}
+              <div dangerouslySetInnerHTML={{ __html: product.description }} />
+            </div>
+          </section>
+        ) : (
+          highlights.length > 0 && (
+            <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
+              <h2 className="text-lg font-semibold">O que você precisa saber sobre este produto</h2>
+              <ul className="mt-4 space-y-2 text-sm text-muted-foreground list-disc pl-5">
+                {highlights.map((line, idx) => (
+                  <li key={idx}>{line}</li>
+                ))}
+              </ul>
+            </section>
+          )
+        )}
+
+        {/* Descrição Detalhada do Fornecedor */}
+        {product?.description_long && product.description_long !== product.description && (
+          <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
+            <h2 className="text-lg font-semibold border-b border-border pb-3">Descrição Detalhada</h2>
+            <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
+              <p className="whitespace-pre-line">{product.description_long}</p>
+            </div>
           </section>
         )}
-        {/* Descrição Completa do Produto */}
-        <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
-          <h2 className="text-lg font-semibold border-b border-border pb-3">Descrição do produto</h2>
-          <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            <p className="whitespace-pre-line">{product.description_long || product.description}</p>
-          </div>
-        </section>
+
         {/* Avaliações com Fotos Reais de Encomendas */}
         <section className="mt-8 sm:mt-10 rounded-none sm:rounded-xl border-y sm:border border-border bg-card p-5 sm:p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
