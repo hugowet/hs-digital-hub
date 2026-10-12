@@ -967,4 +967,47 @@ export function ProductDetailPage() {
   );
 }
 
-{/* PRODUTOS RELACIONADOS */} {relatedProducts.length > 0 && ( <div className="mt-12 border-t pt-8"> <h2 className="text-lg font-bold text-gray-900 mb-4">Quem comprou este produto também viu</h2> <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"> {relatedProducts.map((p) => ( <ProductCard key={p.id} product={p} /> ))} </div> </div> )} </div> </main> <SiteFooter /> </div> ); }
+        {/* SUGESTÃO DE PRODUTOS DA HS DIGITAL */}
+        {relatedProducts.length > 0 && (
+          <div className="mt-12 border-t border-border pt-8">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              ✨ Sugestões para Você
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {relatedProducts.map((p) => {
+                // Reaproveita a lógica de tradução se você quiser aplicar nos títulos das sugestões
+                const traduzirTitulo = (texto: string) => {
+                  if (!texto) return "Produto Especial";
+                  return texto
+                    .replace(/smartwatch/gi, "Relógio Inteligente Smartwatch")
+                    .replace(/wireless/gi, "Sem Fio")
+                    .replace(/bluetooth/gi, "Bluetooth")
+                    .replace(/earphones|earbuds|headphones/gi, "Fone de Ouvido")
+                    .replace(/glasses|sunglasses/gi, "Óculos de Sol")
+                    .replace(/mouse/gi, "Mouse")
+                    .replace(/gaming/gi, "Gamer")
+                    .replace(/phone|smartphone/gi, "Celular Smartphone")
+                    .replace(/waterproof/gi, "À Prova D'água")
+                    .replace(/men|mens/gi, "Masculino")
+                    .replace(/women|womens/gi, "Feminino");
+                };
+
+                const produtoTraduzido = {
+                  ...p,
+                  title: traduzirTitulo(p.title || p.name || "")
+                };
+
+                return (
+                  <ProductCard key={p.id} product={produtoTraduzido} />
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+    <SiteFooter />
+  </div>
+);
+}
+
