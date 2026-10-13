@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { infiniteQueryOptions, useQuery, useSuspenseInfiniteQuery } from "@tanstack/react-query";
-import {
-  // Cole bem no topo junto com os outros imports do seu arquivo:
 import { GeradorPropagandaHS } from "@/components/GeradorPropagandaHS";
+import {
   Baby,
   CarFront,
   Drill,
