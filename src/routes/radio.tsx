@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import {
   Play,
   Pause,
@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 
-// Lista de streams / faixas MP3 de exemplo com alta compatibilidade
+// Streams de áudio contínuos
 const TRACKS = [
   {
     title: "HS Hits & Eletrônica",
@@ -51,7 +51,20 @@ const TRACKS = [
   },
 ];
 
-export function RadioHS() {
+export const Route = createFileRoute("/radio")({
+  head: () => ({
+    meta: [
+      { title: "Rádio HS Digital 🎵 · Ao Vivo" },
+      {
+        name: "description",
+        content: "Ouça a programação oficial da HS Digital com reprodução contínua em segundo plano.",
+      },
+    ],
+  }),
+  component: RadioHSPage,
+});
+
+export function RadioHSPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
@@ -63,7 +76,7 @@ export function RadioHS() {
 
   const currentTrack = TRACKS[currentTrackIndex];
 
-  // 1. Verifica autenticação e status do Clube HS no Supabase
+  // 1. Valida se o usuário autenticado tem o status is_clube_hs no Supabase
   const { data: userProfile } = useQuery({
     queryKey: ["radio-user-clube-status"],
     queryFn: async () => {
@@ -83,42 +96,46 @@ export function RadioHS() {
 
   const isVipClube = Boolean(userProfile?.is_clube_hs);
 
-  // 2. Configuração da Media Session API (Background playback, notificações e tela de bloqueio)
+  // 2. Media Session API (Background playback, notificações nativas e tela de bloqueio)
   const updateMediaSession = (track: typeof TRACKS[0]) => {
-    if (!("mediaSession" in navigator)) return;
+    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
 
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: `${track.title} 🎵`,
-      artist: "Rádio HS Digital 🎵",
-      album: track.album || "Marketplace HS Digital",
-      artwork: [
-        { src: track.artwork, sizes: "96x96", type: "image/jpeg" },
-        { src: track.artwork, sizes: "128x128", type: "image/jpeg" },
-        { src: track.artwork, sizes: "256x256", type: "image/jpeg" },
-        { src: track.artwork, sizes: "512x512", type: "image/jpeg" },
-      ],
-    });
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: `${track.title} 🎵`,
+        artist: "Rádio HS Digital 🎵",
+        album: track.album || "Marketplace HS Digital",
+        artwork: [
+          { src: track.artwork, sizes: "96x96", type: "image/jpeg" },
+          { src: track.artwork, sizes: "128x128", type: "image/jpeg" },
+          { src: track.artwork, sizes: "256x256", type: "image/jpeg" },
+          { src: track.artwork, sizes: "512x512", type: "image/jpeg" },
+        ],
+      });
 
-    navigator.mediaSession.setActionHandler("play", () => {
-      audioRef.current?.play();
-      setIsPlaying(true);
-    });
+      navigator.mediaSession.setActionHandler("play", () => {
+        audioRef.current?.play();
+        setIsPlaying(true);
+      });
 
-    navigator.mediaSession.setActionHandler("pause", () => {
-      audioRef.current?.pause();
-      setIsPlaying(false);
-    });
+      navigator.mediaSession.setActionHandler("pause", () => {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      });
 
-    navigator.mediaSession.setActionHandler("previoustrack", () => {
-      handlePrevTrack();
-    });
+      navigator.mediaSession.setActionHandler("previoustrack", () => {
+        handlePrevTrack();
+      });
 
-    navigator.mediaSession.setActionHandler("nexttrack", () => {
-      handleNextTrack();
-    });
+      navigator.mediaSession.setActionHandler("nexttrack", () => {
+        handleNextTrack();
+      });
+    } catch (e) {
+      console.warn("MediaSession não suportada neste ambiente:", e);
+    }
   };
 
-  // 3. Atualiza fonte e metadados quando o track muda
+  // 3. Atualiza faixa e metadados
   useEffect(() => {
     if (!audioRef.current) return;
 
@@ -133,21 +150,21 @@ export function RadioHS() {
     }
   }, [currentTrackIndex]);
 
-  // 4. Controle de volume
+  // 4. Volume
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : volume;
     }
   }, [volume, isMuted]);
 
-  // 5. Alterna Play / Pause
+  // 5. Play / Pause
   const togglePlay = () => {
     if (!audioRef.current) return;
 
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
-      if ("mediaSession" in navigator) {
+      if (typeof window !== "undefined" && "mediaSession" in navigator) {
         navigator.mediaSession.playbackState = "paused";
       }
     } else {
@@ -156,7 +173,7 @@ export function RadioHS() {
         .then(() => {
           setIsPlaying(true);
           updateMediaSession(currentTrack);
-          if ("mediaSession" in navigator) {
+          if (typeof window !== "undefined" && "mediaSession" in navigator) {
             navigator.mediaSession.playbackState = "playing";
           }
         })
@@ -166,7 +183,7 @@ export function RadioHS() {
     }
   };
 
-  // 6. Próxima música com regra do Clube HS (pop-up a cada 3 músicas para não-membros)
+  // 6. Próxima música + bloqueio com anúncio a cada 3 faixas para não-membros
   const handleNextTrack = () => {
     const nextCount = songSwitchCount + 1;
     setSongSwitchCount(nextCount);
@@ -194,11 +211,15 @@ export function RadioHS() {
         preload="auto"
         onPlay={() => {
           setIsPlaying(true);
-          if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
+          if (typeof window !== "undefined" && "mediaSession" in navigator) {
+            navigator.mediaSession.playbackState = "playing";
+          }
         }}
         onPause={() => {
           setIsPlaying(false);
-          if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused";
+          if (typeof window !== "undefined" && "mediaSession" in navigator) {
+            navigator.mediaSession.playbackState = "paused";
+          }
         }}
         onEnded={handleNextTrack}
       />
@@ -221,13 +242,13 @@ export function RadioHS() {
             Membro VIP Clube HS
           </div>
         ) : (
-          <Link
-            to="/clube-hs"
+          <a
+            href="/clube-hs"
             className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             Ouvir sem Anúncios
-          </Link>
+          </a>
         )}
       </header>
 
@@ -311,10 +332,10 @@ export function RadioHS() {
 
       {/* Footer Info */}
       <footer className="max-w-xl w-full mx-auto text-center text-xs text-slate-500">
-        Compatível com reprodução com tela bloqueada e fones Bluetooth.
+        Compatível com reprodução em segundo plano e tela bloqueada.
       </footer>
 
-      {/* Pop-up Modal do Clube HS (Exibido a cada 3 músicas para não-membros) */}
+      {/* Pop-up Modal do Clube HS */}
       {showClubModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl relative">
@@ -335,18 +356,18 @@ export function RadioHS() {
             <h3 className="text-xl font-bold text-white">Gostando da Rádio HS?</h3>
             <p className="text-xs text-slate-300 mt-2 leading-relaxed">
               Assine o <strong className="text-amber-400">Clube HS</strong> por apenas{" "}
-              <strong>R$ 19,90/mês</strong> e ouça sem interrupções, além de garantir Frete Grátis em
-              Perdizes e ofertas antecipadas!
+              <strong>R$ 19,90/mês</strong> e ouça sem anúncios, além de Frete Grátis na região de
+              Perdizes!
             </p>
 
             <div className="mt-6 flex flex-col gap-2.5">
-              <Link
-                to="/clube-hs"
+              <a
+                href="/clube-hs"
                 className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all"
               >
                 Assinar Clube HS por R$ 19,90
                 <ExternalLink className="w-4 h-4" />
-              </Link>
+              </a>
 
               <Button
                 variant="ghost"
