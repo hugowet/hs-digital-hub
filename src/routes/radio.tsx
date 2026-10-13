@@ -33,7 +33,7 @@ const TRACKS = [
     artist: "Rádio HS Digital 🎵",
     album: "Noticia e Jornalismo",
     artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
-    src: "http://tun.in/seni8",
+    src: "https://tunein.com/radio/CBN-S%c3%a3o-Paulo-905-s16186/",
   },
     {
     title: "HS Hits & Eletrônica",
