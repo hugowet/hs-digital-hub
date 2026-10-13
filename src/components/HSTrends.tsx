@@ -174,7 +174,9 @@ const NATIVE_ADS: TrendPost[] = [
 
 export function HSTrends() {
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null); // VEJA SE ESSA LINHA ESTÁ AQUI!
   const [currentIndex, setCurrentIndex] = useState(0);
+
   const [isMuted, setIsMuted] = useState(true);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [followedUsers, setFollowedUsers] = useState<Record<string, boolean>>({});
@@ -989,7 +991,7 @@ function HTML5VideoPlayer({
         preload="auto"
         className="w-full h-full object-cover"
       />
-
+      
       {(!isPlaying || isWaitingGesture) && isActive && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-xs z-15">
           <div className="flex flex-col items-center gap-2">
