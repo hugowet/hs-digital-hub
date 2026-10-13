@@ -5,7 +5,6 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { supabase } from "@/integrations/supabase/client";
 
-// BANCO DE ESTAÇÕES OFICIAIS E PARCEIRAS (LIBERADAS PARA CELULAR)
 const ESTACOES_SERTANEJAS = [
   {
     id: "sertanejo-topo",
@@ -39,7 +38,6 @@ function RadioHSComponent() {
   const [contadorTrocas, setContadorTrocas] = useState(0);
   const [mostrarAnuncio, setMostrarAnuncio] = useState(false);
 
-  // 1. Verifica se o usuário logado é membro ativo do Clube HS
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       if (data.user) {
@@ -56,7 +54,6 @@ function RadioHSComponent() {
     });
   }, []);
 
-  // 2. Troca de estação controlando o gatilho de anúncios
   const trocarEstacao = (novaEstacao: typeof ESTACOES_SERTANEJAS[0]) => {
     if (novaEstacao.id === estacaoAtual.id) return;
 
@@ -65,12 +62,11 @@ function RadioHSComponent() {
       if (proximoNumero >= 3) {
         setMostrarAnuncio(true);
         setContadorTrocas(0);
-        return; // Trava a troca até ele visualizar a oferta do Clube HS
+        return;
       } else {
         setContadorTrocas(proximoNumero);
       }
     }
-
     setEstacaoAtual(novaEstacao);
   };
 
@@ -79,10 +75,9 @@ function RadioHSComponent() {
       <SiteHeader />
       
       <main className="max-w-xl w-full mx-auto my-auto p-4 py-8 space-y-6">
-        {/* CABEÇALHO DO PLAYER */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg">
               <Radio className="w-5 h-5 animate-pulse" />
             </div>
             <div>
@@ -104,15 +99,12 @@ function RadioHSComponent() {
           )}
         </div>
 
-        {/* INTERFACE DO PLAYER COMPLETO */}
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-5">
-          
-          {/* SINALIZADOR DA SELEÇÃO ATUAL */}
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2 min-w-0">
               <Music className="h-4 w-4 text-amber-500 shrink-0 animate-bounce" /> 
               <p className="text-xs font-semibold truncate text-slate-400">
-                Estilo atual: <span className="text-white font-bold uppercase">{estacaoAtual.nome}</span>
+                Estilo: <span className="text-white font-bold uppercase">{estacaoAtual.nome}</span>
               </p>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded-full">
@@ -120,7 +112,6 @@ function RadioHSComponent() {
             </div>
           </div>
 
-          {/* PLAYER EMBED OFICIAL INTEGRADO (SEM ERRO DE IP) */}
           <div className="rounded-2xl overflow-hidden bg-black shadow-inner border border-slate-800 h-[350px]">
             <iframe
               src={estacaoAtual.embedUrl}
@@ -133,7 +124,6 @@ function RadioHSComponent() {
             />
           </div>
 
-          {/* BOTÕES DE SELEÇÃO RÁPIDA DE CANTORES / ESTILOS */}
           <div className="space-y-2">
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mudar de Programação:</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -157,7 +147,6 @@ function RadioHSComponent() {
             </div>
           </div>
 
-          {/* GATILHO PUBLICITÁRIO DO CLUBE */}
           <div className="bg-gradient-to-r from-amber-500/10 to-blue-500/10 border border-slate-800 p-4 rounded-xl text-center space-y-1">
             <p className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1">
               <Crown className="h-3.5 w-3.5 fill-current" /> Benefício Clube HS Perdizes
@@ -169,16 +158,14 @@ function RadioHSComponent() {
         </div>
       </main>
 
-      {/* POP-UP DE BLOQUEIO POR ANÚNCIO (MONETIZAÇÃO) */}
       {mostrarAnuncio && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center space-y-5">
             <div className="space-y-2">
               <h3 className="text-lg font-bold text-white">Anúncio do Patrocinador</h3>
-              <p className="text-xs text-slate-400">A sua programação continuará tocando assim que fechar o banner publicitário.</p>
+              <p className="text-xs text-slate-400">A programação continuará após fechar o banner.</p>
             </div>
 
-            {/* BANNER DE ANÚNCIO */}
             <div className="w-full h-40 bg-slate-950 border border-dashed border-slate-800 rounded-xl flex flex-col items-center justify-center p-4">
               <div className="mx-auto w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-amber-500 mb-2">
                 <Megaphone className="h-5 w-5" />
@@ -192,7 +179,7 @@ function RadioHSComponent() {
                 <Crown className="h-3.5 w-3.5 fill-current" /> Sem interrupções?
               </p>
               <p className="text-[11px] text-slate-400 mt-1">
-                Assine o <strong>Clube HS</strong> por R\$ 19,90/mês e escute suas músicas direto e sem nenhum anúncio!
+                Assine o <strong>Clube HS</strong> por R\$ 19,90/mês e escute suas músicas sem anúncio!
               </p>
             </div>
 
@@ -205,7 +192,7 @@ function RadioHSComponent() {
               </button>
               <a
                 href="/clube-hs"
-                className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1"
+                className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1"
               >
                 <Crown className="h-3.5 w-3.5 fill-white" /> Ser VIP
               </a>
@@ -218,3 +205,8 @@ function RadioHSComponent() {
     </div>
   );
 }
+
+// 🔐 TRAVA ANTI-BUG: Força o Roteador a mapear a rádio de qualquer jeito
+export const Route = createFileRoute("/radio" as any)({
+  component: RadioHSComponent,
+});
