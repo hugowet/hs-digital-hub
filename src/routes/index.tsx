@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { infiniteQueryOptions, useQuery, useSuspenseInfiniteQuery } from "@tanstack/react-query";
+import { GeradorPropagandaHS } from "@/components/GeradorPropagandaHS";
 import {
   Baby,
   CarFront,
@@ -8,21 +9,8 @@ import {
   Files,
   Gamepad2,
   Gift,
-  GraduationCap,
-  Keyboard,
-  LampDesk,
-  Search,
   ShieldCheck,
-  Shirt,
-  ShoppingBasket,
-  Smartphone,
-  Sofa,
-  Sparkles,
-  Store,
   Truck,
-  Tv,
-  Watch,
-  X,
   Zap,
   Crown,
 } from "lucide-react";
