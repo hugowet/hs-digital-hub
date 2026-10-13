@@ -142,31 +142,37 @@ const PRICE_RANGES = [
   { id: "d", label: "Acima de R$ 200", min: 200, max: Infinity },
 ];
 
-/**
- * 3 Botões redondos alinhados embaixo do frete grátis:
- * [Jogos & Prêmios] [Clube HS] [Rádio HS]
- */
-function PromoButtonsRow() {
+function BuyerGamesPromoLink() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) {
+        setVisible(false);
+        return;
+      }
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+      const isSeller = roles?.some((item) => item.role === "seller") ?? false;
+      const isBuyer = roles?.some((item) => item.role === "buyer") ?? false;
+      setVisible(isBuyer && !isSeller);
+    });
+  }, []);
+
+  if (!visible) return null;
+
   return (
-    <div className="flex flex-wrap items-center gap-2 mt-3">
-      {/* 1. Jogos & Prêmios */}
+    <div className="flex flex-wrap items-center gap-2 mt-2">
+      {/* Botão de Jogos */}
       <Button asChild variant="secondary" className="w-fit shadow-sm rounded-full">
         <Link to="/jogos">
           <Gamepad2 className="h-4 w-4 mr-2" /> Jogos &amp; Prêmios
         </Link>
       </Button>
 
-      {/* 2. Clube HS */}
+      {/* 🌟 NOVO BOTÃO DO CLUBE HS INSTALADO DO LADO CERTO */}
       <Button asChild className="w-fit bg-amber-500 hover:bg-amber-600 text-white font-bold border-none shadow-sm rounded-full">
         <Link to="/clube-hs">
           <Crown className="h-4 w-4 mr-2 fill-white" /> Clube HS
-        </Link>
-      </Button>
-
-      {/* 3. Rádio HS (ao lado direito do Clube HS, escuro elegante, rounded-full) */}
-      <Button asChild className="w-fit bg-slate-900 hover:bg-slate-800 text-white font-medium border border-slate-700/60 shadow-sm rounded-full">
-        <Link to="/radio">
-          <span className="mr-2 text-base">🎵</span> Rádio HS
         </Link>
       </Button>
     </div>
@@ -199,286 +205,295 @@ export function Home() {
     staleTime: 5 * 60_000,
   });
 
-  const searchSuggestions = useMemo(
-    () =>
-      products.map((p) => ({
-        id: p.id,
-        title: p.title,
-        category: p.category,
-      })),
-    [products],
-  );
-
-  const updateSearch = (patch: HomeSearchUpdate) => {
+  const setSearch = (changes: HomeSearchUpdate) =>
     navigate({
-      search: (prev) => {
-        const next: HomeSearch = { ...prev };
-
-        if ("q" in patch) {
-          if (patch.q) next.q = patch.q;
-          else delete next.q;
-        }
-
-        if ("category" in patch) {
-          if (patch.category) next.category = patch.category;
-          else delete next.category;
-        }
-
-        if ("range" in patch) {
-          if (patch.range && patch.range !== "all") next.range = patch.range;
-          else delete next.range;
-        }
-
-        if ("sort" in patch) {
-          if (patch.sort && patch.sort !== "popular") next.sort = patch.sort;
-          else delete next.sort;
-        }
-
-        if ("free" in patch) {
-          if (patch.free) next.free = true;
-          else delete next.free;
-        }
-
-        return next;
+      search: (previous) => {
+        const next = { ...previous, ...changes } as Record<string, unknown>;
+        if (!next["q"]) delete next["q"];
+        if (!next["category"]) delete next["category"];
+        if (next["range"] === "all") delete next["range"];
+        if (next["sort"] === "popular") delete next["sort"];
+        if (!next["free"]) delete next["free"];
+        return next as HomeSearch;
       },
-      resetScroll: false,
     });
-  };
 
-  const clearAllFilters = () => {
-    navigate({
-      search: {},
-      resetScroll: false,
+  // Filtro estrito: se tiver pesquisa por termo ou categoria, traz estritamente correspondentes
+  const filtered = useMemo(() => {
+    const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
+      id: "all",
+      label: "Todos os preços",
+      min: 0,
+      max: Infinity,
+    };
+
+    const result = products.filter((product) => {
+      if (search.category && product.category !== search.category) {
+        return false;
+      }
+      if (search.q) {
+        const queryTerm = search.q.toLowerCase().trim();
+        const titleMatch = (product.title || "").toLowerCase().includes(queryTerm);
+        const categoryMatch = (product.category || "").toLowerCase().includes(queryTerm);
+        if (!titleMatch && !categoryMatch) {
+          return false;
+        }
+      }
+      const price = Number(product.price);
+      return price >= selectedRange.min && price <= selectedRange.max;
     });
-  };
 
-  const hasActiveFilters = Boolean(
-    search.q || search.category || search.range !== "all" || search.sort !== "popular" || search.free,
-  );
+    return [...result].sort((a, b) => {
+      if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
+      if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
+      return (b.sold_count ?? 0) - (a.sold_count ?? 0);
+    });
+  }, [products, search.category, search.q, search.range, search.sort]);
+
+  const hasSearchQuery = Boolean(search.q && search.q.trim().length > 0);
+
+  const categoryLabel = hasSearchQuery
+    ? `Resultados para "${search.q}"`
+    : search.free
+      ? "Produtos com Frete Grátis"
+      : search.category
+        ? (activeCategories.find((item) => item.slug === search.category)?.label ?? search.category)
+        : "Todas as ofertas";
+
+  const suggestions = useMemo(() => {
+    return products.slice(0, 50).map((p) => ({
+      id: p.id,
+      title: p.title,
+      category: activeCategories.find((c) => c.slug === p.category)?.label ?? p.category ?? "Geral",
+    }));
+  }, [products, activeCategories]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#ebebeb] text-gray-900">
       <IntroAnimation />
+      <SiteHeader query={search.q} onQueryChange={(q) => setSearch({ q })} suggestions={suggestions} />
 
-      <SiteHeader
-        query={search.q}
-        onQueryChange={(q) => updateSearch({ q })}
-        suggestions={searchSuggestions}
-      />
+      <main>
+        {/* BANNER PRINCIPAL (Exibido apenas na tela inicial geral) */}
+        {!hasSearchQuery && (
+          <>
+            <section className="bg-gradient-to-r from-[#2968c8] via-[#3483fa] to-[#1d52a8] text-white">
+              <div className="mx-auto flex min-h-[210px] w-full max-w-7xl items-center px-4 py-8 md:min-h-[260px]">
+                <div className="relative max-w-3xl">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
+                    <ShieldCheck className="h-4 w-4" /> HS Digital Marketplace
+                  </span>
+                  <h1 className="mt-3 text-2xl font-black sm:text-4xl md:text-5xl tracking-tight leading-tight">
+                    Ofertas imperdíveis com envio rápido
+                  </h1>
+                  <p className="mt-2 text-sm text-blue-100 sm:text-base md:text-lg">
+                    Milhares de produtos nacionais e importados com frete grátis e compra protegida.
+                  </p>
 
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 space-y-8">
-        {/* Banner de Destaque estilo Mercado Livre */}
-        {!hasActiveFilters && (
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-200 p-6 md:p-10 shadow-sm border border-amber-200/60">
-            <div className="relative z-10 max-w-2xl space-y-3">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/10 text-slate-900 text-xs font-bold uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5" /> Semana do Consumidor
-              </div>
-              <h1 className="text-2xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                As melhores ofertas com <span className="underline decoration-slate-900/30">entrega garantida</span> e segura.
-              </h1>
-              <p className="text-slate-700 text-sm md:text-base font-medium">
-                Compre no Pix com aprovação imediata ou parcele suas compras no cartão de crédito.
-              </p>
-
-              <div className="pt-2 flex flex-col gap-2">
-                <div className="inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm w-fit">
-                  <Gift className="h-4 w-4" />
-                  <span>FRETE GRÁTIS AUTOMÁTICO NA SUA 1ª COMPRA</span>
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
+                    <Gift className="h-4 w-4" />
+                    <span>FRETE GRÁTIS AUTOMÁTICO NA SUA 1ª COMPRA</span>
+                  </div>
+                  <div>
+                    <BuyerGamesPromoLink />
+                  </div>
                 </div>
-
-                {/* Fileira com os 3 botões redondos [Jogos & Prêmios] [Clube HS] [Rádio HS] */}
-                <PromoButtonsRow />
               </div>
-            </div>
+            </section>
 
-            <div className="absolute right-4 -bottom-10 opacity-10 md:opacity-20 pointer-events-none">
-              <ShoppingBasket className="w-80 h-80 text-slate-900" />
-            </div>
-          </div>
+            {/* FAIXA DE BENEFÍCIOS */}
+            <section className="bg-white border-b shadow-sm">
+              <div className="mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl px-4 py-3 text-xs text-gray-600">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-[#3483fa] shrink-0" />
+                  <span>
+                    <strong>Frete rápido</strong> em todo o Brasil
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-[#00a650] shrink-0" />
+                  <span>
+                    <strong>Compra Garantida</strong> receba ou seu dinheiro volta
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-amber-500 shrink-0" />
+                  <span>
+                    <strong>Ofertas diárias</strong> com até 50% OFF
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Store className="h-5 w-5 text-purple-600 shrink-0" />
+                  <span>
+                    <strong>Lojas oficiais</strong> nacionais e internacionais
+                  </span>
+                </div>
+              </div>
+            </section>
+          </>
         )}
 
-        {/* Categorias com ícones */}
-        {activeCategories.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Categorias em destaque</h2>
-            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+        <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-6 space-y-6">
+          {/* BARRA DE ABAS: INCLUI A NOVA ABA DA PESQUISA QUANDO DIGITADA */}
+          <section id="categorias" className="rounded-xl bg-white p-3 sm:p-4 shadow-sm border border-gray-100">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-gray-700">
+                {hasSearchQuery ? "Aba da Pesquisa Selecionada" : "Categorias"}
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-[#3483fa]"
+                onClick={() => setSearch({ category: null, q: "", free: false })}
+              >
+                Ver todas as ofertas
+              </Button>
+            </div>
+
+            <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory items-center">
+              {/* ABA DINÂMICA DA PESQUISA (Aparece no início se houver termo digitado) */}
+              {hasSearchQuery && (
+                <div className="snap-start shrink-0 flex items-center rounded-xl p-2.5 h-20 border-2 border-[#3483fa] bg-blue-50 text-[#3483fa] font-bold shadow-sm gap-2">
+                  <div className="flex flex-col items-center justify-center min-w-[70px]">
+                    <Search className="h-5 w-5 mb-1 text-[#3483fa]" />
+                    <span className="text-[11px] leading-tight text-center line-clamp-1 max-w-[100px]">
+                      "{search.q}"
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSearch({ q: "" })}
+                    title="Fechar pesquisa"
+                    className="p-1 rounded-full hover:bg-blue-200/80 text-blue-700 transition"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* ABA "TODAS" */}
               <button
-                onClick={() => updateSearch({ category: null })}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl min-w-[80px] text-xs font-semibold transition-all border ${
-                  !search.category
-                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                    : "bg-white text-slate-600 border-slate-200/80 hover:border-slate-300 hover:bg-slate-50"
+                onClick={() => setSearch({ category: null, q: "", free: false })}
+                className={`snap-start shrink-0 flex flex-col items-center justify-center rounded-xl p-2.5 min-w-[76px] sm:min-w-[88px] h-20 transition-all border ${
+                  search.category === null && !hasSearchQuery && !search.free
+                    ? "border-blue-500 bg-blue-50 text-blue-600 font-bold shadow-xs"
+                    : "border-gray-100 bg-gray-50/80 text-gray-700 hover:bg-gray-100"
                 }`}
               >
-                <Store className="w-5 h-5 mb-1.5" />
-                <span>Todas</span>
+                <ShoppingBasket className="h-5 w-5 text-[#3483fa] mb-1.5" />
+                <span className="text-[11px] leading-tight text-center">Todas</span>
               </button>
 
-              {activeCategories.map((cat) => {
-                const Icon = (cat.icon && ICONS[cat.icon]) || ShoppingBasket;
-                const active = search.category === cat.slug;
+              {/* DEMAIS ABAS DE CATEGORIAS */}
+              {activeCategories.map((item) => {
+                const Icon = ICONS[item.icon] ?? Smartphone;
+                const isSelected = !hasSearchQuery && search.category === item.slug;
                 return (
                   <button
-                    key={cat.slug}
-                    onClick={() => updateSearch({ category: active ? null : cat.slug })}
-                    className={`flex flex-col items-center justify-center p-3 rounded-2xl min-w-[90px] text-xs font-semibold transition-all border ${
-                      active
-                        ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                        : "bg-white text-slate-600 border-slate-200/80 hover:border-slate-300 hover:bg-slate-50"
+                    key={item.slug}
+                    onClick={() => setSearch({ category: item.slug, q: "", free: false })}
+                    className={`snap-start shrink-0 flex flex-col items-center justify-center rounded-xl p-2.5 min-w-[76px] sm:min-w-[88px] h-20 transition-all border ${
+                      isSelected
+                        ? "border-blue-500 bg-blue-50 text-blue-600 font-bold shadow-xs"
+                        : "border-gray-100 bg-gray-50/80 text-gray-700 hover:bg-gray-100"
                     }`}
                   >
-                    <Icon className="w-5 h-5 mb-1.5" />
-                    <span className="truncate max-w-[80px]">{cat.label}</span>
+                    <Icon className="h-5 w-5 text-[#3483fa] mb-1.5" />
+                    <span className="text-[11px] leading-tight text-center line-clamp-1">{item.label}</span>
                   </button>
                 );
               })}
             </div>
           </section>
-        )}
 
-        {/* Barra de Filtros e Ordenação */}
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => updateSearch({ free: !search.free })}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                search.free
-                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              <Truck className="w-3.5 h-3.5" /> Frete Grátis
-            </button>
+          {/* VITRINE FILTRADA DE PRODUTOS */}
+          <section className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-lg border border-gray-100 shadow-xs">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                  {hasSearchQuery && <Search className="h-4 w-4 text-[#3483fa]" />}
+                  {categoryLabel}
+                </h2>
+                <p className="text-xs text-gray-500">{filtered.length} produtos correspondentes</p>
+              </div>
 
-            <Select
-              value={search.range}
-              onValueChange={(val) => updateSearch({ range: val as HomeSearchUpdate["range"] })}
-            >
-              <SelectTrigger className="h-8 text-xs rounded-full border-slate-200 bg-slate-50 w-[140px]">
-                <SelectValue placeholder="Faixa de Preço" />
-              </SelectTrigger>
-              <SelectContent>
-                {PRICE_RANGES.map((r) => (
-                  <SelectItem key={r.id} value={r.id} className="text-xs">
-                    {r.label}
-                  </SelectItem>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={search.range} onValueChange={(val) => setSearch({ range: val as any })}>
+                  <SelectTrigger className="w-[140px] h-9 text-xs">
+                    <SelectValue placeholder="Preço" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRICE_RANGES.map((r) => (
+                      <SelectItem key={r.id} value={r.id} className="text-xs">
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={search.sort} onValueChange={(val) => setSearch({ sort: val as HomeSearch["sort"] })}>
+                  <SelectTrigger className="w-[150px] h-9 text-xs">
+                    <SelectValue placeholder="Ordenar por" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="popular" className="text-xs">Mais populares</SelectItem>
+                    <SelectItem value="price-asc" className="text-xs">Menor preço</SelectItem>
+                    <SelectItem value="price-desc" className="text-xs">Maior preço</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <button
+                  type="button"
+                  onClick={() => setSearch({ free: !search.free })}
+                  className={`h-9 px-3 rounded-md border text-xs font-semibold transition flex items-center gap-1.5 ${
+                    search.free
+                      ? "bg-[#00a650] text-white border-[#00a650] shadow"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  <Truck className="h-3.5 w-3.5" /> Frete Grátis
+                </button>
+              </div>
+            </div>
+
+            {filtered.length === 0 ? (
+              <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
+                <p className="text-base font-bold text-gray-700">
+                  Nenhum produto encontrado para {hasSearchQuery ? `"${search.q}"` : "esta categoria"}.
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Confira a ortografia ou tente pesquisar por outro termo.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4 text-xs font-semibold"
+                  onClick={() => setSearch({ category: null, q: "", free: false })}
+                >
+                  Limpar busca e ver todas as ofertas
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-4">
+                {filtered.map((product) => (
+                  <ProductCard key={product.id} product={product} />
                 ))}
-              </SelectContent>
-            </Select>
-
-            {hasActiveFilters && (
-              <button
-                onClick={clearAllFilters}
-                className="inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-700 font-semibold px-2 py-1"
-              >
-                <X className="w-3.5 h-3.5" /> Limpar Filtros
-              </button>
+              </div>
             )}
-          </div>
 
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-slate-400 font-medium hidden sm:inline">Ordenar por:</span>
-            <Select
-              value={search.sort}
-              onValueChange={(val) => updateSearch({ sort: val as HomeSearchUpdate["sort"] })}
-            >
-              <SelectTrigger className="h-8 text-xs rounded-full border-slate-200 bg-slate-50 w-[150px]">
-                <SelectValue placeholder="Mais Populares" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="popular" className="text-xs">
-                  Mais Populares
-                </SelectItem>
-                <SelectItem value="price-asc" className="text-xs">
-                  Menor Preço
-                </SelectItem>
-                <SelectItem value="price-desc" className="text-xs">
-                  Maior Preço
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            {hasNextPage && (
+              <div className="flex justify-center pt-6">
+                <Button
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="bg-[#3483fa] hover:bg-[#2968c8] text-white px-8"
+                >
+                  {isFetchingNextPage ? "Carregando mais produtos..." : "Carregar mais ofertas"}
+                </Button>
+              </div>
+            )}
+          </section>
         </div>
-
-        {/* Grade de Produtos */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-800">
-              {search.category
-                ? `Produtos em ${activeCategories.find((c) => c.slug === search.category)?.label || search.category}`
-                : search.q
-                  ? `Resultados para "${search.q}"`
-                  : "Todos os Produtos"}
-            </h2>
-            <span className="text-xs text-slate-400 font-medium">{products.length} itens encontrados</span>
-          </div>
-
-          {products.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200 p-6 space-y-3">
-              <ShoppingBasket className="w-12 h-12 text-slate-300 mx-auto" />
-              <h3 className="text-base font-bold text-slate-700">Nenhum produto encontrado</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Tente ajustar os filtros ou remover termos da pesquisa para ver mais opções.
-              </p>
-              <Button onClick={clearAllFilters} variant="outline" size="sm" className="rounded-full">
-                Ver todos os produtos
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
-
-          {hasNextPage && (
-            <div className="text-center pt-6">
-              <Button
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-                variant="outline"
-                className="rounded-full px-8 bg-white shadow-xs font-semibold"
-              >
-                {isFetchingNextPage ? "Carregando mais..." : "Carregar mais produtos"}
-              </Button>
-            </div>
-          )}
-        </section>
-
-        {/* Benefícios Mercado Livre Style */}
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-slate-200/60">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <Zap className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-800">Pagamento Imediato</h4>
-              <p className="text-[11px] text-slate-500">Pague no Pix com aprovação instantânea.</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <Truck className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-800">Envio Rápido e Seguro</h4>
-              <p className="text-[11px] text-slate-500">Rastreie seu pedido direto pelo painel.</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-800">Compra 100% Protegida</h4>
-              <p className="text-[11px] text-slate-500">Garantia total de recebimento ou reembolso.</p>
-            </div>
-          </div>
-        </section>
       </main>
 
       <SiteFooter />
