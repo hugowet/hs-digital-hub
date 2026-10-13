@@ -29,11 +29,11 @@ const TRACKS = [
     src: "http://ec5.yesstreaming.net:1890/stream",
   },
   {
-    title: "Pop & Top Brasil",
+    title: "HS Noticias",
     artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
+    album: "Noticia e Jornalismo",
     artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio2.mp3",
+    src: "http://tun.in/seni8",
   },
     {
     title: "HS Hits & Eletrônica",
