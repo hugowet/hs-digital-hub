@@ -224,26 +224,15 @@ export function RadioHSPage() {
         onEnded={handleNextTrack}
       />
 
-            {/* Header do Player com Flecha para Voltar */}
+      {/* Header do Player */}
       <header className="max-w-xl w-full mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {/* Flechinha para voltar à Vitrine sem derrubar o áudio */}
-          <Link 
-            to="/" 
-            className="p-2 -ml-2 rounded-full hover:bg-slate-900 text-slate-400 hover:text-white transition-colors"
-            title="Voltar para a Vitrine"
-          >
-            <SkipBack className="w-5 h-5 rotate-180" />
-          </Link>
-
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-              <Radio className="w-5 h-5 animate-pulse" />
-            </div>
-            <div>
-              <h1 className="font-bold text-sm tracking-wide">HS DIGITAL STREAM</h1>
-              <p className="text-[11px] text-slate-400">Estações em Português 🇧🇷</p>
-            </div>
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+            <Radio className="w-5 h-5 animate-pulse" />
+          </div>
+          <div>
+            <h1 className="font-bold text-sm tracking-wide">HS DIGITAL STREAM</h1>
+            <p className="text-[11px] text-slate-400">Background Audio Ativo</p>
           </div>
         </div>
 
@@ -253,13 +242,13 @@ export function RadioHSPage() {
             Membro VIP Clube HS
           </div>
         ) : (
-          <Link
-            to="/clube-hs"
+          <a
+            href="/clube-hs"
             className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             Ouvir sem Anúncios
-          </Link>
+          </a>
         )}
       </header>
 
