@@ -8,13 +8,33 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, type ReactNode, useState, createContext, useContext } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "../lib/cart";
 import { Toaster } from "../components/ui/sonner";
 import { AuraChatWidget } from "../components/aura-chat-widget";
+
+// 🎵 1. CRIANDO O CONTEXTO DE ÁUDIO GLOBAL PARA A RÁDIO NÃO PARAR
+interface AudioContextType {
+  isPlaying: boolean;
+  togglePlay: () => void;
+  volume: number;
+  setVolume: (v: number) => void;
+}
+
+const AudioContext = createContext<AudioContextType>({
+  isPlaying: false,
+  togglePlay: () => {},
+  volume: 80,
+  setVolume: () => {}
+});
+
+export const useAudio = () => useContext(AudioContext);
+
+// Instância estática fora do ciclo de vida para o áudio ficar blindado contra destruição de páginas
+let audioInstance: HTMLAudioElement | null = null;
 
 function NotFoundComponent() {
   return (
@@ -152,17 +172,49 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(80);
+
+  // Link de áudio liberado (Google Storage) estável que roda direto sem bloqueio do navegador
+  const STREAMING_URL = "https://googleapis.com";
+
+  useEffect(() => {
+    if (!audioInstance) {
+      audioInstance = new Audio(STREAMING_URL);
+      audioInstance.loop = true;
+      audioInstance.preload = "auto";
+      audioInstance.crossOrigin = "anonymous";
+    }
+  }, []);
+
+  const togglePlay = () => {
+    if (!audioInstance) return;
+    if (audioInstance.paused) {
+      audioInstance.play()
+        .then(() => setIsPlaying(true))
+        .catch(err => console.log("Aguardando clique do usuário:", err));
+    } else {
+      audioInstance.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const changeVolume = (v: number) => {
+    setVolume(v);
+    if (audioInstance) audioInstance.volume = v / 100;
+  };
 
   return (
     <QueryClientProvider client={queryClient}>
-      <CartProvider>
-        <Outlet />
-        <Toaster position="top-center" richColors />
-        <AuraChatWidget />
-      </CartProvider>
+      <AudioContext.Provider value={{ isPlaying, togglePlay, volume, setVolume: changeVolume }}>
+        <CartProvider>
+          <Outlet />
+          <Toaster position="top-center" richColors />
+          <AuraChatWidget />
+        </CartProvider>
+      </AudioContext.Provider>
     </QueryClientProvider>
   );
 }
