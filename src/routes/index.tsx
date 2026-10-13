@@ -177,12 +177,15 @@ function BuyerGamesPromoLink() {
         </Link>
       </Button>
 
-                           {/* 📻 BOTÃO DA RÁDIO HS INTEGRADO DIRETAMENTE */}
+         {/* 📻 BOTÃO DA RÁDIO HS INTEGRADO DIRETAMENTE */}
       <Button asChild className="w-fit bg-[#8b5cf6] hover:bg-[#7c3aed] text-white font-bold border-none shadow-sm rounded-full transition-colors">
         <a href="https://hs-digital-marck.lovable.app/radio" target="_blank" rel="noopener noreferrer">
           <Radio className="h-4 w-4 mr-2 text-white" /> Rádio HS
         </a>
       </Button>
+    </div>
+  );
+}
 
 export function Home() {
   const routeSearch = Route.useSearch();
