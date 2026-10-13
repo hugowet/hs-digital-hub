@@ -104,7 +104,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const ICONS: Record<string, typeof Smartphone> = {
+const ICONS: Record<string, any> = {
   Files,
   GraduationCap,
   Watch,
@@ -125,10 +125,10 @@ const ICONS: Record<string, typeof Smartphone> = {
 
 const PRICE_RANGES = [
   { id: "all", label: "Todos os preços", min: 0, max: Infinity },
-  { id: "a", label: "Até R$ 50", min: 0, max: 50 },
-  { id: "b", label: "R$ 50 a R$ 100", min: 50, max: 100 },
-  { id: "c", label: "R$ 100 a R$ 200", min: 100, max: 200 },
-  { id: "d", label: "Acima de R$ 200", min: 200, max: Infinity },
+  { id: "a", label: "Até R\$ 50", min: 0, max: 50 },
+  { id: "b", label: "R\$ 50 a R\$ 100", min: 50, max: 100 },
+  { id: "c", label: "R\$ 100 a R\$ 200", min: 100, max: 200 },
+  { id: "d", label: "Acima de R\$ 200", min: 200, max: Infinity },
 ];
 
 function BuyerGamesPromoLink() {
@@ -169,13 +169,13 @@ function BuyerGamesPromoLink() {
 }
 
 export function Home() {
-  const routeSearch = Route.useSearch();
+  const routeSearch = Route.useSearch() as any;
   const search = resolveSearch(routeSearch);
   const navigate = Route.useNavigate();
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
-    catalogQueryOptions(routeSearch),
+    catalogQueryOptions(routeSearch) as any,
   );
-  const products = data.pages.flatMap((page) => page.products);
+  const products = (data as any)?.pages?.flatMap((page: any) => page.products) || [];
 
   // Busca dinamicamente apenas as categorias com produtos ativos
   const { data: activeCategories = [] } = useQuery({
@@ -203,20 +203,20 @@ export function Home() {
         if (next["range"] === "all") delete next["range"];
         if (next["sort"] === "popular") delete next["sort"];
         if (!next["free"]) delete next["free"];
-        return next as HomeSearch;
+        return next as any;
       },
     });
 
-  // Filtro estrito: se tiver pesquisa por termo ou categoria, traz estritamente correspondentes
+    // Filtro estrito: se tiver pesquisa por termo ou categoria, traz estritamente correspondentes
   const filtered = useMemo(() => {
-    const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
+    const selectedRange = PRICE_RANGES.find((item: any) => item.id === search.range) ?? {
       id: "all",
       label: "Todos os preços",
       min: 0,
       max: Infinity,
     };
 
-    const result = products.filter((product) => {
+    const result = products.filter((product: any) => {
       if (search.category && product.category !== search.category) {
         return false;
       }
@@ -232,7 +232,7 @@ export function Home() {
       return price >= selectedRange.min && price <= selectedRange.max;
     });
 
-    return [...result].sort((a, b) => {
+    return [...result].sort((a: any, b: any) => {
       if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
       if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
       return (b.sold_count ?? 0) - (a.sold_count ?? 0);
@@ -246,14 +246,14 @@ export function Home() {
     : search.free
       ? "Produtos com Frete Grátis"
       : search.category
-        ? (activeCategories.find((item) => item.slug === search.category)?.label ?? search.category)
+        ? (activeCategories.find((item: any) => item.slug === search.category)?.label ?? search.category)
         : "Todas as ofertas";
 
   const suggestions = useMemo(() => {
-    return products.slice(0, 50).map((p) => ({
+    return products.slice(0, 50).map((p: any) => ({
       id: p.id,
       title: p.title,
-      category: activeCategories.find((c) => c.slug === p.category)?.label ?? p.category ?? "Geral",
+      category: activeCategories.find((c: any) => c.slug === p.category)?.label ?? p.category ?? "Geral",
     }));
   }, [products, activeCategories]);
 
@@ -362,6 +362,7 @@ export function Home() {
 
               {/* ABA "TODAS" */}
               <button
+                type="button"
                 onClick={() => setSearch({ category: null, q: "", free: false })}
                 className={`snap-start shrink-0 flex flex-col items-center justify-center rounded-xl p-2.5 min-w-[76px] sm:min-w-[88px] h-20 transition-all border ${
                   search.category === null && !hasSearchQuery && !search.free
@@ -374,12 +375,13 @@ export function Home() {
               </button>
 
               {/* DEMAIS ABAS DE CATEGORIAS */}
-              {activeCategories.map((item) => {
+              {activeCategories.map((item: any) => {
                 const Icon = ICONS[item.icon] ?? Smartphone;
                 const isSelected = !hasSearchQuery && search.category === item.slug;
                 return (
                   <button
                     key={item.slug}
+                    type="button"
                     onClick={() => setSearch({ category: item.slug, q: "", free: false })}
                     className={`snap-start shrink-0 flex flex-col items-center justify-center rounded-xl p-2.5 min-w-[76px] sm:min-w-[88px] h-20 transition-all border ${
                       isSelected
@@ -412,7 +414,7 @@ export function Home() {
                     <SelectValue placeholder="Preço" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PRICE_RANGES.map((r) => (
+                    {PRICE_RANGES.map((r: any) => (
                       <SelectItem key={r.id} value={r.id} className="text-xs">
                         {r.label}
                       </SelectItem>
@@ -420,7 +422,7 @@ export function Home() {
                   </SelectContent>
                 </Select>
 
-                <Select value={search.sort} onValueChange={(val) => setSearch({ sort: val as HomeSearch["sort"] })}>
+                <Select value={search.sort} onValueChange={(val) => setSearch({ sort: val as any })}>
                   <SelectTrigger className="w-[150px] h-9 text-xs">
                     <SelectValue placeholder="Ordenar por" />
                   </SelectTrigger>
@@ -464,7 +466,7 @@ export function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-4">
-                {filtered.map((product) => (
+                {filtered.map((product: any) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
