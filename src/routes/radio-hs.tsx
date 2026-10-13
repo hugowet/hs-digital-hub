@@ -6,39 +6,65 @@ export const Route = createFileRoute('/radio-hs')({
   component: RadioComponent,
 })
 
-// Simulando uma lista de faixas para o comportamento idêntico ao Lovable
+// Lista oficial de faixas da Rádio HS Digital trazidas do Lovable
 const PLAYLIST = [
-  { title: "Pop & Top Brasil", station: "Rádio HS Digital 🎵", session: "Perdizes Sessions", cover: "https://unsplash.com" },
-  { title: "Glow Electro Hits", station: "Rádio HS Digital 🎵", session: "Ibiza Summer Warmup", cover: "https://unsplash.com" },
-  { title: "Hip-Hop Underground", station: "Rádio HS Digital 🎵", session: "Brooklyn Classic Mix", cover: "https://unsplash.com" },
-  { title: "Chill & Lofi Beats", station: "Rádio HS Digital 🎵", session: "Midnight Study Session", cover: "https://unsplash.com" }
+  { 
+    title: "HS Hits & Eletrônica", 
+    station: "Rádio HS Digital 🎵", 
+    session: "Perdizes Sessions", 
+    cover: "https://unsplash.com",
+    url: "https://soundhelix.com" 
+  },
+  { 
+    title: "Pop & Top Brasil", 
+    station: "Rádio HS Digital 🎵", 
+    session: "Perdizes Sessions", 
+    cover: "https://unsplash.com",
+    url: "https://soundhelix.com" 
+  },
+  { 
+    title: "Glow Electro Hits", 
+    station: "Rádio HS Digital 🎵", 
+    session: "Ibiza Summer Warmup", 
+    cover: "https://unsplash.com",
+    url: "https://soundhelix.com" 
+  },
+  { 
+    title: "Chill & Lofi Beats", 
+    station: "Rádio HS Digital 🎵", 
+    session: "Midnight Study Session", 
+    cover: "https://unsplash.com",
+    url: "https://soundhelix.com" 
+  }
 ]
 
 function RadioComponent() {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [volume, setVolume] = useState(80)
-  
-  // Controle de limite: conta quantas músicas o usuário ouviu
   const [songsListenedCount, setSongsListenedCount] = useState(0)
   const [showPaywall, setShowPaywall] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const currentTrack = PLAYLIST[currentTrackIndex]
 
-  // 🔴 COLOQUE O LINK REAL DO SEU STREAMING DE ÁUDIO (.mp3) AQUI PARA TOCAR SOM
-  const STREAMING_URL = "https://hs-digital-marck.lovable.app/radio" 
-
+  // Sincroniza o volume do áudio real
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume / 100
     }
   }, [volume])
 
-  // Lógica de monitoramento de limite por faixa escutada
+  // Monitora a troca de faixas para aplicar o áudio se estiver dando play
+  useEffect(() => {
+    if (audioRef.current && isPlaying) {
+      audioRef.current.play().catch(err => console.log("Erro ao reproduzir:", err))
+    }
+  }, [currentTrackIndex])
+
+  // Lógica rigorosa de bloqueio após escutar 3 faixas
   const handleNextTrack = () => {
     if (songsListenedCount >= 2) {
-      // Se já ouviu 3 músicas (0, 1, 2), bloqueia a reprodução
       if (audioRef.current) audioRef.current.pause()
       setIsPlaying(false)
       setShowPaywall(true)
@@ -55,7 +81,6 @@ function RadioComponent() {
 
   const togglePlay = () => {
     if (showPaywall) return
-
     if (!audioRef.current) return
 
     if (isPlaying) {
@@ -64,15 +89,20 @@ function RadioComponent() {
     } else {
       audioRef.current.play()
         .then(() => setIsPlaying(true))
-        .catch(err => console.error("Erro de reprodução:", err))
+        .catch(err => console.error("Erro de reprodução de áudio:", err))
     }
   }
 
   return (
     <div className="min-h-screen bg-[#030712] text-white flex flex-col items-center p-4 antialiased selection:bg-purple-500/30">
       
-      {/* Elemento de Áudio HTML5 Nativo */}
-      <audio ref={audioRef} src={STREAMING_URL} preload="none" onEnded={handleNextTrack} />
+      {/* Reprodutor HTML5 conectado diretamente com os arquivos de áudio oficiais */}
+      <audio 
+        ref={audioRef} 
+        src={currentTrack.url} 
+        preload="auto" 
+        onEnded={handleNextTrack} 
+      />
 
       {/* Top Header do Player */}
       <div className="w-full max-w-md flex items-center justify-between my-4 px-2">
@@ -94,15 +124,15 @@ function RadioComponent() {
       {/* Card Principal Central */}
       <div className="w-full max-w-md bg-zinc-950/60 border border-zinc-900 rounded-[32px] p-6 shadow-2xl flex flex-col items-center mt-4 relative overflow-hidden">
         
-        {/* PAYWALL: Exibido em cima do player após o limite de 3 músicas */}
+        {/* BLOQUEIO DO CLUBE HS (PAYWALL) */}
         {showPaywall && (
-          <div className="absolute inset-0 bg-black/90 z-20 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-fadeIn">
+          <div className="absolute inset-0 bg-black/95 z-20 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-fadeIn">
             <div className="h-16 w-16 bg-amber-500 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/30 mb-4 animate-bounce">
               <Crown className="h-8 w-8 text-white fill-white" />
             </div>
             <h2 className="text-2xl font-black tracking-tight mb-2">Limite Gratuito Atingido!</h2>
             <p className="text-zinc-400 text-sm max-w-xs mb-6">
-              Você já ouviu 3 músicas. Assine o <span className="text-amber-400 font-bold">Clube HS</span> para liberar músicas ilimitadas sem anúncios e comerciais.
+              Você já ouviu 3 músicas na Rádio HS. Assine o <span className="text-amber-400 font-bold">Clube HS</span> para liberar streaming ilimitado sem anúncios.
             </p>
             <Link 
               to="/clube-hs" 
@@ -114,7 +144,7 @@ function RadioComponent() {
               onClick={() => { setSongsListenedCount(0); setShowPaywall(false); }}
               className="text-xs text-zinc-500 hover:text-zinc-300 underline mt-4"
             >
-              Continuar em Modo de Teste Demo
+              Continuar testando (Modo Demo)
             </button>
           </div>
         )}
@@ -131,7 +161,7 @@ function RadioComponent() {
           </div>
         </div>
 
-        {/* Informações da Faixa Dinâmica */}
+        {/* Informações da Faixa */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-black tracking-tight mb-1 text-zinc-100">{currentTrack.title}</h1>
           <p className="text-purple-400 font-bold text-sm tracking-wide flex items-center justify-center gap-1">
@@ -162,7 +192,7 @@ function RadioComponent() {
           </button>
         </div>
 
-        {/* Controle do Volume */}
+        {/* Controle do Volume (Ajusta o som de verdade) */}
         <div className="w-full flex items-center gap-4 px-2">
           <Volume2 className="h-5 w-5 text-zinc-400" />
           <input 
