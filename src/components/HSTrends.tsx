@@ -174,9 +174,7 @@ const NATIVE_ADS: TrendPost[] = [
 
 export function HSTrends() {
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null); // VEJA SE ESSA LINHA ESTÁ AQUI!
   const [currentIndex, setCurrentIndex] = useState(0);
-
   const [isMuted, setIsMuted] = useState(true);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [followedUsers, setFollowedUsers] = useState<Record<string, boolean>>({});
@@ -309,7 +307,7 @@ export function HSTrends() {
       content: newCommentText.trim(),
     };
 
-    const { error } = await supabase.from("trend_comments" as any).insert(commentData);
+    const { error } = await supabase.from("trend_comments").insert(commentData);
     if (!error) {
       setNewCommentText("");
       refetchComments();
@@ -319,8 +317,8 @@ export function HSTrends() {
   // Enviar novo vídeo (+)
   const handleUploadVideo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile || !uploadTitle.trim()) {
-      alert("Selecione um arquivo de vídeo da galeria/câmera e digite o título!");
+    if (!uploadUrl.trim() || !uploadTitle.trim()) {
+      alert("Preencha o link do vídeo e o título!");
       return;
     }
 
@@ -331,50 +329,35 @@ export function HSTrends() {
 
     setIsSubmittingVideo(true);
 
-    try {
-      const fileExt = selectedFile.name.split(".").pop();
-      const fileName = `${Math.random()}_${Date.now()}.${fileExt}`;
-      const filePath = `user-trends/${fileName}`;
+    const newVideo = {
+      user_id: authUser.id,
+      author_name: userProfile?.full_name || authUser.email?.split("@")[0] || "Criador HS",
+      author_avatar: userProfile?.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
+      title: uploadTitle.trim(),
+      description: uploadDesc.trim(),
+      video_url: uploadUrl.trim(),
+      post_type: uploadType,
+      music_title: "Som Original · " + (userProfile?.full_name || "Criador HS"),
+    };
 
-      const storageClient = supabase.storage.from("hstrends-videos") as any;
-      const { error: uploadError } = await storageClient.upload(filePath, selectedFile);
+    const { error } = await supabase.from("trend_videos").insert(newVideo);
+    setIsSubmittingVideo(false);
 
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = (supabase.storage.from("hstrends-videos") as any).getPublicUrl(filePath);
-
-      const newVideo = {
-        user_id: authUser.id,
-        author_name: userProfile?.full_name || authUser.email?.split("@")[0] || "Criador HS",
-        author_avatar: userProfile?.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
-        title: uploadTitle.trim(),
-        description: uploadDesc.trim(),
-        video_url: urlData?.publicUrl || "",
-        post_type: uploadType,
-        music_title: "Som Original · " + (userProfile?.full_name || "Criador HS"),
-      };
-      
-      const { error: dbError } = await supabase.from("trend_videos" as any).insert(newVideo);
-      if (dbError) throw dbError;
-
+    if (error) {
+      alert("Erro ao publicar vídeo. Tente novamente.");
+    } else {
       setUploadModalOpen(false);
       setUploadTitle("");
       setUploadDesc("");
-      setSelectedFile(null);
+      setUploadUrl("");
       queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
       alert("Seu vídeo foi publicado com sucesso no HSTrends!");
-    } catch (error) {
-      console.error(error);
-      alert("Erro ao publicar vídeo. Verifique se o bucket 'hstrends-videos' está criado no seu Supabase.");
-    } finally {
-      setIsSubmittingVideo(false);
     }
   };
 
   const toggleLike = (postId: string) => {
     setLikedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }));
   };
-
 
   const toggleFollow = (authorId: string) => {
     setFollowedUsers((prev) => ({ ...prev, [authorId]: !prev[authorId] }));
@@ -629,31 +612,18 @@ export function HSTrends() {
           })}
         </div>
 
-         {/* 2. INPUT INVISÍVEL QUE ABRE A CÂMERA E GALERIA IMEDIATAMENTE */}
-      <input 
-        type="file"
-        ref={fileInputRef}
-        onChange={(e) => {
-          handleFileChange(e);
-          if (e.target.files && e.target.files.length > 0) {
-            setUploadModalOpen(true);
-          }
-        }}
-        accept="video/*,image/*"
-        className="hidden" 
-      />
-
-      {/* BOTÃO FLUTUANTE DE GRAVAR / ENVIAR VÍDEO (+) */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="flex items-center justify-center w-12 h-10 rounded-xl bg-gradient-to-r from-cyan-400 via-white to-rose-500 text-slate-950 font-black shadow-2xl active:scale-95 transition-transform"
-          title="Publicar Vídeo"
-        >
-          <div className="w-[42px] h-[34px] bg-white rounded-lg flex items-center justify-center text-slate-950">
-            <Plus className="w-6 h-6" />
-          </div>
-        </button>
+        {/* BOTÃO FLUTUANTE DE GRAVAR / ENVIAR VÍDEO (+) */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
+          <button
+            onClick={() => setUploadModalOpen(true)}
+            className="flex items-center justify-center w-12 h-10 rounded-xl bg-gradient-to-r from-cyan-400 via-white to-rose-500 text-slate-950 font-black shadow-2xl active:scale-95 transition-transform"
+            title="Publicar Vídeo"
+          >
+            <div className="w-[42px] h-[34px] bg-white rounded-lg flex items-center justify-center text-slate-950">
+              <Plus className="w-6 h-6 stroke-[3]" />
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* 1. GAVETA DE COMENTÁRIOS DE VERDADE */}
@@ -665,7 +635,6 @@ export function HSTrends() {
               <h3 className="font-bold text-sm text-white flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-amber-400" />
                 Comentários ({comments.length})
-
               </h3>
               <button
                 onClick={() => setCommentModalPost(null)}
@@ -991,7 +960,7 @@ function HTML5VideoPlayer({
         preload="auto"
         className="w-full h-full object-cover"
       />
-      
+
       {(!isPlaying || isWaitingGesture) && isActive && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-xs z-15">
           <div className="flex flex-col items-center gap-2">
