@@ -36,11 +36,11 @@ const TRACKS = [
     src: "https://streams.ilovemusic.de/iloveradio2.mp3",
   },
     {
-    title: "Jovem Pan FM",
+    title: "Hs Gospel FM",
     artist: "Rádio HS Digital 🎵",
-    album: "Pop, Rock e Notícias",
+    album: "Louvor, tracks e musicas",
     artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
-    src: "https://r13.ciclano.io:8002/stream",
+    src: "http://ec5.yesstreaming.net:1890/stream",
   },
   {
     title: "Lo-Fi Lounge & Chill",
