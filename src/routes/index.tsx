@@ -24,8 +24,8 @@ import {
   Watch,
   X,
   Zap,
-  Radio,
   Crown,
+  Radio,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -177,15 +177,12 @@ function BuyerGamesPromoLink() {
         </Link>
       </Button>
 
-      {/* 📻 NOVO BOTÃO DA RÁDIO HS SEM QUEBRAR O TANSTACK ROUTER */}
+           {/* 📻 BOTÃO APONTANDO PARA LINK EXTERNO */}
       <Button asChild className="w-fit bg-purple-600 hover:bg-purple-700 text-white font-bold border-none shadow-sm rounded-full">
-        <a href="/radio-hs">
+        <a href="COLE_O_LINK_DA_SUA_RADIO_AQUI" target="_blank" rel="noopener noreferrer">
           <Radio className="h-4 w-4 mr-2" /> Rádio HS
         </a>
       </Button>
-    </div>
-  );
-}
 
 export function Home() {
   const routeSearch = Route.useSearch();
