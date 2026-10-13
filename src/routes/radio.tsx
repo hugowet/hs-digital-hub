@@ -17,17 +17,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 
-// Artistas de Sertanejo sugeridos para seleção rápida em um clique
-const SERTANEJO_SUGGESTIONS = [
-  "Gusttavo Lima",
-  "Luan Santana",
-  "Bruno & Marrone",
-  "Ana Castela",
-  "Jorge & Mateus",
-  "Henrique & Juliano",
-  "Zé Neto & Cristiano",
-  "Marília Mendonça",
+// Canais de streaming de áudio nativos (.mp3) estáveis e sem vídeo
+const TRACKS = [
+  {
+    title: "Sertanejo Universitário & Modão",
+    artist: "Rádio HS Sertaneja 🤠",
+    src: "https://brlogic.com",
+  },
+  {
+    title: "HS Hits, Pop & Top Brasil",
+    artist: "Rádio HS Digital 🎵",
+    src: "https://zeno.fm",
+  },
+  {
+    title: "Lo-Fi Lounge & Chill",
+    artist: "Rádio HS Chill ☕",
+    src: "https://zeno.fm",
+  }
 ];
+
 
 export const Route = createFileRoute("/radio")({
   head: () => ({
@@ -228,17 +236,18 @@ export function RadioHSPage() {
           </div>
         </div>
 
-        {/* CONTAINER LIMPO DO IFRAME DE ALTA FIDELIDADE */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-3 sm:p-4 shadow-2xl relative overflow-hidden">
-          <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-inner border border-slate-800">
-            <iframe
-              title={`Tocando ${activeArtist} na Rádio HS`}
-              src={iframeSrc}
-              className="w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-          </div>
+      {/* Player de áudio puro sem carregamento de vídeo */}
+<div className="w-full py-6 px-4 bg-slate-950 border border-slate-800 rounded-2xl flex flex-col items-center justify-center shadow-inner">
+  <audio
+    controls
+    autoPlay
+    src={TRACKS[playCount % TRACKS.length].src}
+    className="w-full max-w-md accent-amber-500"
+  />
+  <p className="text-[11px] text-slate-500 mt-3 text-center">
+    Tocando transmissão digital de áudio contínuo
+  </p>
+</div>
 
           <div className="mt-3 flex items-center justify-between text-xs text-slate-400 px-1">
             <span className="flex items-center gap-1.5">
