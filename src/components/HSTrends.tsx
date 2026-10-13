@@ -307,7 +307,7 @@ export function HSTrends() {
       content: newCommentText.trim(),
     };
 
-    const { error } = await supabase.from("trend_comments").insert(commentData);
+    const { error } = await supabase.from("trend_comments" as any).insert(commentData);
     if (!error) {
       setNewCommentText("");
       refetchComments();
@@ -315,7 +315,7 @@ export function HSTrends() {
   };
 
   // Enviar novo vídeo (+)
-    const handleUploadVideo = async (e: React.FormEvent) => {
+  const handleUploadVideo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile || !uploadTitle.trim()) {
       alert("Selecione um arquivo de vídeo da galeria/câmera e digite o título!");
@@ -334,7 +334,6 @@ export function HSTrends() {
       const fileName = `${Math.random()}_${Date.now()}.${fileExt}`;
       const filePath = `user-trends/${fileName}`;
 
-      // Forçar o client do Supabase a ignorar a tipagem e aceitar o arquivo binário
       const storageClient = supabase.storage.from("hstrends-videos") as any;
       const { error: uploadError } = await storageClient.upload(filePath, selectedFile);
 
@@ -345,14 +344,14 @@ export function HSTrends() {
       const newVideo = {
         user_id: authUser.id,
         author_name: userProfile?.full_name || authUser.email?.split("@")[0] || "Criador HS",
-        author_avatar: userProfile?.avatar_url || "https://unsplash.com",
+        author_avatar: userProfile?.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
         title: uploadTitle.trim(),
         description: uploadDesc.trim(),
         video_url: urlData?.publicUrl || "",
         post_type: uploadType,
         music_title: "Som Original · " + (userProfile?.full_name || "Criador HS"),
       };
-
+      
       const { error: dbError } = await supabase.from("trend_videos" as any).insert(newVideo);
       if (dbError) throw dbError;
 
@@ -370,43 +369,10 @@ export function HSTrends() {
     }
   };
 
-
-    if (!authUser) {
-      alert("Faça login para postar vídeos no HSTrends!");
-      return;
-    }
-
-    setIsSubmittingVideo(true);
-
-    const newVideo = {
-      user_id: authUser.id,
-      author_name: userProfile?.full_name || authUser.email?.split("@")[0] || "Criador HS",
-      author_avatar: userProfile?.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
-      title: uploadTitle.trim(),
-      description: uploadDesc.trim(),
-      video_url: uploadUrl.trim(),
-      post_type: uploadType,
-      music_title: "Som Original · " + (userProfile?.full_name || "Criador HS"),
-    };
-
-    const { error } = await supabase.from("trend_videos").insert(newVideo);
-    setIsSubmittingVideo(false);
-
-    if (error) {
-      alert("Erro ao publicar vídeo. Tente novamente.");
-    } else {
-      setUploadModalOpen(false);
-      setUploadTitle("");
-      setUploadDesc("");
-      setUploadUrl("");
-      queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
-      alert("Seu vídeo foi publicado com sucesso no HSTrends!");
-    }
-  };
-
   const toggleLike = (postId: string) => {
     setLikedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }));
   };
+
 
   const toggleFollow = (authorId: string) => {
     setFollowedUsers((prev) => ({ ...prev, [authorId]: !prev[authorId] }));
