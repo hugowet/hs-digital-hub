@@ -177,12 +177,15 @@ function BuyerGamesPromoLink() {
         </Link>
       </Button>
 
-           {/* 📻 BOTÃO APONTANDO PARA LINK EXTERNO */}
+      {/* 📻 BOTÃO DA RÁDIO HS AJUSTADO E SEGURO */}
       <Button asChild className="w-fit bg-purple-600 hover:bg-purple-700 text-white font-bold border-none shadow-sm rounded-full">
-        <a href="COLE_O_LINK_DA_SUA_RADIO_AQUI" target="_blank" rel="noopener noreferrer">
+        <a href="/radio-hs">
           <Radio className="h-4 w-4 mr-2" /> Rádio HS
         </a>
       </Button>
+    </div>
+  );
+}
 
 export function Home() {
   const routeSearch = Route.useSearch();
