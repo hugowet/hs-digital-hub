@@ -175,15 +175,36 @@ function BuyerGamesPromoLink() {
 }
 
 export function Home() {
-  const routeSearch = Route.useSearch();
-  const search = resolveSearch(routeSearch);
-  const navigate = Route.useNavigate();
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
-    catalogQueryOptions(routeSearch),
-  );
-  const products = data.pages.flatMap((page) => page.products);
+  const PRICE_RANGES = [
+  { id: "all", label: "Todos os preços", min: 0, max: Infinity },
+  { id: "a", label: "Até R\$ 50", min: 0, max: 50 },
+  { id: "b", label: "R\$ 50 a R\$ 100", min: 50, max: 100 },
+  { id: "c", label: "R\$ 100 a R\$ 200", min: 100, max: 200 },
+  { id: "d", label: "Acima de R\$ 200", min: 200, max: Infinity },
+];
 
-  // Busca dinamicamente apenas as categorias com produtos ativos
+export function Home() {
+  const routeSearch = Route.useSearch() as any;
+  const search = {
+    q: routeSearch?.q || "",
+    category: routeSearch?.category || "",
+    range: routeSearch?.range || "all",
+    sort: routeSearch?.sort || "popular",
+    free: routeSearch?.free || false
+  };
+  const navigate = Route.useNavigate();
+
+  const { data } = useSuspenseInfiniteQuery(
+    infiniteQueryOptions({
+      queryKey: ["catalog", routeSearch],
+      queryFn: ({ pageParam }) => fetchCatalogPage({ ...routeSearch, page: pageParam }),
+      initialPageParam: 1,
+      getNextPageParam: (lastPage: any) => lastPage?.nextPage,
+    })
+  );
+  
+  const products = (data as any)?.pages?.flatMap((page: any) => page.products) || [];
+
   const { data: activeCategories = [] } = useQuery({
     queryKey: ["active-store-categories"],
     queryFn: async () => {
@@ -200,20 +221,19 @@ export function Home() {
     staleTime: 5 * 60_000,
   });
 
-  const setSearch = (changes: HomeSearchUpdate) =>
+  const setSearch = (changes: any) =>
     navigate({
-      search: (previous) => {
+      search: (previous: any) => {
         const next = { ...previous, ...changes } as Record<string, unknown>;
         if (!next["q"]) delete next["q"];
         if (!next["category"]) delete next["category"];
         if (next["range"] === "all") delete next["range"];
         if (next["sort"] === "popular") delete next["sort"];
         if (!next["free"]) delete next["free"];
-        return next as HomeSearch;
+        return next as any;
       },
     });
 
-  // Filtro estrito: se tiver pesquisa por termo ou categoria, traz estritamente correspondentes
   const filtered = useMemo(() => {
     const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
       id: "all",
@@ -222,7 +242,7 @@ export function Home() {
       max: Infinity,
     };
 
-    const result = products.filter((product) => {
+    const result = products.filter((product: any) => {
       if (search.category && product.category !== search.category) {
         return false;
       }
@@ -238,7 +258,7 @@ export function Home() {
       return price >= selectedRange.min && price <= selectedRange.max;
     });
 
-    return [...result].sort((a, b) => {
+    return [...result].sort((a: any, b: any) => {
       if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
       if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
       return (b.sold_count ?? 0) - (a.sold_count ?? 0);
@@ -252,14 +272,14 @@ export function Home() {
     : search.free
       ? "Produtos com Frete Grátis"
       : search.category
-        ? (activeCategories.find((item) => item.slug === search.category)?.label ?? search.category)
+        ? (activeCategories.find((item: any) => item.slug === search.category)?.label ?? search.category)
         : "Todas as ofertas";
 
   const suggestions = useMemo(() => {
-    return products.slice(0, 50).map((p) => ({
+    return products.slice(0, 50).map((p: any) => ({
       id: p.id,
       title: p.title,
-      category: activeCategories.find((c) => c.slug === p.category)?.label ?? p.category ?? "Geral",
+      category: activeCategories.find((c: any) => c.slug === p.category)?.label ?? p.category ?? "Geral",
     }));
   }, [products, activeCategories]);
 
