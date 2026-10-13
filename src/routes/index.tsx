@@ -13,8 +13,11 @@ import {
   Truck,
   Zap,
   Crown,
+  Store,
+  ShoppingBasket
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+
 import { ProductCard } from "@/components/product-card";
 import { IntroAnimation } from "@/components/intro-animation";
 import { SiteFooter } from "@/components/site-footer";
@@ -25,7 +28,7 @@ import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { supabase } from "@/integrations/supabase/client";
 
-type HomeSearch = {
+export type HomeSearch = {
   q?: string | undefined;
   category?: string | undefined;
   range?: "a" | "b" | "c" | "d" | undefined;
@@ -33,7 +36,7 @@ type HomeSearch = {
   free?: true | undefined;
 };
 
-type HomeSearchUpdate = {
+export type HomeSearchUpdate = {
   q?: string | undefined;
   category?: string | null | undefined;
   range?: HomeSearch["range"] | "all";
@@ -64,27 +67,26 @@ const catalogQueryOptions = (search: HomeSearch) =>
     queryKey: ["catalog", search],
     queryFn: ({ pageParam }) => {
       const resolved = resolveSearch(search);
+      // Correção estrita: Passando os parâmetros planos que a função fetchCatalogPage espera receber
       return fetchCatalogPage({
-        data: {
-          page: pageParam,
-          pageSize: 48,
-          query: resolved.q,
-          category: resolved.category,
-          range: resolved.range,
-          sort: resolved.sort,
-          onlyFreeShipping: resolved.free,
-        },
-      });
+        page: pageParam,
+        pageSize: 48,
+        query: resolved.q,
+        category: resolved.category || undefined,
+        range: resolved.range,
+        sort: resolved.sort,
+        onlyFreeShipping: resolved.free,
+      } as any);
     },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: any) => lastPage?.nextPage ?? undefined,
     staleTime: 60_000,
   });
 
 export const Route = createFileRoute("/")({
   validateSearch: normalizeSearch,
   loaderDeps: ({ search }) => search,
-  loader: ({ context, deps }) => context.queryClient.ensureInfiniteQueryData(catalogQueryOptions(deps)),
+  loader: ({ context, deps }) => (context as any).queryClient.ensureInfiniteQueryData(catalogQueryOptions(deps)),
   head: () => ({
     meta: [
       { title: "HS Digital · Marketplace de produtos e soluções digitais" },
