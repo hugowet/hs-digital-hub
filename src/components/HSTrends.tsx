@@ -627,18 +627,31 @@ export function HSTrends() {
           })}
         </div>
 
-        {/* BOTÃO FLUTUANTE DE GRAVAR / ENVIAR VÍDEO (+) */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
-          <button
-            onClick={() => setUploadModalOpen(true)}
-            className="flex items-center justify-center w-12 h-10 rounded-xl bg-gradient-to-r from-cyan-400 via-white to-rose-500 text-slate-950 font-black shadow-2xl active:scale-95 transition-transform"
-            title="Publicar Vídeo"
-          >
-            <div className="w-[42px] h-[34px] bg-white rounded-lg flex items-center justify-center text-slate-950">
-              <Plus className="w-6 h-6 stroke-[3]" />
-            </div>
-          </button>
-        </div>
+         {/* 2. INPUT INVISÍVEL QUE ABRE A CÂMERA E GALERIA IMEDIATAMENTE */}
+      <input 
+        type="file"
+        ref={fileInputRef}
+        onChange={(e) => {
+          handleFileChange(e);
+          if (e.target.files && e.target.files.length > 0) {
+            setUploadModalOpen(true);
+          }
+        }}
+        accept="video/*,image/*"
+        className="hidden" 
+      />
+
+      {/* BOTÃO FLUTUANTE DE GRAVAR / ENVIAR VÍDEO (+) */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center justify-center w-12 h-10 rounded-xl bg-gradient-to-r from-cyan-400 via-white to-rose-500 text-slate-950 font-black shadow-2xl active:scale-95 transition-transform"
+          title="Publicar Vídeo"
+        >
+          <div className="w-[42px] h-[34px] bg-white rounded-lg flex items-center justify-center text-slate-950">
+            <Plus className="w-6 h-6" />
+          </div>
+        </button>
       </div>
 
       {/* 1. GAVETA DE COMENTÁRIOS DE VERDADE */}
@@ -650,6 +663,7 @@ export function HSTrends() {
               <h3 className="font-bold text-sm text-white flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-amber-400" />
                 Comentários ({comments.length})
+
               </h3>
               <button
                 onClick={() => setCommentModalPost(null)}
