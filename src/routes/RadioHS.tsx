@@ -19,35 +19,34 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 
-// Lista de streams / faixas MP3 de exemplo com alta compatibilidade
 const TRACKS = [
   {
-    title: "HS Hits & Eletrônica",
-    artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio1.mp3",
+    title: "Sertanejo Universitário & Modão",
+    artist: "Rádio HS Sertaneja 🤠",
+    album: "Especial Sertanejo",
+    artwork: "https://unsplash.com",
+    src: "https://brlogic.com",
   },
   {
-    title: "Pop & Top Brasil",
+    title: "Pop, Sertanejo & Top Brasil",
     artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio2.mp3",
+    album: "Sucessos Nacionais",
+    artwork: "https://unsplash.com",
+    src: "https://zeno.fm",
   },
   {
     title: "Lo-Fi Lounge & Chill",
-    artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio17.mp3",
+    artist: "Rádio HS Chill ☕",
+    album: "Músicas para Relaxar",
+    artwork: "https://unsplash.com",
+    src: "https://zeno.fm",
   },
   {
-    title: "Dance & Club Classics",
-    artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio10.mp3",
+    title: "Dance & Club Hits",
+    artist: "Rádio HS Eletrônica ⚡",
+    album: "Balada HS",
+    artwork: "https://unsplash.com",
+    src: "https://zeno.fm",
   },
 ];
 
