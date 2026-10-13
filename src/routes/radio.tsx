@@ -21,12 +21,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Streams de áudio contínuos
 const TRACKS = [
-  {
-    title: "HS Hits & Eletrônica",
+    {
+    title: "Hs Gospel FM",
     artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio1.mp3",
+    album: "Louvor, tracks e musicas",
+    artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
+    src: "http://ec5.yesstreaming.net:1890/stream",
   },
   {
     title: "Pop & Top Brasil",
@@ -36,11 +36,11 @@ const TRACKS = [
     src: "https://streams.ilovemusic.de/iloveradio2.mp3",
   },
     {
-    title: "Hs Gospel FM",
+    title: "HS Hits & Eletrônica",
     artist: "Rádio HS Digital 🎵",
-    album: "Louvor, tracks e musicas",
-    artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
-    src: "http://ec5.yesstreaming.net:1890/stream",
+    album: "Perdizes Sessions",
+    artwork: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=512&q=80",
+    src: "https://streams.ilovemusic.de/iloveradio1.mp3",
   },
   {
     title: "Lo-Fi Lounge & Chill",
