@@ -1,5 +1,3 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { infiniteQueryOptions, useQuery, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import {
   Baby,
   CarFront,
@@ -25,6 +23,7 @@ import {
   X,
   Zap,
   Crown,
+  Radio, // 📻 ADICIONADO AQUI
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -169,10 +168,17 @@ function BuyerGamesPromoLink() {
         </Link>
       </Button>
 
-      {/* 🌟 NOVO BOTÃO DO CLUBE HS INSTALADO DO LADO CERTO */}
+      {/* Botão do Clube HS */}
       <Button asChild className="w-fit bg-amber-500 hover:bg-amber-600 text-white font-bold border-none shadow-sm rounded-full">
         <Link to="/clube-hs">
           <Crown className="h-4 w-4 mr-2 fill-white" /> Clube HS
+        </Link>
+      </Button>
+
+      {/* 📻 NOVO BOTÃO DA RÁDIO HS INSTALADO DO LADO DO CLUBE */}
+      <Button asChild className="w-fit bg-purple-600 hover:bg-purple-700 text-white font-bold border-none shadow-sm rounded-full">
+        <Link to="/radio-hs">
+          <Radio className="h-4 w-4 mr-2" /> Rádio HS
         </Link>
       </Button>
     </div>
