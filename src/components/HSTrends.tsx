@@ -217,7 +217,7 @@ export function HSTrends() {
     queryKey: ["trend-supabase-videos"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("trend_videos")
+        .from("trend_videos" as any)
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -245,7 +245,7 @@ export function HSTrends() {
     queryFn: async () => {
       if (!commentModalPost?.id) return [];
       const { data, error } = await supabase
-        .from("trend_comments")
+        .from("trend_comments" as any)
         .select("*")
         .eq("video_id", commentModalPost.id)
         .order("created_at", { ascending: false });
@@ -297,7 +297,7 @@ export function HSTrends() {
     };
 
 Use o código com cuidado.
-const { error } = await supabase.from("trend_comments").insert(commentData);
+const { error } = await supabase.from("trend_comments" as any).insert(commentData);
 if (!error) {
 setNewCommentText("");
 refetchComments();
@@ -323,24 +323,20 @@ try {
 const fileExt = selectedFile.name.split(".").pop();
 const fileName = ${Math.random()}_${Date.now()}.${fileExt};
 const filePath = user-trends/${fileName};
-// Casting explicito para evitar problemas com definições de tipo internas do client gerado
-const storageClient = supabase.storage.from("hstrends-videos") as any;
-const { error: uploadError } = await storageClient.upload(filePath, selectedFile);
+const { error: uploadError } = await (supabase.storage.from("hstrends-videos") as any).upload(filePath, selectedFile);
 if (uploadError) throw uploadError;
-const { data: urlData } = supabase.storage
-.from("hstrends-videos")
-.getPublicUrl(filePath);
+const { data: urlData } = (supabase.storage.from("hstrends-videos") as any).getPublicUrl(filePath);
 const newVideo = {
 user_id: authUser.id,
 author_name: userProfile?.full_name || authUser.email?.split("@")[0] || "Criador HS",
 author_avatar: userProfile?.avatar_url || "unsplash.com",
 title: uploadTitle.trim(),
 description: uploadDesc.trim(),
-video_url: urlData.publicUrl,
+video_url: urlData?.publicUrl || "",
 post_type: uploadType,
 music_title: "Som Original · " + (userProfile?.full_name || "Criador HS"),
 };
-const { error: dbError } = await supabase.from("trend_videos").insert(newVideo);
+const { error: dbError } = await supabase.from("trend_videos" as any).insert(newVideo);
 if (dbError) throw dbError;
 setUploadModalOpen(false);
 setUploadTitle("");
