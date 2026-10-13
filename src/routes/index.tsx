@@ -24,6 +24,7 @@ import {
   Watch,
   X,
   Zap,
+  Crown,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -160,11 +161,21 @@ function BuyerGamesPromoLink() {
   if (!visible) return null;
 
   return (
-    <Button asChild variant="secondary" className="mt-2 w-fit shadow-sm">
-      <Link to="/jogos">
-        <Gamepad2 className="h-4 w-4" /> Jogos &amp; Prêmios
-      </Link>
-    </Button>
+    <div className="flex flex-wrap items-center gap-2 mt-2">
+      {/* Botão de Jogos */}
+      <Button asChild variant="secondary" className="w-fit shadow-sm rounded-full">
+        <Link to="/jogos">
+          <Gamepad2 className="h-4 w-4 mr-2" /> Jogos &amp; Prêmios
+        </Link>
+      </Button>
+
+      {/* 🌟 NOVO BOTÃO DO CLUBE HS INSTALADO DO LADO CERTO */}
+      <Button asChild className="w-fit bg-amber-500 hover:bg-amber-600 text-white font-bold border-none shadow-sm rounded-full">
+        <Link to="/clube-hs">
+          <Crown className="h-4 w-4 mr-2 fill-white" /> Clube HS
+        </Link>
+      </Button>
+    </div>
   );
 }
 
