@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Music2,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,23 +31,21 @@ export type TrendPost = {
   music_title: string;
   likes_count: number;
   comments_count: number;
-  // Campos específicos de Produto
   product_id?: string;
   product_title?: string;
   product_price?: number;
-  // Campos específicos de Anúncio Nativo
-  ad_badge?: string; // ex: "Institucional HS" ou "Lojista Parceiro Perdizes"
-  cta_label?: string; // ex: "Assinar Clube HS" ou "Saiba Mais"
-  cta_url?: string; // ex: "/clube-hs" ou URL externa
+  ad_badge?: string;
+  cta_label?: string;
+  cta_url?: string;
   is_external?: boolean;
 };
 
-// Base de Conteúdos Orgânicos (Novelinhas de Frutas e Feedbacks de Clientes)
+// Base de Conteúdos Orgânicos com links de vídeo testados e funcionais
 const ORGANIC_FEED: TrendPost[] = [
   {
     id: "org-1",
     post_type: "organic",
-    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    video_url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
     author_name: "Novelinhas da Feira 🍊",
     author_avatar: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150&q=80",
     description: "Capítulo 12: A Laranja descobriu que o Limão estava na promoção! 😱🍊🍋 #Novelinha #FrutasHS",
@@ -57,10 +56,10 @@ const ORGANIC_FEED: TrendPost[] = [
   {
     id: "prod-1",
     post_type: "product",
-    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    video_url: "https://vjs.zencdn.net/v/oceans.mp4",
     author_name: "Mari Reviews 📦",
     author_avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&q=80",
-    description: "Chegou em 2 dias em Perdizes! Testando a caixinha bluetooth que comprei no marketplace da HS. Som absurdo!",
+    description: "Chegou em 2 dias em Perdizes! Testando a caixinha bluetooth do marketplace da HS. Som incrível!",
     music_title: "Unboxing & Review · HS Digital",
     likes_count: 3890,
     comments_count: 215,
@@ -71,7 +70,7 @@ const ORGANIC_FEED: TrendPost[] = [
   {
     id: "org-2",
     post_type: "organic",
-    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
     author_name: "Frutas em Foco 🥑",
     author_avatar: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=150&q=80",
     description: "Quando o Abacate tenta entrar no Clube HS achando que é legume 😂🥑 #Comedia #Hortifruti",
@@ -82,7 +81,7 @@ const ORGANIC_FEED: TrendPost[] = [
   {
     id: "prod-2",
     post_type: "product",
-    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4",
+    video_url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/friday.mp4",
     author_name: "Lucas Tech ⚡",
     author_avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80",
     description: "Feedback sincero do Smartwatch com frete grátis da HS Digital. Bateria durou 1 semana!",
@@ -96,27 +95,13 @@ const ORGANIC_FEED: TrendPost[] = [
   {
     id: "org-3",
     post_type: "organic",
-    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
+    video_url: "https://www.w3schools.com/html/movie.mp4",
     author_name: "Drama do Morango 🍓",
     author_avatar: "https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=150&q=80",
-    description: "O Morango se apaixonou pela Maçã Gala da loja vizinha. Veja o final dessa história! 🍓🍎",
+    description: "O Morango se apaixonou pela Maçã da banca ao lado. Veja o final dessa história! 🍓🍎",
     music_title: "Novela Mexicana · Trilha Dramática",
     likes_count: 4200,
     comments_count: 290,
-  },
-  {
-    id: "prod-3",
-    post_type: "product",
-    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4",
-    author_name: "Cliente VIP 🛍️",
-    author_avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
-    description: "Minha primeira compra com aprovação instantânea no PIX! Veio tudo super bem embalado.",
-    music_title: "Review de Compras · HS Marketplace",
-    likes_count: 1950,
-    comments_count: 78,
-    product_id: "prod-fone-sem-fio",
-    product_title: "Fone de Ouvido TWS Noise Cancelling",
-    product_price: 99.0,
   },
 ];
 
@@ -125,7 +110,7 @@ const NATIVE_ADS: TrendPost[] = [
   {
     id: "ad-clube-hs",
     post_type: "ad",
-    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+    video_url: "https://vjs.zencdn.net/v/oceans.mp4",
     author_name: "HS Digital Oficial 🌟",
     author_avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&q=80",
     description: "Cansado de pagar frete? Assine o Clube HS por apenas R$ 19,90/mês e tenha Frete Grátis na região de Perdizes + Feed 100% sem anúncios!",
@@ -140,7 +125,7 @@ const NATIVE_ADS: TrendPost[] = [
   {
     id: "ad-padaria-perdizes",
     post_type: "ad",
-    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4",
+    video_url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
     author_name: "Padaria Real de Perdizes 🥖",
     author_avatar: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=150&q=80",
     description: "Pães artesanais quentinhos toda manhã e café colonial especial para o seu dia. Peça online pelo nosso delivery parceiro!",
@@ -155,13 +140,12 @@ const NATIVE_ADS: TrendPost[] = [
 ];
 
 export function HSTrends() {
-  const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
 
-  // 1. Consulta se o usuário autenticado tem o plano 'is_clube_hs' ativo no Supabase
-  const { data: userProfile, isLoading: isCheckingClube } = useQuery({
+  // 1. Valida se o usuário tem o plano 'is_clube_hs' ativo no Supabase
+  const { data: userProfile } = useQuery({
     queryKey: ["hstrends-user-clube-status"],
     queryFn: async () => {
       const { data: authData } = await supabase.auth.getUser();
@@ -180,22 +164,20 @@ export function HSTrends() {
 
   const isVipClube = Boolean(userProfile?.is_clube_hs);
 
-  // 2. ALGORITMO DE INJEÇÃO NATIVA DE VÍDEOS COMERCIAIS (a cada 4 vídeos)
-  // Se o usuário for membro ativo do Clube HS (is_clube_hs = true), os anúncios são 100% PULADOS!
+  // 2. Algoritmo de injeção nativa: a cada 4 vídeos insere um anúncio
+  // Se for VIP (is_clube_hs), o feed fica 100% livre de anúncios comerciais
   const processedFeed = useMemo(() => {
     if (isVipClube) {
-      // Feed VIP: 100% limpo, sem anúncios
       return ORGANIC_FEED;
     }
 
-    // Feed Comum: injeta 1 anúncio a cada 4 vídeos assistidos
     const result: TrendPost[] = [];
     let adPointer = 0;
 
     for (let i = 0; i < ORGANIC_FEED.length; i++) {
       result.push(ORGANIC_FEED[i]);
 
-      // Injeta anúncio comercial obrigatoriamente a cada 4 vídeos
+      // A cada 4 vídeos assistidos, injeta obrigatoriamente um anúncio nativo
       if ((i + 1) % 4 === 0) {
         const adToInject = NATIVE_ADS[adPointer % NATIVE_ADS.length];
         result.push(adToInject);
@@ -228,10 +210,9 @@ export function HSTrends() {
 
   return (
     <div className="relative h-screen w-full bg-black text-white flex justify-center overflow-hidden font-sans select-none">
-      {/* Container Principal estilo TikTok (Mobile Centered) */}
       <div className="relative h-full w-full max-w-md bg-black shadow-2xl flex flex-col justify-between">
         
-        {/* Barra Superior Flutuante */}
+        {/* Topo Flutuante */}
         <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 via-black/30 to-transparent">
           <Link
             to="/"
@@ -240,7 +221,6 @@ export function HSTrends() {
             <ArrowLeft className="w-5 h-5" />
           </Link>
 
-          {/* Abas Superiores */}
           <div className="flex items-center gap-4 text-sm font-bold tracking-wide drop-shadow-md">
             <span className="text-white/60 cursor-pointer">Seguindo</span>
             <span className="text-white border-b-2 border-white pb-0.5 cursor-pointer">
@@ -248,7 +228,6 @@ export function HSTrends() {
             </span>
           </div>
 
-          {/* Status VIP do Clube HS ou Botão de Assinatura */}
           {isVipClube ? (
             <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 text-[11px] font-extrabold shadow-lg shadow-amber-400/30">
               <Crown className="w-3.5 h-3.5 fill-slate-950" />
@@ -265,7 +244,7 @@ export function HSTrends() {
           )}
         </header>
 
-        {/* FEED COM ROLAGEM VERTICAL MAGNÉTICA (SNAP-Y) */}
+        {/* FEED DE ROLAGEM VERTICAL MAGNÉTICA */}
         <div
           className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-none"
           onScroll={(e) => {
@@ -286,7 +265,7 @@ export function HSTrends() {
                 key={`${post.id}-${idx}`}
                 className="relative h-full w-full snap-start snap-always shrink-0 flex items-center justify-center bg-zinc-950 overflow-hidden"
               >
-                {/* Reprodutor de Vídeo */}
+                {/* Reprodutor de Vídeo Robusto com Tratamento de Autoplay */}
                 <VideoPlayer
                   src={post.video_url}
                   isActive={isActive}
@@ -294,12 +273,11 @@ export function HSTrends() {
                   onToggleMute={() => setIsMuted((prev) => !prev)}
                 />
 
-                {/* Camada de Gradiente Escuro na Base */}
+                {/* Gradiente Escuro Inferior */}
                 <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/20 via-transparent to-black/90 z-10" />
 
-                {/* BARRA LATERAL DE AÇÕES (LIKE, COMENTÁRIOS, SHARE, MUTE) */}
+                {/* AÇÕES LATERAIS */}
                 <div className="absolute right-3 bottom-24 z-20 flex flex-col items-center gap-5 text-white">
-                  {/* Foto do Autor */}
                   <div className="relative mb-2">
                     <img
                       src={post.author_avatar}
@@ -313,7 +291,6 @@ export function HSTrends() {
                     )}
                   </div>
 
-                  {/* Botão de Curtir */}
                   <button
                     onClick={() => toggleLike(post.id)}
                     className="flex flex-col items-center gap-1 group active:scale-125 transition-transform"
@@ -330,7 +307,6 @@ export function HSTrends() {
                     </span>
                   </button>
 
-                  {/* Comentários */}
                   <button className="flex flex-col items-center gap-1 active:scale-110 transition-transform">
                     <div className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white">
                       <MessageCircle className="w-6 h-6" />
@@ -338,7 +314,6 @@ export function HSTrends() {
                     <span className="text-[11px] font-bold drop-shadow">{post.comments_count}</span>
                   </button>
 
-                  {/* Compartilhar */}
                   <button
                     onClick={() => handleShare(post)}
                     className="flex flex-col items-center gap-1 active:scale-110 transition-transform"
@@ -349,7 +324,6 @@ export function HSTrends() {
                     <span className="text-[11px] font-bold drop-shadow">Compartilhar</span>
                   </button>
 
-                  {/* Alternador de Áudio (Mute/Unmute) */}
                   <button
                     onClick={() => setIsMuted((prev) => !prev)}
                     className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white mt-2 active:scale-110 transition-transform"
@@ -358,15 +332,13 @@ export function HSTrends() {
                   </button>
                 </div>
 
-                {/* INFORMAÇÕES DA LEGENDA & CTAs (RODAPÉ DO VÍDEO) */}
+                {/* LEGENDA & CTAs */}
                 <div className="absolute left-4 right-16 bottom-6 z-20 space-y-3">
-                  {/* Selo do Tipo de Post */}
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-sm text-white drop-shadow">
                       {post.author_name}
                     </span>
 
-                    {/* Selo de Patrocinado / Anúncio Nativo */}
                     {isAd && (
                       <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 font-black text-[10px] uppercase tracking-wider shadow-md">
                         {post.ad_badge || "Patrocinado"}
@@ -374,18 +346,16 @@ export function HSTrends() {
                     )}
                   </div>
 
-                  {/* Legenda do Vídeo */}
                   <p className="text-xs text-white/95 leading-relaxed line-clamp-3 drop-shadow">
                     {post.description}
                   </p>
 
-                  {/* Ticker de Música */}
                   <div className="flex items-center gap-2 text-[11px] text-white/80 font-medium">
                     <Music2 className="w-3.5 h-3.5 animate-spin" />
                     <span className="truncate max-w-[220px]">{post.music_title}</span>
                   </div>
 
-                  {/* CASO 1: VÍDEO DE ANÚNCIO (post_type: 'ad') -> SEM SACOLA, COM BOTÃO CTA DESTACADO */}
+                  {/* ANÚNCIO (post_type: 'ad') -> SEM SACOLA, COM CTA DESTACADO */}
                   {isAd && post.cta_label && (
                     <div className="pt-2">
                       {post.is_external ? (
@@ -410,7 +380,7 @@ export function HSTrends() {
                     </div>
                   )}
 
-                  {/* CASO 2: VÍDEO ORGÂNICO COM PRODUTO VINCULADO (com sacola de compras) */}
+                  {/* PRODUTO (post_type: 'product') -> COM SACOLA */}
                   {!isAd && post.product_id && (
                     <div className="pt-1">
                       <Button
@@ -442,7 +412,7 @@ export function HSTrends() {
   );
 }
 
-// Sub-componente Reprodutor de Vídeo Isolado com Play/Pause ao Toque
+// Sub-componente de Vídeo Otimizado para Mobile e Desktop com Autoplay Resiliente
 function VideoPlayer({
   src,
   isActive,
@@ -456,43 +426,94 @@ function VideoPlayer({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isWaitingGesture, setIsWaitingGesture] = useState(false);
 
+  // Sincroniza som e atributo mudo diretamente na instância DOM
   useEffect(() => {
-    if (!videoRef.current) return;
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+      videoRef.current.defaultMuted = isMuted;
+    }
+  }, [isMuted]);
+
+  // Controle de reprodução ao rolar a página
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
 
     if (isActive) {
-      videoRef.current.currentTime = 0;
-      videoRef.current
-        .play()
-        .then(() => setIsPlaying(true))
-        .catch(() => {
-          // Autoplay com áudio costuma ser bloqueado sem toque; silencia e tenta de novo
-          if (videoRef.current) {
-            videoRef.current.muted = true;
-            videoRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-          }
-        });
+      video.muted = isMuted;
+      video.defaultMuted = isMuted;
+
+      const startPlayback = () => {
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsPlaying(true);
+              setIsWaitingGesture(false);
+            })
+            .catch(() => {
+              // Se o navegador barrar o som, força mudo e tenta de novo
+              video.muted = true;
+              video.defaultMuted = true;
+              video
+                .play()
+                .then(() => {
+                  setIsPlaying(true);
+                  setIsWaitingGesture(false);
+                })
+                .catch(() => {
+                  // Requer toque do usuário na tela
+                  setIsPlaying(false);
+                  setIsWaitingGesture(true);
+                });
+            });
+        }
+      };
+
+      if (video.readyState >= 2) {
+        startPlayback();
+      } else {
+        video.oncanplay = () => {
+          startPlayback();
+          video.oncanplay = null;
+        };
+      }
     } else {
-      videoRef.current.pause();
+      video.pause();
       setIsPlaying(false);
     }
-  }, [isActive]);
+  }, [isActive, isMuted]);
 
-  const handleVideoClick = () => {
-    if (!videoRef.current) return;
+  const handleTogglePlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
 
     if (isPlaying) {
-      videoRef.current.pause();
+      video.pause();
       setIsPlaying(false);
     } else {
-      videoRef.current.play();
-      setIsPlaying(true);
+      video.muted = isMuted;
+      video
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          setIsWaitingGesture(false);
+        })
+        .catch(() => {
+          video.muted = true;
+          video.play().then(() => {
+            setIsPlaying(true);
+            setIsWaitingGesture(false);
+          });
+        });
     }
   };
 
   return (
     <div
-      onClick={handleVideoClick}
+      onClick={handleTogglePlay}
       className="relative w-full h-full cursor-pointer flex items-center justify-center bg-black"
     >
       <video
@@ -501,14 +522,22 @@ function VideoPlayer({
         loop
         playsInline
         muted={isMuted}
+        preload="auto"
         className="w-full h-full object-cover"
       />
 
-      {/* Ícone de Pause quando o usuário toca para pausar o vídeo */}
-      {!isPlaying && isActive && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
-          <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white">
-            <Play className="w-8 h-8 fill-white ml-1" />
+      {/* Botão de Play central quando pausado ou aguardando toque inicial */}
+      {(!isPlaying || isWaitingGesture) && isActive && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-xs z-15">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-16 h-16 rounded-full bg-amber-500/90 text-slate-950 flex items-center justify-center shadow-xl shadow-amber-500/30 animate-pulse">
+              <Play className="w-8 h-8 fill-slate-950 ml-1" />
+            </div>
+            {isWaitingGesture && (
+              <span className="text-xs font-bold text-white bg-black/60 px-3 py-1 rounded-full border border-white/20">
+                Toque para Assistir
+              </span>
+            )}
           </div>
         </div>
       )}
