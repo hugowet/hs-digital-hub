@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { infiniteQueryOptions, useQuery, useSuspenseInfiniteQuery } from "@tanstack/react-query";
-import { GeradorPropagandaHS } from "@/components/GeradorPropagandaHS";
 import {
   Baby,
   CarFront,
@@ -9,12 +8,23 @@ import {
   Files,
   Gamepad2,
   Gift,
+  GraduationCap,
+  Keyboard,
+  LampDesk,
+  Search,
   ShieldCheck,
+  Shirt,
+  ShoppingBasket,
+  Smartphone,
+  Sofa,
+  Sparkles,
+  Store,
   Truck,
+  Tv,
+  Watch,
+  X,
   Zap,
   Crown,
-  Store,
-  ShoppingBasket
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -28,7 +38,7 @@ import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { supabase } from "@/integrations/supabase/client";
 
-export type HomeSearch = {
+type HomeSearch = {
   q?: string | undefined;
   category?: string | undefined;
   range?: "a" | "b" | "c" | "d" | undefined;
@@ -36,7 +46,7 @@ export type HomeSearch = {
   free?: true | undefined;
 };
 
-export type HomeSearchUpdate = {
+type HomeSearchUpdate = {
   q?: string | undefined;
   category?: string | null | undefined;
   range?: HomeSearch["range"] | "all";
@@ -67,26 +77,27 @@ const catalogQueryOptions = (search: HomeSearch) =>
     queryKey: ["catalog", search],
     queryFn: ({ pageParam }) => {
       const resolved = resolveSearch(search);
-      // Correção estrita: Passando os parâmetros planos que a função fetchCatalogPage espera receber
       return fetchCatalogPage({
-        page: pageParam,
-        pageSize: 48,
-        query: resolved.q,
-        category: resolved.category || undefined,
-        range: resolved.range,
-        sort: resolved.sort,
-        onlyFreeShipping: resolved.free,
-      } as any);
+        data: {
+          page: pageParam,
+          pageSize: 48,
+          query: resolved.q,
+          category: resolved.category,
+          range: resolved.range,
+          sort: resolved.sort,
+          onlyFreeShipping: resolved.free,
+        },
+      });
     },
-    initialPageParam: 1,
-    getNextPageParam: (lastPage: any) => lastPage?.nextPage ?? undefined,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
     staleTime: 60_000,
   });
 
 export const Route = createFileRoute("/")({
   validateSearch: normalizeSearch,
   loaderDeps: ({ search }) => search,
-  loader: ({ context, deps }) => (context as any).queryClient.ensureInfiniteQueryData(catalogQueryOptions(deps)),
+  loader: ({ context, deps }) => context.queryClient.ensureInfiniteQueryData(catalogQueryOptions(deps)),
   head: () => ({
     meta: [
       { title: "HS Digital · Marketplace de produtos e soluções digitais" },
@@ -104,7 +115,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const ICONS: Record<string, any> = {
+const ICONS: Record<string, typeof Smartphone> = {
   Files,
   GraduationCap,
   Watch,
@@ -125,10 +136,10 @@ const ICONS: Record<string, any> = {
 
 const PRICE_RANGES = [
   { id: "all", label: "Todos os preços", min: 0, max: Infinity },
-  { id: "a", label: "Até R\$ 50", min: 0, max: 50 },
-  { id: "b", label: "R\$ 50 a R\$ 100", min: 50, max: 100 },
-  { id: "c", label: "R\$ 100 a R\$ 200", min: 100, max: 200 },
-  { id: "d", label: "Acima de R\$ 200", min: 200, max: Infinity },
+  { id: "a", label: "Até R$ 50", min: 0, max: 50 },
+  { id: "b", label: "R$ 50 a R$ 100", min: 50, max: 100 },
+  { id: "c", label: "R$ 100 a R$ 200", min: 100, max: 200 },
+  { id: "d", label: "Acima de R$ 200", min: 200, max: Infinity },
 ];
 
 function BuyerGamesPromoLink() {
@@ -169,13 +180,13 @@ function BuyerGamesPromoLink() {
 }
 
 export function Home() {
-  const routeSearch = Route.useSearch() as any;
+  const routeSearch = Route.useSearch();
   const search = resolveSearch(routeSearch);
   const navigate = Route.useNavigate();
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
-    catalogQueryOptions(routeSearch) as any,
+    catalogQueryOptions(routeSearch),
   );
-  const products = (data as any)?.pages?.flatMap((page: any) => page.products) || [];
+  const products = data.pages.flatMap((page) => page.products);
 
   // Busca dinamicamente apenas as categorias com produtos ativos
   const { data: activeCategories = [] } = useQuery({
@@ -203,20 +214,20 @@ export function Home() {
         if (next["range"] === "all") delete next["range"];
         if (next["sort"] === "popular") delete next["sort"];
         if (!next["free"]) delete next["free"];
-        return next as any;
+        return next as HomeSearch;
       },
     });
 
-    // Filtro estrito: se tiver pesquisa por termo ou categoria, traz estritamente correspondentes
+  // Filtro estrito: se tiver pesquisa por termo ou categoria, traz estritamente correspondentes
   const filtered = useMemo(() => {
-    const selectedRange = PRICE_RANGES.find((item: any) => item.id === search.range) ?? {
+    const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
       id: "all",
       label: "Todos os preços",
       min: 0,
       max: Infinity,
     };
 
-    const result = products.filter((product: any) => {
+    const result = products.filter((product) => {
       if (search.category && product.category !== search.category) {
         return false;
       }
@@ -232,7 +243,7 @@ export function Home() {
       return price >= selectedRange.min && price <= selectedRange.max;
     });
 
-    return [...result].sort((a: any, b: any) => {
+    return [...result].sort((a, b) => {
       if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
       if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
       return (b.sold_count ?? 0) - (a.sold_count ?? 0);
@@ -246,14 +257,14 @@ export function Home() {
     : search.free
       ? "Produtos com Frete Grátis"
       : search.category
-        ? (activeCategories.find((item: any) => item.slug === search.category)?.label ?? search.category)
+        ? (activeCategories.find((item) => item.slug === search.category)?.label ?? search.category)
         : "Todas as ofertas";
 
   const suggestions = useMemo(() => {
-    return products.slice(0, 50).map((p: any) => ({
+    return products.slice(0, 50).map((p) => ({
       id: p.id,
       title: p.title,
-      category: activeCategories.find((c: any) => c.slug === p.category)?.label ?? p.category ?? "Geral",
+      category: activeCategories.find((c) => c.slug === p.category)?.label ?? p.category ?? "Geral",
     }));
   }, [products, activeCategories]);
 
@@ -362,7 +373,6 @@ export function Home() {
 
               {/* ABA "TODAS" */}
               <button
-                type="button"
                 onClick={() => setSearch({ category: null, q: "", free: false })}
                 className={`snap-start shrink-0 flex flex-col items-center justify-center rounded-xl p-2.5 min-w-[76px] sm:min-w-[88px] h-20 transition-all border ${
                   search.category === null && !hasSearchQuery && !search.free
@@ -375,13 +385,12 @@ export function Home() {
               </button>
 
               {/* DEMAIS ABAS DE CATEGORIAS */}
-              {activeCategories.map((item: any) => {
+              {activeCategories.map((item) => {
                 const Icon = ICONS[item.icon] ?? Smartphone;
                 const isSelected = !hasSearchQuery && search.category === item.slug;
                 return (
                   <button
                     key={item.slug}
-                    type="button"
                     onClick={() => setSearch({ category: item.slug, q: "", free: false })}
                     className={`snap-start shrink-0 flex flex-col items-center justify-center rounded-xl p-2.5 min-w-[76px] sm:min-w-[88px] h-20 transition-all border ${
                       isSelected
@@ -414,7 +423,7 @@ export function Home() {
                     <SelectValue placeholder="Preço" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PRICE_RANGES.map((r: any) => (
+                    {PRICE_RANGES.map((r) => (
                       <SelectItem key={r.id} value={r.id} className="text-xs">
                         {r.label}
                       </SelectItem>
@@ -422,7 +431,7 @@ export function Home() {
                   </SelectContent>
                 </Select>
 
-                <Select value={search.sort} onValueChange={(val) => setSearch({ sort: val as any })}>
+                <Select value={search.sort} onValueChange={(val) => setSearch({ sort: val as HomeSearch["sort"] })}>
                   <SelectTrigger className="w-[150px] h-9 text-xs">
                     <SelectValue placeholder="Ordenar por" />
                   </SelectTrigger>
@@ -466,7 +475,7 @@ export function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-4">
-                {filtered.map((product: any) => (
+                {filtered.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
@@ -486,10 +495,7 @@ export function Home() {
           </section>
         </div>
       </main>
-{/* 📣 GERADOR DE PROPAGANDA INSTALADO NO LUGAR CERTO */}
-      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-4">
-        <GeradorPropagandaHS />
-      </div>
+
       <SiteFooter />
     </div>
   );
