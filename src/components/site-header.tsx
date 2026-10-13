@@ -321,6 +321,14 @@ export function SiteHeader({
           <Link to="/" className="hover:text-white">
             Início
           </Link>
+          <Link
+  to="/clube-hs"
+  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-400/20 text-amber-300 hover:bg-amber-400/30 transition-colors"
+>
+  <Crown className="w-3.5 h-3.5" />
+  Clube HS
+</Link>
+
           <Link to="/compras" className="hover:text-white">
             Minhas compras
           </Link>
