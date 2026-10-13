@@ -175,11 +175,11 @@ function BuyerGamesPromoLink() {
         </Link>
       </Button>
 
-      {/* 📻 NOVO BOTÃO DA RÁDIO HS INSTALADO DO LADO DO CLUBE */}
+      {/* 📻 NOVO BOTÃO DA RÁDIO HS SEM QUEBRAR O TANSTACK ROUTER */}
       <Button asChild className="w-fit bg-purple-600 hover:bg-purple-700 text-white font-bold border-none shadow-sm rounded-full">
-        <Link to="/">
+        <a href="/radio-hs">
           <Radio className="h-4 w-4 mr-2" /> Rádio HS
-        </Link>
+        </a>
       </Button>
     </div>
   );
