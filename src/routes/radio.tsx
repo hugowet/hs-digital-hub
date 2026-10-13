@@ -20,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 
-// Tipo para estruturar as nossas faixas/estações
 interface Track {
   title: string;
   artist: string;
@@ -29,7 +28,6 @@ interface Track {
   src: string;
 }
 
-// Lista de backup (Fallback) caso a API pública apresente instabilidade
 const BACKUP_TRACKS: Track[] = [
   {
     title: "Antena 1 FM",
@@ -81,12 +79,10 @@ export function RadioHSPage() {
 
   const currentTrack = tracks[currentTrackIndex] || BACKUP_TRACKS[0];
 
-  // 1. Busca rádios em Português/Brasil usando a API pública Radio Browser
   useEffect(() => {
     async function fetchBrazilianStations() {
       try {
         setIsLoadingStations(true);
-        // Filtra por estações localizadas no Brasil (BR) e que transmitem em alta qualidade (pelo menos 128kbps)
         const response = await fetch(
           "https://radio-browser.info"
         );
@@ -97,7 +93,6 @@ export function RadioHSPage() {
         
         if (data && data.length > 0) {
           const apiTracks: Track[] = data.map((station: any, index: number) => {
-            // Imagens aleatórias do Unsplash para ilustrar a capa com base no estilo/tag da rádio
             const artOptions = [
               "https://unsplash.com",
               "https://unsplash.com",
@@ -127,7 +122,6 @@ export function RadioHSPage() {
     fetchBrazilianStations();
   }, []);
 
-  // 2. Valida o perfil do usuário no Supabase
   const { data: userProfile } = useQuery({
     queryKey: ["radio-user-clube-status"],
     queryFn: async () => {
@@ -147,7 +141,6 @@ export function RadioHSPage() {
 
   const isVipClube = Boolean(userProfile?.is_clube_hs);
 
-  // 3. Media Session API (Controles integrados do sistema operacional e celular)
   const updateMediaSession = (track: Track) => {
     if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
 
@@ -156,9 +149,7 @@ export function RadioHSPage() {
         title: track.title,
         artist: track.artist,
         album: track.album,
-        artwork: [
-          { src: track.artwork, sizes: "512x512", type: "image/jpeg" },
-        ],
+        artwork: [{ src: track.artwork, sizes: "512x512", type: "image/jpeg" }],
       });
 
       navigator.mediaSession.setActionHandler("play", () => {
@@ -183,7 +174,6 @@ export function RadioHSPage() {
     }
   };
 
-  // 4. Efeito para carregar a nova stream de áudio ao mudar de faixa
   useEffect(() => {
     if (!audioRef.current || !currentTrack) return;
 
@@ -198,14 +188,12 @@ export function RadioHSPage() {
     }
   }, [currentTrackIndex, tracks]);
 
-  // 5. Volume e Mute
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : volume;
     }
   }, [volume, isMuted]);
 
-  // 6. Alternar Play / Pause
   const togglePlay = () => {
     if (!audioRef.current) return;
 
@@ -227,7 +215,6 @@ export function RadioHSPage() {
     }
   };
 
-  // 7. Troca de faixas com bloqueio do Clube VIP
   const handleNextTrack = () => {
     const nextCount = songSwitchCount + 1;
     setSongSwitchCount(nextCount);
@@ -295,18 +282,22 @@ export function RadioHSPage() {
       <main className="max-w-md w-full mx-auto my-auto py-8">
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden">
           
-          {/* Loader de carregamento da API */}
           {isLoadingStations && (
-Use o código com cuidado.
-Sintonizando rádios ao vivo...
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-2">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+              <p className="text-xs text-slate-400 font-medium">Sintonizando rádios ao vivo...</p>
+            </div>
+          )}
 
-)}
-{/* Capa */}
-
-
-{isPlaying && (
-
-
+          {/* Capa */}
+          <div className="relative aspect-square w-full rounded-2xl overflow-hidden mb-6 shadow-xl border border-slate-700/50">
+            <img
+              src={currentTrack.artwork}
+              alt={currentTrack.title}
+              className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+            />
+            {isPlaying && (
+              <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
 SINAL AO VIVO
 
 )}
@@ -379,6 +370,7 @@ className="text-xs text-slate-400 hover:text-white"
 >
 Continuar ouvindo com anúncios
 
+Membros do clube têm player 100% liberado.
 
 
 
