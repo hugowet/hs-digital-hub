@@ -39,15 +39,15 @@ const TRACKS = [
     title: "Sertanejo Universitário Hits",
     artist: "Rádio HS Digital 🎵",
     album: "As Melhores do Sertanejo",
-    artwork: "https://unsplash.com", // Capa animada de show sertanejo
-    src: "https://painelcast.com", // Stream contínuo focado em grandes sucessos sertanejos
+    artwork: "https://unsplash.com",
+    src: "https://painelcast.com", 
   },
   {
     title: "Sertanejo Premium & Modão",
     artist: "Rádio HS Digital 🎵",
     album: "Rodeio Mix",
-    artwork: "https://unsplash.com", // Capa estilizada country/sertanejo
-    src: "https://zeno.fm", // Stream estável focado em sertanejo e hits do topo das paradas nacionais
+    artwork: "https://unsplash.com", 
+    src: "https://zeno.fm", 
   },
   {
     title: "Lo-Fi Lounge & Chill",
