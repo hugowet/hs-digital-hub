@@ -21,7 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Streams de áudio contínuos - Especial Sertanejo & Sofrência 🤠🎵
 const TRACKS = [
-  {
+{
     title: "Sertanejo Universitário & Hits",
     artist: "Gusttavo Lima, Luan Santana, Ana Castela",
     album: "Modão HS Digital",
@@ -36,27 +36,65 @@ const TRACKS = [
     src: "http://portalmidia.net", // Rádio Sertanejo Premium / Sofrência
   },
   {
-    title: "Modão Sertanejo & Clássicos",
-    artist: "Zezé Di Camargo & Luciano, Eduardo Costa",
-    album: "Raízes do Campo",
-    artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
-    src: "https://hosttecnico.com", // Rádio Modão Clássico
+    title: "Lo-Fi Lounge & Chill",
+    artist: "Rádio HS Digital 🎵",
+    album: "Perdizes Sessions",
+    artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
+    src: "https://streams.ilovemusic.de/iloveradio17.mp3",
+  },
+  {
+    title: "Dance & Club Classics",
+    artist: "Rádio HS Digital 🎵",
+    album: "Perdizes Sessions",
+    artwork: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=512&q=80",
+    src: "https://streams.ilovemusic.de/iloveradio10.mp3",
   },
 ];
 
 export const Route = createFileRoute("/radio")({
   head: () => ({
     meta: [
-      { title: "Rádio HS Digital 🎵 · Especial Sertanejo" },
+      { title: "Rádio HS Digital 🎵 · Ao Vivo" },
       {
         name: "description",
-        content: "Ouça Gusttavo Lima, Luan Santana, Marília Mendonça e muito mais na programação da HS Digital.",
+        content: "Ouça a programação oficial da HS Digital com reprodução contínua em segundo plano.",
       },
     ],
   }),
   component: RadioHSPage,
 });
 
+export function RadioHSPage() {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(0.8);
+  const [isMuted, setIsMuted] = useState(false);
+  const [songSwitchCount, setSongSwitchCount] = useState(0);
+  const [showClubModal, setShowClubModal] = useState(false);
+
+  const currentTrack = TRACKS[currentTrackIndex];
+
+  // 1. Valida se o usuário autenticado tem o status is_clube_hs no Supabase
+  const { data: userProfile } = useQuery({
+    queryKey: ["radio-user-clube-status"],
+    queryFn: async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData?.user) return null;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_clube_hs")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+
+      return profile;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const isVipClube = Boolean(userProfile?.is_clube_hs);
 
   // 2. Media Session API (Background playback, notificações nativas e tela de bloqueio)
   const updateMediaSession = (track: typeof TRACKS[0]) => {
