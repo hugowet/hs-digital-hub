@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { infiniteQueryOptions, useQuery, useSuspenseInfiniteQuery } from "@tanstack/react-query";
-import { GeradorPropagandaHS } from "@/components/GeradorPropagandaHS";
 import {
   Baby,
   CarFront,
@@ -39,16 +38,22 @@ import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { supabase } from "@/integrations/supabase/client";
 
-// Definição estrita das propriedades de pesquisa aceitas na URL do Marketplace
-export type HomeSearch = {
-  q?: string;
-  category?: string;
-  range?: "all" | "a" | "b" | "c" | "d";
-  sort?: "popular" | "price-asc" | "price-desc";
-  free?: boolean;
+type HomeSearch = {
+  q?: string | undefined;
+  category?: string | undefined;
+  range?: "a" | "b" | "c" | "d" | undefined;
+  sort?: "price-asc" | "price-desc" | undefined;
+  free?: true | undefined;
 };
-// Tipo utilitário para aceitar alterações dinâmicas nas buscas
-export type HomeSearchUpdate = Partial<HomeSearch>;
+
+type HomeSearchUpdate = {
+  q?: string | undefined;
+  category?: string | null | undefined;
+  range?: HomeSearch["range"] | "all";
+  sort?: HomeSearch["sort"] | "popular";
+  free?: boolean | undefined;
+};
+
 const normalizeSearch = (search: Record<string, unknown>): HomeSearch => ({
   ...(typeof search["q"] === "string" && search["q"] ? { q: search["q"].slice(0, 100) } : {}),
   ...(typeof search["category"] === "string" && search["category"] ? { category: search["category"] } : {}),
@@ -174,36 +179,16 @@ function BuyerGamesPromoLink() {
   );
 }
 
- const PRICE_RANGES = [
-  { id: "all", label: "Todos os preços", min: 0, max: Infinity },
-  { id: "a", label: "Até R\$ 50", min: 0, max: 50 },
-  { id: "b", label: "R\$ 50 a R\$ 100", min: 50, max: 100 },
-  { id: "c", label: "R\$ 100 a R\$ 200", min: 100, max: 200 },
-  { id: "d", label: "Acima de R\$ 200", min: 200, max: Infinity },
-];
-
 export function Home() {
-  const routeSearch = Route.useSearch() as any;
-  const search = {
-    q: routeSearch?.q || "",
-    category: routeSearch?.category || "",
-    range: routeSearch?.range || "all",
-    sort: routeSearch?.sort || "popular",
-    free: routeSearch?.free || false
-  };
+  const routeSearch = Route.useSearch();
+  const search = resolveSearch(routeSearch);
   const navigate = Route.useNavigate();
-
-  const { data } = useSuspenseInfiniteQuery(
-    infiniteQueryOptions({
-      queryKey: ["catalog", routeSearch],
-      queryFn: ({ pageParam }) => fetchCatalogPage({ ...routeSearch, page: pageParam }),
-      initialPageParam: 1,
-      getNextPageParam: (lastPage: any) => lastPage?.nextPage,
-    })
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
+    catalogQueryOptions(routeSearch),
   );
-  
-  const products = (data as any)?.pages?.flatMap((page: any) => page.products) || [];
+  const products = data.pages.flatMap((page) => page.products);
 
+  // Busca dinamicamente apenas as categorias com produtos ativos
   const { data: activeCategories = [] } = useQuery({
     queryKey: ["active-store-categories"],
     queryFn: async () => {
@@ -220,19 +205,20 @@ export function Home() {
     staleTime: 5 * 60_000,
   });
 
-  const setSearch = (changes: any) =>
+  const setSearch = (changes: HomeSearchUpdate) =>
     navigate({
-      search: (previous: any) => {
+      search: (previous) => {
         const next = { ...previous, ...changes } as Record<string, unknown>;
         if (!next["q"]) delete next["q"];
         if (!next["category"]) delete next["category"];
         if (next["range"] === "all") delete next["range"];
         if (next["sort"] === "popular") delete next["sort"];
         if (!next["free"]) delete next["free"];
-        return next as any;
+        return next as HomeSearch;
       },
     });
 
+  // Filtro estrito: se tiver pesquisa por termo ou categoria, traz estritamente correspondentes
   const filtered = useMemo(() => {
     const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
       id: "all",
@@ -241,7 +227,7 @@ export function Home() {
       max: Infinity,
     };
 
-    const result = products.filter((product: any) => {
+    const result = products.filter((product) => {
       if (search.category && product.category !== search.category) {
         return false;
       }
@@ -257,7 +243,7 @@ export function Home() {
       return price >= selectedRange.min && price <= selectedRange.max;
     });
 
-    return [...result].sort((a: any, b: any) => {
+    return [...result].sort((a, b) => {
       if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
       if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
       return (b.sold_count ?? 0) - (a.sold_count ?? 0);
@@ -271,14 +257,14 @@ export function Home() {
     : search.free
       ? "Produtos com Frete Grátis"
       : search.category
-        ? (activeCategories.find((item: any) => item.slug === search.category)?.label ?? search.category)
+        ? (activeCategories.find((item) => item.slug === search.category)?.label ?? search.category)
         : "Todas as ofertas";
 
   const suggestions = useMemo(() => {
-    return products.slice(0, 50).map((p: any) => ({
+    return products.slice(0, 50).map((p) => ({
       id: p.id,
       title: p.title,
-      category: activeCategories.find((c: any) => c.slug === p.category)?.label ?? p.category ?? "Geral",
+      category: activeCategories.find((c) => c.slug === p.category)?.label ?? p.category ?? "Geral",
     }));
   }, [products, activeCategories]);
 
@@ -510,13 +496,7 @@ export function Home() {
         </div>
       </main>
 
-      {/* 📣 GERADOR DE PROPAGANDA INSTALADO NO LUGAR CERTO */}
-      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-4">
-        <GeradorPropagandaHS />
-      </div>
-
-      <Footer />
-
+      <SiteFooter />
     </div>
   );
 }
