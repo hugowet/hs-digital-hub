@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Heart,
   MessageCircle,
@@ -17,7 +17,6 @@ import {
   Music2,
   Plus,
   Send,
-  Trash2,
   X,
   UserCheck,
   UserPlus,
@@ -324,11 +323,11 @@ try {
 const fileExt = selectedFile.name.split(".").pop();
 const fileName = ${Math.random()}_${Date.now()}.${fileExt};
 const filePath = user-trends/${fileName};
-const { data: uploadData, error: uploadError } = await supabase.storage
-.from("hstrends-videos")
-.upload(filePath, selectedFile);
+// Casting explicito para evitar problemas com definições de tipo internas do client gerado
+const storageClient = supabase.storage.from("hstrends-videos") as any;
+const { error: uploadError } = await storageClient.upload(filePath, selectedFile);
 if (uploadError) throw uploadError;
-const { data: { publicUrl } } = supabase.storage
+const { data: urlData } = supabase.storage
 .from("hstrends-videos")
 .getPublicUrl(filePath);
 const newVideo = {
@@ -337,7 +336,7 @@ author_name: userProfile?.full_name || authUser.email?.split("@")[0] || "Criador
 author_avatar: userProfile?.avatar_url || "unsplash.com",
 title: uploadTitle.trim(),
 description: uploadDesc.trim(),
-video_url: publicUrl,
+video_url: urlData.publicUrl,
 post_type: uploadType,
 music_title: "Som Original · " + (userProfile?.full_name || "Criador HS"),
 };
