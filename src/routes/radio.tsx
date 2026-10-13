@@ -35,6 +35,13 @@ const TRACKS = [
     artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
     src: "https://streams.ilovemusic.de/iloveradio2.mp3",
   },
+    {
+    title: "Jovem Pan FM",
+    artist: "Rádio HS Digital 🎵",
+    album: "Pop, Rock e Notícias",
+    artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
+    src: "https://r13.ciclano.io:8002/stream",
+  },
   {
     title: "Lo-Fi Lounge & Chill",
     artist: "Rádio HS Digital 🎵",
