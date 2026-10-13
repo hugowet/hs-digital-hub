@@ -25,29 +25,43 @@ const TRACKS = [
     title: "HS Hits & Eletrônica",
     artist: "Rádio HS Digital 🎵",
     album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio1.mp3",
+    artwork: "https://unsplash.com",
+    src: "https://ilovemusic.de",
   },
   {
     title: "Pop & Top Brasil",
     artist: "Rádio HS Digital 🎵",
     album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio2.mp3",
+    artwork: "https://unsplash.com",
+    src: "https://ilovemusic.de",
+  },
+  {
+    title: "Sertanejo Universitário Hits",
+    artist: "Rádio HS Digital 🎵",
+    album: "As Melhores do Sertanejo",
+    artwork: "https://unsplash.com", // Capa animada de show sertanejo
+    src: "https://painelcast.com", // Stream contínuo focado em grandes sucessos sertanejos
+  },
+  {
+    title: "Sertanejo Premium & Modão",
+    artist: "Rádio HS Digital 🎵",
+    album: "Rodeio Mix",
+    artwork: "https://unsplash.com", // Capa estilizada country/sertanejo
+    src: "https://zeno.fm", // Stream estável focado em sertanejo e hits do topo das paradas nacionais
   },
   {
     title: "Lo-Fi Lounge & Chill",
     artist: "Rádio HS Digital 🎵",
     album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio17.mp3",
+    artwork: "https://unsplash.com",
+    src: "https://ilovemusic.de",
   },
   {
     title: "Dance & Club Classics",
     artist: "Rádio HS Digital 🎵",
     album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio10.mp3",
+    artwork: "https://unsplash.com",
+    src: "https://ilovemusic.de",
   },
 ];
 
