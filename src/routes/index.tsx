@@ -24,6 +24,7 @@ import {
   Watch,
   X,
   Zap,
+  Radio,
   Crown,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
