@@ -174,8 +174,7 @@ function BuyerGamesPromoLink() {
   );
 }
 
-export function Home() {
-  const PRICE_RANGES = [
+ const PRICE_RANGES = [
   { id: "all", label: "Todos os preços", min: 0, max: Infinity },
   { id: "a", label: "Até R\$ 50", min: 0, max: 50 },
   { id: "b", label: "R\$ 50 a R\$ 100", min: 50, max: 100 },
