@@ -134,11 +134,12 @@ export function SiteHeader({
     <header className="sticky top-0 z-50 brand-gradient text-primary-foreground shadow-md">
       <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2.5 sm:py-3">
         <div className="flex items-center justify-between gap-2 sm:gap-4">
+          {/* Logotipo Oficial Restaurado */}
           <Link to="/" className="flex items-center gap-2 shrink-0">
             <img
               src={logoAsset.url}
               alt="HS Digital"
-              className="h-8 sm:h-9 w-auto object-contain brightness-0 invert"
+              className="h-8 sm:h-9 w-auto object-contain"
             />
           </Link>
 
@@ -193,21 +194,15 @@ export function SiteHeader({
             )}
           </div>
 
-          {/* Navegação Direita (Desktop & Mobile Actions) */}
+          {/* Navegação Direita */}
           <nav className="flex items-center gap-1 sm:gap-2 shrink-0">
-            {/* 🌟 CLUBE HS E 🎵 RÁDIO HS LADO A LADO NO DESKTOP */}
+            {/* 🌟 CLUBE HS NO TOPO */}
             <div className="hidden md:flex items-center gap-2 mr-1">
               <Link
                 to="/clube-hs"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-400/20 text-amber-300 hover:bg-amber-400/30 transition-colors"
               >
                 <span>🌟</span> Clube HS
-              </Link>
-              <Link
-                to="/radio"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-              >
-                <span>🎵</span> Rádio HS
               </Link>
             </div>
 
@@ -225,98 +220,107 @@ export function SiteHeader({
               )}
             </Link>
 
-            {/* Notificações */}
-            {signedIn && (
+            {/* Mensagens */}
+            {signedIn && isBuyer && (
               <Link
-                to="/notificacoes"
-                className="relative p-2 text-white hover:bg-white/10 rounded-full transition-colors hidden sm:inline-flex"
-                aria-label="Notificações"
+                to="/pedidos"
+                className="relative p-2 text-white hover:bg-white/10 rounded-full transition-colors"
+                aria-label="Mensagens de Pedidos"
               >
                 <Bell className="w-5 h-5" />
                 {unreadMessages > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
                     {unreadMessages}
                   </span>
                 )}
               </Link>
             )}
 
-            {/* Dropdown Usuário / Entrar */}
-            {signedIn ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full text-white hover:bg-white/10"
-                    aria-label="Menu do Usuário"
-                  >
-                    <User className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate({ to: "/conta" })}>
-                    <User className="w-4 h-4 mr-2" /> Meu Perfil
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate({ to: "/compras" })}>
-                    <ShoppingBag className="w-4 h-4 mr-2" /> Minhas Compras
-                  </DropdownMenuItem>
-                  {isBuyer && (
-                    <DropdownMenuItem onClick={() => navigate({ to: "/cupons" })}>
-                      <TicketPercent className="w-4 h-4 mr-2" /> Meus Cupons
+            {/* Conta Desktop */}
+            <div className="hidden sm:flex items-center">
+              {signedIn ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-1 text-xs font-semibold py-1.5 px-3 rounded-full hover:bg-white/10 transition-colors">
+                      <User className="w-4 h-4 mr-1" />
+                      Minha Conta
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/conta" className="cursor-pointer">
+                        <User className="w-4 h-4 mr-2" /> Meus Dados
+                      </Link>
                     </DropdownMenuItem>
-                  )}
-                  {isAdmin && (
-                    <DropdownMenuItem onClick={() => navigate({ to: "/admin" })}>
-                      <Store className="w-4 h-4 mr-2" /> Painel Admin
+                    <DropdownMenuItem asChild>
+                      <Link to="/pedidos" className="cursor-pointer">
+                        <ShoppingBag className="w-4 h-4 mr-2" /> Meus Pedidos
+                      </Link>
                     </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut} className="text-red-600">
-                    <LogOut className="w-4 h-4 mr-2" /> Sair
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Link
-                to="/auth"
-                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-white text-slate-900 hover:bg-slate-100 transition-colors shadow-sm"
-              >
-                <LogIn className="w-3.5 h-3.5" /> Entrar
-              </Link>
-            )}
+                    <DropdownMenuItem asChild>
+                      <Link to="/cupons" className="cursor-pointer">
+                        <TicketPercent className="w-4 h-4 mr-2" /> Meus Cupons
+                      </Link>
+                    </DropdownMenuItem>
+                    {isAdmin && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin" className="cursor-pointer text-amber-500 font-bold">
+                          Painel Admin
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
+                      <LogOut className="w-4 h-4 mr-2" /> Sair
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Link
+                  to="/auth"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-white/10 transition-colors"
+                >
+                  <LogIn className="w-4 h-4" /> Entrar
+                </Link>
+              )}
+            </div>
 
-            {/* Botão Hambúrguer Mobile */}
-            <Button
-              variant="ghost"
-              size="icon"
+            {/* Menu Hambúrguer Mobile */}
+            <button
               onClick={() => setOpen(!open)}
-              className="md:hidden rounded-full text-white hover:bg-white/10"
-              aria-label="Menu Principal"
+              className="sm:hidden p-2 text-white hover:bg-white/10 rounded-full"
+              aria-label="Abrir Menu"
             >
-              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
+              {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </nav>
         </div>
 
-        {/* Sub-barra horizontal Desktop */}
-        <div className="mt-2 hidden items-center gap-4 text-xs text-white/80 md:flex">
+        {/* Barra de Sub-Navegação Desktop */}
+        <div className="hidden sm:flex items-center gap-6 mt-2 pt-2 border-t border-white/10 text-xs font-medium text-white/90">
+          <div className="flex items-center gap-1 text-white/80">
+            <MapPin className="w-3.5 h-3.5" />
+            <span>Enviar para São Paulo 01000-000</span>
+          </div>
+
           <Link to="/" className="hover:text-white">
-            Início
+            Categorias
           </Link>
-          <Link to="/compras" className="hover:text-white">
-            Minhas compras
+          <Link to="/cupons" className="hover:text-white">
+            Ofertas do Dia
           </Link>
-          {isBuyer && (
-            <Link to="/jogos" className="hover:text-white">
-              Jogos & Prêmios
-            </Link>
-          )}
-          {isBuyer && (
-            <Link to="/cupons" className="hover:text-white">
-              Meus cupons
+          <Link to="/pedidos" className="hover:text-white">
+            Histórico
+          </Link>
+          <Link to="/clube-hs" className="hover:text-white text-amber-300 font-bold">
+            Clube HS
+          </Link>
+
+          {isAdmin && (
+            <Link to="/admin" className="hover:text-white text-amber-300 font-bold">
+              Painel Admin
             </Link>
           )}
           <Link to="/vendedor" className="hover:text-white ml-auto">
@@ -325,24 +329,16 @@ export function SiteHeader({
         </div>
       </div>
 
-      {/* Menu Sanduíche Mobile Gaveta */}
+      {/* Menu Sanduíche Mobile */}
       {open && (
         <div className="md:hidden bg-slate-900 text-white px-4 py-4 space-y-3 border-t border-slate-800 shadow-xl">
-          {/* 🌟 E 🎵 LADO A LADO DENTRO DO MENU MOBILE */}
-          <div className="grid grid-cols-2 gap-2 pb-3 border-b border-slate-800">
+          <div className="pb-3 border-b border-slate-800">
             <Link
               to="/clube-hs"
               onClick={() => setOpen(false)}
               className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-amber-400/20 text-amber-300 font-bold text-xs"
             >
               <span>🌟</span> Clube HS
-            </Link>
-            <Link
-              to="/radio"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-500/20 text-emerald-300 font-bold text-xs"
-            >
-              <span>🎵</span> Rádio HS
             </Link>
           </div>
 
@@ -361,45 +357,44 @@ export function SiteHeader({
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/10"
                 >
-                  <User className="w-4 h-4" /> Minha conta e endereços
+                  <User className="w-4 h-4" /> Minha Conta
                 </Link>
                 <Link
-                  to="/compras"
+                  to="/pedidos"
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/10"
                 >
-                  <ShoppingBag className="w-4 h-4" /> Minhas compras
+                  <ShoppingBag className="w-4 h-4" /> Meus Pedidos
                 </Link>
-                {isBuyer && (
+                <Link
+                  to="/cupons"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/10"
+                >
+                  <TicketPercent className="w-4 h-4" /> Meus Cupons
+                </Link>
+                <Link
+                  to="/jogos"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/10"
+                >
+                  <Gamepad2 className="w-4 h-4" /> Jogos &amp; Prêmios
+                </Link>
+                {isAdmin && (
                   <Link
-                    to="/cupons"
+                    to="/admin"
                     onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/10"
+                    className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/10 text-amber-300 font-bold"
                   >
-                    <TicketPercent className="w-4 h-4" /> Meus cupons
+                    Painel Admin
                   </Link>
                 )}
-                <Link
-                  to="/notificacoes"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/10"
-                >
-                  <Bell className="w-4 h-4" /> Notificações{" "}
-                  {unreadMessages > 0 && `(${unreadMessages})`}
-                </Link>
-                <Link
-                  to="/vendedor"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/10"
-                >
-                  <Store className="w-4 h-4" /> Seller Center
-                </Link>
                 <button
                   onClick={() => {
                     setOpen(false);
                     signOut();
                   }}
-                  className="w-full flex items-center gap-3 py-2 px-2 rounded-lg text-red-400 hover:bg-red-500/10"
+                  className="flex items-center gap-3 py-2 px-2 rounded-lg text-rose-400 hover:bg-white/10 w-full text-left"
                 >
                   <LogOut className="w-4 h-4" /> Sair
                 </button>
@@ -408,11 +403,21 @@ export function SiteHeader({
               <Link
                 to="/auth"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-3 py-2 px-2 rounded-lg text-emerald-400 hover:bg-emerald-500/10"
+                className="flex items-center gap-3 py-2 px-2 rounded-lg bg-primary text-white font-semibold justify-center"
               >
                 <LogIn className="w-4 h-4" /> Fazer Login / Cadastrar
               </Link>
             )}
+
+            <div className="pt-2 border-t border-slate-800">
+              <Link
+                to="/vendedor"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-white/10 text-amber-300"
+              >
+                <Store className="w-4 h-4" /> Vender na HS Digital
+              </Link>
+            </div>
           </div>
         </div>
       )}
