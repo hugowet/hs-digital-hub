@@ -483,7 +483,10 @@ export function Home() {
           </section>
         </div>
       </main>
-
+{/* 📣 GERADOR DE PROPAGANDA INSTALADO NO LUGAR CERTO */}
+      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-4">
+        <GeradorPropagandaHS />
+      </div>
       <SiteFooter />
     </div>
   );
