@@ -1,63 +1,41 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
+  Search,
   Play,
-  Pause,
-  SkipForward,
-  SkipBack,
-  Volume2,
-  VolumeX,
-  Radio,
   Crown,
   Sparkles,
   ExternalLink,
   X,
   ShieldCheck,
+  Music,
+  Radio,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 
-// Streams de áudio contínuos
-const TRACKS = [
-  {
-    title: "HS Hits & Eletrônica",
-    artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio1.mp3",
-  },
-  {
-    title: "Pop & Top Brasil",
-    artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio2.mp3",
-  },
-  {
-    title: "Lo-Fi Lounge & Chill",
-    artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio17.mp3",
-  },
-  {
-    title: "Dance & Club Classics",
-    artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio10.mp3",
-  },
+// Artistas de Sertanejo sugeridos para seleção rápida em um clique
+const SERTANEJO_SUGGESTIONS = [
+  "Gusttavo Lima",
+  "Luan Santana",
+  "Bruno & Marrone",
+  "Ana Castela",
+  "Jorge & Mateus",
+  "Henrique & Juliano",
+  "Zé Neto & Cristiano",
+  "Marília Mendonça",
 ];
 
 export const Route = createFileRoute("/radio")({
   head: () => ({
     meta: [
-      { title: "Rádio HS Digital 🎵 · Ao Vivo" },
+      { title: "Rádio HS Digital 🎵 · Especial Sertanejo" },
       {
         name: "description",
-        content: "Ouça a programação oficial da HS Digital com reprodução contínua em segundo plano.",
+        content: "Ouça o melhor do sertanejo ao vivo e busque seus artistas favoritos na Rádio HS Digital.",
       },
     ],
   }),
@@ -65,18 +43,13 @@ export const Route = createFileRoute("/radio")({
 });
 
 export function RadioHSPage() {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.8);
-  const [isMuted, setIsMuted] = useState(false);
-  const [songSwitchCount, setSongSwitchCount] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
+  const [activeArtist, setActiveArtist] = useState("Gusttavo Lima");
+  const [playCount, setPlayCount] = useState(0);
   const [showClubModal, setShowClubModal] = useState(false);
+  const [pendingArtist, setPendingArtist] = useState<string | null>(null);
 
-  const currentTrack = TRACKS[currentTrackIndex];
-
-  // 1. Valida se o usuário autenticado tem o status is_clube_hs no Supabase
+  // 1. Valida se o usuário tem a assinatura ativa do Clube HS
   const { data: userProfile } = useQuery({
     queryKey: ["radio-user-clube-status"],
     queryFn: async () => {
@@ -96,294 +69,249 @@ export function RadioHSPage() {
 
   const isVipClube = Boolean(userProfile?.is_clube_hs);
 
-  // 2. Media Session API (Background playback, notificações nativas e tela de bloqueio)
-  const updateMediaSession = (track: typeof TRACKS[0]) => {
+  // 2. Integração com a Media Session API (notificações no celular e tela de bloqueio)
+  const updateMediaSession = (artistName: string) => {
     if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
 
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: `${track.title} 🎵`,
+        title: `${artistName} 🎵`,
         artist: "Rádio HS Digital 🎵",
-        album: track.album || "Marketplace HS Digital",
+        album: "Especial Sertanejo",
         artwork: [
-          { src: track.artwork, sizes: "96x96", type: "image/jpeg" },
-          { src: track.artwork, sizes: "128x128", type: "image/jpeg" },
-          { src: track.artwork, sizes: "256x256", type: "image/jpeg" },
-          { src: track.artwork, sizes: "512x512", type: "image/jpeg" },
+          {
+            src: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=512&q=80",
+            sizes: "512x512",
+            type: "image/jpeg",
+          },
         ],
       });
-
-      navigator.mediaSession.setActionHandler("play", () => {
-        audioRef.current?.play();
-        setIsPlaying(true);
-      });
-
-      navigator.mediaSession.setActionHandler("pause", () => {
-        audioRef.current?.pause();
-        setIsPlaying(false);
-      });
-
-      navigator.mediaSession.setActionHandler("previoustrack", () => {
-        handlePrevTrack();
-      });
-
-      navigator.mediaSession.setActionHandler("nexttrack", () => {
-        handleNextTrack();
-      });
     } catch (e) {
-      console.warn("MediaSession não suportada neste ambiente:", e);
+      console.warn("MediaSession não suportada neste navegador:", e);
     }
   };
 
-  // 3. Atualiza faixa e metadados
   useEffect(() => {
-    if (!audioRef.current) return;
+    updateMediaSession(activeArtist);
+  }, [activeArtist]);
 
-    audioRef.current.src = currentTrack.src;
-    updateMediaSession(currentTrack);
+  // 3. Executa a busca e troca o artista tocado
+  const executePlay = (artistName: string) => {
+    const trimmed = artistName.trim();
+    if (!trimmed) return;
 
-    if (isPlaying) {
-      audioRef.current.play().catch((err) => {
-        console.warn("Autoplay bloqueado pelo navegador até interação:", err);
-        setIsPlaying(false);
-      });
-    }
-  }, [currentTrackIndex]);
+    const nextCount = playCount + 1;
+    setPlayCount(nextCount);
 
-  // 4. Volume
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume;
-    }
-  }, [volume, isMuted]);
-
-  // 5. Play / Pause
-  const togglePlay = () => {
-    if (!audioRef.current) return;
-
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-      if (typeof window !== "undefined" && "mediaSession" in navigator) {
-        navigator.mediaSession.playbackState = "paused";
-      }
-    } else {
-      audioRef.current
-        .play()
-        .then(() => {
-          setIsPlaying(true);
-          updateMediaSession(currentTrack);
-          if (typeof window !== "undefined" && "mediaSession" in navigator) {
-            navigator.mediaSession.playbackState = "playing";
-          }
-        })
-        .catch((err) => {
-          console.error("Falha ao reproduzir áudio:", err);
-        });
-    }
-  };
-
-  // 6. Próxima música + bloqueio com anúncio a cada 3 faixas para não-membros
-  const handleNextTrack = () => {
-    const nextCount = songSwitchCount + 1;
-    setSongSwitchCount(nextCount);
-
+    // Usuário comum é interrompido pelo Pop-up do Clube HS a cada 3 músicas
     if (!isVipClube && nextCount % 3 === 0) {
+      setPendingArtist(trimmed);
       setShowClubModal(true);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      }
+      return;
     }
 
-    setCurrentTrackIndex((prev) => (prev + 1) % TRACKS.length);
+    setActiveArtist(trimmed);
+    updateMediaSession(trimmed);
   };
 
-  const handlePrevTrack = () => {
-    setCurrentTrackIndex((prev) => (prev - 1 + TRACKS.length) % TRACKS.length);
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchInput.trim()) {
+      executePlay(searchInput);
+    }
   };
+
+  const handleSelectQuickArtist = (artist: string) => {
+    setSearchInput(artist);
+    executePlay(artist);
+  };
+
+  // URL limpa de busca e execução automática contínua via YouTube nocookie (zero erro de IP ou CORS)
+  const iframeSrc = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(
+    activeArtist + " sertanejo",
+  )}&autoplay=1&playsinline=1&rel=0`;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-4 sm:p-8">
-      {/* Elemento de áudio invisível para persistência no background */}
-      <audio
-        ref={audioRef}
-        preload="auto"
-        onPlay={() => {
-          setIsPlaying(true);
-          if (typeof window !== "undefined" && "mediaSession" in navigator) {
-            navigator.mediaSession.playbackState = "playing";
-          }
-        }}
-        onPause={() => {
-          setIsPlaying(false);
-          if (typeof window !== "undefined" && "mediaSession" in navigator) {
-            navigator.mediaSession.playbackState = "paused";
-          }
-        }}
-        onEnded={handleNextTrack}
-      />
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-4 sm:p-6 font-sans">
+      {/* Topo do Player */}
+      <header className="max-w-3xl w-full mx-auto flex items-center justify-between pb-4 border-b border-slate-800/80">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Voltar ao Marketplace
+        </Link>
 
-      {/* Header do Player */}
-      <header className="max-w-xl w-full mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-            <Radio className="w-5 h-5 animate-pulse" />
+          {isVipClube ? (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs font-semibold">
+              <Crown className="w-3.5 h-3.5" /> Membro VIP Clube HS
+            </div>
+          ) : (
+            <Link
+              to="/clube-hs"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Ouvir sem Anúncios
+            </Link>
+          )}
+        </div>
+      </header>
+
+      {/* Conteúdo Central */}
+      <main className="max-w-3xl w-full mx-auto my-6 space-y-6">
+        {/* Identificação da Estação */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+              <Radio className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                Rádio HS Digital 🎵
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  AO VIVO
+                </span>
+              </h1>
+              <p className="text-xs text-slate-400">Tocando: <strong className="text-amber-400">{activeArtist}</strong></p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-bold text-sm tracking-wide">HS DIGITAL STREAM</h1>
-            <p className="text-[11px] text-slate-400">Background Audio Ativo</p>
+
+          <div className="text-right text-xs text-slate-400 hidden sm:block">
+            <span>{isVipClube ? "Acesso VIP Ilimitado" : `Músicas tocadas: ${playCount}`}</span>
           </div>
         </div>
 
-        {isVipClube ? (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs font-semibold">
-            <Crown className="w-3.5 h-3.5" />
-            Membro VIP Clube HS
-          </div>
-        ) : (
-          <a
-            href="/clube-hs"
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            Ouvir sem Anúncios
-          </a>
-        )}
-      </header>
+        {/* CAMPO DE BUSCA OBRIGATÓRIO COM ÍCONE DE LUPA */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl backdrop-blur-md">
+          <form onSubmit={handleSearchSubmit} className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                type="text"
+                placeholder="Digite qualquer artista (ex: Gusttavo Lima, Luan Santana, Bruno & Marrone)..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-10 h-11 bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 rounded-xl text-sm focus-visible:ring-amber-500"
+              />
+            </div>
+            <Button
+              type="submit"
+              className="h-11 px-5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold shrink-0 shadow-lg shadow-amber-500/20 flex items-center gap-2"
+            >
+              <Play className="w-4 h-4 fill-slate-950" /> Tocar
+            </Button>
+          </form>
 
-      {/* Card Central do Player */}
-      <main className="max-w-md w-full mx-auto my-auto py-8">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden">
-          {/* Capa com Efeito Glow */}
-          <div className="relative aspect-square w-full rounded-2xl overflow-hidden mb-6 shadow-xl border border-slate-700/50">
-            <img
-              src={currentTrack.artwork}
-              alt={currentTrack.title}
-              className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+          {/* Seletores Rápidos de Artistas Sertanejos */}
+          <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] text-slate-500 font-medium mr-1 flex items-center gap-1">
+              <Music className="w-3 h-3" /> Sugestões:
+            </span>
+            {SERTANEJO_SUGGESTIONS.map((artist) => {
+              const isSelected = activeArtist.toLowerCase() === artist.toLowerCase();
+              return (
+                <button
+                  key={artist}
+                  type="button"
+                  onClick={() => handleSelectQuickArtist(artist)}
+                  className={`text-xs px-2.5 py-1 rounded-full transition-all border ${
+                    isSelected
+                      ? "bg-amber-500 text-slate-950 font-bold border-amber-400 shadow-sm"
+                      : "bg-slate-800/80 hover:bg-slate-800 text-slate-300 border-slate-700/60"
+                  }`}
+                >
+                  {artist}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* CONTAINER LIMPO DO IFRAME DE ALTA FIDELIDADE */}
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-3 sm:p-4 shadow-2xl relative overflow-hidden">
+          <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-inner border border-slate-800">
+            <iframe
+              title={`Tocando ${activeArtist} na Rádio HS`}
+              src={iframeSrc}
+              className="w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
             />
-            {isPlaying && (
-              <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                AO VIVO
-              </div>
-            )}
           </div>
 
-          {/* Info da Música */}
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-extrabold tracking-tight truncate">{currentTrack.title}</h2>
-            <p className="text-sm font-medium text-slate-400 mt-1">{currentTrack.artist}</p>
-            <p className="text-xs text-slate-500">{currentTrack.album}</p>
-          </div>
-
-          {/* Controles Principais */}
-          <div className="flex items-center justify-center gap-6 mb-6">
-            <button
-              onClick={handlePrevTrack}
-              className="p-3 text-slate-400 hover:text-white transition-colors"
-              title="Música anterior"
-            >
-              <SkipBack className="w-6 h-6" />
-            </button>
-
-            <button
-              onClick={togglePlay}
-              className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/30 transition-transform active:scale-95"
-              title={isPlaying ? "Pausar" : "Tocar"}
-            >
-              {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
-            </button>
-
-            <button
-              onClick={handleNextTrack}
-              className="p-3 text-slate-400 hover:text-white transition-colors"
-              title="Próxima música"
-            >
-              <SkipForward className="w-6 h-6" />
-            </button>
-          </div>
-
-          {/* Controle de Volume */}
-          <div className="flex items-center gap-3 pt-4 border-t border-slate-800/80 px-2">
-            <button
-              onClick={() => setIsMuted(!isMuted)}
-              className="text-slate-400 hover:text-white transition-colors"
-            >
-              {isMuted || volume === 0 ? (
-                <VolumeX className="w-5 h-5 text-red-400" />
-              ) : (
-                <Volume2 className="w-5 h-5" />
-              )}
-            </button>
-            <Slider
-              value={[isMuted ? 0 : volume * 100]}
-              max={100}
-              step={1}
-              onValueChange={(vals) => {
-                setIsMuted(false);
-                setVolume(vals[0] / 100);
-              }}
-              className="flex-1"
-            />
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-400 px-1">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              Executando áudio contínuo sem travamentos
+            </span>
+            <span className="text-slate-500 text-[11px]">Compatível com celular &amp; Wi-Fi</span>
           </div>
         </div>
       </main>
 
-      {/* Footer Info */}
-      <footer className="max-w-xl w-full mx-auto text-center text-xs text-slate-500">
-        Compatível com reprodução em segundo plano e tela bloqueada.
+      {/* Rodapé da Página */}
+      <footer className="max-w-3xl w-full mx-auto text-center text-xs text-slate-500 pt-4 border-t border-slate-900">
+        Rádio HS Digital · Feita para os clientes do Marketplace HS.
       </footer>
 
-      {/* Pop-up Modal do Clube HS */}
+      {/* POP-UP DO CLUBE HS A CADA 3 MÚSICAS */}
       {showClubModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl relative">
             <button
               onClick={() => {
                 setShowClubModal(false);
-                togglePlay();
+                if (pendingArtist) {
+                  setActiveArtist(pendingArtist);
+                  updateMediaSession(pendingArtist);
+                  setPendingArtist(null);
+                }
               }}
               className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center mx-auto mb-4 font-bold shadow-lg shadow-amber-500/20">
-              <Crown className="w-6 h-6" />
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center mx-auto mb-4 font-bold shadow-lg shadow-amber-500/30">
+              <Crown className="w-7 h-7" />
             </div>
 
-            <h3 className="text-xl font-bold text-white">Gostando da Rádio HS?</h3>
+            <h3 className="text-xl font-bold text-white">Gostando do Sertanejo na HS?</h3>
             <p className="text-xs text-slate-300 mt-2 leading-relaxed">
               Assine o <strong className="text-amber-400">Clube HS</strong> por apenas{" "}
-              <strong>R$ 19,90/mês</strong> e ouça sem anúncios, além de Frete Grátis na região de
-              Perdizes!
+              <strong>R$ 19,90/mês</strong> e curta suas músicas sem interrupções, além de{" "}
+              <strong>Frete Grátis na região de Perdizes</strong> e ofertas exclusivas!
             </p>
 
             <div className="mt-6 flex flex-col gap-2.5">
-              <a
-                href="/clube-hs"
-                className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all"
+              <Link
+                to="/clube-hs"
+                className="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all"
               >
                 Assinar Clube HS por R$ 19,90
                 <ExternalLink className="w-4 h-4" />
-              </a>
+              </Link>
 
               <Button
                 variant="ghost"
                 onClick={() => {
                   setShowClubModal(false);
-                  togglePlay();
+                  if (pendingArtist) {
+                    setActiveArtist(pendingArtist);
+                    updateMediaSession(pendingArtist);
+                    setPendingArtist(null);
+                  }
                 }}
                 className="text-xs text-slate-400 hover:text-white"
               >
-                Continuar ouvindo com anúncios
+                Continuar ouvindo gratuitamente
               </Button>
             </div>
 
             <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Membros do clube têm player 100% liberado.
+              Membros VIP do Clube HS têm player 100% liberado.
             </div>
           </div>
         </div>
