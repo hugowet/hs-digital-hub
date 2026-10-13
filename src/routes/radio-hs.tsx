@@ -27,7 +27,7 @@ function RadioComponent() {
   const currentTrack = PLAYLIST[currentTrackIndex]
 
   // 🔴 COLOQUE O LINK REAL DO SEU STREAMING DE ÁUDIO (.mp3) AQUI PARA TOCAR SOM
-  const STREAMING_URL = "https://walmradio.com" 
+  const STREAMING_URL = "https://hs-digital-marck.lovable.app/radio" 
 
   useEffect(() => {
     if (audioRef.current) {
