@@ -8,33 +8,35 @@ export const Route = createFileRoute('/radio-hs')({
 
 // Lista oficial de faixas da Rádio HS Digital trazidas do Lovable
 const PLAYLIST = [
+ // Lista atualizada com links de áudio públicos que não possuem travas de segurança (CORS)
+const PLAYLIST = [
   { 
     title: "HS Hits & Eletrônica", 
     station: "Rádio HS Digital 🎵", 
     session: "Perdizes Sessions", 
     cover: "https://unsplash.com",
-    url: "https://soundhelix.com" 
+    url: "https://googleapis.com" 
   },
   { 
     title: "Pop & Top Brasil", 
     station: "Rádio HS Digital 🎵", 
     session: "Perdizes Sessions", 
     cover: "https://unsplash.com",
-    url: "https://soundhelix.com" 
+    url: "https://googleapis.com" 
   },
   { 
     title: "Glow Electro Hits", 
     station: "Rádio HS Digital 🎵", 
     session: "Ibiza Summer Warmup", 
     cover: "https://unsplash.com",
-    url: "https://soundhelix.com" 
+    url: "https://googleapis.com" 
   },
   { 
     title: "Chill & Lofi Beats", 
     station: "Rádio HS Digital 🎵", 
     session: "Midnight Study Session", 
     cover: "https://unsplash.com",
-    url: "https://soundhelix.com" 
+    url: "https://googleapis.com" 
   }
 ]
 
