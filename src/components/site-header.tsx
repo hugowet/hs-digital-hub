@@ -15,6 +15,7 @@ import {
   TicketPercent,
   User,
   X,
+  Crown,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
