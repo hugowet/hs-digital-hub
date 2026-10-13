@@ -47,7 +47,8 @@ export type HomeSearch = {
   sort?: "popular" | "price-asc" | "price-desc";
   free?: boolean;
 };
-
+// Tipo utilitário para aceitar alterações dinâmicas nas buscas
+export type HomeSearchUpdate = Partial<HomeSearch>;
 const normalizeSearch = (search: Record<string, unknown>): HomeSearch => ({
   ...(typeof search["q"] === "string" && search["q"] ? { q: search["q"].slice(0, 100) } : {}),
   ...(typeof search["category"] === "string" && search["category"] ? { category: search["category"] } : {}),
