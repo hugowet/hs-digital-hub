@@ -15,7 +15,6 @@ import {
   Crown,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-
 import { ProductCard } from "@/components/product-card";
 import { IntroAnimation } from "@/components/intro-animation";
 import { SiteFooter } from "@/components/site-footer";
