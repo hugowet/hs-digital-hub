@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode, useState, createContext, useContext } from "react";
 
-import appCss = "../styles.css?url";
+import appCss from "../styles.css?url"; // 👈 CORRIGIDO: mudado "=" para "from"
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "../lib/cart";
 import { Toaster } from "../components/ui/sonner";
