@@ -15,7 +15,6 @@ import {
   TicketPercent,
   User,
   X,
-  Crown,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -329,14 +328,6 @@ export function SiteHeader({
   <Crown className="w-3.5 h-3.5" />
   Clube HS
 </Link>
-             {/* 🎵 LINK DA RÁDIO AUTOMÁTICO ABAIXO DO CLUBE HS */}
-            <Link
-              to="/radio"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-white hover:bg-primary-foreground/10"
-            >
-              <span>🎵</span> Rádio HS Digital
-            </Link>
 
           <Link to="/compras" className="hover:text-white">
             Minhas compras
