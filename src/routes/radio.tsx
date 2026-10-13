@@ -1,20 +1,42 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
-import { Radio, Music, Volume2, Search, Play, Crown, Sparkles, Megaphone } from "lucide-react";
+import { Radio, Music, Volume2, Crown, Sparkles, Megaphone, Play } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { supabase } from "@/integrations/supabase/client";
 
-// Função da Rádio Interativa da HS Digital
+// BANCO DE ESTAÇÕES OFICIAIS E PARCEIRAS (LIBERADAS PARA CELULAR)
+const ESTACOES_SERTANEJAS = [
+  {
+    id: "sertanejo-topo",
+    nome: "Sertanejo Universitário 2026",
+    descricao: "Os maiores sucessos do momento",
+    embedUrl: "https://spotify.com"
+  },
+  {
+    id: "modao-raiz",
+    nome: "Modão Sertanejo Raiz",
+    descricao: "Clássicos e os melhores modões",
+    embedUrl: "https://spotify.com"
+  },
+  {
+    id: "pisadinha-peseiro",
+    nome: "Piseiro & Pisadinha",
+    descricao: "Ritmo acelerado para agitar o dia",
+    embedUrl: "https://spotify.com"
+  },
+  {
+    id: "churrasco-sertanejo",
+    nome: "Esquenta & Churrasco",
+    descricao: "Músicas para curtir com a galera",
+    embedUrl: "https://spotify.com"
+  }
+];
+
 function RadioHSComponent() {
-  // Começa tocando uma seleção de sertanejo famosa por padrão (Gusttavo Lima Oficial)
-  const [videoCode, setVideoCode] = useState("jfKfPfyJRdk"); 
-  const [buscaMusica, setBuscaMusica] = useState("");
-  const [musicaAtual, setMusicaAtual] = useState("Rádio HS Digital - Seleção Sertaneja");
-  
-  // Controle de assinantes e anúncios do seu marketplace
+  const [estacaoAtual, setEstacaoAtual] = useState(ESTACOES_SERTANEJAS[0]);
   const [isClubeMember, setIsClubeMember] = useState(false);
-  const [contadorMusicas, setContadorMusicas] = useState(0);
+  const [contadorTrocas, setContadorTrocas] = useState(0);
   const [mostrarAnuncio, setMostrarAnuncio] = useState(false);
 
   // 1. Verifica se o usuário logado é membro ativo do Clube HS
@@ -34,105 +56,105 @@ function RadioHSComponent() {
     });
   }, []);
 
-  // 2. Função inteligente de busca que aceita qualquer artista ou música
-  const lidarComBusca = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!buscaMusica.trim()) return;
+  // 2. Troca de estação controlando o gatilho de anúncios
+  const trocarEstacao = (novaEstacao: typeof ESTACOES_SERTANEJAS[0]) => {
+    if (novaEstacao.id === estacaoAtual.id) return;
 
-    // Se NÃO for do clube, conta até dar o gatilho de 3 músicas
     if (!isClubeMember) {
-      const proximoNumero = contadorMusicas + 1;
+      const proximoNumero = contadorTrocas + 1;
       if (proximoNumero >= 3) {
         setMostrarAnuncio(true);
-        setContadorMusicas(0); // Reseta para contar mais 3 depois
-        return; // Bloqueia a música até fechar o anúncio do Clube HS
+        setContadorTrocas(0);
+        return; // Trava a troca até ele visualizar a oferta do Clube HS
       } else {
-        setContadorMusicas(proximoNumero);
+        setContadorTrocas(proximoNumero);
       }
     }
 
-    // Altera o player para tocar exatamente o cantor que o cliente digitou!
-    const termoFormatado = encodeURIComponent(buscaMusica.trim());
-    setVideoCode(`videoseries?list=search&keyword=${termoFormatado}`);
-    setMusicaAtual(buscaMusica.trim());
-    setBuscaMusica("");
+    setEstacaoAtual(novaEstacao);
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between">
       <SiteHeader />
       
-      <main className="max-w-xl w-full mx-auto my-auto p-4 py-8">
+      <main className="max-w-xl w-full mx-auto my-auto p-4 py-8 space-y-6">
         {/* CABEÇALHO DO PLAYER */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
               <Radio className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h1 className="font-bold text-sm tracking-wide">HS DIGITAL STREAM</h1>
-              <p className="text-[11px] text-slate-400">Áudio em Segundo Plano Ativo</p>
+              <h1 className="font-bold text-sm tracking-wide">RÁDIO HS DIGITAL</h1>
+              <p className="text-[11px] text-slate-400">Streaming Contínuo Ativo</p>
             </div>
           </div>
 
           {isClubeMember ? (
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs font-semibold">
               <Crown className="w-3.5 h-3.5 fill-amber-300" />
-              Membro VIP Clube HS
+              Membro VIP
             </div>
           ) : (
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              Modo com Anúncios ({contadorMusicas}/3)
+              Modo Livre ({contadorTrocas}/3)
             </div>
           )}
         </div>
 
-        {/* CARD CENTRAL DO PLAYER */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5">
+        {/* INTERFACE DO PLAYER COMPLETO */}
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-5">
           
-          {/* BARRA DE PESQUISA REAL DE ARTISTAS */}
-          <form onSubmit={lidarComBusca} className="relative flex items-center w-full">
-            <Search className="absolute left-3 h-4 w-4 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              value={buscaMusica}
-              onChange={(e) => setBuscaMusica(e.target.value)}
-              placeholder="Digite o Cantor ou Música... (Ex: Gusttavo Lima)"
-              className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 pl-10 pr-24 text-sm text-white outline-none focus:ring-2 focus:ring-amber-500/50 placeholder:text-slate-500"
-            />
-            <button
-              type="submit"
-              className="absolute right-1.5 h-8 bg-amber-500 text-white font-bold px-3 rounded-lg text-xs hover:bg-amber-600 transition-colors"
-            >
-              🔍 Buscar
-            </button>
-          </form>
-
-          {/* SINALIZADOR DE MÚSICA ATUAL */}
-          <div className="flex items-center justify-between border-t border-slate-800 pt-3">
+          {/* SINALIZADOR DA SELEÇÃO ATUAL */}
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2 min-w-0">
               <Music className="h-4 w-4 text-amber-500 shrink-0 animate-bounce" /> 
               <p className="text-xs font-semibold truncate text-slate-400">
-                Ouvindo agora: <span className="text-white font-bold uppercase">{musicaAtual}</span>
+                Estilo atual: <span className="text-white font-bold uppercase">{estacaoAtual.nome}</span>
               </p>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded-full shrink-0">
-              <Volume2 className="h-3.5 w-3.5" /> Som HD
+            <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-800 px-2.5 py-1 rounded-full">
+              <Volume2 className="h-3.5 w-3.5" /> Áudio Digital
             </div>
           </div>
 
-          {/* INTERFACE DO PLAYER DE VÍDEO / ÁUDIO CONTÍNUO (CORRIGIDA) */}
-          <div className="rounded-2xl overflow-hidden bg-black aspect-video shadow-inner border border-slate-800">
+          {/* PLAYER EMBED OFICIAL INTEGRADO (SEM ERRO DE IP) */}
+          <div className="rounded-2xl overflow-hidden bg-black shadow-inner border border-slate-800 h-[350px]">
             <iframe
-              src={`https://youtube.com{videoCode}?autoplay=1`}
+              src={estacaoAtual.embedUrl}
               width="100%"
               height="100%"
-              allow="autoplay; encrypted-media; picture-in-picture"
               allowFullScreen={true}
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
               loading="lazy"
               className="border-0"
             />
+          </div>
+
+          {/* BOTÕES DE SELEÇÃO RÁPIDA DE CANTORES / ESTILOS */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mudar de Programação:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {ESTACOES_SERTANEJAS.map((estacao) => (
+                <button
+                  key={estacao.id}
+                  onClick={() => trocarEstacao(estacao)}
+                  className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
+                    estacao.id === estacaoAtual.id
+                      ? "border-amber-500 bg-amber-500/10 text-white font-bold"
+                      : "border-slate-800 bg-slate-950/50 hover:bg-slate-800 text-slate-300"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs truncate">{estacao.nome}</p>
+                    <p className="text-[10px] text-slate-500 truncate">{estacao.descricao}</p>
+                  </div>
+                  <Play className={`w-3.5 h-3.5 shrink-0 ml-2 ${estacao.id === estacaoAtual.id ? "text-amber-500 fill-amber-500" : "text-slate-500"}`} />
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* GATILHO PUBLICITÁRIO DO CLUBE */}
@@ -141,7 +163,7 @@ function RadioHSComponent() {
               <Crown className="h-3.5 w-3.5 fill-current" /> Benefício Clube HS Perdizes
             </p>
             <p className="text-xs text-slate-400 leading-normal">
-              Assinantes do clube removem os anúncios do player e desbloqueiam entregas com frete grátis na região!
+              Membros VIP ouvem as estações de forma contínua e sem nenhuma propaganda na transição.
             </p>
           </div>
         </div>
@@ -153,7 +175,7 @@ function RadioHSComponent() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center space-y-5">
             <div className="space-y-2">
               <h3 className="text-lg font-bold text-white">Anúncio do Patrocinador</h3>
-              <p className="text-xs text-slate-400">O seu sertanejo continuará tocando assim que você fechar o banner.</p>
+              <p className="text-xs text-slate-400">A sua programação continuará tocando assim que fechar o banner publicitário.</p>
             </div>
 
             {/* BANNER DE ANÚNCIO */}
@@ -196,17 +218,3 @@ function RadioHSComponent() {
     </div>
   );
 }
-
-// DECLARAÇÃO DA ROTA OFICIAL DO TANSTACK
-export const Route = createFileRoute("/radio")({
-  head: () => ({
-    meta: [
-      { title: "Rádio HS Digital 🎵 · Ao Vivo" },
-      {
-        name: "description",
-        content: "Ouça a programação de sertanejo oficial da HS Digital com reprodução contínua e busca de artistas.",
-      },
-    ],
-  }),
-  component: RadioHSComponent,
-});
