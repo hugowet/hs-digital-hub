@@ -39,20 +39,13 @@ import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { supabase } from "@/integrations/supabase/client";
 
-type HomeSearch = {
-  q?: string | undefined;
-  category?: string | undefined;
-  range?: "a" | "b" | "c" | "d" | undefined;
-  sort?: "price-asc" | "price-desc" | undefined;
-  free?: true | undefined;
-};
-
-type HomeSearchUpdate = {
-  q?: string | undefined;
-  category?: string | null | undefined;
-  range?: HomeSearch["range"] | "all";
-  sort?: HomeSearch["sort"] | "popular";
-  free?: boolean | undefined;
+// Definição estrita das propriedades de pesquisa aceitas na URL do Marketplace
+export type HomeSearch = {
+  q?: string;
+  category?: string;
+  range?: "all" | "a" | "b" | "c" | "d";
+  sort?: "popular" | "price-asc" | "price-desc";
+  free?: boolean;
 };
 
 const normalizeSearch = (search: Record<string, unknown>): HomeSearch => ({
