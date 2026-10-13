@@ -266,3 +266,133 @@ export function SiteHeader({
                   <DropdownMenuContent align="end" className="w-60">
                     <DropdownMenuLabel>Minha conta HS Digital</DropdownMenuLabel>
                     <DropdownMenuSeparator />
+Use o código com cuidado.
+<DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
+
+Minha conta
+{/* CLUBE HS NO DROPDOWN DE USUÁRIO */}
+<DropdownMenuItem onSelect={() => navigate({ to: "/clube-hs" })} className="font-bold text-amber-600 dark:text-amber-400">
+
+Clube HS 🌟
+<DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
+
+Meus endereços
+
+<DropdownMenuItem onSelect={() => navigate({ to: "/compras" })}>
+
+Minhas compras
+
+{isBuyer && (
+<DropdownMenuItem onSelect={() => navigate({ to: "/cupons" })}>
+
+Meus cupons
+
+)}
+{isBuyer && (
+<DropdownMenuItem onSelect={() => navigate({ to: "/jogos" })}>
+
+Jogos & Prêmios
+
+)}
+<DropdownMenuItem onSelect={() => navigate({ to: "/notificacoes" })}>
+
+Notificações
+
+<DropdownMenuItem onSelect={() => navigate({ to: "/vendedor" })}>
+
+Seller Center
+
+{isAdmin && (
+<DropdownMenuItem onSelect={() => navigate({ to: "/admin" })}>
+
+Admin
+
+)}
+
+<DropdownMenuItem onSelect={() => void signOut()}>
+
+Sair da conta
+
+
+
+</>
+) : (
+)}
+<Button
+variant="ghost"
+size="icon"
+onClick={() => setOpen((v) => !v)}
+className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground sm:hidden"
+aria-label="Menu"
+>
+
+
+
+{/* NAVEGAÇÃO HORIZONTAL DE COMPUTADOR */}
+{signedIn && (
+Início
+{/* 🌟 INCLUSÃO DO BOTÃO PREMIUM ESTILO BADGE QUE A IA MANDOU ACRIZENTAR */}
+Clube HS
+Minhas compras
+{isBuyer && (
+Jogos & Prêmios
+)}
+{isBuyer && (
+Meus cupons
+)}
+Notificações
+Venda na HS Digital
+)}
+{/* MENU SANDUÍCHE LATERAL / MOBILE */}
+{open && (
+Início
+{/* CLUBE HS EM MOBILE NO TOPO */}
+Clube HS 🌟
+{signedIn && (
+<>
+Minha conta e endereços
+Minhas compras
+{isBuyer && (
+Meus cupons
+)}
+Notificações {unreadMessages > 0 ? (${unreadMessages}) : ""}
+</>
+)}
+{isBuyer && (
+Jogos & Prêmios
+)}
+{signedIn && (
+<>
+Carrinho {count > 0 ? (${count}) : ""}
+Seller Center
+</>
+)}
+{isAdmin && (
+Admin
+)}
+{signedIn ? (
+<Button
+variant="ghost"
+onClick={() => {
+setOpen(false);
+void signOut();
+}}
+className="justify-start w-full text-destructive hover:bg-destructive/10"
+>
+
+Sair da conta
+
+) : (
+Entrar / Criar conta
+)}
+
+)}
+
+
+);
+}
+export function AuthCta() {
+return (
+Entrar
+);
+}
