@@ -23,7 +23,7 @@ import {
   X,
   Zap,
   Crown,
-  Radio, // 📻 ADICIONADO AQUI
+  Radio,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -177,7 +177,7 @@ function BuyerGamesPromoLink() {
 
       {/* 📻 NOVO BOTÃO DA RÁDIO HS INSTALADO DO LADO DO CLUBE */}
       <Button asChild className="w-fit bg-purple-600 hover:bg-purple-700 text-white font-bold border-none shadow-sm rounded-full">
-        <Link to="/radio-hs">
+        <Link to="/">
           <Radio className="h-4 w-4 mr-2" /> Rádio HS
         </Link>
       </Button>
