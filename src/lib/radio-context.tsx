@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface RadioTrack {
+  id: string;
+  genre: "sertanejo" | "gospel" | "funk" | "forro" | "virais";
   title: string;
   artist: string;
   album: string;
@@ -17,7 +19,7 @@ export interface RadioAnnouncement {
   script: string;
 }
 
-// 🎙️ Roteiros Oficiais do Locutor Virtual HS Digital
+// 🎙️ 8 Roteiros Oficiais do Locutor Virtual HS Digital (Com Programa de Afiliados)
 export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
   {
     id: "promo-principal",
@@ -27,11 +29,18 @@ export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
       "É isso aí pessoal, HS Digital evoluindo com tecnologia! Venha comprar, venha economizar, aqui você tem envio rápido e frete grátis!",
   },
   {
+    id: "programa-afiliados",
+    tag: "Ganhe Dinheiro",
+    title: "Programa de Afiliados Oficial",
+    script:
+      "Atenção! Você sabia que pode lucrar todo dia com a HS Digital? Participe do nosso Programa de Afiliados! Compartilhe o seu link da loja ou dos seus produtos favoritos nas redes sociais e receba 10% de comissão automática direto no seu painel em cada venda confirmada. Clique no botão Afiliados ao lado do carrinho e comece a faturar agora!",
+  },
+  {
     id: "clube-hs",
     tag: "Clube VIP",
     title: "Clube HS por R$ 19,90",
     script:
-      "Atenção clientes da HS Digital! Você já conhece o Clube HS? Por apenas dezenove e noventa ao mês, você garante frete grátis na sua região, ouve nossa rádio sem anúncios e tem descontos VIP exclusivos em milhares de produtos. Acesse o menu Clube HS e assine agora mesmo!",
+      "Atenção clientes da HS Digital! Você já conhece o Clube HS? Por apenas dezenove e noventa ao mês, você garante frete grátis, ouve nossa rádio sem anúncios e tem descontos VIP exclusivos em milhares de produtos. Acesse o menu Clube HS e assine agora mesmo!",
   },
   {
     id: "jogos-premios",
@@ -48,43 +57,74 @@ export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
       "Compre com total segurança e garantia na HS Digital. Todos os pagamentos contam com proteção de ponta a ponta, rastreamento em tempo real e entrega rápida para todo o Brasil. Os melhores produtos e lojas em um só marketplace!",
   },
   {
+    id: "produtos-virais",
+    tag: "Tendências",
+    title: "Músicas e Produtos Virais",
+    script:
+      "Você está ouvindo as músicas mais tocadas e virais do momento aqui na Rádio HS Digital! E enquanto curte o som, aproveite as tendências e ofertas exclusivas na nossa vitrine. Produtos em alta com entrega expressa para todo o Brasil!",
+  },
+  {
     id: "ia-aura-atendimento",
     tag: "Tecnologia & IA",
     title: "Atendimento 24h com a Aura",
     script:
       "Dúvidas sobre produtos, pedidos ou frete? Fale com a Aura, nossa assistente de inteligência artificial pronta para te atender a qualquer hora do dia. Aproveite as melhores ofertas da nossa vitrine e boas compras!",
   },
+  {
+    id: "vendedores-parceiros",
+    tag: "Lojas Oficiais",
+    title: "Vendedores Verificados",
+    script:
+      "Na HS Digital você compra direto de fabricantes e lojas verificadas com estoque garantido e nota fiscal. Encontre eletrônicos, utilidades e novidades com os menores preços da internet!",
+  },
 ];
 
-// 🎵 Trilhas de Fundo Instrumentais (perfeitas para locução e compras)
+// 🎵 5 Estações Principais: Sertanejo, Gospel, Funk, Forró e Virais
 export const RADIO_BACKGROUND_TRACKS: RadioTrack[] = [
   {
-    title: "Lo-Fi Lounge & Chill Beats",
-    artist: "Trilha Oficial HS Digital",
-    album: "Marketplace Sessions",
-    artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio17.mp3",
-  },
-  {
-    title: "Sertanejo Acústico & Melodias",
-    artist: "Trilha Oficial HS Digital",
-    album: "Brasil Sessions",
+    id: "sertanejo",
+    genre: "sertanejo",
+    title: "Sertanejo Universitário & Modões",
+    artist: "MGT Sertanejo Oficial",
+    album: "Estação Sertanejo HS",
     artwork: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=512&q=80",
-    src: "https://cast.mgtradio.net/radio/8020/aac",
+    src: "https://cast.mgtradio.net/radio/8000/aac",
   },
   {
-    title: "Pop & Eletrônica Suave",
-    artist: "Trilha Oficial HS Digital",
-    album: "Modern Store Vibe",
-    artwork: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio1.mp3",
+    id: "gospel",
+    genre: "gospel",
+    title: "Louvores & Adoração em Alta",
+    artist: "MGT Gospel Nacional",
+    album: "Estação Gospel HS",
+    artwork: "https://images.unsplash.com/photo-1507692049790-de58290a4334?w=512&q=80",
+    src: "https://cast.mgtradio.net/radio/8040/aac",
   },
   {
-    title: "Groove & Ambient Coffee",
-    artist: "Trilha Oficial HS Digital",
-    album: "Relax & Shop",
+    id: "funk",
+    genre: "funk",
+    title: "Funk Brasil & Ritmos Urbanos",
+    artist: "Batidão & Funk Hits",
+    album: "Estação Funk HS",
+    artwork: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=512&q=80",
+    src: "https://streams.ilovemusic.de/iloveradio2.mp3",
+  },
+  {
+    id: "forro",
+    genre: "forro",
+    title: "Forró, Piseiro & Vaquejada",
+    artist: "Piseiro & Forró Hits",
+    album: "Estação Forró HS",
     artwork: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=512&q=80",
     src: "https://streams.ilovemusic.de/iloveradio10.mp3",
+  },
+  {
+    id: "virais",
+    genre: "virais",
+    title: "Músicas Virais & Top Brasil",
+    artist: "Hits em Alta no TikTok & Pop",
+    album: "Estação Virais HS",
+    artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
+    src: "https://streams.ilovemusic.de/iloveradio1.mp3",
   },
 ];
 
@@ -117,227 +157,198 @@ interface RadioContextType {
 const RadioContext = createContext<RadioContextType | null>(null);
 
 export function RadioProvider({ children }: { children: React.ReactNode }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.8);
+  const [volume, setVolumeState] = useState(0.85);
   const [isMuted, setIsMuted] = useState(false);
-  const [songSwitchCount, setSongSwitchCount] = useState(0);
   const [showClubModal, setShowClubModal] = useState(false);
 
   // Estados do Locutor Virtual
-  const [isLocutorSpeaking, setIsLocutorSpeaking] = useState(false);
   const [locutorEnabled, setLocutorEnabled] = useState(true);
-  const [announcementIndex, setAnnouncementIndex] = useState(0);
+  const [isLocutorSpeaking, setIsLocutorSpeaking] = useState(false);
   const [currentAnnouncement, setCurrentAnnouncement] = useState<RadioAnnouncement | null>(null);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const locutorIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const currentAnnouncementIndexRef = useRef<number>(0);
+  const baseVolumeRef = useRef<number>(volume);
 
   const currentTrack = RADIO_BACKGROUND_TRACKS[currentTrackIndex];
 
-  // Validação Clube HS VIP
-  const { data: userProfile } = useQuery({
-    queryKey: ["radio-user-clube-status"],
+  // Verifica status VIP do Clube HS
+  const { data: isVipClube = false } = useQuery({
+    queryKey: ["radio-vip-status"],
     queryFn: async () => {
       const { data: authData } = await supabase.auth.getUser();
-      if (!authData?.user) return null;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_clube_hs")
-        .eq("id", authData.user.id)
+      if (!authData.user) return false;
+      const { data: sub } = await supabase
+        .from("user_subscriptions")
+        .select("status")
+        .eq("user_id", authData.user.id)
+        .eq("status", "active")
         .maybeSingle();
-
-      return profile;
+      return !!sub;
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 5 * 60_000,
   });
 
-  const isVipClube = Boolean(userProfile?.is_clube_hs);
-
-  // Integração com controles nativos de segundo plano e tela de bloqueio
-  const updateMediaSession = (track: RadioTrack) => {
-    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
-
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: `${track.title} 🎙️`,
-        artist: "Rádio HS Digital Oficial",
-        album: "Marketplace HS Digital",
-        artwork: [
-          { src: track.artwork, sizes: "96x96", type: "image/jpeg" },
-          { src: track.artwork, sizes: "128x128", type: "image/jpeg" },
-          { src: track.artwork, sizes: "256x256", type: "image/jpeg" },
-          { src: track.artwork, sizes: "512x512", type: "image/jpeg" },
-        ],
-      });
-
-      navigator.mediaSession.setActionHandler("play", () => play());
-      navigator.mediaSession.setActionHandler("pause", () => pause());
-      navigator.mediaSession.setActionHandler("previoustrack", () => handlePrevTrack());
-      navigator.mediaSession.setActionHandler("nexttrack", () => handleNextTrack());
-    } catch (e) {
-      console.warn("MediaSession:", e);
-    }
-  };
-
-  // 🎙️ Função de fala do Locutor com Audio Ducking (abaixa o som de fundo enquanto fala)
-  const speakAnnouncement = useCallback(
-    (scriptObj: RadioAnnouncement) => {
-      if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-
-      window.speechSynthesis.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(scriptObj.script);
-      utterance.lang = "pt-BR";
-      utterance.rate = 1.05; // ritmo animado de rádio
-      utterance.pitch = 1.05;
-
-      const voices = window.speechSynthesis.getVoices();
-      const ptVoice = voices.find(
-        (v) => v.lang.includes("pt-BR") || v.lang.includes("pt_BR") || v.lang.startsWith("pt")
-      );
-      if (ptVoice) {
-        utterance.voice = ptVoice;
-      }
-
-      utterance.onstart = () => {
-        setIsLocutorSpeaking(true);
-        setCurrentAnnouncement(scriptObj);
-        // Ducking de áudio: reduz para 15% para dar destaque à voz
-        if (audioRef.current) {
-          audioRef.current.volume = (isMuted ? 0 : volume) * 0.2;
-        }
-      };
-
-      const handleEnd = () => {
-        setIsLocutorSpeaking(false);
-        // Restaura o volume normal da trilha
-        if (audioRef.current) {
-          audioRef.current.volume = isMuted ? 0 : volume;
-        }
-      };
-
-      utterance.onend = handleEnd;
-      utterance.onerror = handleEnd;
-
-      window.speechSynthesis.speak(utterance);
-    },
-    [volume, isMuted]
-  );
-
-  const speakAnnouncementNow = (index?: number) => {
-    const targetIdx =
-      typeof index === "number" ? index : (announcementIndex + 1) % HS_MARKETING_SCRIPTS.length;
-    setAnnouncementIndex(targetIdx);
-    speakAnnouncement(HS_MARKETING_SCRIPTS[targetIdx]);
-  };
-
-  // Agendamento automático de anúncios a cada 50 segundos enquanto estiver tocando
-  useEffect(() => {
-    if (!isPlaying || !locutorEnabled) return;
-
-    const interval = setInterval(() => {
-      if (!isLocutorSpeaking) {
-        setAnnouncementIndex((prev) => {
-          const next = (prev + 1) % HS_MARKETING_SCRIPTS.length;
-          speakAnnouncement(HS_MARKETING_SCRIPTS[next]);
-          return next;
-        });
-      }
-    }, 50000); // 50 segundos entre anúncios
-
-    return () => clearInterval(interval);
-  }, [isPlaying, locutorEnabled, isLocutorSpeaking, speakAnnouncement]);
-
-  // Atualização da fonte ao trocar de faixa
-  useEffect(() => {
+  const duckVolume = useCallback((duck: boolean) => {
     if (!audioRef.current) return;
-
-    audioRef.current.src = currentTrack.src;
-    updateMediaSession(currentTrack);
-
-    if (isPlaying) {
-      audioRef.current.play().catch((err) => {
-        console.warn("Autoplay:", err);
-        setIsPlaying(false);
-      });
+    if (duck) {
+      audioRef.current.volume = Math.max(0.12, baseVolumeRef.current * 0.18);
+    } else {
+      audioRef.current.volume = isMuted ? 0 : baseVolumeRef.current;
     }
-  }, [currentTrackIndex]);
+  }, [isMuted]);
 
-  // Controle de volume
+  // Função do Locutor Virtual com Web Speech API
+  const speakAnnouncement = useCallback((index?: number) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (isVipClube && !index) return; // VIPs não têm anúncios automáticos
+
+    window.speechSynthesis.cancel();
+
+    const targetIndex =
+      index !== undefined
+        ? index % HS_MARKETING_SCRIPTS.length
+        : currentAnnouncementIndexRef.current % HS_MARKETING_SCRIPTS.length;
+
+    const announcement = HS_MARKETING_SCRIPTS[targetIndex];
+    currentAnnouncementIndexRef.current = targetIndex + 1;
+    setCurrentAnnouncement(announcement);
+
+    const utterance = new SpeechSynthesisUtterance(announcement.script);
+    utterance.lang = "pt-BR";
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
+
+    const voices = window.speechSynthesis.getVoices();
+    const brVoice =
+      voices.find((v) => v.lang === "pt-BR" && (v.name.includes("Luciana") || v.name.includes("Google") || v.name.includes("Felipe"))) ||
+      voices.find((v) => v.lang.startsWith("pt"));
+    if (brVoice) utterance.voice = brVoice;
+
+    utterance.onstart = () => {
+      setIsLocutorSpeaking(true);
+      duckVolume(true);
+    };
+
+    utterance.onend = () => {
+      setIsLocutorSpeaking(false);
+      duckVolume(false);
+      setCurrentAnnouncement(null);
+    };
+
+    utterance.onerror = () => {
+      setIsLocutorSpeaking(false);
+      duckVolume(false);
+      setCurrentAnnouncement(null);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }, [duckVolume, isVipClube]);
+
+  const speakAnnouncementNow = useCallback((index?: number) => {
+    speakAnnouncement(index);
+  }, [speakAnnouncement]);
+
+  // Intervalo estrito de 1 minuto (60 segundos) para os anúncios do locutor
   useEffect(() => {
-    if (audioRef.current && !isLocutorSpeaking) {
-      audioRef.current.volume = isMuted ? 0 : volume;
-    }
-  }, [volume, isMuted, isLocutorSpeaking]);
+    if (locutorIntervalRef.current) clearInterval(locutorIntervalRef.current);
 
-  const play = () => {
+    if (isPlaying && locutorEnabled && !isVipClube) {
+      locutorIntervalRef.current = setInterval(() => {
+        speakAnnouncement();
+      }, 60_000); // Exatamente 1 minuto
+    }
+
+    return () => {
+      if (locutorIntervalRef.current) clearInterval(locutorIntervalRef.current);
+    };
+  }, [isPlaying, locutorEnabled, isVipClube, speakAnnouncement]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  }, []);
+
+  const setVolume = (val: number) => {
+    setVolumeState(val);
+    baseVolumeRef.current = val;
+    if (audioRef.current && !isLocutorSpeaking) {
+      audioRef.current.volume = isMuted ? 0 : val;
+    }
+  };
+
+  const play = useCallback(() => {
     if (!audioRef.current) return;
     audioRef.current
       .play()
-      .then(() => {
-        setIsPlaying(true);
-        updateMediaSession(currentTrack);
-        if (typeof window !== "undefined" && "mediaSession" in navigator) {
-          navigator.mediaSession.playbackState = "playing";
-        }
-        // Fala de boas-vindas do locutor ao iniciar pela primeira vez
-        if (locutorEnabled && !isLocutorSpeaking) {
-          setTimeout(() => {
-            speakAnnouncement(HS_MARKETING_SCRIPTS[0]);
-          }, 1500);
-        }
-      })
-      .catch((err) => {
-        console.error("Erro ao iniciar áudio:", err);
-      });
-  };
+      .then(() => setIsPlaying(true))
+      .catch((err) => console.log("Audio play prevented:", err));
+  }, []);
 
-  const pause = () => {
+  const pause = useCallback(() => {
     if (!audioRef.current) return;
     audioRef.current.pause();
     setIsPlaying(false);
-    if (typeof window !== "undefined") {
-      if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-      if ("mediaSession" in navigator) {
-        navigator.mediaSession.playbackState = "paused";
-      }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      setIsLocutorSpeaking(false);
     }
-    setIsLocutorSpeaking(false);
-  };
+  }, []);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     if (isPlaying) {
       pause();
     } else {
       play();
     }
-  };
+  }, [isPlaying, pause, play]);
 
-  const handleNextTrack = () => {
-    const nextCount = songSwitchCount + 1;
-    setSongSwitchCount(nextCount);
-
-    if (!isVipClube && nextCount % 3 === 0) {
-      setShowClubModal(true);
-      pause();
-    }
-
-    setCurrentTrackIndex((prev) => (prev + 1) % RADIO_BACKGROUND_TRACKS.length);
-  };
-
-  const handlePrevTrack = () => {
-    setCurrentTrackIndex(
-      (prev) => (prev - 1 + RADIO_BACKGROUND_TRACKS.length) % RADIO_BACKGROUND_TRACKS.length
-    );
-  };
-
-  const selectTrack = (index: number) => {
+  const selectTrack = useCallback((index: number) => {
     setCurrentTrackIndex(index);
-    play();
-  };
+    if (audioRef.current) {
+      audioRef.current.src = RADIO_BACKGROUND_TRACKS[index].src;
+      if (isPlaying) {
+        audioRef.current.play().catch(() => {});
+      }
+    }
+  }, [isPlaying]);
+
+  const handleNextTrack = useCallback(() => {
+    const next = (currentTrackIndex + 1) % RADIO_BACKGROUND_TRACKS.length;
+    selectTrack(next);
+  }, [currentTrackIndex, selectTrack]);
+
+  const handlePrevTrack = useCallback(() => {
+    const prev = (currentTrackIndex - 1 + RADIO_BACKGROUND_TRACKS.length) % RADIO_BACKGROUND_TRACKS.length;
+    selectTrack(prev);
+  }, [currentTrackIndex, selectTrack]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : isLocutorSpeaking ? Math.max(0.12, volume * 0.18) : volume;
+    }
+  }, [isMuted, volume, isLocutorSpeaking]);
+
+  useEffect(() => {
+    if ("mediaSession" in navigator && currentTrack) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        album: currentTrack.album,
+        artwork: [{ src: currentTrack.artwork, sizes: "512x512", type: "image/jpeg" }],
+      });
+      navigator.mediaSession.setActionHandler("play", () => play());
+      navigator.mediaSession.setActionHandler("pause", () => pause());
+      navigator.mediaSession.setActionHandler("nexttrack", () => handleNextTrack());
+      navigator.mediaSession.setActionHandler("previoustrack", () => handlePrevTrack());
+    }
+  }, [currentTrack, play, pause, handleNextTrack, handlePrevTrack]);
 
   return (
     <RadioContext.Provider
@@ -369,10 +380,15 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     >
       <audio
         ref={audioRef}
+        src={currentTrack.src}
         preload="auto"
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
-        onEnded={handleNextTrack}
+        onError={() => {
+          setTimeout(() => {
+            if (isPlaying) handleNextTrack();
+          }, 3000);
+        }}
       />
       {children}
     </RadioContext.Provider>
@@ -380,9 +396,9 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useRadio() {
-  const context = useContext(RadioContext);
-  if (!context) {
+  const ctx = useContext(RadioContext);
+  if (!ctx) {
     throw new Error("useRadio deve ser usado dentro de um RadioProvider");
   }
-  return context;
+  return ctx;
 }
