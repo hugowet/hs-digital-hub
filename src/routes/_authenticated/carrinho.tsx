@@ -101,11 +101,11 @@ function CartPage() {
       .maybeSingle()
       .then(({ data }) => {
         if (!data) return;
-        setName(data.recipient_name ?? "");
-        setPhone(data.phone ?? "");
-        setAddress(`${data.street_address ?? ""}${data.complement ? `, ${data.complement}` : ""}`);
-        setCity(data.city ?? "");
-        setState(data.state ?? "");
+        setName(data.recipient_name);
+        setPhone(data.phone);
+        setAddress(`${data.street_address}${data.complement ? `, ${data.complement}` : ""}`);
+        setCity(data.city);
+        setState(data.state);
         setPostalCode(data.postal_code ?? "");
       });
   }, []);
@@ -130,77 +130,57 @@ function CartPage() {
     .map((item) => `${item.productId}:${item.quantity}`)
     .sort()
     .join("|");
+  useEffect(() => {
+    setQuotes([]);
+    setSelectedQuotes({});
+  }, [cartSignature, postalCode]);
 
-  const calculateShipping = async (targetZip?: string): Promise<Record<string, string> | null> => {
-    const normalized = (targetZip ?? postalCode).replace(/\D/g, "");
+  const calculateShipping = async () => {
+    const normalized = postalCode.replace(/\D/g, "");
     if (normalized.length !== 8) {
-      if (!targetZip) toast.error("Informe um CEP válido com 8 números.");
-      return null;
+      toast.error("Informe um CEP válido com 8 números.");
+      return;
     }
     setQuoting(true);
     try {
-      const validItems = items
-        .map((item: any) => ({
-          productId: item.productId ?? item.product_id ?? item.id,
-          quantity: Number(item.quantity) || 1,
-        }))
-        .filter((item) => typeof item.productId === "string" && item.productId.length > 0);
-
       const result = await quoteShipping({
         data: {
           postalCode: normalized,
-          items: validItems,
+          items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
         },
       });
-
       setQuotes(result);
-      const chosen = Object.fromEntries(
-        result.map((group) => {
-          const cheapest = [...group.options].sort((a, b) => a.amount - b.amount)[0];
-          return [group.storeId, cheapest?.id ?? ""];
-        }),
+      setSelectedQuotes(
+        Object.fromEntries(
+          result.map((group) => {
+            const cheapest = [...group.options].sort((a, b) => a.amount - b.amount)[0];
+            return [group.storeId, cheapest?.id ?? ""];
+          }),
+        ),
       );
-      setSelectedQuotes(chosen);
-      return chosen;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível calcular o frete.");
-      return null;
     } finally {
       setQuoting(false);
     }
   };
 
-  // Auto-cálculo de frete ao preencher ou carregar o CEP
-  useEffect(() => {
-    const normalized = postalCode.replace(/\D/g, "");
-    if (normalized.length === 8 && items.length > 0) {
-      void calculateShipping(normalized);
-    }
-  }, [postalCode, cartSignature]);
-
   const checkout = async () => {
     const physicalStoreIds = groups
       .filter((group) => group.items.some((item) => item.productType !== "digital"))
       .map((group) => group.storeId);
-
-    const cleanZip = postalCode.replace(/\D/g, "");
-    if (!name.trim() || !address.trim() || !city.trim() || state.trim().length !== 2 || cleanZip.length !== 8) {
+    if (
+      !name.trim() ||
+      !address.trim() ||
+      !city.trim() ||
+      state.trim().length !== 2 ||
+      postalCode.replace(/\D/g, "").length !== 8
+    ) {
       toast.error("Preencha nome, endereço, cidade, UF e CEP para entrega.");
       return;
     }
-
-    let quotesToUse = { ...selectedQuotes };
-
-    // Se ainda não cotou para alguma loja física, calcula automaticamente na hora
-    if (physicalStoreIds.some((storeId) => !quotesToUse[storeId])) {
-      const freshQuotes = await calculateShipping(cleanZip);
-      if (freshQuotes) {
-        quotesToUse = freshQuotes;
-      }
-    }
-
-    if (physicalStoreIds.some((storeId) => !quotesToUse[storeId])) {
-      toast.error("Por favor, selecione uma opção de frete para continuar.");
+    if (physicalStoreIds.some((storeId) => !selectedQuotes[storeId])) {
+      toast.error("Calcule e escolha o frete de cada loja antes de continuar.");
       return;
     }
 
@@ -215,10 +195,10 @@ function CartPage() {
             address: address.trim(),
             city: city.trim(),
             state: state.trim().toUpperCase(),
-            postalCode: cleanZip,
+            postalCode: postalCode.replace(/\D/g, ""),
             note: note.trim(),
           },
-          shippingQuoteIds: quotesToUse,
+          shippingQuoteIds: selectedQuotes,
           couponId: selectedCouponId || undefined,
         },
       });
@@ -331,15 +311,7 @@ function CartPage() {
                 )}
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Frete</dt>
-                  <dd>
-                    {quotes.length === 0
-                      ? quoting
-                        ? "Calculando..."
-                        : "Informe o CEP"
-                      : shipping === 0
-                        ? "Grátis"
-                        : brl(shipping)}
-                  </dd>
+                  <dd>{quotes.length === 0 ? "Calcule pelo CEP" : shipping === 0 ? "Grátis" : brl(shipping)}</dd>
                 </div>
                 <div className="flex justify-between border-t border-border pt-2 font-display text-lg font-bold">
                   <dt>Total</dt>
@@ -402,7 +374,7 @@ function CartPage() {
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       maxLength={100}
-                      placeholder="Cidade"
+                      placeholder="Manaus"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -412,7 +384,7 @@ function CartPage() {
                       value={state}
                       onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
                       maxLength={2}
-                      placeholder="UF"
+                      placeholder="AM"
                     />
                   </div>
                 </div>
@@ -431,7 +403,7 @@ function CartPage() {
               {quotes.length > 0 && (
                 <div className="mt-4 space-y-3 border-t border-border pt-4">
                   <p className="flex items-center gap-2 text-sm font-semibold">
-                    <Truck className="h-4 w-4 text-primary" /> Opções de entrega
+                    <Truck className="h-4 w-4 text-primary" /> Escolha a entrega
                   </p>
                   {quotes.map((group) => (
                     <div key={group.storeId} className="space-y-2">
@@ -439,11 +411,7 @@ function CartPage() {
                       {group.options.map((option) => (
                         <label
                           key={option.id}
-                          className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition ${
-                            selectedQuotes[group.storeId] === option.id
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:bg-muted/40"
-                          }`}
+                          className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm ${selectedQuotes[group.storeId] === option.id ? "border-primary bg-primary/5" : "border-border"}`}
                         >
                           <input
                             type="radio"
@@ -457,10 +425,10 @@ function CartPage() {
                             <strong className="block">{option.serviceName}</strong>
                             <span className="text-xs text-muted-foreground">
                               {option.carrierName}
-                              {option.deliveryDaysMax !== null ? ` · até ${option.deliveryDaysMax} dias úteis` : ""}
+                              {option.deliveryDaysMax !== null ? ` · até ${option.deliveryDaysMax} dias` : ""}
                             </span>
                           </span>
-                          <strong>{option.amount === 0 ? "Grátis" : brl(option.amount)}</strong>
+                          <strong>{brl(option.amount)}</strong>
                         </label>
                       ))}
                     </div>
@@ -504,7 +472,7 @@ function CartPage() {
                 {submitting ? "Criando pedido…" : "Ir para o pagamento"}
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Pagamento seguro por Pix ou cartão via Mercado Pago com proteção total.
+                Pagamento seguro por Pix ou cartão. Carrinhos com várias lojas são pagos por loja.
               </p>
             </aside>
           </div>
