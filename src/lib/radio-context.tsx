@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -10,46 +10,79 @@ export interface RadioTrack {
   src: string;
 }
 
-export const RADIO_TRACKS: RadioTrack[] = [
+export interface RadioAnnouncement {
+  id: string;
+  tag: string;
+  title: string;
+  script: string;
+}
+
+// 🎙️ Roteiros Oficiais do Locutor Virtual HS Digital
+export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
   {
-    title: "HS Sertanejo Universitário & Modão",
-    artist: "Rádio HS Digital 🎵",
-    album: "Top Sertanejo Brasil",
-    artwork: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=512&q=80",
-    src: "https://cast.mgtradio.net/radio/8020/aac",
+    id: "promo-principal",
+    tag: "Chamada Principal",
+    title: "Evolução e Economia HS",
+    script:
+      "É isso aí pessoal, HS Digital evoluindo com tecnologia! Venha comprar, venha economizar, aqui você tem envio rápido e frete grátis!",
   },
   {
-    title: "Hs Gospel FM",
-    artist: "Rádio HS Digital 🎵",
-    album: "Louvor, tracks e músicas",
-    artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
-    src: "http://ec5.yesstreaming.net:1890/stream",
+    id: "clube-hs",
+    tag: "Clube VIP",
+    title: "Clube HS por R$ 19,90",
+    script:
+      "Atenção clientes da HS Digital! Você já conhece o Clube HS? Por apenas dezenove e noventa ao mês, você garante frete grátis na sua região, ouve nossa rádio sem anúncios e tem descontos VIP exclusivos em milhares de produtos. Acesse o menu Clube HS e assine agora mesmo!",
   },
   {
-    title: "Pop & Top Brasil",
-    artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio2.mp3",
+    id: "jogos-premios",
+    tag: "Jogos & Sorte",
+    title: "Roleta da Sorte e Raspadinha",
+    script:
+      "Quer ganhar prêmios e cupons na hora enquanto faz suas compras? Na HS Digital você se diverte na nossa área de jogos! Gire a Roleta da Sorte e tente a sorte na Raspadinha Oficial da HS Digital para faturar super descontos no seu carrinho!",
   },
   {
-    title: "HS Hits & Eletrônica",
-    artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
-    artwork: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio1.mp3",
+    id: "seguranca-marketplace",
+    tag: "Segurança & Confiança",
+    title: "Compra 100% Protegida",
+    script:
+      "Compre com total segurança e garantia na HS Digital. Todos os pagamentos contam com proteção de ponta a ponta, rastreamento em tempo real e entrega rápida para todo o Brasil. Os melhores produtos e lojas em um só marketplace!",
   },
   {
-    title: "Lo-Fi Lounge & Chill",
-    artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
+    id: "ia-aura-atendimento",
+    tag: "Tecnologia & IA",
+    title: "Atendimento 24h com a Aura",
+    script:
+      "Dúvidas sobre produtos, pedidos ou frete? Fale com a Aura, nossa assistente de inteligência artificial pronta para te atender a qualquer hora do dia. Aproveite as melhores ofertas da nossa vitrine e boas compras!",
+  },
+];
+
+// 🎵 Trilhas de Fundo Instrumentais (perfeitas para locução e compras)
+export const RADIO_BACKGROUND_TRACKS: RadioTrack[] = [
+  {
+    title: "Lo-Fi Lounge & Chill Beats",
+    artist: "Trilha Oficial HS Digital",
+    album: "Marketplace Sessions",
     artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
     src: "https://streams.ilovemusic.de/iloveradio17.mp3",
   },
   {
-    title: "Dance & Club Classics",
-    artist: "Rádio HS Digital 🎵",
-    album: "Perdizes Sessions",
+    title: "Sertanejo Acústico & Melodias",
+    artist: "Trilha Oficial HS Digital",
+    album: "Brasil Sessions",
+    artwork: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=512&q=80",
+    src: "https://cast.mgtradio.net/radio/8020/aac",
+  },
+  {
+    title: "Pop & Eletrônica Suave",
+    artist: "Trilha Oficial HS Digital",
+    album: "Modern Store Vibe",
+    artwork: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=512&q=80",
+    src: "https://streams.ilovemusic.de/iloveradio1.mp3",
+  },
+  {
+    title: "Groove & Ambient Coffee",
+    artist: "Trilha Oficial HS Digital",
+    album: "Relax & Shop",
     artwork: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=512&q=80",
     src: "https://streams.ilovemusic.de/iloveradio10.mp3",
   },
@@ -64,7 +97,12 @@ interface RadioContextType {
   isMuted: boolean;
   isVipClube: boolean;
   showClubModal: boolean;
+  isLocutorSpeaking: boolean;
+  currentAnnouncement: RadioAnnouncement | null;
+  announcements: RadioAnnouncement[];
+  locutorEnabled: boolean;
   setShowClubModal: (show: boolean) => void;
+  setLocutorEnabled: (enabled: boolean) => void;
   togglePlay: () => void;
   play: () => void;
   pause: () => void;
@@ -73,6 +111,7 @@ interface RadioContextType {
   selectTrack: (index: number) => void;
   setVolume: (volume: number) => void;
   setIsMuted: (muted: boolean | ((prev: boolean) => boolean)) => void;
+  speakAnnouncementNow: (index?: number) => void;
 }
 
 const RadioContext = createContext<RadioContextType | null>(null);
@@ -87,9 +126,15 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const [songSwitchCount, setSongSwitchCount] = useState(0);
   const [showClubModal, setShowClubModal] = useState(false);
 
-  const currentTrack = RADIO_TRACKS[currentTrackIndex];
+  // Estados do Locutor Virtual
+  const [isLocutorSpeaking, setIsLocutorSpeaking] = useState(false);
+  const [locutorEnabled, setLocutorEnabled] = useState(true);
+  const [announcementIndex, setAnnouncementIndex] = useState(0);
+  const [currentAnnouncement, setCurrentAnnouncement] = useState<RadioAnnouncement | null>(null);
 
-  // Validação VIP Clube HS
+  const currentTrack = RADIO_BACKGROUND_TRACKS[currentTrackIndex];
+
+  // Validação Clube HS VIP
   const { data: userProfile } = useQuery({
     queryKey: ["radio-user-clube-status"],
     queryFn: async () => {
@@ -109,15 +154,15 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
   const isVipClube = Boolean(userProfile?.is_clube_hs);
 
-  // Integração nativa com controles de tela de bloqueio e fone
+  // Integração com controles nativos de segundo plano e tela de bloqueio
   const updateMediaSession = (track: RadioTrack) => {
     if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
 
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: `${track.title} 🎵`,
-        artist: track.artist,
-        album: track.album || "Marketplace HS Digital",
+        title: `${track.title} 🎙️`,
+        artist: "Rádio HS Digital Oficial",
+        album: "Marketplace HS Digital",
         artwork: [
           { src: track.artwork, sizes: "96x96", type: "image/jpeg" },
           { src: track.artwork, sizes: "128x128", type: "image/jpeg" },
@@ -126,25 +171,83 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         ],
       });
 
-      navigator.mediaSession.setActionHandler("play", () => {
-        play();
-      });
-
-      navigator.mediaSession.setActionHandler("pause", () => {
-        pause();
-      });
-
-      navigator.mediaSession.setActionHandler("previoustrack", () => {
-        handlePrevTrack();
-      });
-
-      navigator.mediaSession.setActionHandler("nexttrack", () => {
-        handleNextTrack();
-      });
+      navigator.mediaSession.setActionHandler("play", () => play());
+      navigator.mediaSession.setActionHandler("pause", () => pause());
+      navigator.mediaSession.setActionHandler("previoustrack", () => handlePrevTrack());
+      navigator.mediaSession.setActionHandler("nexttrack", () => handleNextTrack());
     } catch (e) {
-      console.warn("MediaSession não suportada:", e);
+      console.warn("MediaSession:", e);
     }
   };
+
+  // 🎙️ Função de fala do Locutor com Audio Ducking (abaixa o som de fundo enquanto fala)
+  const speakAnnouncement = useCallback(
+    (scriptObj: RadioAnnouncement) => {
+      if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(scriptObj.script);
+      utterance.lang = "pt-BR";
+      utterance.rate = 1.05; // ritmo animado de rádio
+      utterance.pitch = 1.05;
+
+      const voices = window.speechSynthesis.getVoices();
+      const ptVoice = voices.find(
+        (v) => v.lang.includes("pt-BR") || v.lang.includes("pt_BR") || v.lang.startsWith("pt")
+      );
+      if (ptVoice) {
+        utterance.voice = ptVoice;
+      }
+
+      utterance.onstart = () => {
+        setIsLocutorSpeaking(true);
+        setCurrentAnnouncement(scriptObj);
+        // Ducking de áudio: reduz para 15% para dar destaque à voz
+        if (audioRef.current) {
+          audioRef.current.volume = (isMuted ? 0 : volume) * 0.2;
+        }
+      };
+
+      const handleEnd = () => {
+        setIsLocutorSpeaking(false);
+        // Restaura o volume normal da trilha
+        if (audioRef.current) {
+          audioRef.current.volume = isMuted ? 0 : volume;
+        }
+      };
+
+      utterance.onend = handleEnd;
+      utterance.onerror = handleEnd;
+
+      window.speechSynthesis.speak(utterance);
+    },
+    [volume, isMuted]
+  );
+
+  const speakAnnouncementNow = (index?: number) => {
+    const targetIdx =
+      typeof index === "number" ? index : (announcementIndex + 1) % HS_MARKETING_SCRIPTS.length;
+    setAnnouncementIndex(targetIdx);
+    speakAnnouncement(HS_MARKETING_SCRIPTS[targetIdx]);
+  };
+
+  // Agendamento automático de anúncios a cada 50 segundos enquanto estiver tocando
+  useEffect(() => {
+    if (!isPlaying || !locutorEnabled) return;
+
+    const interval = setInterval(() => {
+      if (!isLocutorSpeaking) {
+        setAnnouncementIndex((prev) => {
+          const next = (prev + 1) % HS_MARKETING_SCRIPTS.length;
+          speakAnnouncement(HS_MARKETING_SCRIPTS[next]);
+          return next;
+        });
+      }
+    }, 50000); // 50 segundos entre anúncios
+
+    return () => clearInterval(interval);
+  }, [isPlaying, locutorEnabled, isLocutorSpeaking, speakAnnouncement]);
 
   // Atualização da fonte ao trocar de faixa
   useEffect(() => {
@@ -155,7 +258,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
     if (isPlaying) {
       audioRef.current.play().catch((err) => {
-        console.warn("Autoplay bloqueado:", err);
+        console.warn("Autoplay:", err);
         setIsPlaying(false);
       });
     }
@@ -163,10 +266,10 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
   // Controle de volume
   useEffect(() => {
-    if (audioRef.current) {
+    if (audioRef.current && !isLocutorSpeaking) {
       audioRef.current.volume = isMuted ? 0 : volume;
     }
-  }, [volume, isMuted]);
+  }, [volume, isMuted, isLocutorSpeaking]);
 
   const play = () => {
     if (!audioRef.current) return;
@@ -178,9 +281,15 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         if (typeof window !== "undefined" && "mediaSession" in navigator) {
           navigator.mediaSession.playbackState = "playing";
         }
+        // Fala de boas-vindas do locutor ao iniciar pela primeira vez
+        if (locutorEnabled && !isLocutorSpeaking) {
+          setTimeout(() => {
+            speakAnnouncement(HS_MARKETING_SCRIPTS[0]);
+          }, 1500);
+        }
       })
       .catch((err) => {
-        console.error("Erro ao reproduzir áudio:", err);
+        console.error("Erro ao iniciar áudio:", err);
       });
   };
 
@@ -188,9 +297,15 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     if (!audioRef.current) return;
     audioRef.current.pause();
     setIsPlaying(false);
-    if (typeof window !== "undefined" && "mediaSession" in navigator) {
-      navigator.mediaSession.playbackState = "paused";
+    if (typeof window !== "undefined") {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.playbackState = "paused";
+      }
     }
+    setIsLocutorSpeaking(false);
   };
 
   const togglePlay = () => {
@@ -210,11 +325,13 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       pause();
     }
 
-    setCurrentTrackIndex((prev) => (prev + 1) % RADIO_TRACKS.length);
+    setCurrentTrackIndex((prev) => (prev + 1) % RADIO_BACKGROUND_TRACKS.length);
   };
 
   const handlePrevTrack = () => {
-    setCurrentTrackIndex((prev) => (prev - 1 + RADIO_TRACKS.length) % RADIO_TRACKS.length);
+    setCurrentTrackIndex(
+      (prev) => (prev - 1 + RADIO_BACKGROUND_TRACKS.length) % RADIO_BACKGROUND_TRACKS.length
+    );
   };
 
   const selectTrack = (index: number) => {
@@ -225,7 +342,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   return (
     <RadioContext.Provider
       value={{
-        tracks: RADIO_TRACKS,
+        tracks: RADIO_BACKGROUND_TRACKS,
         currentTrackIndex,
         currentTrack,
         isPlaying,
@@ -233,7 +350,12 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         isMuted,
         isVipClube,
         showClubModal,
+        isLocutorSpeaking,
+        currentAnnouncement,
+        announcements: HS_MARKETING_SCRIPTS,
+        locutorEnabled,
         setShowClubModal,
+        setLocutorEnabled,
         togglePlay,
         play,
         pause,
@@ -242,24 +364,14 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         selectTrack,
         setVolume,
         setIsMuted,
+        speakAnnouncementNow,
       }}
     >
-      {/* Áudio persistente montado no nível raiz da aplicação */}
       <audio
         ref={audioRef}
         preload="auto"
-        onPlay={() => {
-          setIsPlaying(true);
-          if (typeof window !== "undefined" && "mediaSession" in navigator) {
-            navigator.mediaSession.playbackState = "playing";
-          }
-        }}
-        onPause={() => {
-          setIsPlaying(false);
-          if (typeof window !== "undefined" && "mediaSession" in navigator) {
-            navigator.mediaSession.playbackState = "paused";
-          }
-        }}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
         onEnded={handleNextTrack}
       />
       {children}
