@@ -38,6 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { useRadio } from "@/lib/radio-context";
 
 type HomeSearch = {
   q?: string | undefined;
@@ -143,51 +144,85 @@ const PRICE_RANGES = [
   { id: "d", label: "Acima de R$ 200", min: 200, max: Infinity },
 ];
 
+function RadioNavButton() {
+  const { isPlaying, isLocutorSpeaking } = useRadio();
+
+  return (
+    <Button 
+      asChild 
+      className={`relative w-fit font-bold border-none shadow-sm rounded-full transition-all duration-300 ${
+        isPlaying
+          ? "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/30 shadow-md ring-2 ring-purple-300 ring-offset-1"
+          : "bg-[#8b5cf6] hover:bg-[#7c3aed] text-white"
+      }`}
+    >
+      <Link to="/radio" className="inline-flex items-center gap-2">
+        <span className="relative flex items-center justify-center">
+          <Radio className={`h-4 w-4 text-white ${isPlaying ? "animate-pulse" : ""}`} />
+          {isPlaying && (
+            <span className="absolute -top-1 -right-1 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+          )}
+        </span>
+        <span>Rádio HS</span>
+        {isPlaying && (
+          <span className="flex items-end gap-0.5 h-3 ml-1" aria-hidden="true">
+            <span className="w-0.5 bg-white rounded-full animate-bounce h-2" style={{ animationDelay: "0ms" }} />
+            <span className="w-0.5 bg-white rounded-full animate-bounce h-3" style={{ animationDelay: "150ms" }} />
+            <span className="w-0.5 bg-white rounded-full animate-bounce h-1.5" style={{ animationDelay: "300ms" }} />
+          </span>
+        )}
+        {isLocutorSpeaking && (
+          <span className="ml-1 text-[10px] font-black uppercase px-1.5 py-0.5 bg-amber-400 text-amber-950 rounded-full animate-pulse shadow-sm">
+            AO VIVO
+          </span>
+        )}
+      </Link>
+    </Button>
+  );
+}
+
 function BuyerGamesPromoLink() {
-  const [visible, setVisible] = useState(false);
+  const [isBuyer, setIsBuyer] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) {
-        setVisible(false);
+        setIsBuyer(false);
         return;
       }
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
       const isSeller = roles?.some((item) => item.role === "seller") ?? false;
-      const isBuyer = roles?.some((item) => item.role === "buyer") ?? false;
-      setVisible(isBuyer && !isSeller);
+      const buyerRole = roles?.some((item) => item.role === "buyer") ?? false;
+      setIsBuyer(buyerRole && !isSeller);
     });
   }, []);
 
-  if (!visible) return null;
-
   return (
     <div className="flex flex-wrap items-center gap-2 mt-2">
-      {/* Botão de Jogos */}
-      <Button asChild variant="secondary" className="w-fit shadow-sm rounded-full">
-        <Link to="/jogos">
-          <Gamepad2 className="h-4 w-4 mr-2" /> Jogos &amp; Prêmios
-        </Link>
-      </Button>
+      {isBuyer && (
+        <>
+          {/* Botão de Jogos */}
+          <Button asChild variant="secondary" className="w-fit shadow-sm rounded-full">
+            <Link to="/jogos">
+              <Gamepad2 className="h-4 w-4 mr-2" /> Jogos &amp; Prêmios
+            </Link>
+          </Button>
 
-      {/* Botão do Clube HS */}
-      <Button asChild className="w-fit bg-amber-500 hover:bg-amber-600 text-white font-bold border-none shadow-sm rounded-full">
-        <Link to="/clube-hs">
-          <Crown className="h-4 w-4 mr-2 fill-white" /> Clube HS
-        </Link>
-      </Button>
+          {/* Botão do Clube HS */}
+          <Button asChild className="w-fit bg-amber-500 hover:bg-amber-600 text-white font-bold border-none shadow-sm rounded-full">
+            <Link to="/clube-hs">
+              <Crown className="h-4 w-4 mr-2 fill-white" /> Clube HS
+            </Link>
+          </Button>
+        </>
+      )}
 
-        {/* 📻 BOTÃO DA RÁDIO HS INTEGRADO DIRETAMENTE */}
-<Button 
-  asChild 
-  className="w-fit bg-[#8b5cf6] hover:bg-[#7c3aed] text-white font-bold border-none shadow-sm rounded-full transition-colors"
->
-  <Link to="/radio">
-    <Radio className="h-4 w-4 mr-2 text-white" /> 
-    Rádio HS
-  </Link>
-</Button>
-   </div>
+      {/* 📻 BOTÃO DA RÁDIO HS INTEGRADO DIRETAMENTE (COM INDICADOR ANIMADO / PISCANDO) */}
+      <RadioNavButton />
+    </div>
   );
 }
 
@@ -239,38 +274,35 @@ export function Home() {
       max: Infinity,
     };
 
-    const result = products.filter((product) => {
-      if (search.category && product.category !== search.category) {
-        return false;
-      }
-      if (search.q) {
-        const queryTerm = search.q.toLowerCase().trim();
-        const titleMatch = (product.title || "").toLowerCase().includes(queryTerm);
-        const categoryMatch = (product.category || "").toLowerCase().includes(queryTerm);
-        if (!titleMatch && !categoryMatch) {
-          return false;
-        }
-      }
-      const price = Number(product.price);
-      return price >= selectedRange.min && price <= selectedRange.max;
-    });
+    return products
+      .filter((product) => {
+        if (!search.q) return true;
+        const query = search.q.toLowerCase();
+        const titleMatch = product.title.toLowerCase().includes(query);
+        const descriptionMatch = product.description.toLowerCase().includes(query);
+        const categoryMatch = product.category.toLowerCase().includes(query);
+        return titleMatch || descriptionMatch || categoryMatch;
+      })
+      .filter((product) => (search.category ? product.category === search.category : true))
+      .filter((product) => {
+        const effectivePrice = product.promotional_price ?? product.price;
+        return effectivePrice >= selectedRange.min && effectivePrice <= selectedRange.max;
+      })
+      .filter((product) => (search.free ? product.free_shipping : true))
+      .sort((a, b) => {
+        const priceA = a.promotional_price ?? a.price;
+        const priceB = b.promotional_price ?? b.price;
 
-    return [...result].sort((a, b) => {
-      if (search.sort === "price-asc") return Number(a.price) - Number(b.price);
-      if (search.sort === "price-desc") return Number(b.price) - Number(a.price);
-      return (b.sold_count ?? 0) - (a.sold_count ?? 0);
-    });
-  }, [products, search.category, search.q, search.range, search.sort]);
+        if (search.sort === "price-asc") return priceA - priceB;
+        if (search.sort === "price-desc") return priceB - priceA;
+        return 0;
+      });
+  }, [products, search]);
 
-  const hasSearchQuery = Boolean(search.q && search.q.trim().length > 0);
-
-  const categoryLabel = hasSearchQuery
-    ? `Resultados para "${search.q}"`
-    : search.free
-      ? "Produtos com Frete Grátis"
-      : search.category
-        ? (activeCategories.find((item) => item.slug === search.category)?.label ?? search.category)
-        : "Todas as ofertas";
+  const activeCategory = activeCategories.find((category) => category.slug === search.category);
+  const activeRange = PRICE_RANGES.find((item) => item.id === search.range);
+  const hasActiveFilters = Boolean(search.category || search.range !== "all" || search.sort !== "popular" || search.free);
+  const hasSearchQuery = Boolean(search.q || search.category);
 
   const suggestions = useMemo(() => {
     return products.slice(0, 50).map((p) => ({
@@ -323,21 +355,21 @@ export function Home() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-[#00a650] shrink-0" />
+                  <ShieldCheck className="h-5 w-5 text-[#3483fa] shrink-0" />
                   <span>
-                    <strong>Compra Garantida</strong> receba ou seu dinheiro volta
+                    <strong>Compra Protegida</strong> e segura
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-amber-500 shrink-0" />
+                  <Zap className="h-5 w-5 text-[#3483fa] shrink-0" />
                   <span>
-                    <strong>Ofertas diárias</strong> com até 50% OFF
+                    <strong>Super Ofertas</strong> atualizadas
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Store className="h-5 w-5 text-purple-600 shrink-0" />
+                  <Store className="h-5 w-5 text-[#3483fa] shrink-0" />
                   <span>
-                    <strong>Lojas oficiais</strong> nacionais e internacionais
+                    <strong>Vendedores</strong> verificados
                   </span>
                 </div>
               </div>
@@ -345,106 +377,119 @@ export function Home() {
           </>
         )}
 
-        <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-6 space-y-6">
-          {/* BARRA DE ABAS: INCLUI A NOVA ABA DA PESQUISA QUANDO DIGITADA */}
-          <section id="categorias" className="rounded-xl bg-white p-3 sm:p-4 shadow-sm border border-gray-100">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-gray-700">
-                {hasSearchQuery ? "Aba da Pesquisa Selecionada" : "Categorias"}
+        <div className="mx-auto max-w-7xl px-4 py-6">
+          {/* CARROSSEL / LISTA DE CATEGORIAS */}
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">
+                Categorias em Destaque
               </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-[#3483fa]"
-                onClick={() => setSearch({ category: null, q: "", free: false })}
-              >
-                Ver todas as ofertas
-              </Button>
+              {search.category && (
+                <button
+                  type="button"
+                  onClick={() => setSearch({ category: null })}
+                  className="text-xs text-[#3483fa] font-semibold hover:underline flex items-center gap-1"
+                >
+                  <X className="h-3 w-3" /> Ver todas as categorias
+                </button>
+              )}
             </div>
 
-            <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory items-center">
-              {/* ABA DINÂMICA DA PESQUISA (Aparece no início se houver termo digitado) */}
-              {hasSearchQuery && (
-                <div className="snap-start shrink-0 flex items-center rounded-xl p-2.5 h-20 border-2 border-[#3483fa] bg-blue-50 text-[#3483fa] font-bold shadow-sm gap-2">
-                  <div className="flex flex-col items-center justify-center min-w-[70px]">
-                    <Search className="h-5 w-5 mb-1 text-[#3483fa]" />
-                    <span className="text-[11px] leading-tight text-center line-clamp-1 max-w-[100px]">
-                      "{search.q}"
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSearch({ q: "" })}
-                    title="Fechar pesquisa"
-                    className="p-1 rounded-full hover:bg-blue-200/80 text-blue-700 transition"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* ABA "TODAS" */}
+            <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-none no-scrollbar">
               <button
-                onClick={() => setSearch({ category: null, q: "", free: false })}
-                className={`snap-start shrink-0 flex flex-col items-center justify-center rounded-xl p-2.5 min-w-[76px] sm:min-w-[88px] h-20 transition-all border ${
-                  search.category === null && !hasSearchQuery && !search.free
-                    ? "border-blue-500 bg-blue-50 text-blue-600 font-bold shadow-xs"
-                    : "border-gray-100 bg-gray-50/80 text-gray-700 hover:bg-gray-100"
+                type="button"
+                onClick={() => setSearch({ category: null })}
+                className={`flex shrink-0 flex-col items-center justify-center rounded-xl p-3 w-20 sm:w-24 border text-center transition-all ${
+                  !search.category
+                    ? "border-[#3483fa] bg-white text-[#3483fa] shadow-sm ring-1 ring-[#3483fa]"
+                    : "border-transparent bg-white text-gray-700 hover:border-gray-200 hover:shadow-sm"
                 }`}
               >
-                <ShoppingBasket className="h-5 w-5 text-[#3483fa] mb-1.5" />
-                <span className="text-[11px] leading-tight text-center">Todas</span>
+                <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-blue-50 text-[#3483fa] mb-2">
+                  <ShoppingBasket className="h-5 w-5" />
+                </div>
+                <span className="text-[11px] sm:text-xs font-semibold leading-tight line-clamp-1">Todas</span>
               </button>
 
-              {/* DEMAIS ABAS DE CATEGORIAS */}
-              {activeCategories.map((item) => {
-                const Icon = ICONS[item.icon] ?? Smartphone;
-                const isSelected = !hasSearchQuery && search.category === item.slug;
+              {activeCategories.map((category) => {
+                const Icon = ICONS[category.icon] ?? ShoppingBasket;
+                const isSelected = search.category === category.slug;
                 return (
                   <button
-                    key={item.slug}
-                    onClick={() => setSearch({ category: item.slug, q: "", free: false })}
-                    className={`snap-start shrink-0 flex flex-col items-center justify-center rounded-xl p-2.5 min-w-[76px] sm:min-w-[88px] h-20 transition-all border ${
+                    key={category.slug}
+                    type="button"
+                    onClick={() => setSearch({ category: isSelected ? null : category.slug })}
+                    className={`flex shrink-0 flex-col items-center justify-center rounded-xl p-3 w-20 sm:w-24 border text-center transition-all ${
                       isSelected
-                        ? "border-blue-500 bg-blue-50 text-blue-600 font-bold shadow-xs"
-                        : "border-gray-100 bg-gray-50/80 text-gray-700 hover:bg-gray-100"
+                        ? "border-[#3483fa] bg-white text-[#3483fa] shadow-sm ring-1 ring-[#3483fa]"
+                        : "border-transparent bg-white text-gray-700 hover:border-gray-200 hover:shadow-sm"
                     }`}
                   >
-                    <Icon className="h-5 w-5 text-[#3483fa] mb-1.5" />
-                    <span className="text-[11px] leading-tight text-center line-clamp-1">{item.label}</span>
+                    <div
+                      className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full mb-2 ${
+                        isSelected ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className="text-[11px] sm:text-xs font-semibold leading-tight line-clamp-1">
+                      {category.label}
+                    </span>
                   </button>
                 );
               })}
             </div>
           </section>
 
-          {/* VITRINE FILTRADA DE PRODUTOS */}
-          <section className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-lg border border-gray-100 shadow-xs">
+          {/* PRODUTOS E FILTROS */}
+          <section>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200/80 pb-3">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
-                  {hasSearchQuery && <Search className="h-4 w-4 text-[#3483fa]" />}
-                  {categoryLabel}
-                </h2>
-                <p className="text-xs text-gray-500">{filtered.length} produtos correspondentes</p>
+                <h3 className="text-lg font-bold text-gray-800">
+                  {hasSearchQuery ? (
+                    <>
+                      Resultados para{" "}
+                      <span className="text-[#3483fa]">
+                        {search.q ? `"${search.q}"` : activeCategory?.label}
+                      </span>
+                    </>
+                  ) : (
+                    "Ofertas do Dia"
+                  )}
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {filtered.length} {filtered.length === 1 ? "produto encontrado" : "produtos encontrados"}
+                </p>
               </div>
 
+              {/* FILTROS RÁPIDOS */}
               <div className="flex flex-wrap items-center gap-2">
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearch({ category: null, range: "all", sort: "popular", free: false })}
+                    className="h-9 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <X className="mr-1 h-3.5 w-3.5" /> Limpar filtros
+                  </Button>
+                )}
+
                 <Select value={search.range} onValueChange={(val) => setSearch({ range: val as any })}>
-                  <SelectTrigger className="w-[140px] h-9 text-xs">
-                    <SelectValue placeholder="Preço" />
+                  <SelectTrigger className="h-9 text-xs w-[140px] bg-white">
+                    <SelectValue placeholder="Faixa de preço" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PRICE_RANGES.map((r) => (
-                      <SelectItem key={r.id} value={r.id} className="text-xs">
-                        {r.label}
+                    {PRICE_RANGES.map((item) => (
+                      <SelectItem key={item.id} value={item.id} className="text-xs">
+                        {item.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
-                <Select value={search.sort} onValueChange={(val) => setSearch({ sort: val as HomeSearch["sort"] })}>
-                  <SelectTrigger className="w-[150px] h-9 text-xs">
+                <Select value={search.sort} onValueChange={(val) => setSearch({ sort: val as any })}>
+                  <SelectTrigger className="h-9 text-xs w-[140px] bg-white">
                     <SelectValue placeholder="Ordenar por" />
                   </SelectTrigger>
                   <SelectContent>
