@@ -14,7 +14,6 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "../lib/cart";
 import { RadioProvider } from "../lib/radio-context";
-import { RadioMiniPlayer } from "../components/radio-mini-player";
 import { Toaster } from "../components/ui/sonner";
 import { AuraChatWidget } from "../components/aura-chat-widget";
 
@@ -162,7 +161,6 @@ function RootComponent() {
       <CartProvider>
         <RadioProvider>
           <Outlet />
-          <RadioMiniPlayer />
           <Toaster position="top-center" richColors />
           <AuraChatWidget />
         </RadioProvider>
