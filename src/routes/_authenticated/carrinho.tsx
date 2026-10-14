@@ -156,7 +156,7 @@ function CartPage() {
       setQuotes(result);
       const chosen = Object.fromEntries(
         result.map((group) => {
-          const cheapest = [...group.options].sort((a, b) => a.amount - b.amount);
+          const cheapest = [...group.options].sort((a, b) => a.amount - b.amount)[0];
           return [group.storeId, cheapest?.id ?? ""];
         }),
       );
@@ -189,18 +189,16 @@ function CartPage() {
       return;
     }
 
-    // 🌟 Sincronização em tempo de execução: cria cópia mutável
     let quotesToUse = { ...selectedQuotes };
 
-    // Se ainda não cotou para alguma loja física ou se o objeto está vazio, força o cálculo imediato
+    // Se ainda não cotou para alguma loja física, calcula automaticamente na hora
     if (physicalStoreIds.some((storeId) => !quotesToUse[storeId])) {
       const freshQuotes = await calculateShipping(cleanZip);
       if (freshQuotes) {
-        quotesToUse = { ...quotesToUse, ...freshQuotes };
+        quotesToUse = freshQuotes;
       }
     }
 
-    // Validação final em cima da variável local mutável, contornando o delay do React State
     if (physicalStoreIds.some((storeId) => !quotesToUse[storeId])) {
       toast.error("Por favor, selecione uma opção de frete para continuar.");
       return;
@@ -225,7 +223,6 @@ function CartPage() {
         },
       });
       setSubmitting(false);
-      clear(); // Limpa o carrinho após processar o pedido com sucesso
       navigate({ to: "/pedido/$orderId", params: { orderId } });
     } catch (error) {
       setSubmitting(false);
