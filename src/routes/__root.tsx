@@ -13,6 +13,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "../lib/cart";
+import { RadioProvider } from "../lib/radio-context";
+import { RadioMiniPlayer } from "../components/radio-mini-player";
 import { Toaster } from "../components/ui/sonner";
 import { AuraChatWidget } from "../components/aura-chat-widget";
 
@@ -91,7 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "author", content: "HS Digital" },
 
-      // OpenGraph (WhatsApp, Facebook, Telegram, LinkedIn)
+      // OpenGraph
       { property: "og:site_name", content: "HS Digital Marketplace" },
       { property: "og:title", content: "HS Digital · Marketplace Oficial" },
       {
@@ -158,9 +160,12 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <CartProvider>
-        <Outlet />
-        <Toaster position="top-center" richColors />
-        <AuraChatWidget />
+        <RadioProvider>
+          <Outlet />
+          <RadioMiniPlayer />
+          <Toaster position="top-center" richColors />
+          <AuraChatWidget />
+        </RadioProvider>
       </CartProvider>
     </QueryClientProvider>
   );
