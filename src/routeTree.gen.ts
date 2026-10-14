@@ -11,7 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AfiliadosRouteImport } from './routes/afiliados'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ClubeHsRouteImport } from './routes/clube-hs'
+import { Route as RadioRouteImport } from './routes/radio'
+import { Route as RadioHsRouteImport } from './routes/radio-hs'
+import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedCarrinhoRouteImport } from './routes/_authenticated/carrinho'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
@@ -26,7 +31,6 @@ import { Route as ApiPublicMelhorEnvioOauthCallbackRouteImport } from './routes/
 import { Route as ApiPublicMercadoPagoOauthCallbackRouteImport } from './routes/api/public/mercado-pago/oauth-callback'
 import { Route as ApiPublicMercadoPagoWebhookRouteImport } from './routes/api/public/mercado-pago/webhook'
 import { Route as ApiPublicSuppliersProcessRouteImport } from './routes/api/public/suppliers/process'
-import { Route as ApiPublicSuppliersSyncRouteImport } from './routes/api/public/suppliers/sync'
 import { Route as ApiPublicSuppliersTranslateRouteImport } from './routes/api/public/suppliers/translate'
 
 const IndexRoute = IndexRouteImport.update({
@@ -38,9 +42,34 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AfiliadosRoute = AfiliadosRouteImport.update({
+  id: '/afiliados',
+  path: '/afiliados',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClubeHsRoute = ClubeHsRouteImport.update({
+  id: '/clube-hs',
+  path: '/clube-hs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RadioRoute = RadioRouteImport.update({
+  id: '/radio',
+  path: '/radio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RadioHsRoute = RadioHsRouteImport.update({
+  id: '/radio-hs',
+  path: '/radio-hs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrendsRoute = TrendsRouteImport.update({
+  id: '/trends',
+  path: '/trends',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -119,11 +148,6 @@ const ApiPublicSuppliersProcessRoute =
     path: '/api/public/suppliers/process',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicSuppliersSyncRoute = ApiPublicSuppliersSyncRouteImport.update({
-  id: '/api/public/suppliers/sync',
-  path: '/api/public/suppliers/sync',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicSuppliersTranslateRoute =
   ApiPublicSuppliersTranslateRouteImport.update({
     id: '/api/public/suppliers/translate',
@@ -133,7 +157,12 @@ const ApiPublicSuppliersTranslateRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/afiliados': typeof AfiliadosRoute
   '/auth': typeof AuthRoute
+  '/clube-hs': typeof ClubeHsRoute
+  '/radio': typeof RadioRoute
+  '/radio-hs': typeof RadioHsRoute
+  '/trends': typeof TrendsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/carrinho': typeof AuthenticatedCarrinhoRoute
   '/compras': typeof AuthenticatedComprasRoute
@@ -148,12 +177,16 @@ export interface FileRoutesByFullPath {
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
-  '/api/public/suppliers/sync': typeof ApiPublicSuppliersSyncRoute
   '/api/public/suppliers/translate': typeof ApiPublicSuppliersTranslateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/afiliados': typeof AfiliadosRoute
   '/auth': typeof AuthRoute
+  '/clube-hs': typeof ClubeHsRoute
+  '/radio': typeof RadioRoute
+  '/radio-hs': typeof RadioHsRoute
+  '/trends': typeof TrendsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/carrinho': typeof AuthenticatedCarrinhoRoute
   '/compras': typeof AuthenticatedComprasRoute
@@ -168,14 +201,18 @@ export interface FileRoutesByTo {
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
-  '/api/public/suppliers/sync': typeof ApiPublicSuppliersSyncRoute
   '/api/public/suppliers/translate': typeof ApiPublicSuppliersTranslateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/afiliados': typeof AfiliadosRoute
   '/auth': typeof AuthRoute
+  '/clube-hs': typeof ClubeHsRoute
+  '/radio': typeof RadioRoute
+  '/radio-hs': typeof RadioHsRoute
+  '/trends': typeof TrendsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/carrinho': typeof AuthenticatedCarrinhoRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
@@ -190,14 +227,18 @@ export interface FileRoutesById {
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
-  '/api/public/suppliers/sync': typeof ApiPublicSuppliersSyncRoute
   '/api/public/suppliers/translate': typeof ApiPublicSuppliersTranslateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/afiliados'
     | '/auth'
+    | '/clube-hs'
+    | '/radio'
+    | '/radio-hs'
+    | '/trends'
     | '/admin'
     | '/carrinho'
     | '/compras'
@@ -212,12 +253,16 @@ export interface FileRouteTypes {
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
     | '/api/public/suppliers/process'
-    | '/api/public/suppliers/sync'
     | '/api/public/suppliers/translate'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/afiliados'
     | '/auth'
+    | '/clube-hs'
+    | '/radio'
+    | '/radio-hs'
+    | '/trends'
     | '/admin'
     | '/carrinho'
     | '/compras'
@@ -232,13 +277,17 @@ export interface FileRouteTypes {
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
     | '/api/public/suppliers/process'
-    | '/api/public/suppliers/sync'
     | '/api/public/suppliers/translate'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/afiliados'
     | '/auth'
+    | '/clube-hs'
+    | '/radio'
+    | '/radio-hs'
+    | '/trends'
     | '/_authenticated/admin'
     | '/_authenticated/carrinho'
     | '/_authenticated/compras'
@@ -253,20 +302,23 @@ export interface FileRouteTypes {
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
     | '/api/public/suppliers/process'
-    | '/api/public/suppliers/sync'
     | '/api/public/suppliers/translate'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AfiliadosRoute: typeof AfiliadosRoute
   AuthRoute: typeof AuthRoute
+  ClubeHsRoute: typeof ClubeHsRoute
+  RadioRoute: typeof RadioRoute
+  RadioHsRoute: typeof RadioHsRoute
+  TrendsRoute: typeof TrendsRoute
   ProdutoProductIdRoute: typeof ProdutoProductIdRoute
   ApiPublicMelhorEnvioOauthCallbackRoute: typeof ApiPublicMelhorEnvioOauthCallbackRoute
   ApiPublicMercadoPagoOauthCallbackRoute: typeof ApiPublicMercadoPagoOauthCallbackRoute
   ApiPublicMercadoPagoWebhookRoute: typeof ApiPublicMercadoPagoWebhookRoute
   ApiPublicSuppliersProcessRoute: typeof ApiPublicSuppliersProcessRoute
-  ApiPublicSuppliersSyncRoute: typeof ApiPublicSuppliersSyncRoute
   ApiPublicSuppliersTranslateRoute: typeof ApiPublicSuppliersTranslateRoute
 }
 
@@ -286,11 +338,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/afiliados': {
+      id: '/afiliados'
+      path: '/afiliados'
+      fullPath: '/afiliados'
+      preLoaderRoute: typeof AfiliadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clube-hs': {
+      id: '/clube-hs'
+      path: '/clube-hs'
+      fullPath: '/clube-hs'
+      preLoaderRoute: typeof ClubeHsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/radio': {
+      id: '/radio'
+      path: '/radio'
+      fullPath: '/radio'
+      preLoaderRoute: typeof RadioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/radio-hs': {
+      id: '/radio-hs'
+      path: '/radio-hs'
+      fullPath: '/radio-hs'
+      preLoaderRoute: typeof RadioHsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trends': {
+      id: '/trends'
+      path: '/trends'
+      fullPath: '/trends'
+      preLoaderRoute: typeof TrendsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -391,13 +478,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSuppliersProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/suppliers/sync': {
-      id: '/api/public/suppliers/sync'
-      path: '/api/public/suppliers/sync'
-      fullPath: '/api/public/suppliers/sync'
-      preLoaderRoute: typeof ApiPublicSuppliersSyncRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/suppliers/translate': {
       id: '/api/public/suppliers/translate'
       path: '/api/public/suppliers/translate'
@@ -438,7 +518,12 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AfiliadosRoute: AfiliadosRoute,
   AuthRoute: AuthRoute,
+  ClubeHsRoute: ClubeHsRoute,
+  RadioRoute: RadioRoute,
+  RadioHsRoute: RadioHsRoute,
+  TrendsRoute: TrendsRoute,
   ProdutoProductIdRoute: ProdutoProductIdRoute,
   ApiPublicMelhorEnvioOauthCallbackRoute:
     ApiPublicMelhorEnvioOauthCallbackRoute,
@@ -446,7 +531,6 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicMercadoPagoOauthCallbackRoute,
   ApiPublicMercadoPagoWebhookRoute: ApiPublicMercadoPagoWebhookRoute,
   ApiPublicSuppliersProcessRoute: ApiPublicSuppliersProcessRoute,
-  ApiPublicSuppliersSyncRoute: ApiPublicSuppliersSyncRoute,
   ApiPublicSuppliersTranslateRoute: ApiPublicSuppliersTranslateRoute,
 }
 export const routeTree = rootRouteImport
