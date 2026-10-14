@@ -1,421 +1,239 @@
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute } from "@tanstack/react-router";
+import {
+  Play,
+  Pause,
+  SkipForward,
+  SkipBack,
+  Volume2,
+  VolumeX,
+  Radio,
+  Crown,
+  Sparkles,
+  ExternalLink,
+  X,
+  ShieldCheck,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { useRadio } from "@/lib/radio-context";
 
-export interface RadioTrack {
-  title: string;
-  artist: string;
-  album: string;
-  artwork: string;
-  src: string;
-}
+export const Route = createFileRoute("/radio")({
+  head: () => ({
+    meta: [
+      { title: "Rádio HS Digital 🎵 · Ao Vivo com Locutor Virtual" },
+      {
+        name: "description",
+        content: "Programação exclusiva HS Digital com reprodução contínua e novidades do marketplace.",
+      },
+    ],
+  }),
+  component: RadioHSPage,
+});
 
-export interface RadioAnnouncement {
-  id: string;
-  tag: string;
-  title: string;
-  script: string;
-}
-
-// 🎙️ Roteiros Oficiais do Locutor Virtual HS Digital
-export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
-  {
-    id: "Entrada-principal",
-    tag: "Chamada Principal",
-    title: "Boas vindas",
-    script:
-      "Seja muito bem-vindo à HS Digital! O marketplace que une inovação e praticidade às suas compras. Prepare-se para uma experiência única, rápida e 100% segura.",
-  },
-  {
-    id: "Sugestão principal",
-    tag: "Rádio Hs",
-    title: "Sugestão carismatica",
-    script:
-      "Que tal fazer suas compras ouvindo música? Com a rádio da HS Digital, você navega com a melhor qualidade do mercado, unindo inovação e praticidade.",
-  },
-    {
-    id: "Anúncio Afiliados",
-    tag: "Programa de Afiliados",
-    title: "Sugestão persuasiva",
-    script:
-      "Você já conhece o Programa de Afiliados da HS Digital? Seja um afiliado oficial, divulgue seu link exclusivo e ganhe 10% de comissão em cada venda direto no seu saldo!",
-  },
-  {
-    id: "clube-hs",
-    tag: "Clube VIP",
-    title: "Clube HS por R$ 19,90",
-    script:
-      "Atenção clientes da HS Digital! Você já conhece o Clube HS? Por apenas dezenove e noventa ao mês, você garante frete grátis na sua região, ouve nossa rádio sem anúncios e tem descontos VIP exclusivos em milhares de produtos. Acesse o menu Clube HS e assine agora mesmo!",
-  },
-    {
-    id: "jogos-premios",
-    tag: "Jogos & Sorte",
-    title: "Roleta da Sorte e Raspadinha",
-    script:
-      "Quer ganhar prêmios e cupons na hora enquanto faz suas compras? Na HS Digital você se diverte na nossa área de jogos! Gire a Roleta da Sorte e tente a sorte na Raspadinha Oficial da HS Digital para faturar super descontos no seu carrinho!",
-  },
-  {
-    id: "seguranca-marketplace",
-    tag: "Segurança & Confiança",
-    title: "Compra 100% Protegida",
-    script:
-      "Compre com total segurança e garantia na HS Digital. Todos os pagamentos contam com proteção de ponta a ponta, rastreamento em tempo real e entrega rápida para todo o Brasil. Os melhores produtos e lojas em um só marketplace!",
-  },
-  {
-    id: "variedade-produtos",
-    tag: "Variedade & Preço Baixo",
-    title: "Tudo em um só lugar",
-    script:
-      "Eletrônicos, moda, casa e utilidades: os melhores fornecedores nacionais e internacionais estão reunidos na HS Digital. Preço justo, compra garantida e suporte humanizado para você comprar sem preocupação!",
-  },
-  {
-    id: "ia-aura-atendimento",
-    tag: "Tecnologia & IA",
-    title: "Atendimento 24h com a Aura",
-    script:
-      "Dúvidas sobre produtos, pedidos ou frete? Fale com a Aura, nossa assistente de inteligência artificial pronta para te atender a qualquer hora do dia. Aproveite as melhores ofertas da nossa vitrine e boas compras!",
-  },
-];
-
-// 🎵 Trilhas de Fundo Instrumentais (perfeitas para locução e compras)
-export const RADIO_BACKGROUND_TRACKS: RadioTrack[] = [
-  {
-    title: "Rádio HS Sertaneja",
-    artist: "Oficial HS Digital",
-    album: "Brasil Sessions",
-    artwork: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=512&q=80",
-    src: "https://cast.mgtradio.net/radio/8020/aac",
-  },
-  {
-    title: "Sertanejo Hits 2026",
-    artist: "Top Sertanejo Brasil",
-    album: "Lançamentos & Modão",
-    artwork: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=512&q=80",
-    src: "https://cast.mgtradio.net/radio/8000/aac",
-  },
-  {
-    title: "Hs Gospel",
-    artist: "Trilha Gospel",
-    album: "Rádio HS Digital",
-    artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
-    src: "http://ec5.yesstreaming.net:1890/stream",
-  },      
-  {
-    title: "Pop & Eletrônica Suave",
-    artist: "Trilha Oficial HS Digital",
-    album: "Modern Store Vibe",
-    artwork: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio1.mp3",
-  },
-  {
-    title: "Groove & Ambient Coffee",
-    artist: "Trilha Oficial HS Digital",
-    album: "Relax & Shop",
-    artwork: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio10.mp3",
-  },
-];
-
-interface RadioContextType {
-  tracks: RadioTrack[];
-  currentTrackIndex: number;
-  currentTrack: RadioTrack;
-  isPlaying: boolean;
-  volume: number;
-  isMuted: boolean;
-  isVipClube: boolean;
-  showClubModal: boolean;
-  isLocutorSpeaking: boolean;
-  currentAnnouncement: RadioAnnouncement | null;
-  announcements: RadioAnnouncement[];
-  locutorEnabled: boolean;
-  setShowClubModal: (show: boolean) => void;
-  setLocutorEnabled: (enabled: boolean) => void;
-  togglePlay: () => void;
-  play: () => void;
-  pause: () => void;
-  handleNextTrack: () => void;
-  handlePrevTrack: () => void;
-  selectTrack: (index: number) => void;
-  setVolume: (volume: number) => void;
-  setIsMuted: (muted: boolean | ((prev: boolean) => boolean)) => void;
-  speakAnnouncementNow: (index?: number) => void;
-}
-
-const RadioContext = createContext<RadioContextType | null>(null);
-
-export function RadioProvider({ children }: { children: React.ReactNode }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.8);
-  const [isMuted, setIsMuted] = useState(false);
-  const [songSwitchCount, setSongSwitchCount] = useState(0);
-  const [showClubModal, setShowClubModal] = useState(false);
-
-  // Estados do Locutor Virtual
-  const [isLocutorSpeaking, setIsLocutorSpeaking] = useState(false);
-  const [locutorEnabled, setLocutorEnabled] = useState(true);
-  const [announcementIndex, setAnnouncementIndex] = useState(0);
-  const [currentAnnouncement, setCurrentAnnouncement] = useState<RadioAnnouncement | null>(null);
-
-  const currentTrack = RADIO_BACKGROUND_TRACKS[currentTrackIndex];
-
-  // Validação Clube HS VIP
-  const { data: userProfile } = useQuery({
-    queryKey: ["radio-user-clube-status"],
-    queryFn: async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      if (!authData?.user) return null;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_clube_hs")
-        .eq("id", authData.user.id)
-        .maybeSingle();
-
-      return profile;
-    },
-    staleTime: 1000 * 60 * 5,
-  });
-  
- // Locução automática em voz pt-BR sem expor controles nem legendas
-  const triggerLocutor = useCallback(() => {
-    if (isVipClube) return;
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    
-  const isVipClube = Boolean(userProfile?.is_clube_hs);
-
-  // Integração com controles nativos de segundo plano e tela de bloqueio
-  const updateMediaSession = (track: RadioTrack) => {
-    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
-
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: `${track.title} 🎙️`,
-        artist: "Rádio HS Digital Oficial",
-        album: "Marketplace HS Digital",
-        artwork: [
-          { src: track.artwork, sizes: "96x96", type: "image/jpeg" },
-          { src: track.artwork, sizes: "128x128", type: "image/jpeg" },
-          { src: track.artwork, sizes: "256x256", type: "image/jpeg" },
-          { src: track.artwork, sizes: "512x512", type: "image/jpeg" },
-        ],
-      });
-
-      navigator.mediaSession.setActionHandler("play", () => play());
-      navigator.mediaSession.setActionHandler("pause", () => pause());
-      navigator.mediaSession.setActionHandler("previoustrack", () => handlePrevTrack());
-      navigator.mediaSession.setActionHandler("nexttrack", () => handleNextTrack());
-    } catch (e) {
-      console.warn("MediaSession:", e);
-    }
-  };
-
-  // 🎙️ Função de fala do Locutor com Audio Ducking (abaixa o som de fundo enquanto fala)
-  const speakAnnouncement = useCallback(
-    (scriptObj: RadioAnnouncement) => {
-      if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-
-      window.speechSynthesis.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(scriptObj.script);
-      utterance.lang = "pt-BR";
-      utterance.rate = 1.05; // ritmo animado de rádio
-      utterance.pitch = 1.05;
-
-      const voices = window.speechSynthesis.getVoices();
-      const ptVoice = voices.find(
-        (v) => v.lang.includes("pt-BR") || v.lang.includes("pt_BR") || v.lang.startsWith("pt")
-      );
-      if (ptVoice) {
-        utterance.voice = ptVoice;
-      }
-
-      utterance.onstart = () => {
-        setIsLocutorSpeaking(true);
-        setCurrentAnnouncement(scriptObj);
-        // Ducking de áudio: reduz para 15% para dar destaque à voz
-        if (audioRef.current) {
-          audioRef.current.volume = (isMuted ? 0 : volume) * 0.2;
-        }
-      };
-
-      const handleEnd = () => {
-        setIsLocutorSpeaking(false);
-        // Restaura o volume normal da trilha
-        if (audioRef.current) {
-          audioRef.current.volume = isMuted ? 0 : volume;
-        }
-      };
-
-      utterance.onend = handleEnd;
-      utterance.onerror = handleEnd;
-
-      window.speechSynthesis.speak(utterance);
-    },
-    [volume, isMuted]
-  );
-
-  const speakAnnouncementNow = (index?: number) => {
-    const targetIdx =
-      typeof index === "number" ? index : (announcementIndex + 1) % HS_MARKETING_SCRIPTS.length;
-    setAnnouncementIndex(targetIdx);
-    speakAnnouncement(HS_MARKETING_SCRIPTS[targetIdx]);
-  };
-
-  // Agendamento automático de anúncios a cada 90 segundos enquanto estiver tocando
-  useEffect(() => {
-    if (!isPlaying || !locutorEnabled) return;
-
-    const interval = setInterval(() => {
-      if (!isLocutorSpeaking) {
-        setAnnouncementIndex((prev) => {
-          const next = (prev + 1) % HS_MARKETING_SCRIPTS.length;
-          speakAnnouncement(HS_MARKETING_SCRIPTS[next]);
-          return next;
-        });
-      }
-    }, 50000); // 90 segundos entre anúncios
-
-    return () => clearInterval(interval);
-  }, [isPlaying, locutorEnabled, isLocutorSpeaking, speakAnnouncement]);
-
-  // Atualização da fonte ao trocar de faixa
-  useEffect(() => {
-    if (!audioRef.current) return;
-
-    audioRef.current.src = currentTrack.src;
-    updateMediaSession(currentTrack);
-
-    if (isPlaying) {
-      audioRef.current.play().catch((err) => {
-        console.warn("Autoplay:", err);
-        setIsPlaying(false);
-      });
-    }
-  }, [currentTrackIndex]);
-
-  // Controle de volume
-  useEffect(() => {
-    if (audioRef.current && !isLocutorSpeaking) {
-      audioRef.current.volume = isMuted ? 0 : volume;
-    }
-  }, [volume, isMuted, isLocutorSpeaking]);
-
-  const play = () => {
-    if (!audioRef.current) return;
-    audioRef.current
-      .play()
-      .then(() => {
-        setIsPlaying(true);
-        updateMediaSession(currentTrack);
-        if (typeof window !== "undefined" && "mediaSession" in navigator) {
-          navigator.mediaSession.playbackState = "playing";
-        }
-        // Fala de boas-vindas do locutor ao iniciar pela primeira vez
-        if (locutorEnabled && !isLocutorSpeaking) {
-          setTimeout(() => {
-            speakAnnouncement(HS_MARKETING_SCRIPTS[0]);
-          }, 1500);
-        }
-      })
-      .catch((err) => {
-        console.error("Erro ao iniciar áudio:", err);
-      });
-  };
-
-  const pause = () => {
-    if (!audioRef.current) return;
-    audioRef.current.pause();
-    setIsPlaying(false);
-    if (typeof window !== "undefined") {
-      if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-      if ("mediaSession" in navigator) {
-        navigator.mediaSession.playbackState = "paused";
-      }
-    }
-    setIsLocutorSpeaking(false);
-  };
-
-  const togglePlay = () => {
-    if (isPlaying) {
-      pause();
-    } else {
-      play();
-    }
-  };
-
-  const handleNextTrack = () => {
-    const nextCount = songSwitchCount + 1;
-    setSongSwitchCount(nextCount);
-
-    if (!isVipClube && nextCount % 3 === 0) {
-      setShowClubModal(true);
-      pause();
-    }
-
-    setCurrentTrackIndex((prev) => (prev + 1) % RADIO_BACKGROUND_TRACKS.length);
-  };
-
-  const handlePrevTrack = () => {
-    setCurrentTrackIndex(
-      (prev) => (prev - 1 + RADIO_BACKGROUND_TRACKS.length) % RADIO_BACKGROUND_TRACKS.length
-    );
-  };
-
-  const selectTrack = (index: number) => {
-    setCurrentTrackIndex(index);
-    play();
-  };
+export function RadioHSPage() {
+  const {
+    currentTrack,
+    isPlaying,
+    volume,
+    isMuted,
+    isVipClube,
+    showClubModal,
+    setShowClubModal,
+    togglePlay,
+    handleNextTrack,
+    handlePrevTrack,
+    setVolume,
+    setIsMuted,
+  } = useRadio();
 
   return (
-    <RadioContext.Provider
-      value={{
-        tracks: RADIO_BACKGROUND_TRACKS,
-        currentTrackIndex,
-        currentTrack,
-        isPlaying,
-        volume,
-        isMuted,
-        isVipClube,
-        showClubModal,
-        isLocutorSpeaking,
-        currentAnnouncement,
-        announcements: HS_MARKETING_SCRIPTS,
-        locutorEnabled,
-        setShowClubModal,
-        setLocutorEnabled,
-        togglePlay,
-        play,
-        pause,
-        handleNextTrack,
-        handlePrevTrack,
-        selectTrack,
-        setVolume,
-        setIsMuted,
-        speakAnnouncementNow,
-      }}
-    >
-      <audio
-        ref={audioRef}
-        preload="auto"
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={handleNextTrack}
-      />
-      {children}
-    </RadioContext.Provider>
-  );
-}
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-4 sm:p-8">
+      {/* Header do Player */}
+      <header className="max-w-xl w-full mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="relative">
+            <div
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg transition-colors ${
+                isPlaying ? "bg-emerald-600 shadow-emerald-500/30" : "bg-blue-600 shadow-blue-500/30"
+              }`}
+            >
+              <Radio className={`w-5 h-5 ${isPlaying ? "animate-pulse" : ""}`} />
+            </div>
+            {isPlaying && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400" />
+              </span>
+            )}
+          </div>
+          <div>
+            <h1 className="font-bold text-sm tracking-wide flex items-center gap-1.5">
+              HS DIGITAL STREAM
+              {isPlaying && (
+                <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  NO AR
+                </span>
+              )}
+            </h1>
+            <p className="text-[11px] text-slate-400">Programação Musical em Segundo Plano</p>
+          </div>
+        </div>
 
-export function useRadio() {
-  const context = useContext(RadioContext);
-  if (!context) {
-    throw new Error("useRadio deve ser usado dentro de um RadioProvider");
-  }
-  return context;
+        {isVipClube ? (
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs font-semibold">
+            <Crown className="w-3.5 h-3.5" />
+            Membro VIP Clube HS
+          </div>
+        ) : (
+          <a
+            href="/clube-hs"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            Clube HS VIP
+          </a>
+        )}
+      </header>
+
+      {/* Card Central do Player */}
+      <main className="max-w-md w-full mx-auto my-auto py-6">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+          {/* Capa com Glow */}
+          <div className="relative aspect-square w-full rounded-2xl overflow-hidden mb-6 shadow-xl border border-slate-700/50">
+            <img
+              src={currentTrack.artwork}
+              alt={currentTrack.title}
+              className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+            />
+            {isPlaying && (
+              <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                AO VIVO
+              </div>
+            )}
+          </div>
+
+          {/* Info da Trilha */}
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-extrabold tracking-tight truncate">{currentTrack.title}</h2>
+            <p className="text-sm font-medium text-slate-400 mt-1">{currentTrack.artist}</p>
+            <p className="text-xs text-slate-500">{currentTrack.album}</p>
+          </div>
+
+          {/* Controles de Reprodução */}
+          <div className="flex items-center justify-center gap-6 mb-6">
+            <button
+              onClick={handlePrevTrack}
+              className="p-3 text-slate-400 hover:text-white transition-colors"
+              title="Estação anterior"
+            >
+              <SkipBack className="w-6 h-6" />
+            </button>
+
+            <button
+              onClick={togglePlay}
+              className={`w-16 h-16 rounded-full text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
+                isPlaying
+                  ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30"
+                  : "bg-blue-600 hover:bg-blue-500 shadow-blue-600/30"
+              }`}
+              title={isPlaying ? "Pausar" : "Tocar"}
+            >
+              {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
+            </button>
+
+            <button
+              onClick={handleNextTrack}
+              className="p-3 text-slate-400 hover:text-white transition-colors"
+              title="Próxima estação"
+            >
+              <SkipForward className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Volume */}
+          <div className="flex items-center gap-3 pt-4 border-t border-slate-800/80 px-2">
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-5 h-5 text-red-400" />
+              ) : (
+                <Volume2 className="w-5 h-5" />
+              )}
+            </button>
+            <Slider
+              value={[isMuted ? 0 : volume * 100]}
+              max={100}
+              step={1}
+              onValueChange={(vals) => {
+                setIsMuted(false);
+                setVolume(vals[0] / 100);
+              }}
+              className="flex-1"
+            />
+          </div>
+        </div>
+      </main>
+
+      {/* Rodapé Informativo */}
+      <footer className="max-w-xl w-full mx-auto text-center text-xs text-slate-500">
+        Áudio contínuo em segundo plano ativo enquanto você navega na vitrine.
+      </footer>
+
+      {/* Modal Clube HS */}
+      {showClubModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl relative">
+            <button
+              onClick={() => {
+                setShowClubModal(false);
+                togglePlay();
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center mx-auto mb-4 font-bold shadow-lg shadow-amber-500/20">
+              <Crown className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-xl font-bold text-white">Gostando da Rádio HS?</h3>
+            <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+              Assine o <strong className="text-amber-400">Clube HS</strong> por apenas{" "}
+              <strong>R$ 19,90/mês</strong> e ouça sem anúncios, além de Frete Grátis em produtos selecionados!
+            </p>
+
+            <div className="mt-6 flex flex-col gap-2.5">
+              <a
+                href="/clube-hs"
+                className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all"
+              >
+                Assinar Clube HS por R$ 19,90
+                <ExternalLink className="w-4 h-4" />
+              </a>
+
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowClubModal(false);
+                  togglePlay();
+                }}
+                className="text-xs text-slate-400 hover:text-white"
+              >
+                Continuar ouvindo
+              </Button>
+            </div>
+
+            <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              Membros do clube têm navegação VIP liberada.
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
