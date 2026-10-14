@@ -62,6 +62,13 @@ export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
       "Compre com total segurança e garantia na HS Digital. Todos os pagamentos contam com proteção de ponta a ponta, rastreamento em tempo real e entrega rápida para todo o Brasil. Os melhores produtos e lojas em um só marketplace!",
   },
   {
+    id: "variedade-produtos",
+    tag: "Variedade & Preço Baixo",
+    title: "Tudo em um só lugar",
+    script:
+      "Eletrônicos, moda, casa e utilidades: os melhores fornecedores nacionais e internacionais estão reunidos na HS Digital. Preço justo, compra garantida e suporte humanizado para você comprar sem preocupação!",
+  },
+  {
     id: "ia-aura-atendimento",
     tag: "Tecnologia & IA",
     title: "Atendimento 24h com a Aura",
