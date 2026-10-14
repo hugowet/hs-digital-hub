@@ -13,6 +13,8 @@ import {
   X,
   ShieldCheck,
   Mic,
+  Volume1,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -21,10 +23,10 @@ import { useRadio } from "@/lib/radio-context";
 export const Route = createFileRoute("/radio")({
   head: () => ({
     meta: [
-      { title: "Rádio HS Digital 🎵 · Ao Vivo com Músicas Virais" },
+      { title: "Rádio HS Digital 🎵 · Ao Vivo com Locutor Virtual" },
       {
         name: "description",
-        content: "5 estações exclusivas HS Digital: Sertanejo, Gospel, Funk, Forró e Músicas Virais.",
+        content: "Programação exclusiva HS Digital com Locutor Virtual, anúncios e ofertas com reprodução contínua.",
       },
     ],
   }),
@@ -42,6 +44,8 @@ export function RadioHSPage() {
     isVipClube,
     showClubModal,
     isLocutorSpeaking,
+    currentAnnouncement,
+    announcements,
     locutorEnabled,
     setShowClubModal,
     setLocutorEnabled,
@@ -51,6 +55,7 @@ export function RadioHSPage() {
     selectTrack,
     setVolume,
     setIsMuted,
+    speakAnnouncementNow,
   } = useRadio();
 
   return (
@@ -59,11 +64,9 @@ export function RadioHSPage() {
       <header className="max-w-xl w-full mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="relative">
-            <div
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg transition-colors ${
-                isPlaying ? "bg-emerald-600 shadow-emerald-500/30" : "bg-blue-600 shadow-blue-500/30"
-              }`}
-            >
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg transition-colors ${
+              isPlaying ? "bg-emerald-600 shadow-emerald-500/30" : "bg-blue-600 shadow-blue-500/30"
+            }`}>
               <Radio className={`w-5 h-5 ${isPlaying ? "animate-pulse" : ""}`} />
             </div>
             {isPlaying && (
@@ -82,7 +85,7 @@ export function RadioHSPage() {
                 </span>
               )}
             </h1>
-            <p className="text-[11px] text-slate-400">5 Estações · Músicas Virais & Locutor</p>
+            <p className="text-[11px] text-slate-400">Locutor Virtual Ativo em Segundo Plano</p>
           </div>
         </div>
 
@@ -105,40 +108,34 @@ export function RadioHSPage() {
       {/* Card Central */}
       <main className="max-w-md w-full mx-auto my-auto py-6">
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden">
-          {/* Seletor Rápido das 5 Estações */}
-          <div className="mb-5">
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none no-scrollbar">
-              {tracks.map((t, idx) => {
-                const isActive = currentTrackIndex === idx;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => selectTrack(idx)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 capitalize ${
-                      isActive
-                        ? "bg-purple-600 text-white shadow-md shadow-purple-500/25 ring-1 ring-purple-300"
-                        : "bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white"
-                    }`}
-                  >
-                    {t.genre}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Indicador Discreto do Locutor (Apenas badge visual quando fala, sem exibir textos) */}
-          {isLocutorSpeaking && (
-            <div className="mb-4 px-3.5 py-2 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 flex items-center justify-between animate-pulse">
+          {/* Status do Locutor Virtual */}
+          <div className={`mb-4 px-3.5 py-2.5 rounded-2xl border transition-all ${
+            isLocutorSpeaking
+              ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-300"
+              : "bg-slate-800/60 border-slate-700/60 text-slate-300"
+          }`}>
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Mic className="w-4 h-4 text-emerald-400 animate-bounce" />
-                <span className="text-xs font-bold">Locutor Virtual HS no ar</span>
+                <Mic className={`w-4 h-4 ${isLocutorSpeaking ? "animate-bounce text-emerald-400" : "text-slate-400"}`} />
+                <span className="text-xs font-bold">
+                  {isLocutorSpeaking ? "Locutor no microfone agora:" : "Locutor Virtual HS"}
+                </span>
               </div>
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200">
-                AO VIVO
-              </span>
+              <button
+                onClick={() => speakAnnouncementNow()}
+                disabled={!isPlaying}
+                className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 disabled:opacity-40 transition-colors"
+              >
+                Ouvir anúncio agora
+              </button>
             </div>
-          )}
+
+            {isLocutorSpeaking && currentAnnouncement && (
+              <p className="text-xs text-emerald-200/90 mt-1.5 italic bg-black/30 p-2 rounded-lg leading-relaxed">
+                "{currentAnnouncement.script}"
+              </p>
+            )}
+          </div>
 
           {/* Capa com Glow */}
           <div className="relative aspect-square w-full rounded-2xl overflow-hidden mb-6 shadow-xl border border-slate-700/50">
@@ -150,7 +147,7 @@ export function RadioHSPage() {
             {isPlaying && (
               <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                TRANSMISSÃO AO VIVO
+                AO VIVO
               </div>
             )}
           </div>
@@ -167,7 +164,7 @@ export function RadioHSPage() {
             <button
               onClick={handlePrevTrack}
               className="p-3 text-slate-400 hover:text-white transition-colors"
-              title="Estação anterior"
+              title="Trilha anterior"
             >
               <SkipBack className="w-6 h-6" />
             </button>
@@ -175,8 +172,8 @@ export function RadioHSPage() {
             <button
               onClick={togglePlay}
               className={`w-16 h-16 rounded-full text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
-                isPlaying
-                  ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30"
+                isPlaying 
+                  ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30" 
                   : "bg-blue-600 hover:bg-blue-500 shadow-blue-600/30"
               }`}
               title={isPlaying ? "Pausar" : "Tocar"}
@@ -187,7 +184,7 @@ export function RadioHSPage() {
             <button
               onClick={handleNextTrack}
               className="p-3 text-slate-400 hover:text-white transition-colors"
-              title="Próxima estação"
+              title="Próxima trilha"
             >
               <SkipForward className="w-6 h-6" />
             </button>
@@ -217,26 +214,47 @@ export function RadioHSPage() {
             />
           </div>
 
-          {/* Alternar Locutor */}
-          <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
-            <span>Locutor a cada 1 min:</span>
-            <button
-              onClick={() => setLocutorEnabled(!locutorEnabled)}
-              className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
-                locutorEnabled
-                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                  : "bg-slate-800 text-slate-500 border-slate-700"
-              }`}
-            >
-              {locutorEnabled ? "Locutor Ativado" : "Locutor Pausado"}
-            </button>
+          {/* Anúncios de Marketing Programados */}
+          <div className="mt-6 pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-400 mb-2">
+              <span className="flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5" />
+                Roteiro de Anúncios da Rádio
+              </span>
+              <button
+                onClick={() => setLocutorEnabled(!locutorEnabled)}
+                className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                  locutorEnabled
+                    ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                    : "bg-slate-800 text-slate-500 border-slate-700"
+                }`}
+              >
+                {locutorEnabled ? "Locutor Ligado" : "Locutor Mudo"}
+              </button>
+            </div>
+
+            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              {announcements.map((item, idx) => (
+                <button
+                  key={item.id}
+                  onClick={() => speakAnnouncementNow(idx)}
+                  className="w-full text-left p-2 rounded-xl text-xs bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition-colors flex items-center justify-between group"
+                >
+                  <div className="truncate mr-2">
+                    <span className="text-[10px] text-amber-400 block font-bold uppercase">{item.tag}</span>
+                    <span className="text-slate-200 group-hover:text-white font-medium">{item.title}</span>
+                  </div>
+                  <Volume1 className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-400 shrink-0" />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </main>
 
       {/* Footer Info */}
       <footer className="max-w-xl w-full mx-auto text-center text-xs text-slate-500">
-        Áudio contínuo em segundo plano ativo enquanto você navega pelo marketplace.
+        Áudio contínuo em segundo plano ativo enquanto você navega na vitrine.
       </footer>
 
       {/* Modal Clube HS */}
