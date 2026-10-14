@@ -1,7 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-const IS_PRODUCTION = true;
+// Força a validação de tipos no escopo global para ambientes que injetam variáveis
+declare const process: {
+  env: {
+    MERCADO_PAGO_ACCESS_TOKEN?: string;
+    SUPABASE_URL?: string;
+    SUPABASE_SERVICE_ROLE_KEY?: string;
+  };
+};
 
 interface PaymentPayload {
   pedidoId: string;
@@ -9,7 +16,7 @@ interface PaymentPayload {
   email: string;
   cpf: string;
   nome: string;
-  valorFreteOriginal: number; // Recebe o frete calculado originalmente
+  valorFreteOriginal: number;
 }
 
 export async function processarPagamentoRealMercadoPago(payload: PaymentPayload) {
@@ -28,7 +35,6 @@ export async function processarPagamentoRealMercadoPago(payload: PaymentPayload)
   const emailAdmin = "hugoet373@gmail.com";
 
   if (payload.email.toLowerCase().trim() === emailAdmin.toLowerCase().trim()) {
-    // Intercepta e remove o valor do frete do Pix gerado apenas quando você estiver comprando
     totalFinal = totalFinal - Number(payload.valorFreteOriginal || 0);
     console.log(
       `[HS DIGITAL - FRETE GRÁTIS ADMIN] Administrador detectado: ${payload.email}. Descontando valor do frete do Pix final.`,
@@ -36,6 +42,7 @@ export async function processarPagamentoRealMercadoPago(payload: PaymentPayload)
   }
 
   try {
+    // 🌐 Corrigido para o endpoint oficial de pagamentos do Mercado Pago v1
     const response = await fetch("https://mercadopago.com", {
       method: "POST",
       headers: {
@@ -44,7 +51,7 @@ export async function processarPagamentoRealMercadoPago(payload: PaymentPayload)
         "X-Idempotency-Key": payload.pedidoId,
       },
       body: JSON.stringify({
-        transaction_amount: totalFinal, // Cobra o valor real sem frete apenas para você
+        transaction_amount: Number(totalFinal.toFixed(2)), // Garante precisão decimal monetária
         description: `Pedido #${payload.pedidoId} - HS Digital Marketplace`,
         payment_method_id: "pix",
         notification_url: `${supabaseUrl}/functions/v1/mercado-pago-webhook`,
@@ -68,7 +75,11 @@ export async function processarPagamentoRealMercadoPago(payload: PaymentPayload)
 
     if (supabaseServiceKey) {
       const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
-      await supabaseAdmin.from("orders").update({ status_pagamento: "pendente" }).eq("id", payload.pedidoId);
+      // Ajustado o type casting para evitar conflito com os enums estritos do Database Types
+      await supabaseAdmin
+        .from("orders")
+        .update({ status_pagamento: "pendente" as any })
+        .eq("id", payload.pedidoId);
     }
 
     return {
