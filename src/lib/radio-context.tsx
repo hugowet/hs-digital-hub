@@ -20,11 +20,25 @@ export interface RadioAnnouncement {
 // 🎙️ Roteiros Oficiais do Locutor Virtual HS Digital
 export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
   {
-    id: "promo-principal",
+    id: "Entrada-principal",
     tag: "Chamada Principal",
-    title: "Evolução e Economia HS",
+    title: "Boas vindas",
     script:
-      "É isso aí pessoal, HS Digital evoluindo com tecnologia! Venha comprar, venha economizar, aqui você tem envio rápido e frete grátis!",
+      "Seja muito bem-vindo à HS Digital! O marketplace que une inovação e praticidade às suas compras. Prepare-se para uma experiência única, rápida e 100% segura.",
+  },
+  {
+    id: "Sugestão principal",
+    tag: "Rádio Hs",
+    title: "Sugestão carismatica",
+    script:
+      "Que tal fazer suas compras ouvindo música? Com a rádio da HS Digital, você navega com a melhor qualidade do mercado, unindo inovação e praticidade.",
+  },
+    {
+    id: "Anúncio Afiliados",
+    tag: "Programa de Afiliados",
+    title: "Sugestão persuasiva",
+    script:
+      "Você já conhece o Programa de Afiliados da HS Digital? Seja um afiliado oficial, divulgue seu link exclusivo e ganhe 10% de comissão em cada venda direto no seu saldo!",
   },
   {
     id: "clube-hs",
@@ -33,7 +47,7 @@ export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
     script:
       "Atenção clientes da HS Digital! Você já conhece o Clube HS? Por apenas dezenove e noventa ao mês, você garante frete grátis na sua região, ouve nossa rádio sem anúncios e tem descontos VIP exclusivos em milhares de produtos. Acesse o menu Clube HS e assine agora mesmo!",
   },
-  {
+    {
     id: "jogos-premios",
     tag: "Jogos & Sorte",
     title: "Roleta da Sorte e Raspadinha",
@@ -59,19 +73,19 @@ export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
 // 🎵 Trilhas de Fundo Instrumentais (perfeitas para locução e compras)
 export const RADIO_BACKGROUND_TRACKS: RadioTrack[] = [
   {
-    title: "Lo-Fi Lounge & Chill Beats",
-    artist: "Trilha Oficial HS Digital",
-    album: "Marketplace Sessions",
-    artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
-    src: "https://streams.ilovemusic.de/iloveradio17.mp3",
-  },
-  {
     title: "Sertanejo Acústico & Melodias",
     artist: "Trilha Oficial HS Digital",
     album: "Brasil Sessions",
     artwork: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=512&q=80",
     src: "https://cast.mgtradio.net/radio/8020/aac",
   },
+  {
+    title: "Hs Gospel",
+    artist: "Trilha Gospel",
+    album: "Mark Trilha Sessions",
+    artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
+    src: "http://ec5.yesstreaming.net:1890/stream",
+  },      
   {
     title: "Pop & Eletrônica Suave",
     artist: "Trilha Oficial HS Digital",
@@ -232,7 +246,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     speakAnnouncement(HS_MARKETING_SCRIPTS[targetIdx]);
   };
 
-  // Agendamento automático de anúncios a cada 50 segundos enquanto estiver tocando
+  // Agendamento automático de anúncios a cada 90 segundos enquanto estiver tocando
   useEffect(() => {
     if (!isPlaying || !locutorEnabled) return;
 
@@ -244,7 +258,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
           return next;
         });
       }
-    }, 50000); // 50 segundos entre anúncios
+    }, 50000); // 90 segundos entre anúncios
 
     return () => clearInterval(interval);
   }, [isPlaying, locutorEnabled, isLocutorSpeaking, speakAnnouncement]);
