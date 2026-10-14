@@ -73,8 +73,8 @@ export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
 // 🎵 Trilhas de Fundo Instrumentais (perfeitas para locução e compras)
 export const RADIO_BACKGROUND_TRACKS: RadioTrack[] = [
   {
-    title: "Sertanejo Acústico & Melodias",
-    artist: "Trilha Oficial HS Digital",
+    title: "Rádio HS Sertaneja",
+    artist: "Oficial HS Digital",
     album: "Brasil Sessions",
     artwork: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=512&q=80",
     src: "https://cast.mgtradio.net/radio/8020/aac",
@@ -82,7 +82,7 @@ export const RADIO_BACKGROUND_TRACKS: RadioTrack[] = [
   {
     title: "Hs Gospel",
     artist: "Trilha Gospel",
-    album: "Mark Trilha Sessions",
+    album: "Rádio HS Digital",
     artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
     src: "http://ec5.yesstreaming.net:1890/stream",
   },      
