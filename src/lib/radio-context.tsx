@@ -80,6 +80,13 @@ export const RADIO_BACKGROUND_TRACKS: RadioTrack[] = [
     src: "https://cast.mgtradio.net/radio/8020/aac",
   },
   {
+    title: "Sertanejo Hits 2026",
+    artist: "Top Sertanejo Brasil",
+    album: "Lançamentos & Modão",
+    artwork: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=512&q=80",
+    src: "https://cast.mgtradio.net/radio/8000/aac",
+  },
+  {
     title: "Hs Gospel",
     artist: "Trilha Gospel",
     album: "Rádio HS Digital",
