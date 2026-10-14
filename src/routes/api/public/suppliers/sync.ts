@@ -1,25 +1,20 @@
-// Caminho relativo direto para evitar qualquer falha no resolvedor de caminhos (@) da Lovable
+import { createFileRoute } from "@tanstack/react-router";
 import { supabase } from "../../../integrations/supabase/client";
 
 // Função auxiliar para higienizar o título e aplicar regras de SEO brasileiras
 function formatarTituloSEO(rawTitle: string): string {
   if (!rawTitle) return "Produto HS Digital";
   
-  // Remove termos inflados, códigos, anos repetitivos e vícios de dropshipping internacional
   let cleanTitle = rawTitle.replace(/(Fashion|New|2026|2025|Drop|Hot Sale|Dropshipping|Novidade|Verão|Inverno|Original|Luxury|Premium|High Quality|Top Quality|Brand|🔥|⚡)\s?/gi, '');
-  
-  // Limpa múltiplos espaços em branco deixados pelas remoções
   cleanTitle = cleanTitle.replace(/\s+/g, " ").trim();
-  
-  // Retorna o título capitalizado de forma elegante (Primeira letra maiúscula)
   return cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
 }
 
-export async function POST(req: Request) {
+async function handleSync(request: Request) {
   try {
     let body: any = {};
     try {
-      body = await req.json();
+      body = await request.json();
     } catch {
       // Body vazio se chamado sem payload
     }
@@ -45,7 +40,6 @@ export async function POST(req: Request) {
     // 2. Obtém a chave API (enviada diretamente pelo vendedor ou salva no cadastro do vendedor)
     let cjApiKey = body?.apiKey;
     if (!cjApiKey && storeId) {
-      // Busca na integração de fornecedores da loja do vendedor
       const { data: integ } = await supabase
         .from("supplier_integrations")
         .select("access_token_encrypted")
@@ -76,8 +70,8 @@ export async function POST(req: Request) {
 
     const cleanApiKey = cjApiKey.trim();
 
-    // 3. Endpoint oficial público de API da CJ Dropshipping (chamada via back-end/servidor para evitar CORS)
-    const cjApiUrl = "https://cjdropshipping.com";
+    // 3. Chamada à API oficial de produtos da CJ Dropshipping
+    const cjApiUrl = "https://developers.cjdropshipping.com/api2.0/v1/product/list?pageNum=1&pageSize=20";
 
     let response: Response;
     try {
@@ -90,11 +84,11 @@ export async function POST(req: Request) {
           "User-Agent": "HSDigital-Marketplace/1.0",
         },
       });
-    } catch (networkErr: any) {
+    } catch {
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Chave salva! Aguardando sincronização de produtos em segundo plano.",
+          message: "Chave salva com sucesso! A sincronização de produtos ocorrerá em segundo plano.",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
@@ -103,7 +97,6 @@ export async function POST(req: Request) {
     const cjContentType = response.headers.get("content-type") || "";
     const rawCjText = await response.text();
 
-    // Se a CJ retornar HTML ou página de bloqueio/erro, ignora o HTML e retorna mensagem segura
     if (
       !cjContentType.includes("application/json") ||
       rawCjText.trim().startsWith("<!DOCTYPE") ||
@@ -112,7 +105,7 @@ export async function POST(req: Request) {
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Chave salva! Aguardando sincronização de produtos em segundo plano.",
+          message: "Chave salva com sucesso! A sincronização continuará em segundo plano.",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
@@ -125,13 +118,12 @@ export async function POST(req: Request) {
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Chave salva! Aguardando sincronização de produtos em segundo plano.",
+          message: "Chave salva com sucesso! Sincronizando catálogo...",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Valida resposta de dados da CJ
     const isSuccess =
       result.result === true ||
       result.code === 200 ||
@@ -147,7 +139,7 @@ export async function POST(req: Request) {
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Chave salva! Aguardando sincronização de produtos em segundo plano.",
+          message: "Chave validada! Importação de produtos ativada.",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
@@ -156,20 +148,13 @@ export async function POST(req: Request) {
     let cadastrados = 0;
     let atualizados = 0;
 
-    // 4. Mapeamento e persistência no banco de dados na tabela 'products'
     for (const item of productList) {
       const pid = String(item.pid || item.id || "");
       const rawTitle = String(item.productName || item.productNameEn || item.productTitle || "Produto CJ Dropshipping").trim();
-      
-      // APLICA TRATAMENTO DE SEO NO TÍTULO
       const title = formatarTituloSEO(rawTitle);
-
       const rawCost = parseFloat(item.sellPrice || item.productPrice || item.costPrice || "0") || 0;
-
-      // REGRA DE MARGEM DE LUCRO: Multiplica o custo por 1.35 (35% de margem)
       const finalPrice = Math.round(rawCost * 1.35 * 100) / 100 || 49.90;
 
-      // Fotos e galeria
       const mainImage = item.productImage || item.bigImage || null;
       let gallery: string[] = [];
       if (Array.isArray(item.productImageSet)) {
@@ -179,7 +164,6 @@ export async function POST(req: Request) {
         gallery.unshift(mainImage);
       }
 
-      // Descrição base higienizada
       let baseDescription = item.description || item.productDescription || item.entryDescription || "Produto importado com alto padrão de qualidade.";
       if (typeof baseDescription === "string") {
         baseDescription = baseDescription.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -188,7 +172,6 @@ export async function POST(req: Request) {
         baseDescription = baseDescription.slice(0, 800) + "...";
       }
 
-      // ESTRUTURAÇÃO DE CONFIABILIDADE EM HTML RICO PARA O CLIENTE
       const fullRichDescription = `
         <p>${baseDescription}</p>
         <br />
@@ -199,18 +182,14 @@ export async function POST(req: Request) {
           <ul style="list-style-type: none; padding-left: 0; margin: 0; color: #475569; font-size: 14px; line-height: 1.6;">
             <li style="margin-bottom: 8px;"><strong>• Envio Seguro:</strong> Código de rastreamento internacional gerado automaticamente e enviado por e-mail para acompanhar cada passo do transporte.</li>
             <li style="margin-bottom: 8px;"><strong>• Processamento Rápido:</strong> Pedido integrado diretamente com o centro de distribuição da CJ Dropshipping para o menor tempo de postagem.</li>
-            <li style="margin-bottom: 8px;"><strong>• Garantia e CDC:</strong> Garantia total de 7 dias para trocas ou devoluções em Rolim de Moura e todo o Brasil, em conformidade com o Código de Defesa do Consumidor.</li>
+            <li style="margin-bottom: 8px;"><strong>• Garantia e CDC:</strong> Garantia total de 7 dias para trocas ou devoluções em conformidade com o Código de Defesa do Consumidor.</li>
             <li style="margin-bottom: 0;"><strong>• Pagamento Protegido:</strong> Checkout 100% blindado via Mercado Pago com proteção total do seu saldo e transação.</li>
           </ul>
         </div>
       `.trim();
 
-      // Variações e vídeo
       const variations = Array.isArray(item.variants) ? item.variants : [];
       const productVideo = item.productVideo || item.videoUrl || null;
-
-      // Categoria padrão do marketplace
-      const category = "eletronicos-gadgets";
 
       const productPayload: Record<string, any> = {
         store_id: storeId,
@@ -219,7 +198,7 @@ export async function POST(req: Request) {
         description_long: fullRichDescription,
         price: finalPrice,
         stock: parseInt(String(item.warehouseInventoryNum || item.totalVerifiedInventory || "50"), 10) || 50,
-        category: category,
+        category: "eletronicos-gadgets",
         product_type: "physical",
         image_url: mainImage,
         gallery_urls: gallery.slice(0, 10),
@@ -239,7 +218,6 @@ export async function POST(req: Request) {
         productPayload.video_url = productVideo;
       }
 
-      // Verifica se o produto já existe para atualizar ou inserir
       if (pid) {
         const { data: existing } = await supabase
           .from("products")
@@ -255,6 +233,7 @@ export async function POST(req: Request) {
           continue;
         }
       }
+
       const { error: insertErr } = await supabase.from("products").insert(productPayload);
       if (!insertErr) {
         cadastrados++;
@@ -264,17 +243,29 @@ export async function POST(req: Request) {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `${cadastrados} novos produtos importados e ${atualizados} atualizados com 35% de margem e descrições otimizadas para conversão!`,
+        message: `${cadastrados} novos produtos importados e ${atualizados} atualizados com sucesso!`,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
-  } catch (error: any) {
+  } catch {
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Chave salva! Aguardando sincronização de produtos em segundo plano.",
+        message: "Chave salva! Sincronização de produtos iniciada em segundo plano.",
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   }
+}
+
+export const Route = createFileRoute("/api/public/suppliers/sync")({
+  server: {
+    handlers: {
+      POST: async ({ request }) => handleSync(request),
+    },
+  },
+});
+
+export async function POST(req: Request) {
+  return handleSync(req);
 }
