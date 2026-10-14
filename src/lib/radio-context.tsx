@@ -179,12 +179,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     },
     staleTime: 1000 * 60 * 5,
   });
-  
- // Locução automática em voz pt-BR sem expor controles nem legendas
-  const triggerLocutor = useCallback(() => {
-    if (isVipClube) return;
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    
+
   const isVipClube = Boolean(userProfile?.is_clube_hs);
 
   // Integração com controles nativos de segundo plano e tela de bloqueio
