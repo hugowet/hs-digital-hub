@@ -1,100 +1,117 @@
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
-// Força a validação de tipos no escopo global para ambientes que injetam variáveis
-declare const process: {
-  env: {
-    MERCADO_PAGO_ACCESS_TOKEN?: string;
-    SUPABASE_URL?: string;
-    SUPABASE_SERVICE_ROLE_KEY?: string;
-  };
-};
-
-interface PaymentPayload {
-  pedidoId: string;
-  total: number;
-  email: string;
-  cpf: string;
-  nome: string;
-  valorFreteOriginal: number;
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
 }
 
-export async function processarPagamentoRealMercadoPago(payload: PaymentPayload) {
-  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
-  const supabaseUrl = process.env.SUPABASE_URL || "https://supabase.co";
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+function base64ToBytes(value: string) {
+  const binary = atob(value);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
 
-  if (!accessToken || accessToken.startsWith("TEST-")) {
+async function encryptionKey() {
+  const secret = process.env["MP_TOKEN_ENCRYPTION_KEY"]!;
+  if (!secret) throw new Error("A chave de proteção do Mercado Pago não está configurada.");
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(secret));
+  return crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+export async function encryptSecret(value: string) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await encryptionKey(), encoder.encode(value));
+  return `${bytesToBase64(iv)}.${bytesToBase64(new Uint8Array(encrypted))}`;
+}
+
+export async function decryptSecret(value: string) {
+  const [ivPart, encryptedPart] = value.split(".");
+  if (!ivPart || !encryptedPart) throw new Error("Credencial protegida inválida.");
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: base64ToBytes(ivPart) },
+    await encryptionKey(),
+    base64ToBytes(encryptedPart),
+  );
+  return decoder.decode(decrypted);
+}
+
+export async function sha256(value: string) {
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function validWebhookSignature(
+  dataId: string,
+  requestId: string,
+  timestamp: string,
+  provided: string,
+  secret: string,
+) {
+  const timestampSeconds = Number(timestamp);
+  if (!Number.isFinite(timestampSeconds) || Math.abs(Date.now() / 1000 - timestampSeconds) > 600) {
+    return false;
+  }
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
+    "sign",
+  ]);
+  const manifest = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${timestamp};`;
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(manifest));
+  const expected = Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  if (expected.length !== provided.length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    mismatch |= expected.charCodeAt(index) ^ provided.charCodeAt(index);
+  }
+  return mismatch === 0;
+}
+
+export function safeOrigin(value: string) {
+  const url = new URL(value);
+  const isLocalPreview = url.protocol === "http:" && url.hostname === "localhost";
+  if (url.protocol !== "https:" && !isLocalPreview) {
+    throw new Error("Origem de retorno inválida.");
+  }
+  return url.origin;
+}
+
+export async function mercadoPagoRequest<T>(path: string, accessToken: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`https://api.mercadopago.com${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+  const body = await response.text();
+  if (!response.ok) {
+    console.error(`Mercado Pago request failed [${response.status}]: ${body}`);
+    let detail = "";
+    try {
+      const parsed = JSON.parse(body) as {
+        message?: string;
+        cause?: Array<{ description?: string }>;
+      };
+      detail = parsed.cause?.[0]?.description ?? parsed.message ?? "";
+    } catch {
+      detail = "";
+    }
+    if (detail === "You cannot use application_fee with this payment.") {
+      throw new Error(
+        "A conta Mercado Pago da loja precisa ser reconectada como uma conta vendedora diferente da conta da plataforma.",
+      );
+    }
+    const normalizedDetail = detail.toLowerCase();
+    if (normalizedDetail.includes("cannot pay") && normalizedDetail.includes("yourself")) {
+      throw new Error("O Mercado Pago não permite pagar para a própria conta. Use outro CPF e outra conta compradora.");
+    }
+    if (normalizedDetail.includes("identification") || normalizedDetail.includes("cpf")) {
+      throw new Error("O Mercado Pago recusou o CPF informado. Confira os 11 números e tente novamente.");
+    }
     throw new Error(
-      "FALHA CRÍTICA DE PRODUÇÃO: O Mercado Pago detectou chaves de teste (TEST-). Altere para credenciais reais de produção (APP_USR-).",
+      detail ? `Mercado Pago recusou a operação: ${detail}` : `Mercado Pago recusou a operação [${response.status}].`,
     );
   }
-
-  // 🎯 REGRA DE BACKEND: FRETE GRÁTIS AUTOMÁTICO PARA O ADMINISTRADOR HUGO
-  let totalFinal = Number(payload.total);
-  const emailAdmin = "hugoet373@gmail.com";
-
-  if (payload.email.toLowerCase().trim() === emailAdmin.toLowerCase().trim()) {
-    totalFinal = totalFinal - Number(payload.valorFreteOriginal || 0);
-    console.log(
-      `[HS DIGITAL - FRETE GRÁTIS ADMIN] Administrador detectado: ${payload.email}. Descontando valor do frete do Pix final.`,
-    );
-  }
-
-  try {
-    // 🌐 Corrigido para o endpoint oficial de pagamentos do Mercado Pago v1
-    const response = await fetch("https://mercadopago.com", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "X-Idempotency-Key": payload.pedidoId,
-      },
-      body: JSON.stringify({
-        transaction_amount: Number(totalFinal.toFixed(2)), // Garante precisão decimal monetária
-        description: `Pedido #${payload.pedidoId} - HS Digital Marketplace`,
-        payment_method_id: "pix",
-        notification_url: `${supabaseUrl}/functions/v1/mercado-pago-webhook`,
-        payer: {
-          email: payload.email,
-          first_name: payload.nome,
-          identification: {
-            type: "CPF",
-            number: payload.cpf.replace(/\D/g, ""),
-          },
-        },
-      }),
-    });
-
-    const resultado = await response.json();
-
-    if (!response.ok) {
-      console.error("Erro retornado pela API do Mercado Pago:", resultado);
-      throw new Error(resultado.message || "Erro ao gerar cobrança real.");
-    }
-
-    if (supabaseServiceKey) {
-      const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
-      // Ajustado o type casting para evitar conflito com os enums estritos do Database Types
-      await supabaseAdmin
-        .from("orders")
-        .update({ status_pagamento: "pendente" as any })
-        .eq("id", payload.pedidoId);
-    }
-
-    return {
-      sucesso: true,
-      pagamentoId: resultado.id,
-      qrCode: resultado.point_of_interaction?.transaction_data?.qr_code,
-      qrCodeBase64: resultado.point_of_interaction?.transaction_data?.qr_code_base64,
-      copiaECola: resultado.point_of_interaction?.transaction_data?.qr_code,
-      status: resultado.status,
-    };
-  } catch (error: any) {
-    console.error("Falha fatal na varredura financeira de produção:", error);
-    return {
-      sucesso: false,
-      erro: error.message || "Falha na comunicação com o processador de pagamentos real.",
-    };
-  }
+  return JSON.parse(body) as T;
 }
