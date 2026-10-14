@@ -189,19 +189,16 @@ function CartPage() {
       return;
     }
 
-    // 1. Cria uma cópia mutável dos fretes já selecionados
     let quotesToUse = { ...selectedQuotes };
 
-    // 2. Se houver lojas físicas sem frete selecionado, calcula e captura o retorno direto
+    // Se ainda não cotou para alguma loja física, calcula automaticamente na hora
     if (physicalStoreIds.some((storeId) => !quotesToUse[storeId])) {
       const freshQuotes = await calculateShipping(cleanZip);
       if (freshQuotes) {
-        // 🌟 CORREÇÃO: Mescla as novas cotações calculadas diretamente na variável local
-        quotesToUse = { ...quotesToUse, ...freshQuotes };
+        quotesToUse = freshQuotes;
       }
     }
 
-    // 3. Agora a verificação lê o objeto 'quotesToUse' atualizado em tempo de execução
     if (physicalStoreIds.some((storeId) => !quotesToUse[storeId])) {
       toast.error("Por favor, selecione uma opção de frete para continuar.");
       return;
@@ -221,7 +218,7 @@ function CartPage() {
             postalCode: cleanZip,
             note: note.trim(),
           },
-          shippingQuoteIds: quotesToUse, // Envia o mapeamento correto e preenchido
+          shippingQuoteIds: quotesToUse,
           couponId: selectedCouponId || undefined,
         },
       });
