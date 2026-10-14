@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
+  Crown,
   Gamepad2,
   Home,
   LogIn,
@@ -9,13 +10,13 @@ import {
   MapPin,
   Menu,
   Search,
+  Share2,
   ShoppingBag,
   ShoppingCart,
   Store,
   TicketPercent,
   User,
   X,
-  Crown,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import {
 import { useCart } from "@/lib/cart";
 import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
+
 export function SiteHeader({
   query = "",
   onQueryChange,
@@ -47,14 +49,18 @@ export function SiteHeader({
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBuyer, setIsBuyer] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
+
   // Estado local para resposta rápida sem lag
   const [localQuery, setLocalQuery] = useState(query);
   const [searchFocused, setSearchFocused] = useState(false);
+
   // Referência do campo de busca, usada para fechar o teclado do celular
   const inputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     setLocalQuery(query);
   }, [query]);
+
   // Debounce leve para atualizar o filtro sem congelar a tela
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -64,6 +70,7 @@ export function SiteHeader({
     }, 200);
     return () => clearTimeout(timer);
   }, [localQuery, onQueryChange, query]);
+
   const matches = useMemo(() => {
     const normalized = (localQuery ?? "").trim().toLowerCase();
     if (!normalized || normalized.length < 2) return [];
@@ -71,6 +78,7 @@ export function SiteHeader({
       .filter((item) => `${item.title} ${item.category}`.toLowerCase().includes(normalized))
       .slice(0, 6);
   }, [localQuery, suggestions]);
+
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       setSignedIn(!!data.user);
@@ -79,22 +87,26 @@ export function SiteHeader({
           .from("user_roles")
           .select("role")
           .eq("user_id", data.user.id);
+
         setIsAdmin(Boolean(roles?.some((item) => item.role === "admin")));
         setIsBuyer(
           Boolean(
             roles?.some((item) => item.role === "buyer") &&
-            !roles?.some((item) => item.role === "seller"),
+              !roles?.some((item) => item.role === "seller"),
           ),
         );
+
         const { count: unread } = await supabase
           .from("order_messages")
           .select("id,order_conversations!inner(buyer_id)", { count: "exact", head: true })
           .is("read_at", null)
           .neq("sender_id", data.user.id)
           .eq("order_conversations.buyer_id", data.user.id);
+
         setUnreadMessages(unread ?? 0);
       }
     });
+
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
         setSignedIn(!!session?.user);
@@ -106,8 +118,10 @@ export function SiteHeader({
         }
       }
     });
+
     return () => data.subscription.unsubscribe();
   }, []);
+
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -115,9 +129,9 @@ export function SiteHeader({
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
+
   const triggerSearch = () => {
     setSearchFocused(false);
-    // Fecha o teclado virtual do celular ao pesquisar
     inputRef.current?.blur();
     if (onQueryChange) {
       onQueryChange(localQuery);
@@ -125,6 +139,7 @@ export function SiteHeader({
       navigate({ to: "/", search: { q: localQuery || undefined } });
     }
   };
+
   return (
     <header className="sticky top-0 z-50 brand-gradient text-primary-foreground shadow-md">
       <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2.5 sm:py-3">
@@ -141,6 +156,7 @@ export function SiteHeader({
               HS Digital
             </span>
           </Link>
+
           {/* Barra de Pesquisa */}
           <div className="relative flex-1 min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -178,6 +194,7 @@ export function SiteHeader({
                 <X className="h-4 w-4" />
               </button>
             )}
+
             {/* Menu de Sugestões Rápidas */}
             {searchFocused && matches.length > 0 && (
               <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl">
@@ -191,7 +208,6 @@ export function SiteHeader({
                     variant="ghost"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => {
-                      // Fecha o teclado virtual ao escolher uma sugestão
                       inputRef.current?.blur();
                       setLocalQuery(item.title);
                       if (onQueryChange) onQueryChange(item.title);
@@ -209,12 +225,15 @@ export function SiteHeader({
               </div>
             )}
           </div>
+
           <nav className="flex items-center gap-1">
+            {/* Carrinho */}
             {signedIn && (
               <Link
                 to="/carrinho"
                 className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10"
                 aria-label="Carrinho"
+                title="Meu Carrinho"
               >
                 <ShoppingCart className="h-5 w-5" />
                 {count > 0 && (
@@ -224,6 +243,17 @@ export function SiteHeader({
                 )}
               </Link>
             )}
+
+            {/* Programa de Afiliados (logo após o carrinho) */}
+            <Link
+              to="/afiliados"
+              className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 text-primary-foreground"
+              aria-label="Programa de Afiliados"
+              title="Programa de Afiliados (Ganhe 10%)"
+            >
+              <Share2 className="h-5 w-5" />
+            </Link>
+
             {signedIn ? (
               <>
                 <Link
@@ -238,6 +268,7 @@ export function SiteHeader({
                     </span>
                   )}
                 </Link>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -263,6 +294,10 @@ export function SiteHeader({
                     <DropdownMenuItem onSelect={() => navigate({ to: "/compras" })}>
                       <ShoppingBag className="mr-2 h-4 w-4" />
                       Minhas compras
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/afiliados" })}>
+                      <Share2 className="mr-2 h-4 w-4 text-emerald-500" />
+                      Programa de Afiliados (10%)
                     </DropdownMenuItem>
                     {isBuyer && (
                       <DropdownMenuItem onSelect={() => navigate({ to: "/cupons" })}>
@@ -307,6 +342,7 @@ export function SiteHeader({
                 <User className="h-5 w-5" />
               </Link>
             )}
+
             <Button
               variant="ghost"
               size="icon"
@@ -318,41 +354,52 @@ export function SiteHeader({
             </Button>
           </nav>
         </div>
-        {signedIn && <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
-          <Link to="/" className="hover:text-white">
-            Início
-          </Link>
-          <Link
-  to="/clube-hs"
-  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-400/20 text-amber-300 hover:bg-amber-400/30 transition-colors"
->
-  <Crown className="w-3.5 h-3.5" />
-  Clube HS
-</Link>
 
-          <Link to="/compras" className="hover:text-white">
-            Minhas compras
-          </Link>
-          {isBuyer && (
-            <Link to="/jogos" className="hover:text-white">
-              Jogos & Prêmios
+        {signedIn && (
+          <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
+            <Link to="/" className="hover:text-white">
+              Início
             </Link>
-          )}
-          {isBuyer && (
-            <Link to="/cupons" className="hover:text-white">
-              Meus cupons
+            <Link
+              to="/clube-hs"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-400/20 text-amber-300 hover:bg-amber-400/30 transition-colors"
+            >
+              <Crown className="w-3.5 h-3.5" />
+              Clube HS
             </Link>
-          )}
-          <Link to="/notificacoes" className="hover:text-white">
-            Notificações
-          </Link>
-          <span className="ml-auto flex items-center gap-2">
-            <Store className="h-4 w-4" />
-            <Link to="/vendedor" className="hover:text-white">
-              Venda na HS Digital
+            <Link
+              to="/afiliados"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 transition-colors"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              Afiliados (10%)
             </Link>
-          </span>
-        </div>}
+            <Link to="/compras" className="hover:text-white">
+              Minhas compras
+            </Link>
+            {isBuyer && (
+              <Link to="/jogos" className="hover:text-white">
+                Jogos & Prêmios
+              </Link>
+            )}
+            {isBuyer && (
+              <Link to="/cupons" className="hover:text-white">
+                Meus cupons
+              </Link>
+            )}
+            <Link to="/notificacoes" className="hover:text-white">
+              Notificações
+            </Link>
+            <span className="ml-auto flex items-center gap-2">
+              <Store className="h-4 w-4" />
+              <Link to="/vendedor" className="hover:text-white">
+                Venda na HS Digital
+              </Link>
+            </span>
+          </div>
+        )}
+
+        {/* Menu Gaveta Mobile */}
         {open && (
           <div className="mt-3 grid gap-1 rounded-lg border border-primary-foreground/10 bg-black/80 p-2 text-sm shadow-xl backdrop-blur sm:hidden">
             <Link
@@ -363,6 +410,7 @@ export function SiteHeader({
               <Home className="h-4 w-4" />
               Início
             </Link>
+
             {signedIn && (
               <>
                 <Link
@@ -401,6 +449,7 @@ export function SiteHeader({
                 </Link>
               </>
             )}
+
             {isBuyer && (
               <Link
                 to="/jogos"
@@ -411,26 +460,39 @@ export function SiteHeader({
                 Jogos & Prêmios
               </Link>
             )}
+
             {signedIn && (
-              <>
-                <Link
-                  to="/carrinho"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  Carrinho {count > 0 ? `(${count})` : ""}
-                </Link>
-                <Link
-                  to="/vendedor"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
-                >
-                  <Store className="h-4 w-4" />
-                  Seller Center
-                </Link>
-              </>
+              <Link
+                to="/carrinho"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Carrinho {count > 0 ? `(${count})` : ""}
+              </Link>
             )}
+
+            {/* Afiliados no Menu Mobile */}
+            <Link
+              to="/afiliados"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10 text-emerald-300 font-medium"
+            >
+              <Share2 className="h-4 w-4 text-emerald-400" />
+              Programa de Afiliados (Ganhe 10%)
+            </Link>
+
+            {signedIn && (
+              <Link
+                to="/vendedor"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
+              >
+                <Store className="h-4 w-4" />
+                Seller Center
+              </Link>
+            )}
+
             {isAdmin && (
               <Link
                 to="/admin"
@@ -441,6 +503,7 @@ export function SiteHeader({
                 Admin
               </Link>
             )}
+
             {signedIn ? (
               <Button
                 variant="ghost"
@@ -467,6 +530,7 @@ export function SiteHeader({
     </header>
   );
 }
+
 export function AuthCta() {
   return (
     <Button asChild variant="secondary" size="sm">
