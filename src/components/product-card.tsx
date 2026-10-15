@@ -23,20 +23,27 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-// Calcula parcelamento realista: parcela mínima de R$ 5,00
-function getInstallmentText(price: number): string {
-  if (price < 10) {
-    return "À vista no Pix ou Cartão";
+// Formatação do parcelamento estilo marketplace
+function getInstallmentDetails(price: number): { text: string } {
+  if (price < 15) {
+    return { text: "À vista no Pix ou Cartão" };
   }
-  const maxInstallments = Math.min(10, Math.floor(price / 5));
-  if (maxInstallments <= 1) {
-    return "À vista no Pix ou Cartão";
-  }
-  const value = price / maxInstallments;
-  return `em até ${maxInstallments}x de ${brl(value)} sem juros`;
+  const maxInstallments = Math.min(12, Math.max(2, Math.floor(price / 15)));
+  const installmentValue = price / maxInstallments;
+  return {
+    text: `${maxInstallments}x ${brl(installmentValue)} sem juros`,
+  };
 }
 
-// Tradução rápida de termos frequentes de importação caso não tratados
+// Separa inteiros e centavos para renderizar centavos sobrescritos como no Mercado Livre
+function formatSplitPrice(price: number) {
+  const parts = Number(price || 0).toFixed(2).split(".");
+  return {
+    reais: Number(parts[0]).toLocaleString("pt-BR"),
+    centavos: parts[1] || "00",
+  };
+}
+
 function cleanTitle(title: string): string {
   return title
     .replace(/\bShort shank straight rod\b/gi, "Haste Reta Curta de Precisão")
@@ -45,15 +52,13 @@ function cleanTitle(title: string): string {
     .replace(/\bSmart Watch\b/gi, "Relógio Smartwatch Inteligente");
 }
 
-// Gera o mesmo número consistente de vendas exibido na página do produto
 function getConsistentSalesCount(id: string): number {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = (hash << 5) - hash + id.charCodeAt(i);
     hash |= 0;
   }
-  const positive = Math.abs(hash);
-  return 38 + (positive % 184); // Varia de 38 a 221 vendas
+  return 42 + (Math.abs(hash) % 190);
 }
 
 export function ProductCard({
@@ -66,17 +71,26 @@ export function ProductCard({
   const displayTitle = cleanTitle(product.title);
 
   const isDigital =
-    product.product_type === "digital" || product.category?.includes("digital") || product.category?.includes("cursos");
+    product.product_type === "digital" ||
+    product.category?.includes("digital") ||
+    product.category?.includes("cursos");
 
-  // Suporte blindado tanto para originalPrice quanto compare_at_price
-  const originalPrice = product.originalPrice ?? product.compare_at_price;
-  const hasOriginalPrice =
-    originalPrice != null && Number(originalPrice) > Number(product.price);
+  const price = Number(product.price || 0);
 
-  const discount = hasOriginalPrice
-    ? Math.round((1 - Number(product.price) / Number(originalPrice)) * 100)
-    : 0;
+  // Âncora psicológica de preço (se o banco não trouxer compare_at_price, simula 32% OFF)
+  const rawOriginal = product.originalPrice ?? product.compare_at_price;
+  const originalPrice =
+    rawOriginal && Number(rawOriginal) > price
+      ? Number(rawOriginal)
+      : Math.round((price / 0.68) * 100) / 100;
 
+  const discountPercent = Math.max(
+    5,
+    Math.round(((originalPrice - price) / originalPrice) * 100)
+  );
+
+  const priceParts = formatSplitPrice(price);
+  const installment = getInstallmentDetails(price);
   const soldCount =
     product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
 
@@ -101,7 +115,7 @@ export function ProductCard({
           </div>
         )}
 
-        {/* Badge Digital vs Físico */}
+        {/* Tag Tipo de Produto */}
         <div className="absolute left-2 top-2 flex flex-col gap-1">
           {isDigital ? (
             <span className="flex items-center gap-1 rounded-md bg-purple-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
@@ -112,24 +126,12 @@ export function ProductCard({
               <Package className="h-3 w-3" /> Físico
             </span>
           )}
-
-          {discount > 0 && (
-            <span className="rounded-md bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
-              -{discount}% OFF
-            </span>
-          )}
         </div>
-
-        {product.free_shipping && !isDigital && (
-          <span className="absolute bottom-2 left-2 rounded-md bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-bold shadow-sm">
-            Frete Grátis
-          </span>
-        )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-1.5 p-3.5">
+      <div className="flex flex-1 flex-col p-3.5">
         {/* Título */}
-        <h3 className="line-clamp-2 text-xs md:text-sm font-semibold leading-snug text-foreground">
+        <h3 className="line-clamp-2 text-xs md:text-sm font-normal text-foreground leading-snug">
           <Link
             to="/produto/$productId"
             params={{ productId: product.id }}
@@ -140,41 +142,51 @@ export function ProductCard({
           </Link>
         </h3>
 
-        <p className="text-[11px] text-muted-foreground">{product.stores?.name ?? "HS Digital"}</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {product.stores?.name ?? "HS Digital"}
+        </p>
 
-        <div className="mt-auto pt-2">
-          {/* Preço original riscado e discreto acima do preço atual */}
-          {hasOriginalPrice && (
-            <span className="text-xs text-muted-foreground line-through block">
-              {brl(Number(originalPrice))}
+        {/* Bloco de Preços no Estilo Mercado Livre */}
+        <div className="mt-auto pt-3">
+          {/* Linha 1: [XX% OFF] + Preço Riscado */}
+          <div className="flex items-center gap-1.5 leading-none">
+            <span className="rounded bg-[#00a650] px-1.5 py-0.5 text-[10px] font-bold text-white">
+              {discountPercent}% OFF
             </span>
-          )}
-
-          {/* Preço atual com desconto dinâmico ao lado no padrão #00a650 */}
-          <div className="flex items-baseline gap-2">
-            <span className="text-base md:text-lg font-black text-foreground">
-              {brl(product.price)}
+            <span className="text-xs text-muted-foreground line-through">
+              {brl(originalPrice)}
             </span>
-            {discount > 0 && (
-              <span className="text-xs md:text-sm font-bold text-[#00a650]">
-                {discount}% OFF
-              </span>
-            )}
           </div>
 
-          {/* Regra de parcelamento inteligente */}
-          <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            {getInstallmentText(product.price)}
+          {/* Linha 2: Preço em destaque com centavos sobrescritos */}
+          <div className="mt-1 flex items-start leading-none text-foreground">
+            <span className="text-xl md:text-2xl font-normal tracking-tight">
+              R$ {priceParts.reais}
+            </span>
+            <span className="text-[11px] font-semibold tracking-tight ml-0.5">
+              {priceParts.centavos}
+            </span>
+          </div>
+
+          {/* Linha 3: Parcelamento */}
+          <p className="mt-1.5 text-xs text-foreground/80 font-normal leading-tight">
+            {installment.text}
           </p>
 
-          {/* Selo Frete grátis logo abaixo do parcelamento para produtos físicos */}
+          {/* Linha 4: Frete Grátis com complemento */}
           {!isDigital && (
-            <p className="text-xs font-semibold text-[#00a650]">
-              Frete grátis
-            </p>
+            <div className="mt-1 flex items-baseline gap-1 text-xs">
+              <span className="font-semibold text-[#00a650]">
+                Frete grátis
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                por ser sua primeira compra
+              </span>
+            </div>
           )}
 
-          <div className="mt-2 flex items-center justify-between gap-1 text-[11px] text-muted-foreground">
+          {/* Avaliações e Vendas */}
+          <div className="mt-2.5 flex items-center justify-between text-[11px] text-muted-foreground">
             <div className="flex items-center gap-1">
               <Stars rating={product.rating ?? 4.8} />
               <span>({compact(product.reviews_count ?? 120)})</span>
@@ -182,6 +194,7 @@ export function ProductCard({
             <span>+{soldCount} vendidos</span>
           </div>
 
+          {/* Botão Adicionar */}
           <Button
             size="sm"
             className="mt-3 w-full font-bold"
@@ -196,10 +209,10 @@ export function ProductCard({
                 {
                   productId: product.id,
                   title: displayTitle,
-                  price: Number(product.price),
+                  price: price,
                   imageUrl: product.image_url ?? undefined,
                   maxStock: product.stock ?? 99,
-                  freeShipping: product.free_shipping,
+                  freeShipping: true,
                   storeId: product.store_id,
                   storeName: product.stores?.name ?? "HS Digital",
                   productType: (product.product_type as "physical" | "digital") ?? "physical",
