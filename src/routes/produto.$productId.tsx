@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
   BadgeCheck,
-  Box,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -19,9 +18,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   Star,
-  ThumbsUp,
   Truck,
-  X,
   Zap,
 } from "lucide-react";
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
@@ -33,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart";
 import { fetchProduct, fetchProducts } from "@/lib/catalog.functions";
-import { brl, compact } from "@/lib/format";
+import { brl } from "@/lib/format";
 import type { Product } from "@/lib/catalog";
 import { ProductCard } from "@/components/product-card";
 import { trackProductView, markAsPurchasedOrInCart, initAbandonmentWatcher } from "@/lib/abandonment-tracker";
@@ -63,7 +60,7 @@ export const Route = createFileRoute("/produto/$productId")({
         { title },
         { name: "description", content: desc },
         { property: "og:site_name", content: "HS Digital · Loja JJ Kuster" },
-        { property: "og:title", content: title },
+        { property: "og:title", title },
         { property: "og:description", content: desc },
         { property: "og:type", content: "product" },
         { property: "og:url", content: pageUrl },
@@ -106,11 +103,9 @@ function getConsistentSalesCount(id: string): number {
     hash = (hash << 5) - hash + id.charCodeAt(i);
     hash |= 0;
   }
-  const positive = Math.abs(hash);
-  return 38 + (positive % 184);
+  return 38 + (Math.abs(hash) % 184);
 }
 
-// Separa inteiros e centavos para renderizar com estilo Mercado Livre (<sup>)
 function formatSplitPrice(price: number) {
   const parts = Number(price || 0).toFixed(2).split(".");
   return {
@@ -127,166 +122,60 @@ export function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [questions, setQuestions] = useState<QuestionItem[]>([]);
+  const [newQuestion, setNewQuestion] = useState("");
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", productId],
     queryFn: () => fetchProduct({ data: { productId } }),
   });
 
-  // Rastreamento para a notificação de 30 minutos
+  const { data: relatedProducts = [] } = useQuery({
+    queryKey: ["related-products", product?.category],
+    enabled: !!product?.category,
+    queryFn: async () => {
+      try {
+        const res = await fetchProducts({ data: { category: product?.category, limit: 12 } });
+        return (res ?? []).filter((p: Product) => p.id !== productId);
+      } catch {
+        return [];
+      }
+    },
+  });
+
   useEffect(() => {
+    initAbandonmentWatcher();
     if (product) {
       trackProductView({
         id: product.id,
         title: product.title,
-        price: product.price,
-        image_url: product.image_url,
+        price: Number(product.price),
+        imageUrl: product.image_url ?? undefined,
       });
     }
   }, [product]);
 
-  useEffect(() => {
-    const cleanup = initAbandonmentWatcher();
-    return () => {
-      cleanup?.();
-    };
-  }, []);
+  const maxAvailableStock = useMemo(() => {
+    const rawStock = Number(product?.stock);
+    return Number.isFinite(rawStock) && rawStock > 0 ? rawStock : 99;
+  }, [product?.stock]);
 
-  // Catálogo para alimentar os produtos semelhantes
-  const { data: allCatalog = [] } = useQuery({
-    queryKey: ["similar-products", product?.category],
-    queryFn: () => fetchProducts(),
-    staleTime: 1000 * 60 * 10,
-  });
+  const price = Number(product?.price || 0);
+  const rawOriginal = product?.compare_at_price;
+  const originalPrice =
+    rawOriginal && Number(rawOriginal) > price
+      ? Number(rawOriginal)
+      : Math.round((price / 0.68) * 100) / 100;
 
-  const similarProducts = useMemo(() => {
-    if (!product || !allCatalog) return [];
-    return allCatalog
-      .filter((p) => p.id !== product.id)
-      .sort((a, b) => {
-        const aCat = a.category === product.category ? 1 : 0;
-        const bCat = b.category === product.category ? 1 : 0;
-        return bCat - aCat;
-      })
-      .slice(0, 15);
-  }, [product, allCatalog]);
-
-  const media = useMemo(() => {
-    if (!product) return [];
-    if (product.media?.length) return product.media;
-    const list: Array<{ id: string; url: string; media_type: "image" }> = [];
-    if (product.image_url) {
-      list.push({ id: "main", url: product.image_url, media_type: "image" });
-    }
-    (product.gallery_urls ?? []).forEach((u, i) => {
-      if (u && u !== product.image_url) {
-        list.push({ id: `gal-${i}`, url: u, media_type: "image" });
-      }
-    });
-    return list;
-  }, [product]);
-
-  const currentMedia = media[selectedImage] || media[0];
-
-  // Perguntas do produto
-  const [questions, setQuestions] = useState<QuestionItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(`questions_${productId}`);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return [
-      {
-        id: "q_1",
-        question: "O produto vem com nota fiscal e garantia de fábrica?",
-        answer: "Olá! Sim, todos os produtos acompanham garantia oficial e nota de envio.",
-        created_at: "há 1 dia",
-      },
-      {
-        id: "q_2",
-        question: "Qual o prazo de envio após a confirmação do pagamento?",
-        answer: "O envio é realizado no mesmo dia para pagamentos confirmados até as 14h.",
-        created_at: "há 2 dias",
-      },
-    ];
-  });
-
-  const [newQuestion, setNewQuestion] = useState("");
-
-  // Avaliações
-  const [reviews, setReviews] = useState<ReviewItem[]>([]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const saved = localStorage.getItem(`reviews_${productId}`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setReviews(parsed);
-          return;
-        }
-      }
-
-      if (product) {
-        const initialReviews: ReviewItem[] = [
-          {
-            id: `rev_1_${productId}`,
-            author: "Marcos S.",
-            rating: 5,
-            date: "Brasil · Há 4 dias",
-            comment:
-              "Chegou muito rápido! A caixa veio intacta e o produto lacrado de fábrica. Abri e testei na hora, qualidade surreal pelo preço.",
-            packagingNote: "Embalagem: Excelente, lacrado no plástico bolha e caixa reforçada.",
-            verified: true,
-            helpfulCount: 16,
-          },
-          {
-            id: `rev_2_${productId}`,
-            author: "Juliana Mendes",
-            rating: 5,
-            date: "Brasil · Há 1 semana",
-            comment:
-              "A entrega da Loja JJ Kuster foi rápida demais. Produto idêntico ao anúncio, recomendo muito!",
-            packagingNote: "Entrega: Rápida e pacote muito bem protegido.",
-            verified: true,
-            helpfulCount: 9,
-          },
-          {
-            id: `rev_3_${productId}`,
-            author: "Rodrigo Almeida",
-            rating: 5,
-            date: "Brasil · Há 2 semanas",
-            comment:
-              "Excelente custo-benefício. O entregador foi muito atencioso e o pacote veio 100% lacrado. Já estou usando no dia a dia.",
-            verified: true,
-            helpfulCount: 5,
-          },
-        ];
-        setReviews(initialReviews);
-        localStorage.setItem(`reviews_${productId}`, JSON.stringify(initialReviews));
-      }
-    } catch (e) {
-      console.error("Erro ao sincronizar avaliações:", e);
-    }
-  }, [productId, product]);
-
-  const salesCount = useMemo(() => {
-    if (!product) return 120;
-    return product.sold_count && product.sold_count > 0
-      ? product.sold_count
-      : getConsistentSalesCount(product.id);
-  }, [product]);
-
-  const totalReviewsCount = useMemo(() => {
-    if (!product) return 42;
-    return (product.reviews_count ?? 40) + reviews.length - 3;
-  }, [product, reviews.length]);
-
-  const averageRating = useMemo(() => {
-    if (!product) return 4.9;
-    return Number(product.rating ?? 4.9);
-  }, [product]);
+  const discountPercent = Math.max(5, Math.round(((originalPrice - price) / originalPrice) * 100));
+  const priceParts = formatSplitPrice(price);
+  const maxInstallments = Math.min(10, Math.max(2, Math.floor(price / 15)));
+  const installmentValue = price / maxInstallments;
 
   const isDigital = useMemo(() => {
     if (!product) return false;
@@ -297,98 +186,83 @@ export function ProductDetailPage() {
     );
   }, [product]);
 
-  // Âncora de Preço Inteligente Mercado Livre
-  const price = Number(product?.price || 0);
-  const rawOriginal = product?.compare_at_price;
-  const originalPrice =
-    rawOriginal && Number(rawOriginal) > price
-      ? Number(rawOriginal)
-      : Math.round((price / 0.68) * 100) / 100;
+  const salesCount = useMemo(() => {
+    if (!product) return 120;
+    return product.sold_count && product.sold_count > 0
+      ? product.sold_count
+      : getConsistentSalesCount(product.id);
+  }, [product]);
 
-  const discountPercent = Math.max(
-    5,
-    Math.round(((originalPrice - price) / originalPrice) * 100)
-  );
+  const imagesList = useMemo(() => {
+    if (!product) return [];
+    const list: string[] = [];
+    if (product.image_url) list.push(product.image_url);
+    if (Array.isArray(product.gallery_urls)) {
+      product.gallery_urls.forEach((url) => {
+        if (url && !list.includes(url)) list.push(url);
+      });
+    }
+    return list.length > 0 ? list : ["https://placehold.co/600x600/f3f4f6/666666?text=Sem+Foto"];
+  }, [product]);
 
-  const priceParts = formatSplitPrice(price);
-  const maxInstallments = Math.min(10, Math.max(2, Math.floor(price / 15)));
-  const installmentValue = price / maxInstallments;
+  const updateCarouselArrows = useCallback(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 10);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 10);
+  }, []);
+
+  const scrollCarousel = (dir: "left" | "right") => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const scrollAmount = el.clientWidth * 0.75;
+    el.scrollBy({ left: dir === "left" ? -scrollAmount : scrollAmount, behavior: "smooth" });
+  };
+
+  const handleAddToCart = (redirectCheckout: boolean) => {
+    if (!product) return;
+    markAsPurchasedOrInCart(product.id);
+
+    add(
+      {
+        productId: product.id,
+        title: product.title,
+        price: Number(product.price),
+        imageUrl: product.image_url ?? null,
+        stock: maxAvailableStock,
+        freeShipping: true,
+        storeId: product.store_id ?? "jj-kuster",
+        storeName: (product as any).stores?.name ?? "Loja JJ Kuster",
+        productType: (product.product_type as any) ?? "physical",
+      },
+      quantity
+    );
+
+    if (redirectCheckout) {
+      navigate({ to: "/carrinho" });
+    } else {
+      toast.success(`${quantity}x ${product.title} adicionado ao carrinho!`);
+    }
+  };
 
   const handleShare = () => {
     if (navigator.share) {
-      navigator
-        .share({
-          title: product?.title || "Confira este produto na Loja JJ Kuster",
-          url: window.location.href,
-        })
-        .catch(() => {});
+      navigator.share({ title: product?.title, url: window.location.href }).catch(() => {});
     } else {
       navigator.clipboard.writeText(window.location.href);
-      toast.success("Link copiado para a área de transferência!");
+      toast.success("Link do produto copiado!");
     }
   };
 
   const handleAddQuestion = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQuestion.trim()) return;
-    const newItem: QuestionItem = {
-      id: `q_${Date.now()}`,
-      question: newQuestion.trim(),
-      created_at: "agora mesmo",
-    };
-    const updated = [newItem, ...questions];
-    setQuestions(updated);
-    try {
-      localStorage.setItem(`questions_${productId}`, JSON.stringify(updated));
-    } catch {}
+    setQuestions((prev) => [
+      { id: `q_${Date.now()}`, question: newQuestion.trim(), created_at: "agora mesmo" },
+      ...prev,
+    ]);
     setNewQuestion("");
-    toast.success("Sua pergunta foi enviada ao vendedor!");
-  };
-
-  const handleAddToCart = (redirectCheckout: boolean) => {
-    if (!product) return;
-    markAsPurchasedOrInCart(product.id);
-    add(
-      {
-        productId: product.id,
-        title: product.title,
-        price: Number(product.price),
-        imageUrl: product.image_url ?? undefined,
-        maxStock: product.stock ?? 99,
-        freeShipping: true,
-        storeId: product.store_id,
-        storeName: product.stores?.name ?? "Loja JJ Kuster",
-        productType: (product.product_type as "physical" | "digital") ?? "physical",
-      },
-      quantity
-    );
-    if (redirectCheckout) {
-      navigate({ to: "/_authenticated/carrinho" });
-    } else {
-      toast.success(`${quantity}x ${product.title} adicionado ao carrinho!`);
-    }
-  };
-
-  // Carrossel interno para produtos semelhantes
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
-
-  const checkScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 10);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 10);
-  }, []);
-
-  const scrollCarousel = (direction: "left" | "right") => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const scrollAmount = el.clientWidth * 0.8;
-    el.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth",
-    });
+    toast.success("Pergunta enviada com sucesso!");
   };
 
   if (isLoading) {
@@ -399,10 +273,9 @@ export function ProductDetailPage() {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
             <div className="aspect-square animate-pulse rounded-2xl bg-muted/40" />
             <div className="space-y-4">
-              <div className="h-4 w-32 animate-pulse rounded bg-muted/40" />
-              <div className="h-8 w-3/4 animate-pulse rounded bg-muted/40" />
-              <div className="h-6 w-1/4 animate-pulse rounded bg-muted/40" />
-              <div className="h-24 animate-pulse rounded-xl bg-muted/40" />
+              <div className="h-6 w-3/4 animate-pulse rounded bg-muted/40" />
+              <div className="h-8 w-1/3 animate-pulse rounded bg-muted/40" />
+              <div className="h-32 animate-pulse rounded-xl bg-muted/40" />
             </div>
           </div>
         </main>
@@ -418,11 +291,8 @@ export function ProductDetailPage() {
         <main className="mx-auto max-w-7xl px-4 py-16 text-center">
           <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
           <h1 className="mt-4 text-xl font-bold">Produto não encontrado</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            O produto que você procura pode ter sido removido ou está indisponível no momento.
-          </p>
           <Button asChild className="mt-6">
-            <Link to="/">Voltar para a Vitrine</Link>
+            <Link to="/">Voltar para o início</Link>
           </Button>
         </main>
         <SiteFooter />
@@ -434,110 +304,67 @@ export function ProductDetailPage() {
     <div className="min-h-screen bg-background text-foreground">
       <SiteHeader />
 
-      <main className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-6 overflow-hidden">
-        {/* Breadcrumb de navegação */}
-        <nav className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap pb-1">
-          <Link to="/" className="hover:text-primary">
-            Início
-          </Link>
+      <main className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-6">
+        {/* Breadcrumb */}
+        <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+          <Link to="/" className="hover:text-foreground">Início</Link>
           <span>/</span>
-          <span className="capitalize">{product.category || "Geral"}</span>
+          <span className="capitalize">{product.category || "Produtos"}</span>
           <span>/</span>
-          <span className="truncate max-w-[200px] sm:max-w-xs text-foreground font-medium">
-            {product.title}
-          </span>
-        </nav>
+          <span className="line-clamp-1 text-foreground font-medium">{product.title}</span>
+        </div>
 
-        {/* ========================================================= */}
-        {/* CARD PRINCIPAL DO PRODUTO: FOTOS + PREÇO MERCADO LIVRE */}
-        {/* ========================================================= */}
-        <div className="rounded-2xl border border-border bg-card p-3 sm:p-6 shadow-sm">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-            {/* GALERIA DE FOTOS (Col 1-7) */}
+        {/* Card Principal */}
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+            {/* Galeria de Fotos */}
             <div className="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-3">
-              {/* Miniaturas Laterais */}
-              {media.length > 1 && (
-                <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto max-h-[460px] pb-1 sm:pb-0 scrollbar-none shrink-0">
-                  {media.map((item, idx) => (
+              {imagesList.length > 1 && (
+                <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto max-h-[480px] shrink-0">
+                  {imagesList.map((img, idx) => (
                     <button
-                      key={item.id}
+                      key={idx}
                       type="button"
                       onClick={() => setSelectedImage(idx)}
-                      className={`relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
-                        selectedImage === idx
-                          ? "border-primary shadow-sm"
-                          : "border-border/60 hover:border-muted-foreground/40 opacity-70"
+                      className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition ${
+                        selectedImage === idx ? "border-primary" : "border-border hover:border-muted-foreground"
                       }`}
                     >
-                      <img
-                        src={item.url}
-                        alt={`Miniatura ${idx + 1}`}
-                        className="h-full w-full object-contain p-1"
-                      />
+                      <img src={img} alt="" className="h-full w-full object-cover" />
                     </button>
                   ))}
                 </div>
               )}
 
-              {/* Foto Principal com Swipe */}
-              <div
-                className="relative flex-1 aspect-square max-h-[480px] w-full rounded-xl bg-muted/10 border border-border/40 overflow-hidden flex items-center justify-center p-4 touch-pan-y"
-                onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
-                onTouchEnd={(e) => {
-                  if (touchStartX === null) return;
-                  const diff = touchStartX - e.changedTouches[0].clientX;
-                  if (diff > 50 && selectedImage < media.length - 1) {
-                    setSelectedImage((prev) => prev + 1);
-                  } else if (diff < -50 && selectedImage > 0) {
-                    setSelectedImage((prev) => prev - 1);
-                  }
-                  setTouchStartX(null);
-                }}
-              >
-                {currentMedia ? (
-                  <img
-                    src={currentMedia.url}
-                    alt={product.title}
-                    className="h-full w-full object-contain transition-transform duration-300 hover:scale-105"
-                  />
-                ) : (
-                  <Box className="h-16 w-16 text-muted-foreground/30" />
-                )}
-
-                {/* Botão de Favoritar */}
+              <div className="relative aspect-square w-full flex-1 overflow-hidden rounded-xl border border-border bg-muted/20">
+                <img
+                  src={imagesList[selectedImage] || imagesList[0]}
+                  alt={product.title}
+                  className="h-full w-full object-contain p-2"
+                />
                 <button
                   type="button"
                   onClick={() => {
                     setIsFavorite(!isFavorite);
-                    toast.success(
-                      !isFavorite ? "Salvo nos seus favoritos!" : "Removido dos favoritos."
-                    );
+                    toast.success(!isFavorite ? "Salvo nos seus favoritos!" : "Removido dos favoritos.");
                   }}
-                  className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-background/80 shadow-md backdrop-blur-sm transition-transform active:scale-90"
+                  className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-background/80 shadow-md backdrop-blur-sm"
                 >
-                  <Heart
-                    className={`h-5 w-5 ${
-                      isFavorite ? "fill-rose-500 text-rose-500" : "text-muted-foreground"
-                    }`}
-                  />
+                  <Heart className={`h-5 w-5 ${isFavorite ? "fill-rose-500 text-rose-500" : "text-muted-foreground"}`} />
                 </button>
               </div>
             </div>
 
-            {/* PAINEL DE DETALHES E PREÇOS (Col 8-12) */}
+            {/* Painel Lateral de Preços e Compra */}
             <div className="lg:col-span-5 flex flex-col justify-between">
               <div>
-                {/* Status, Vendas e Estrelas */}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground">Novo</span>
                   <span>•</span>
                   <span>+{salesCount} vendidos</span>
                   <span>•</span>
                   <span className="flex items-center gap-1 text-amber-500 font-bold">
-                    ★ {averageRating.toFixed(1)}
-                    <span className="text-muted-foreground font-normal">
-                      ({totalReviewsCount})
-                    </span>
+                    ★ {Number(product.rating ?? 4.9).toFixed(1)}
                   </span>
                 </div>
 
@@ -545,7 +372,6 @@ export function ProductDetailPage() {
                   {product.title}
                 </h1>
 
-                {/* Loja Oficial */}
                 <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span>Vendido e entregue por</span>
                   <span className="font-bold text-primary flex items-center gap-1">
@@ -553,11 +379,8 @@ export function ProductDetailPage() {
                   </span>
                 </div>
 
-                {/* ========================================================= */}
-                {/* BLOCO DE PREÇOS OFICIAL ESTILO MERCADO LIVRE */}
-                {/* ========================================================= */}
+                {/* BLOCO DE PREÇO OFICIAL */}
                 <div className="mt-4 rounded-xl bg-muted/20 p-4 border border-border/80">
-                  {/* Linha 1: [XX% OFF] + Preço Riscado */}
                   <div className="flex items-center gap-2 leading-none">
                     <span className="rounded bg-[#00a650] px-1.5 py-0.5 text-[11px] font-bold text-white">
                       {discountPercent}% OFF
@@ -567,7 +390,6 @@ export function ProductDetailPage() {
                     </span>
                   </div>
 
-                  {/* Linha 2: Preço principal em destaque com centavos elevados (<sup>) */}
                   <div className="mt-1 flex items-start leading-none text-foreground">
                     <span className="text-3xl sm:text-4xl font-normal tracking-tight">
                       R$ {priceParts.reais}
@@ -577,24 +399,17 @@ export function ProductDetailPage() {
                     </sup>
                   </div>
 
-                  {/* Linha 3: Parcelamento limpo sem juros */}
                   <p className="mt-2 text-xs text-foreground/80 font-normal">
                     em até <span className="font-semibold">{maxInstallments}x de {brl(installmentValue)}</span> sem juros
                   </p>
 
-                  {/* Linha 4: Selo Frete Grátis com complemento */}
                   {!isDigital && (
                     <div className="mt-1.5 flex items-baseline gap-1 text-xs">
-                      <span className="font-bold text-[#00a650]">
-                        Frete grátis
-                      </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        por ser sua primeira compra
-                      </span>
+                      <span className="font-bold text-[#00a650]">Frete grátis</span>
+                      <span className="text-[11px] text-muted-foreground">por ser sua primeira compra</span>
                     </div>
                   )}
 
-                  {/* Meios de Pagamento */}
                   <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
                       Pague com Pix ou Cartão via Mercado Pago:
@@ -614,7 +429,6 @@ export function ProductDetailPage() {
                   </div>
                 </div>
 
-                {/* Compartilhar */}
                 <Button
                   variant="outline"
                   onClick={handleShare}
@@ -631,11 +445,11 @@ export function ProductDetailPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Truck className="h-4 w-4 text-primary shrink-0" />
-                    <span>Envio com código de rastreamento enviado por e-mail</span>
+                    <span>Envio com código de rastreamento direto no e-mail</span>
                   </div>
                 </div>
 
-                {/* Quantidade */}
+                {/* Seleção de Quantidades */}
                 <div className="mt-4 flex items-center justify-between border-y border-border py-2.5">
                   <span className="text-xs font-semibold text-foreground">Quantidade:</span>
                   <div className="flex items-center gap-2">
@@ -650,21 +464,22 @@ export function ProductDetailPage() {
                     <span className="w-8 text-center text-sm font-bold">{quantity}</span>
                     <button
                       type="button"
-                      onClick={() => setQuantity((q) => Math.min(product.stock || 99, q + 1))}
-                      disabled={quantity >= (product.stock || 99)}
+                      onClick={() => setQuantity((q) => Math.min(maxAvailableStock, q + 1))}
+                      disabled={quantity >= maxAvailableStock}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
                     <span className="text-xs text-muted-foreground ml-1">
-                      ({product.stock} disponíveis)
+                      ({maxAvailableStock} disponíveis)
                     </span>
                   </div>
                 </div>
 
-                {/* Botões de Compra */}
+                {/* Botões de Ação */}
                 <div className="mt-4 space-y-2">
                   <Button
+                    type="button"
                     onClick={() => handleAddToCart(false)}
                     variant="outline"
                     className="w-full border-primary text-primary hover:bg-primary/10 font-bold h-11 text-sm transition"
@@ -673,6 +488,7 @@ export function ProductDetailPage() {
                   </Button>
 
                   <Button
+                    type="button"
                     onClick={() => handleAddToCart(true)}
                     className="w-full bg-[#00a650] hover:bg-[#008f45] text-white font-black h-12 text-base shadow-md transition"
                   >
@@ -684,12 +500,59 @@ export function ProductDetailPage() {
           </div>
         </div>
 
-        {/* DESCRIÇÃO DO PRODUTO */}
+        {/* CARROSSEL DE PRODUTOS SEMELHANTES COM SETAS LATERAIS */}
+        {relatedProducts.length > 0 && (
+          <section className="mt-8 rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-border mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Quem viu este produto também comprou</h2>
+                <p className="text-xs text-muted-foreground">Itens semelhantes na categoria {product.category}</p>
+              </div>
+
+              {/* Setas de navegação */}
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-full border-border bg-background shadow-sm hover:bg-muted disabled:opacity-30"
+                  onClick={() => scrollCarousel("left")}
+                  disabled={!canScrollLeft}
+                  aria-label="Voltar carrossel"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-full border-border bg-background shadow-sm hover:bg-muted disabled:opacity-30"
+                  onClick={() => scrollCarousel("right")}
+                  disabled={!canScrollRight}
+                  aria-label="Avançar carrossel"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div
+              ref={carouselRef}
+              onScroll={updateCarouselArrows}
+              className="flex gap-4 overflow-x-auto scroll-smooth pb-2 pt-1 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none]"
+            >
+              {relatedProducts.map((relProduct: Product) => (
+                <div key={relProduct.id} className="w-[190px] sm:w-[220px] shrink-0">
+                  <ProductCard product={relProduct} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Descrição */}
         <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
           <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" /> Descrição do Produto
           </h2>
-
           <div className="mt-4 space-y-4 text-sm text-foreground/90 leading-relaxed">
             <div>
               <h3 className="font-bold text-base text-foreground">{product.title}</h3>
@@ -697,7 +560,6 @@ export function ProductDetailPage() {
                 Produto novo, lacrado e com envio imediato e compra garantida.
               </p>
             </div>
-
             <div className="border-t border-border/60 pt-4">
               <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground mb-2">
                 Detalhes & Especificações
@@ -709,12 +571,11 @@ export function ProductDetailPage() {
           </div>
         </section>
 
-        {/* PERGUNTAS E RESPOSTAS */}
+        {/* Perguntas */}
         <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
           <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" /> Perguntas e Respostas
           </h2>
-
           <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2">
             <Input
               value={newQuestion}
@@ -726,111 +587,15 @@ export function ProductDetailPage() {
               <Send className="h-4 w-4 mr-1.5" /> Perguntar
             </Button>
           </form>
-
           <div className="mt-6 space-y-3">
             {questions.map((q) => (
-              <div key={q.id} className="rounded-xl border border-border/60 bg-muted/20 p-3 text-xs sm:text-sm">
-                <p className="font-semibold text-foreground">P: {q.question}</p>
-                {q.answer && (
-                  <p className="mt-1 text-muted-foreground pl-3 border-l-2 border-primary">
-                    R: {q.answer}
-                  </p>
-                )}
+              <div key={q.id} className="rounded-xl border border-border/70 bg-muted/20 p-3 text-xs">
+                <p className="font-semibold text-foreground">"{q.question}"</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{q.created_at}</p>
               </div>
             ))}
           </div>
         </section>
-
-        {/* OPINIÕES DOS COMPRADORES */}
-        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
-          <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
-            <Star className="h-5 w-5 text-amber-500 fill-amber-500" /> Opiniões dos Compradores
-          </h2>
-
-          <div className="mt-4 space-y-4">
-            {reviews.map((rev) => (
-              <div key={rev.id} className="border-b border-border/60 pb-3 last:border-none">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex text-amber-500 text-xs">
-                      {[...Array(rev.rating)].map((_, i) => (
-                        <Star key={i} className="h-3.5 w-3.5 fill-current" />
-                      ))}
-                    </div>
-                    <span className="text-xs font-bold text-foreground">{rev.author}</span>
-                  </div>
-                  <span className="text-[11px] text-muted-foreground">{rev.date}</span>
-                </div>
-                <p className="mt-1 text-xs sm:text-sm text-foreground/90">{rev.comment}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ========================================================= */}
-        {/* CARROSSEL HORIZONTAL DE PRODUTOS SEMELHANTES COM SETAS */}
-        {/* ========================================================= */}
-        {similarProducts.length > 0 && (
-          <section className="mt-10 pt-6 border-t border-border">
-            <div className="flex items-baseline justify-between mb-3">
-              <div>
-                <h2 className="text-lg md:text-xl font-bold text-foreground tracking-tight">
-                  Quem viu este produto também comprou
-                </h2>
-                <p className="text-xs text-muted-foreground hidden sm:block">
-                  Produtos similares da categoria com Frete Grátis garantido
-                </p>
-              </div>
-            </div>
-
-            <div className="relative group">
-              {/* Seta Esquerda Flutuante */}
-              {canScrollLeft && (
-                <button
-                  type="button"
-                  onClick={() => scrollCarousel("left")}
-                  aria-label="Rolar para esquerda"
-                  className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 hidden md:flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-800 shadow-xl border border-gray-100 hover:scale-105 active:scale-95 transition-all opacity-0 group-hover:opacity-100 dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-700"
-                >
-                  <ChevronLeft className="h-6 w-6 stroke-[2.5]" />
-                </button>
-              )}
-
-              {/* Trilho de Rolagem Suave */}
-              <div
-                ref={scrollRef}
-                onScroll={checkScroll}
-                className="flex gap-4 overflow-x-auto scroll-smooth pb-4 pt-1 px-1 select-none"
-                style={{
-                  scrollbarWidth: "none",
-                  msOverflowStyle: "none",
-                  WebkitOverflowScrolling: "touch",
-                }}
-              >
-                {similarProducts.map((item) => (
-                  <div
-                    key={item.id}
-                    className="w-[200px] sm:w-[220px] md:w-[240px] shrink-0 transition-transform duration-200"
-                  >
-                    <ProductCard product={item} />
-                  </div>
-                ))}
-              </div>
-
-              {/* Seta Direita Flutuante */}
-              {canScrollRight && (
-                <button
-                  type="button"
-                  onClick={() => scrollCarousel("right")}
-                  aria-label="Rolar para direita"
-                  className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 hidden md:flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-800 shadow-xl border border-gray-100 hover:scale-105 active:scale-95 transition-all opacity-0 group-hover:opacity-100 dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-700"
-                >
-                  <ChevronRight className="h-6 w-6 stroke-[2.5]" />
-                </button>
-              )}
-            </div>
-          </section>
-        )}
       </main>
 
       <SiteFooter />
