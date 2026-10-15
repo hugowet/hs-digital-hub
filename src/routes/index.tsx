@@ -11,6 +11,8 @@ import {
   GraduationCap,
   Keyboard,
   LampDesk,
+  MessageCircle,
+  Radio,
   Search,
   ShieldCheck,
   Shirt,
@@ -25,7 +27,6 @@ import {
   X,
   Zap,
   Crown,
-  Radio,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -140,9 +141,9 @@ const PRICE_RANGES = [
   { id: "all", label: "Todos os preços", min: 0, max: Infinity },
   { id: "a", label: "Até R$ 50", min: 0, max: 50 },
   { id: "b", label: "R$ 50 a R$ 100", min: 50, max: 100 },
-  { id: "c", label: "R$ 100 a R$ 200", min: 100, max: 200 },
-  { id: "d", label: "Acima de R$ 200", min: 200, max: Infinity },
-];
+  { id: "c", label: "R$ 100 a R$ 250", min: 100, max: 250 },
+  { id: "d", label: "Mais de R$ 250", min: 250, max: Infinity },
+] as const;
 
 function RadioNavButton() {
   const { isPlaying, isLocutorSpeaking } = useRadio();
@@ -220,8 +221,19 @@ function BuyerGamesPromoLink() {
         </>
       )}
 
-      {/* 📻 BOTÃO DA RÁDIO HS INTEGRADO DIRETAMENTE (COM INDICADOR ANIMADO / PISCANDO) */}
+      {/* 📻 BOTÃO DA RÁDIO HS */}
       <RadioNavButton />
+
+      {/* 🟢 BOTÃO DO HS SOCIAL (COLADO AO LADO DA RÁDIO HS) */}
+      <Button
+        asChild
+        className="w-fit font-bold border border-emerald-400/40 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-100 shadow-sm rounded-full transition-all duration-300"
+      >
+        <Link to="/social" className="inline-flex items-center gap-1.5">
+          <MessageCircle className="h-4 w-4 text-emerald-300" />
+          <span>HS Social</span>
+        </Link>
+      </Button>
     </div>
   );
 }
@@ -235,7 +247,6 @@ export function Home() {
   );
   const products = data.pages.flatMap((page) => page.products);
 
-  // Busca dinamicamente apenas as categorias com produtos ativos
   const { data: activeCategories = [] } = useQuery({
     queryKey: ["active-store-categories"],
     queryFn: async () => {
@@ -265,39 +276,18 @@ export function Home() {
       },
     });
 
-  // Filtro estrito: se tiver pesquisa por termo ou categoria, traz estritamente correspondentes
   const filtered = useMemo(() => {
     const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
-      id: "all",
-      label: "Todos os preços",
       min: 0,
       max: Infinity,
     };
 
-    return products
-      .filter((product) => {
-        if (!search.q) return true;
-        const query = search.q.toLowerCase();
-        const titleMatch = product.title.toLowerCase().includes(query);
-        const descriptionMatch = product.description.toLowerCase().includes(query);
-        const categoryMatch = product.category.toLowerCase().includes(query);
-        return titleMatch || descriptionMatch || categoryMatch;
-      })
-      .filter((product) => (search.category ? product.category === search.category : true))
-      .filter((product) => {
-        const effectivePrice = product.promotional_price ?? product.price;
-        return effectivePrice >= selectedRange.min && effectivePrice <= selectedRange.max;
-      })
-      .filter((product) => (search.free ? product.free_shipping : true))
-      .sort((a, b) => {
-        const priceA = a.promotional_price ?? a.price;
-        const priceB = b.promotional_price ?? b.price;
-
-        if (search.sort === "price-asc") return priceA - priceB;
-        if (search.sort === "price-desc") return priceB - priceA;
-        return 0;
-      });
-  }, [products, search]);
+    return products.filter((p) => {
+      const price = Number(p.price);
+      if (price < selectedRange.min || price > selectedRange.max) return false;
+      return true;
+    });
+  }, [products, search.range]);
 
   const activeCategory = activeCategories.find((category) => category.slug === search.category);
   const activeRange = PRICE_RANGES.find((item) => item.id === search.range);
@@ -318,7 +308,6 @@ export function Home() {
       <SiteHeader query={search.q} onQueryChange={(q) => setSearch({ q })} suggestions={suggestions} />
 
       <main>
-        {/* BANNER PRINCIPAL (Exibido apenas na tela inicial geral) */}
         {!hasSearchQuery && (
           <>
             <section className="bg-gradient-to-r from-[#2968c8] via-[#3483fa] to-[#1d52a8] text-white">
@@ -338,6 +327,8 @@ export function Home() {
                     <Gift className="h-4 w-4" />
                     <span>FRETE GRÁTIS AUTOMÁTICO NA SUA 1ª COMPRA</span>
                   </div>
+
+                  {/* BOTÕES DE AÇÃO: JOGOS, CLUBE HS, RÁDIO HS E HS SOCIAL */}
                   <div>
                     <BuyerGamesPromoLink />
                   </div>
@@ -378,178 +369,95 @@ export function Home() {
         )}
 
         <div className="mx-auto max-w-7xl px-4 py-6">
-          {/* CARROSSEL / LISTA DE CATEGORIAS */}
-          <section className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">
-                Categorias em Destaque
-              </h2>
-              {search.category && (
-                <button
-                  type="button"
-                  onClick={() => setSearch({ category: null })}
-                  className="text-xs text-[#3483fa] font-semibold hover:underline flex items-center gap-1"
-                >
-                  <X className="h-3 w-3" /> Ver todas as categorias
-                </button>
-              )}
-            </div>
-
-            <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-none no-scrollbar">
+          {/* CATEGORIAS EM DESTAQUE */}
+          <div className="mb-6">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
+              Categorias em destaque
+            </h2>
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none]">
               <button
                 type="button"
                 onClick={() => setSearch({ category: null })}
-                className={`flex shrink-0 flex-col items-center justify-center rounded-xl p-3 w-20 sm:w-24 border text-center transition-all ${
+                className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-2xl border text-xs font-medium transition ${
                   !search.category
-                    ? "border-[#3483fa] bg-white text-[#3483fa] shadow-sm ring-1 ring-[#3483fa]"
-                    : "border-transparent bg-white text-gray-700 hover:border-gray-200 hover:shadow-sm"
+                    ? "border-primary bg-primary/10 text-primary font-bold shadow-sm"
+                    : "border-border bg-card text-foreground hover:bg-muted/40"
                 }`}
               >
-                <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-blue-50 text-[#3483fa] mb-2">
-                  <ShoppingBasket className="h-5 w-5" />
+                <div className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <ShoppingBasket className="h-4 w-4" />
                 </div>
-                <span className="text-[11px] sm:text-xs font-semibold leading-tight line-clamp-1">Todas</span>
+                <span className="mt-1.5 text-[11px] truncate max-w-[70px]">Todas</span>
               </button>
 
               {activeCategories.map((category) => {
-                const Icon = ICONS[category.icon] ?? ShoppingBasket;
-                const isSelected = search.category === category.slug;
+                const IconComponent = ICONS[category.icon] || ShoppingBasket;
+                const active = search.category === category.slug;
                 return (
                   <button
                     key={category.slug}
                     type="button"
-                    onClick={() => setSearch({ category: isSelected ? null : category.slug })}
-                    className={`flex shrink-0 flex-col items-center justify-center rounded-xl p-3 w-20 sm:w-24 border text-center transition-all ${
-                      isSelected
-                        ? "border-[#3483fa] bg-white text-[#3483fa] shadow-sm ring-1 ring-[#3483fa]"
-                        : "border-transparent bg-white text-gray-700 hover:border-gray-200 hover:shadow-sm"
+                    onClick={() => setSearch({ category: category.slug })}
+                    className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-2xl border text-xs font-medium transition ${
+                      active
+                        ? "border-primary bg-primary/10 text-primary font-bold shadow-sm"
+                        : "border-border bg-card text-foreground hover:bg-muted/40"
                     }`}
                   >
-                    <div
-                      className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full mb-2 ${
-                        isSelected ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
+                    <div className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary">
+                      <IconComponent className="h-4 w-4" />
                     </div>
-                    <span className="text-[11px] sm:text-xs font-semibold leading-tight line-clamp-1">
-                      {category.label}
-                    </span>
+                    <span className="mt-1.5 text-[11px] truncate max-w-[70px]">{category.label}</span>
                   </button>
                 );
               })}
             </div>
-          </section>
+          </div>
 
-          {/* PRODUTOS E FILTROS */}
-          <section>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200/80 pb-3">
-              <div>
-                <h3 className="text-lg font-bold text-gray-800">
-                  {hasSearchQuery ? (
-                    <>
-                      Resultados para{" "}
-                      <span className="text-[#3483fa]">
-                        {search.q ? `"${search.q}"` : activeCategory?.label}
-                      </span>
-                    </>
-                  ) : (
-                    "Ofertas do Dia"
-                  )}
-                </h3>
-                <p className="text-xs text-gray-500">
-                  {filtered.length} {filtered.length === 1 ? "produto encontrado" : "produtos encontrados"}
-                </p>
-              </div>
-
-              {/* FILTROS RÁPIDOS */}
-              <div className="flex flex-wrap items-center gap-2">
-                {hasActiveFilters && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSearch({ category: null, range: "all", sort: "popular", free: false })}
-                    className="h-9 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
-                  >
-                    <X className="mr-1 h-3.5 w-3.5" /> Limpar filtros
-                  </Button>
-                )}
-
-                <Select value={search.range} onValueChange={(val) => setSearch({ range: val as any })}>
-                  <SelectTrigger className="h-9 text-xs w-[140px] bg-white">
-                    <SelectValue placeholder="Faixa de preço" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRICE_RANGES.map((item) => (
-                      <SelectItem key={item.id} value={item.id} className="text-xs">
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={search.sort} onValueChange={(val) => setSearch({ sort: val as any })}>
-                  <SelectTrigger className="h-9 text-xs w-[140px] bg-white">
-                    <SelectValue placeholder="Ordenar por" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="popular" className="text-xs">Mais populares</SelectItem>
-                    <SelectItem value="price-asc" className="text-xs">Menor preço</SelectItem>
-                    <SelectItem value="price-desc" className="text-xs">Maior preço</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <button
-                  type="button"
-                  onClick={() => setSearch({ free: !search.free })}
-                  className={`h-9 px-3 rounded-md border text-xs font-semibold transition flex items-center gap-1.5 ${
-                    search.free
-                      ? "bg-[#00a650] text-white border-[#00a650] shadow"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <Truck className="h-3.5 w-3.5" /> Frete Grátis
-                </button>
-              </div>
+          {/* LISTA DE PRODUTOS */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                {activeCategory ? activeCategory.label : "Todas as ofertas"}
+              </h2>
+              <p className="text-xs text-gray-500">
+                {filtered.length} produto{filtered.length === 1 ? "" : "s"} encontrado{filtered.length === 1 ? "" : "s"}
+              </p>
             </div>
 
-            {filtered.length === 0 ? (
-              <div className="rounded-xl border border-gray-100 bg-white p-12 text-center shadow-sm">
-                <p className="text-base font-bold text-gray-700">
-                  Nenhum produto encontrado para {hasSearchQuery ? `"${search.q}"` : "esta categoria"}.
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Confira a ortografia ou tente pesquisar por outro termo.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4 text-xs font-semibold"
-                  onClick={() => setSearch({ category: null, q: "", free: false })}
-                >
-                  Limpar busca e ver todas as ofertas
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-4">
-                {filtered.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            )}
+            <Select
+              value={search.sort}
+              onValueChange={(val: any) => setSearch({ sort: val })}
+            >
+              <SelectTrigger className="w-[160px] h-9 text-xs bg-white">
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="popular">Mais populares</SelectItem>
+                <SelectItem value="price-asc">Menor preço</SelectItem>
+                <SelectItem value="price-desc">Maior preço</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            {hasNextPage && (
-              <div className="flex justify-center pt-6">
-                <Button
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                  className="bg-[#3483fa] hover:bg-[#2968c8] text-white px-8"
-                >
-                  {isFetchingNextPage ? "Carregando mais produtos..." : "Carregar mais ofertas"}
-                </Button>
-              </div>
-            )}
-          </section>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+            {filtered.map((prod) => (
+              <ProductCard key={prod.id} product={prod} />
+            ))}
+          </div>
+
+          {hasNextPage && (
+            <div className="mt-8 text-center">
+              <Button
+                variant="outline"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="bg-white border-gray-300 font-semibold text-xs h-10 px-6"
+              >
+                {isFetchingNextPage ? "Carregando mais produtos..." : "Carregar mais ofertas"}
+              </Button>
+            </div>
+          )}
         </div>
       </main>
 
