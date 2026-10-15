@@ -9,6 +9,8 @@ import {
   LogOut,
   MapPin,
   Menu,
+  MessageCircle,
+  Radio,
   Search,
   Share2,
   ShoppingBag,
@@ -226,7 +228,17 @@ export function SiteHeader({
             )}
           </div>
 
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1 sm:gap-1.5">
+            {/* 🟢 Botão Verde-Claro HS Social (Desktop Topo) */}
+            <Link
+              to="/social"
+              className="relative hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-400/35 hover:bg-emerald-400/30 transition shadow-sm"
+              title="HS Social - Mensagens, Grupos e Status"
+            >
+              <MessageCircle className="h-3.5 w-3.5 text-emerald-300" />
+              <span>HS Social</span>
+            </Link>
+
             {/* Carrinho */}
             {signedIn && (
               <Link
@@ -244,7 +256,7 @@ export function SiteHeader({
               </Link>
             )}
 
-            {/* Programa de Afiliados (logo após o carrinho) */}
+            {/* Programa de Afiliados */}
             <Link
               to="/afiliados"
               className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 text-primary-foreground"
@@ -286,6 +298,10 @@ export function SiteHeader({
                     <DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
                       <User className="mr-2 h-4 w-4" />
                       Minha conta
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/social" })}>
+                      <MessageCircle className="mr-2 h-4 w-4 text-emerald-500" />
+                      HS Social
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
                       <MapPin className="mr-2 h-4 w-4" />
@@ -355,25 +371,36 @@ export function SiteHeader({
           </nav>
         </div>
 
+        {/* Linha de Submenu (Desktop) */}
         {signedIn && (
-          <div className="mt-2 hidden items-center gap-4 text-sm text-white/80 sm:flex">
+          <div className="mt-2 hidden items-center gap-3.5 text-sm text-white/80 sm:flex">
             <Link to="/" className="hover:text-white">
               Início
             </Link>
             <Link
               to="/clube-hs"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-400/20 text-amber-300 hover:bg-amber-400/30 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 hover:bg-amber-400/30 transition-colors"
             >
               <Crown className="w-3.5 h-3.5" />
               Clube HS
             </Link>
             <Link
               to="/afiliados"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 transition-colors"
             >
               <Share2 className="w-3.5 h-3.5" />
               Afiliados (10%)
             </Link>
+
+            {/* 🟢 Botão Verde-Claro HS Social no Submenu */}
+            <Link
+              to="/social"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-emerald-400/20 text-emerald-200 hover:bg-emerald-400/30 border border-emerald-400/30 transition-colors"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-300" />
+              HS Social
+            </Link>
+
             <Link to="/compras" className="hover:text-white">
               Minhas compras
             </Link>
@@ -409,6 +436,16 @@ export function SiteHeader({
             >
               <Home className="h-4 w-4" />
               Início
+            </Link>
+
+            {/* Botão HS Social no Mobile */}
+            <Link
+              to="/social"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 font-bold"
+            >
+              <MessageCircle className="h-4 w-4 text-emerald-400" />
+              HS Social (Mensagens & Grupos)
             </Link>
 
             {signedIn && (
@@ -450,6 +487,24 @@ export function SiteHeader({
               </>
             )}
 
+            <Link
+              to="/afiliados"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-emerald-400 hover:bg-primary-foreground/10 font-medium"
+            >
+              <Share2 className="h-4 w-4" />
+              Programa de Afiliados (10%)
+            </Link>
+
+            <Link
+              to="/clube-hs"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-amber-300 hover:bg-primary-foreground/10 font-medium"
+            >
+              <Crown className="h-4 w-4" />
+              Clube HS
+            </Link>
+
             {isBuyer && (
               <Link
                 to="/jogos"
@@ -461,82 +516,40 @@ export function SiteHeader({
               </Link>
             )}
 
-            {signedIn && (
-              <Link
-                to="/carrinho"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
-              >
-                <ShoppingCart className="h-4 w-4" />
-                Carrinho {count > 0 ? `(${count})` : ""}
-              </Link>
-            )}
-
-            {/* Afiliados no Menu Mobile */}
             <Link
-              to="/afiliados"
+              to="/vendedor"
               onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10 text-emerald-300 font-medium"
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
             >
-              <Share2 className="h-4 w-4 text-emerald-400" />
-              Programa de Afiliados (Ganhe 10%)
+              <Store className="h-4 w-4" />
+              Venda na HS Digital
             </Link>
 
-            {signedIn && (
-              <Link
-                to="/vendedor"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
-              >
-                <Store className="h-4 w-4" />
-                Seller Center
-              </Link>
-            )}
-
-            {isAdmin && (
-              <Link
-                to="/admin"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
-              >
-                <User className="h-4 w-4" />
-                Admin
-              </Link>
-            )}
-
             {signedIn ? (
-              <Button
-                variant="ghost"
+              <button
+                type="button"
                 onClick={() => {
                   setOpen(false);
                   void signOut();
                 }}
-                className="justify-start text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-destructive hover:bg-primary-foreground/10"
               >
+                <LogOut className="h-4 w-4" />
                 Sair da conta
-              </Button>
+              </button>
             ) : (
               <Link
                 to="/auth"
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2 hover:bg-white/10"
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
               >
-                Entrar / Criar conta
+                <LogIn className="h-4 w-4" />
+                Entrar / Cadastrar
               </Link>
             )}
           </div>
         )}
       </div>
     </header>
-  );
-}
-
-export function AuthCta() {
-  return (
-    <Button asChild variant="secondary" size="sm">
-      <Link to="/auth">
-        <LogIn className="h-4 w-4" /> Entrar
-      </Link>
-    </Button>
   );
 }
