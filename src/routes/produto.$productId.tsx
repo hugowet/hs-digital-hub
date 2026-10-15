@@ -24,7 +24,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
 import { SiteFooter } from "@/components/site-footer";
@@ -32,8 +32,11 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart";
-import { fetchProduct } from "@/lib/catalog.functions";
-import { brl } from "@/lib/format";
+import { fetchProduct, fetchProducts } from "@/lib/catalog.functions";
+import { brl, compact } from "@/lib/format";
+import type { Product } from "@/lib/catalog";
+import { ProductCard } from "@/components/product-card";
+import { trackProductView, markAsPurchasedOrInCart, initAbandonmentWatcher } from "@/lib/abandonment-tracker";
 
 export const Route = createFileRoute("/produto/$productId")({
   loader: async ({ params }) => {
@@ -107,6 +110,15 @@ function getConsistentSalesCount(id: string): number {
   return 38 + (positive % 184);
 }
 
+// Separa inteiros e centavos para renderizar com estilo Mercado Livre (<sup>)
+function formatSplitPrice(price: number) {
+  const parts = Number(price || 0).toFixed(2).split(".");
+  return {
+    reais: Number(parts[0]).toLocaleString("pt-BR"),
+    centavos: parts[1] || "00",
+  };
+}
+
 export function ProductDetailPage() {
   const { productId } = Route.useParams();
   const navigate = useNavigate();
@@ -121,6 +133,44 @@ export function ProductDetailPage() {
     queryKey: ["product", productId],
     queryFn: () => fetchProduct({ data: { productId } }),
   });
+
+  // Rastreamento para a notificação de 30 minutos
+  useEffect(() => {
+    if (product) {
+      trackProductView({
+        id: product.id,
+        title: product.title,
+        price: product.price,
+        image_url: product.image_url,
+      });
+    }
+  }, [product]);
+
+  useEffect(() => {
+    const cleanup = initAbandonmentWatcher();
+    return () => {
+      cleanup?.();
+    };
+  }, []);
+
+  // Catálogo para alimentar os produtos semelhantes
+  const { data: allCatalog = [] } = useQuery({
+    queryKey: ["similar-products", product?.category],
+    queryFn: () => fetchProducts(),
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const similarProducts = useMemo(() => {
+    if (!product || !allCatalog) return [];
+    return allCatalog
+      .filter((p) => p.id !== product.id)
+      .sort((a, b) => {
+        const aCat = a.category === product.category ? 1 : 0;
+        const bCat = b.category === product.category ? 1 : 0;
+        return bCat - aCat;
+      })
+      .slice(0, 15);
+  }, [product, allCatalog]);
 
   const media = useMemo(() => {
     if (!product) return [];
@@ -163,7 +213,7 @@ export function ProductDetailPage() {
 
   const [newQuestion, setNewQuestion] = useState("");
 
-  // Avaliações estritamente em texto limpo com persistência garantida no navegador
+  // Avaliações
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
 
   useEffect(() => {
@@ -221,125 +271,138 @@ export function ProductDetailPage() {
     }
   }, [productId, product]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(`questions_${productId}`, JSON.stringify(questions));
-    } catch {}
-  }, [questions, productId]);
+  const salesCount = useMemo(() => {
+    if (!product) return 120;
+    return product.sold_count && product.sold_count > 0
+      ? product.sold_count
+      : getConsistentSalesCount(product.id);
+  }, [product]);
 
-  // Modal de Avaliação
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewName, setReviewName] = useState("");
-  const [reviewComment, setReviewComment] = useState("");
-  const [filterRating, setFilterRating] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<"helpful" | "recent">("recent");
+  const totalReviewsCount = useMemo(() => {
+    if (!product) return 42;
+    return (product.reviews_count ?? 40) + reviews.length - 3;
+  }, [product, reviews.length]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    if (touch) setTouchStartX(touch.clientX);
-  };
+  const averageRating = useMemo(() => {
+    if (!product) return 4.9;
+    return Number(product.rating ?? 4.9);
+  }, [product]);
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX === null) return;
-    const touch = e.changedTouches[0];
-    if (touch) {
-      const diff = touchStartX - touch.clientX;
-      if (Math.abs(diff) > 40 && media.length > 1) {
-        if (diff > 0) {
-          setSelectedImage((prev) => (prev + 1) % media.length);
-        } else {
-          setSelectedImage((prev) => (prev - 1 + media.length) % media.length);
-        }
-      }
-    }
-    setTouchStartX(null);
-  };
+  const isDigital = useMemo(() => {
+    if (!product) return false;
+    return (
+      product.product_type === "digital" ||
+      product.category?.includes("digital") ||
+      product.category?.includes("cursos")
+    );
+  }, [product]);
+
+  // Âncora de Preço Inteligente Mercado Livre
+  const price = Number(product?.price || 0);
+  const rawOriginal = product?.compare_at_price;
+  const originalPrice =
+    rawOriginal && Number(rawOriginal) > price
+      ? Number(rawOriginal)
+      : Math.round((price / 0.68) * 100) / 100;
+
+  const discountPercent = Math.max(
+    5,
+    Math.round(((originalPrice - price) / originalPrice) * 100)
+  );
+
+  const priceParts = formatSplitPrice(price);
+  const maxInstallments = Math.min(10, Math.max(2, Math.floor(price / 15)));
+  const installmentValue = price / maxInstallments;
 
   const handleShare = () => {
-    const shareUrl = window.location.href;
-    const shareData = {
-      title: product?.title || "Confira este produto na Loja JJ Kuster",
-      text: `Olha esse produto que encontrei na Loja JJ Kuster por apenas ${product ? brl(product.price) : ""}:`,
-      url: shareUrl,
-    };
-
     if (navigator.share) {
-      navigator.share(shareData).catch(() => undefined);
+      navigator
+        .share({
+          title: product?.title || "Confira este produto na Loja JJ Kuster",
+          url: window.location.href,
+        })
+        .catch(() => {});
     } else {
-      navigator.clipboard.writeText(shareUrl);
-      toast.success("Link do produto copiado com sucesso!");
+      navigator.clipboard.writeText(window.location.href);
+      toast.success("Link copiado para a área de transferência!");
     }
   };
 
   const handleAddQuestion = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQuestion.trim()) return;
-    const item: QuestionItem = {
+    const newItem: QuestionItem = {
       id: `q_${Date.now()}`,
       question: newQuestion.trim(),
       created_at: "agora mesmo",
     };
-    setQuestions((prev) => [item, ...prev]);
-    setNewQuestion("");
-    toast.success("Pergunta enviada para a Loja JJ Kuster!");
-  };
-
-  const handleSubmitReview = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reviewComment.trim()) {
-      toast.error("Por favor, escreva um comentário sobre o produto.");
-      return;
-    }
-
-    const newRev: ReviewItem = {
-      id: `rev_${Date.now()}`,
-      author: reviewName.trim() || "Cliente JJ Kuster",
-      rating: reviewRating,
-      date: "Brasil · Hoje",
-      comment: reviewComment.trim(),
-      packagingNote: "Compra com envio rastreado oficial",
-      verified: true,
-      helpfulCount: 0,
-    };
-
-    const updated = [newRev, ...reviews];
-    setReviews(updated);
+    const updated = [newItem, ...questions];
+    setQuestions(updated);
     try {
-      localStorage.setItem(`reviews_${productId}`, JSON.stringify(updated));
-    } catch (e) {
-      console.error("Erro ao salvar avaliação:", e);
-    }
-
-    setShowReviewModal(false);
-    setReviewComment("");
-    setReviewName("");
-    setReviewRating(5);
-    toast.success("Avaliação enviada com sucesso!");
-  };
-
-  const handleToggleHelpful = (reviewId: string) => {
-    const updated = reviews.map((r) =>
-      r.id === reviewId ? { ...r, helpfulCount: r.helpfulCount + 1 } : r,
-    );
-    setReviews(updated);
-    try {
-      localStorage.setItem(`reviews_${productId}`, JSON.stringify(updated));
+      localStorage.setItem(`questions_${productId}`, JSON.stringify(updated));
     } catch {}
-    toast.success("Obrigado pelo seu feedback!");
+    setNewQuestion("");
+    toast.success("Sua pergunta foi enviada ao vendedor!");
+  };
+
+  const handleAddToCart = (redirectCheckout: boolean) => {
+    if (!product) return;
+    markAsPurchasedOrInCart(product.id);
+    add(
+      {
+        productId: product.id,
+        title: product.title,
+        price: Number(product.price),
+        imageUrl: product.image_url ?? undefined,
+        maxStock: product.stock ?? 99,
+        freeShipping: true,
+        storeId: product.store_id,
+        storeName: product.stores?.name ?? "Loja JJ Kuster",
+        productType: (product.product_type as "physical" | "digital") ?? "physical",
+      },
+      quantity
+    );
+    if (redirectCheckout) {
+      navigate({ to: "/_authenticated/carrinho" });
+    } else {
+      toast.success(`${quantity}x ${product.title} adicionado ao carrinho!`);
+    }
+  };
+
+  // Carrossel interno para produtos semelhantes
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 10);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 10);
+  }, []);
+
+  const scrollCarousel = (direction: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const scrollAmount = el.clientWidth * 0.8;
+    el.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background w-full overflow-x-hidden">
+      <div className="min-h-screen bg-background">
         <SiteHeader />
-        <main className="mx-auto w-full max-w-7xl px-4 py-8">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="aspect-square w-full animate-pulse rounded-2xl bg-muted" />
+        <main className="mx-auto max-w-7xl px-4 py-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+            <div className="aspect-square animate-pulse rounded-2xl bg-muted/40" />
             <div className="space-y-4">
-              <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
-              <div className="h-8 w-1/3 animate-pulse rounded bg-muted" />
-              <div className="h-28 w-full animate-pulse rounded bg-muted" />
+              <div className="h-4 w-32 animate-pulse rounded bg-muted/40" />
+              <div className="h-8 w-3/4 animate-pulse rounded bg-muted/40" />
+              <div className="h-6 w-1/4 animate-pulse rounded bg-muted/40" />
+              <div className="h-24 animate-pulse rounded-xl bg-muted/40" />
             </div>
           </div>
         </main>
@@ -350,16 +413,16 @@ export function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-background w-full overflow-x-hidden">
+      <div className="min-h-screen bg-background">
         <SiteHeader />
-        <main className="mx-auto flex min-h-[50vh] max-w-xl flex-col items-center justify-center px-4 text-center">
-          <AlertCircle className="h-12 w-12 text-destructive mb-3" />
-          <h1 className="text-xl font-bold">Produto não encontrado</h1>
+        <main className="mx-auto max-w-7xl px-4 py-16 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h1 className="mt-4 text-xl font-bold">Produto não encontrado</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Este produto pode ter sido removido ou está temporariamente indisponível.
+            O produto que você procura pode ter sido removido ou está indisponível no momento.
           </p>
-          <Button asChild className="mt-4">
-            <Link to="/">Voltar ao início</Link>
+          <Button asChild className="mt-6">
+            <Link to="/">Voltar para a Vitrine</Link>
           </Button>
         </main>
         <SiteFooter />
@@ -367,691 +430,408 @@ export function ProductDetailPage() {
     );
   }
 
-  const salesCount = getConsistentSalesCount(product.id);
-  const totalReviewsCount = reviews.length;
-  const averageRating =
-    totalReviewsCount > 0
-      ? reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviewsCount
-      : 5.0;
-
-  const ratingCounts: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  reviews.forEach((r) => {
-    if (r.rating >= 1 && r.rating <= 5) {
-      ratingCounts[r.rating as 1 | 2 | 3 | 4 | 5] = (ratingCounts[r.rating as 1 | 2 | 3 | 4 | 5] || 0) + 1;
-    }
-  });
-
-  const filteredReviews = reviews
-    .filter((r) => (filterRating === null ? true : r.rating === filterRating))
-    .sort((a, b) => {
-      if (sortBy === "helpful") return b.helpfulCount - a.helpfulCount;
-      return 0;
-    });
-
-  const maxInstallments = 10;
-  const installmentValue = product.price / maxInstallments;
-
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col w-full overflow-x-hidden">
+    <div className="min-h-screen bg-background text-foreground">
       <SiteHeader />
 
-      <main className="w-full max-w-7xl mx-auto overflow-x-hidden sm:px-6 sm:py-6">
-        {/* Breadcrumb */}
-        <div className="w-full px-3.5 sm:px-0 min-w-0">
-          <nav className="mb-2.5 sm:mb-4 flex items-center gap-1.5 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-none py-1 max-w-full min-w-0">
-            <Link to="/" className="hover:text-primary transition shrink-0">Início</Link>
-            <ChevronRight className="h-3 w-3 shrink-0" />
-            <span className="capitalize shrink-0">{product.category || "Geral"}</span>
-            <ChevronRight className="h-3 w-3 shrink-0" />
-            <span className="truncate max-w-[150px] sm:max-w-xs font-medium text-foreground">
-              {product.title}
-            </span>
-          </nav>
-        </div>
+      <main className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-6 overflow-hidden">
+        {/* Breadcrumb de navegação */}
+        <nav className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap pb-1">
+          <Link to="/" className="hover:text-primary">
+            Início
+          </Link>
+          <span>/</span>
+          <span className="capitalize">{product.category || "Geral"}</span>
+          <span>/</span>
+          <span className="truncate max-w-[200px] sm:max-w-xs text-foreground font-medium">
+            {product.title}
+          </span>
+        </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 w-full min-w-0">
-          {/* Coluna da Imagem e Galeria */}
-          <div className="lg:col-span-7 w-full min-w-0 flex flex-col gap-3 sm:flex-row-reverse sm:gap-4">
-            {/* Foto Principal com Efeito de Zoom Suave no Hover */}
-            <div
-              className="relative w-full aspect-square bg-white flex items-center justify-center overflow-hidden sm:rounded-2xl sm:border sm:border-border sm:shadow-sm select-none"
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-            >
-              {currentMedia?.url ? (
-                <img
-                  src={currentMedia.url}
-                  alt={product.title}
-                  className="h-full w-full object-contain p-2 sm:p-4 transition-transform duration-300 hover:scale-110 cursor-zoom-in"
-                />
-              ) : (
-                <div className="text-muted-foreground text-sm">Sem imagem</div>
-              )}
-
-              {/* Botões Flutuantes no Topo */}
-              <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  className="rounded-full bg-white/95 p-2 text-foreground shadow-md backdrop-blur transition hover:text-primary"
-                  title="Compartilhar produto"
-                >
-                  <Share2 className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsFavorite(!isFavorite);
-                    toast.success(isFavorite ? "Removido dos favoritos" : "Salvo nos favoritos!");
-                  }}
-                  className={`rounded-full bg-white/95 p-2 shadow-md backdrop-blur transition ${
-                    isFavorite ? "text-rose-500" : "text-foreground hover:text-rose-500"
-                  }`}
-                  title="Favoritar"
-                >
-                  <Heart className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`} />
-                </button>
-              </div>
-
-              {product.free_shipping && (
-                <span className="absolute top-3 left-3 z-10 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-black text-white shadow">
-                  FRETE GRÁTIS
-                </span>
-              )}
-
-              {/* Setas Desktop */}
+        {/* ========================================================= */}
+        {/* CARD PRINCIPAL DO PRODUTO: FOTOS + PREÇO MERCADO LIVRE */}
+        {/* ========================================================= */}
+        <div className="rounded-2xl border border-border bg-card p-3 sm:p-6 shadow-sm">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {/* GALERIA DE FOTOS (Col 1-7) */}
+            <div className="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-3">
+              {/* Miniaturas Laterais */}
               {media.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedImage((prev) => (prev - 1 + media.length) % media.length)}
-                    className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow hover:bg-white text-foreground"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedImage((prev) => (prev + 1) % media.length)}
-                    className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow hover:bg-white text-foreground"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                </>
-              )}
-
-              {media.length > 1 && (
-                <div className="absolute bottom-3 right-3 rounded-full bg-black/60 px-2.5 py-0.5 text-[11px] font-bold text-white backdrop-blur">
-                  {selectedImage + 1} / {media.length}
-                </div>
-              )}
-            </div>
-
-            {/* Miniaturas */}
-            {media.length > 1 && (
-              <div className="w-full min-w-0 px-3.5 sm:px-0">
-                <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[500px] pb-1 sm:pb-0 scrollbar-none w-full min-w-0">
-                  {media.map((item, index) => (
+                <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto max-h-[460px] pb-1 sm:pb-0 scrollbar-none shrink-0">
+                  {media.map((item, idx) => (
                     <button
                       key={item.id}
-                      onClick={() => setSelectedImage(index)}
-                      className={`relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-xl border-2 transition bg-white ${
-                        selectedImage === index
-                          ? "border-primary ring-1 ring-primary shadow-sm"
-                          : "border-border/80 opacity-70 hover:opacity-100"
+                      type="button"
+                      onClick={() => setSelectedImage(idx)}
+                      className={`relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                        selectedImage === idx
+                          ? "border-primary shadow-sm"
+                          : "border-border/60 hover:border-muted-foreground/40 opacity-70"
                       }`}
                     >
                       <img
                         src={item.url}
-                        alt=""
-                        className="h-full w-full object-contain p-0.5"
-                        loading="lazy"
+                        alt={`Miniatura ${idx + 1}`}
+                        className="h-full w-full object-contain p-1"
                       />
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          {/* Coluna de Preço, Compra e Pagamentos */}
-          <div className="lg:col-span-5 w-full min-w-0 px-3.5 sm:px-0 space-y-4">
-            <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm w-full min-w-0">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-semibold text-foreground">Novo</span>
-                <span>•</span>
-                <span>+{salesCount} vendidos</span>
-                <span>•</span>
-                <span className="flex items-center gap-1 text-amber-500 font-bold">
-                  ★ {averageRating.toFixed(1)}
-                  <span className="text-muted-foreground font-normal">({totalReviewsCount})</span>
-                </span>
-              </div>
-
-              <h1 className="mt-2 text-lg sm:text-2xl font-bold leading-snug text-foreground">
-                {product.title}
-              </h1>
-
-              {/* Loja Oficial */}
-              <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span>Vendido e entregue por</span>
-                <span className="font-bold text-primary flex items-center gap-1">
-                  Loja JJ Kuster <BadgeCheck className="h-3.5 w-3.5 text-primary" />
-                </span>
-              </div>
-
-              {/* Preço e Parcelamento */}
-              <div className="mt-4 rounded-xl bg-muted/30 p-3 sm:p-4 border border-border/80">
-                {product.compare_at_price && product.compare_at_price > product.price && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground line-through">
-                      {brl(product.compare_at_price)}
-                    </span>
-                    <span className="rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-500">
-                      {Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)}% OFF
-                    </span>
-                  </div>
+              {/* Foto Principal com Swipe */}
+              <div
+                className="relative flex-1 aspect-square max-h-[480px] w-full rounded-xl bg-muted/10 border border-border/40 overflow-hidden flex items-center justify-center p-4 touch-pan-y"
+                onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
+                onTouchEnd={(e) => {
+                  if (touchStartX === null) return;
+                  const diff = touchStartX - e.changedTouches[0].clientX;
+                  if (diff > 50 && selectedImage < media.length - 1) {
+                    setSelectedImage((prev) => prev + 1);
+                  } else if (diff < -50 && selectedImage > 0) {
+                    setSelectedImage((prev) => prev - 1);
+                  }
+                  setTouchStartX(null);
+                }}
+              >
+                {currentMedia ? (
+                  <img
+                    src={currentMedia.url}
+                    alt={product.title}
+                    className="h-full w-full object-contain transition-transform duration-300 hover:scale-105"
+                  />
+                ) : (
+                  <Box className="h-16 w-16 text-muted-foreground/30" />
                 )}
 
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-black text-foreground tracking-tight">
-                    {brl(product.price)}
+                {/* Botão de Favoritar */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFavorite(!isFavorite);
+                    toast.success(
+                      !isFavorite ? "Salvo nos seus favoritos!" : "Removido dos favoritos."
+                    );
+                  }}
+                  className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-background/80 shadow-md backdrop-blur-sm transition-transform active:scale-90"
+                >
+                  <Heart
+                    className={`h-5 w-5 ${
+                      isFavorite ? "fill-rose-500 text-rose-500" : "text-muted-foreground"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* PAINEL DE DETALHES E PREÇOS (Col 8-12) */}
+            <div className="lg:col-span-5 flex flex-col justify-between">
+              <div>
+                {/* Status, Vendas e Estrelas */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Novo</span>
+                  <span>•</span>
+                  <span>+{salesCount} vendidos</span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 text-amber-500 font-bold">
+                    ★ {averageRating.toFixed(1)}
+                    <span className="text-muted-foreground font-normal">
+                      ({totalReviewsCount})
+                    </span>
                   </span>
-                  <span className="text-xs font-bold text-emerald-600">no Pix</span>
                 </div>
 
-                <p className="mt-1 text-xs font-medium text-foreground">
-                  ou em até <span className="font-bold">{maxInstallments}x de {brl(installmentValue)}</span> sem juros no cartão
-                </p>
+                <h1 className="mt-2 text-base sm:text-xl font-bold leading-snug text-foreground">
+                  {product.title}
+                </h1>
 
-                {/* Meios de Pagamento Aceitos: PIX e Cartão de Crédito (Sem Boleto) */}
-                <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
-                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
-                    Meios de pagamento aceitos via Mercado Pago:
+                {/* Loja Oficial */}
+                <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span>Vendido e entregue por</span>
+                  <span className="font-bold text-primary flex items-center gap-1">
+                    Loja JJ Kuster <BadgeCheck className="h-3.5 w-3.5 text-primary" />
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-xl border border-border/80 bg-muted/30 p-2.5 text-center">
-                      <QrCode className="h-4 w-4 mx-auto text-emerald-600 mb-1" />
-                      <p className="text-[11px] font-bold">Pix</p>
-                      <p className="text-[9px] text-muted-foreground">Aprovação imediata</p>
+                </div>
+
+                {/* ========================================================= */}
+                {/* BLOCO DE PREÇOS OFICIAL ESTILO MERCADO LIVRE */}
+                {/* ========================================================= */}
+                <div className="mt-4 rounded-xl bg-muted/20 p-4 border border-border/80">
+                  {/* Linha 1: [XX% OFF] + Preço Riscado */}
+                  <div className="flex items-center gap-2 leading-none">
+                    <span className="rounded bg-[#00a650] px-1.5 py-0.5 text-[11px] font-bold text-white">
+                      {discountPercent}% OFF
+                    </span>
+                    <span className="text-xs text-muted-foreground line-through">
+                      {brl(originalPrice)}
+                    </span>
+                  </div>
+
+                  {/* Linha 2: Preço principal em destaque com centavos elevados (<sup>) */}
+                  <div className="mt-1 flex items-start leading-none text-foreground">
+                    <span className="text-3xl sm:text-4xl font-normal tracking-tight">
+                      R$ {priceParts.reais}
+                    </span>
+                    <sup className="text-sm sm:text-base font-semibold tracking-tight ml-0.5 top-0.5">
+                      {priceParts.centavos}
+                    </sup>
+                  </div>
+
+                  {/* Linha 3: Parcelamento limpo sem juros */}
+                  <p className="mt-2 text-xs text-foreground/80 font-normal">
+                    em até <span className="font-semibold">{maxInstallments}x de {brl(installmentValue)}</span> sem juros
+                  </p>
+
+                  {/* Linha 4: Selo Frete Grátis com complemento */}
+                  {!isDigital && (
+                    <div className="mt-1.5 flex items-baseline gap-1 text-xs">
+                      <span className="font-bold text-[#00a650]">
+                        Frete grátis
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        por ser sua primeira compra
+                      </span>
                     </div>
-                    <div className="rounded-xl border border-border/80 bg-muted/30 p-2.5 text-center">
-                      <CreditCard className="h-4 w-4 mx-auto text-primary mb-1" />
-                      <p className="text-[11px] font-bold">Cartão de Crédito</p>
-                      <p className="text-[9px] text-muted-foreground">Até 10x sem juros</p>
+                  )}
+
+                  {/* Meios de Pagamento */}
+                  <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+                      Pague com Pix ou Cartão via Mercado Pago:
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-lg border border-border/70 bg-card p-2 text-center">
+                        <QrCode className="h-4 w-4 mx-auto text-emerald-600 mb-0.5" />
+                        <p className="text-[11px] font-bold">Pix</p>
+                        <p className="text-[9px] text-muted-foreground">Aprovação imediata</p>
+                      </div>
+                      <div className="rounded-lg border border-border/70 bg-card p-2 text-center">
+                        <CreditCard className="h-4 w-4 mx-auto text-primary mb-0.5" />
+                        <p className="text-[11px] font-bold">Cartão</p>
+                        <p className="text-[9px] text-muted-foreground">Até 10x sem juros</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Botão de Compartilhar */}
-              <Button
-                variant="outline"
-                onClick={handleShare}
-                className="mt-3 w-full border-border text-foreground hover:bg-muted font-semibold text-xs h-9"
-              >
-                <Share2 className="h-3.5 w-3.5 mr-1.5" /> Compartilhar produto
-              </Button>
-
-              {/* Garantias */}
-              <div className="mt-3 space-y-2 rounded-xl bg-muted/40 p-3 border border-border/60 text-xs text-muted-foreground w-full min-w-0">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Compra 100% Protegida pela Loja JJ Kuster com garantia oficial</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-primary shrink-0" />
-                  <span>Envio com código de rastreamento oficial enviado para o seu e-mail</span>
-                </div>
-              </div>
-
-              {/* Seletor de Quantidade */}
-              <div className="mt-4 flex items-center justify-between border-y border-border py-3">
-                <span className="text-xs font-semibold text-foreground">Quantidade:</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    disabled={quantity <= 1}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                  <span className="w-8 text-center text-sm font-bold">{quantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.min(product.stock || 99, q + 1))}
-                    disabled={quantity >= (product.stock || 99)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                  <span className="text-xs text-muted-foreground ml-1">
-                    ({product.stock} disponíveis)
-                  </span>
-                </div>
-              </div>
-
-              {/* Botões de Ação */}
-              <div className="mt-4 space-y-2">
+                {/* Compartilhar */}
                 <Button
-                  onClick={() => {
-                    add(product, quantity);
-                    toast.success(`${quantity}x ${product.title} adicionado ao carrinho!`);
-                  }}
                   variant="outline"
-                  className="w-full border-primary text-primary hover:bg-primary/10 font-bold h-11 text-sm transition"
+                  onClick={handleShare}
+                  className="mt-3 w-full border-border text-foreground hover:bg-muted font-semibold text-xs h-9"
                 >
-                  <ShoppingCart className="h-4 w-4 mr-2" /> Adicionar ao Carrinho
+                  <Share2 className="h-3.5 w-3.5 mr-1.5" /> Compartilhar produto
                 </Button>
 
-                <Button
-                  onClick={() => {
-                    add(product, quantity);
-                    navigate({ to: "/carrinho" });
-                  }}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black h-12 text-base shadow-md transition"
-                >
-                  <Zap className="h-4 w-4 mr-1.5 fill-current" /> Comprar Agora
-                </Button>
+                {/* Garantias */}
+                <div className="mt-3 space-y-2 rounded-xl bg-muted/30 p-3 border border-border/60 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Compra 100% Protegida com garantia oficial</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-primary shrink-0" />
+                    <span>Envio com código de rastreamento enviado por e-mail</span>
+                  </div>
+                </div>
+
+                {/* Quantidade */}
+                <div className="mt-4 flex items-center justify-between border-y border-border py-2.5">
+                  <span className="text-xs font-semibold text-foreground">Quantidade:</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      disabled={quantity <= 1}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="w-8 text-center text-sm font-bold">{quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => Math.min(product.stock || 99, q + 1))}
+                      disabled={quantity >= (product.stock || 99)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({product.stock} disponíveis)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Botões de Compra */}
+                <div className="mt-4 space-y-2">
+                  <Button
+                    onClick={() => handleAddToCart(false)}
+                    variant="outline"
+                    className="w-full border-primary text-primary hover:bg-primary/10 font-bold h-11 text-sm transition"
+                  >
+                    <ShoppingCart className="h-4 w-4 mr-2" /> Adicionar ao Carrinho
+                  </Button>
+
+                  <Button
+                    onClick={() => handleAddToCart(true)}
+                    className="w-full bg-[#00a650] hover:bg-[#008f45] text-white font-black h-12 text-base shadow-md transition"
+                  >
+                    <Zap className="h-4 w-4 mr-1.5 fill-current" /> Comprar Agora
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ========================================================= */}
-        {/* DESCRIÇÃO PROFISSIONAL DETALHADA ESTILO MERCADO LIVRE */}
-        {/* ========================================================= */}
-        <div className="w-full min-w-0 px-3.5 sm:px-0">
-          <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm w-full min-w-0">
-            <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" /> Descrição do Produto
-            </h2>
+        {/* DESCRIÇÃO DO PRODUTO */}
+        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
+          <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" /> Descrição do Produto
+          </h2>
 
-            <div className="mt-5 space-y-6 text-sm text-foreground/90 leading-relaxed">
-              {/* Título de Apresentação */}
-              <div>
-                <h3 className="font-bold text-base sm:text-lg text-foreground">
-                  {product.title}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Produto 100% original, novo e com envio protegido com código de rastreamento oficial.
-                </p>
-              </div>
-
-              {/* Descrição Principal Cadastrada */}
-              {product.description && (
-                <div className="rounded-xl bg-muted/20 p-4 border border-border/60 text-sm sm:text-base text-foreground leading-relaxed whitespace-pre-line">
-                  {product.description}
-                </div>
-              )}
-
-              {/* Diferenciais e Garantias Estilo ML */}
-              <div className="space-y-3">
-                <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Destaques e Vantagens:
-                </h4>
-                <ul className="list-disc pl-5 space-y-2 text-muted-foreground text-xs sm:text-sm">
-                  <li><strong className="text-foreground">Qualidade Assegurada:</strong> Testado e inspecionado rigorosamente antes do envio.</li>
-                  <li><strong className="text-foreground">Envio Imediato e Seguro:</strong> Embalagem reforçada com proteção contra impactos no transporte.</li>
-                  <li><strong className="text-foreground">Compra Garantida:</strong> Garantia contra defeitos de fabricação e suporte dedicado da loja.</li>
-                  <li><strong className="text-foreground">Pronto para Uso:</strong> Acompanha todos os itens e manuais originais de fábrica.</li>
-                </ul>
-              </div>
-
-              {/* Ficha Técnica / Especificações Estilo Mercado Livre */}
-              <div>
-                <h4 className="font-bold text-sm text-foreground flex items-center gap-2 mb-3">
-                  <Box className="h-4 w-4 text-primary" /> Ficha Técnica & Características:
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                  <div className="bg-muted/40 p-3 rounded-xl border border-border flex justify-between items-center">
-                    <span className="text-muted-foreground">Condição do item:</span>
-                    <strong className="text-foreground">Novo (Lacrado)</strong>
-                  </div>
-                  <div className="bg-muted/40 p-3 rounded-xl border border-border flex justify-between items-center">
-                    <span className="text-muted-foreground">Categoria:</span>
-                    <strong className="capitalize text-foreground">{product.category || "Geral"}</strong>
-                  </div>
-                  <div className="bg-muted/40 p-3 rounded-xl border border-border flex justify-between items-center">
-                    <span className="text-muted-foreground">Disponibilidade:</span>
-                    <strong className="text-emerald-600">Em estoque ({product.stock} un.)</strong>
-                  </div>
-                  <div className="bg-muted/40 p-3 rounded-xl border border-border flex justify-between items-center">
-                    <span className="text-muted-foreground">Garantia do vendedor:</span>
-                    <strong className="text-foreground">30 dias</strong>
-                  </div>
-                  <div className="bg-muted/40 p-3 rounded-xl border border-border flex justify-between items-center">
-                    <span className="text-muted-foreground">Origem do envio:</span>
-                    <strong className="text-foreground">Brasil (Rastreamento Correios)</strong>
-                  </div>
-                  <div className="bg-muted/40 p-3 rounded-xl border border-border flex justify-between items-center">
-                    <span className="text-muted-foreground">Forma de pagamento:</span>
-                    <strong className="text-foreground">Mercado Pago (Pix / Cartão)</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Descrição Detalhada Adicional */}
-              {product.description_long && product.description_long !== product.description && (
-                <div className="pt-2 border-t border-border">
-                  <h4 className="font-bold text-sm text-foreground mb-2">Informações Complementares:</h4>
-                  <div className="text-xs sm:text-sm text-muted-foreground whitespace-pre-line leading-relaxed bg-muted/20 p-4 rounded-xl border border-border/50">
-                    {product.description_long}
-                  </div>
-                </div>
-              )}
-
-              {/* Itens Inclusos */}
-              <div className="pt-2 border-t border-border">
-                <h4 className="font-bold text-sm text-foreground flex items-center gap-2 mb-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600" /> O que você está comprando:
-                </h4>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  • 1x <strong>{product.title}</strong> novo e completo na embalagem oficial.
-                </p>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  • Certificado de envio e comprovante de compra protegida.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* ========================================================= */}
-          {/* SEÇÃO: OPINIÕES DO PRODUTO (100% Texto Limpo) */}
-          {/* ========================================================= */}
-          <section id="opinioes" className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm w-full min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
-              <div>
-                <h2 className="text-lg sm:text-xl font-black text-foreground">Opiniões do produto</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Avaliações de clientes que compraram na Loja JJ Kuster
-                </p>
-              </div>
-
-              <Button
-                onClick={() => setShowReviewModal(true)}
-                className="bg-primary hover:bg-primary/90 text-white font-bold h-10 px-4 text-xs sm:text-sm shadow flex items-center justify-center gap-2"
-              >
-                Escrever avaliação
-              </Button>
+          <div className="mt-4 space-y-4 text-sm text-foreground/90 leading-relaxed">
+            <div>
+              <h3 className="font-bold text-base text-foreground">{product.title}</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Produto novo, lacrado e com envio imediato e compra garantida.
+              </p>
             </div>
 
-            {/* Resumo da Nota e Gráfico de Barras */}
-            <div className="mt-5 grid grid-cols-1 md:grid-cols-12 gap-5 items-center w-full min-w-0">
-              <div className="md:col-span-4 flex items-center gap-3">
-                <div className="text-4xl sm:text-5xl font-black text-primary leading-none">
-                  {averageRating.toFixed(1)}
-                </div>
-                <div>
-                  <div className="flex items-center text-amber-400">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-3.5 w-3.5 ${
-                          i < Math.floor(averageRating) ? "fill-current" : "opacity-30"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {totalReviewsCount} {totalReviewsCount === 1 ? "avaliação" : "avaliações"}
+            <div className="border-t border-border/60 pt-4">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                Detalhes & Especificações
+              </h4>
+              <p className="whitespace-pre-line text-xs sm:text-sm text-foreground/80">
+                {product.description_long || product.description || "Descrição completa em processamento."}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* PERGUNTAS E RESPOSTAS */}
+        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
+          <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-primary" /> Perguntas e Respostas
+          </h2>
+
+          <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2">
+            <Input
+              value={newQuestion}
+              onChange={(e) => setNewQuestion(e.target.value)}
+              placeholder="Escreva sua pergunta para a Loja JJ Kuster..."
+              className="flex-1"
+            />
+            <Button type="submit" className="shrink-0 font-bold">
+              <Send className="h-4 w-4 mr-1.5" /> Perguntar
+            </Button>
+          </form>
+
+          <div className="mt-6 space-y-3">
+            {questions.map((q) => (
+              <div key={q.id} className="rounded-xl border border-border/60 bg-muted/20 p-3 text-xs sm:text-sm">
+                <p className="font-semibold text-foreground">P: {q.question}</p>
+                {q.answer && (
+                  <p className="mt-1 text-muted-foreground pl-3 border-l-2 border-primary">
+                    R: {q.answer}
                   </p>
-                </div>
+                )}
               </div>
+            ))}
+          </div>
+        </section>
 
-              <div className="md:col-span-8 space-y-1.5 w-full min-w-0">
-                {[5, 4, 3, 2, 1].map((star) => {
-                  const count = ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0;
-                  const percentage = totalReviewsCount > 0 ? (count / totalReviewsCount) * 100 : 0;
-                  return (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setFilterRating(filterRating === star ? null : star)}
-                      className="w-full flex items-center gap-2 text-xs group hover:opacity-80 transition min-w-0"
-                    >
-                      <span className="w-5 text-right font-semibold text-muted-foreground shrink-0">{star}★</span>
-                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden min-w-0">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            filterRating === star ? "bg-primary" : "bg-primary/70"
-                          }`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <span className="w-6 text-left text-muted-foreground font-medium shrink-0">{count}</span>
-                    </button>
-                  );
-                })}
+        {/* OPINIÕES DOS COMPRADORES */}
+        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
+          <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
+            <Star className="h-5 w-5 text-amber-500 fill-amber-500" /> Opiniões dos Compradores
+          </h2>
+
+          <div className="mt-4 space-y-4">
+            {reviews.map((rev) => (
+              <div key={rev.id} className="border-b border-border/60 pb-3 last:border-none">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex text-amber-500 text-xs">
+                      {[...Array(rev.rating)].map((_, i) => (
+                        <Star key={i} className="h-3.5 w-3.5 fill-current" />
+                      ))}
+                    </div>
+                    <span className="text-xs font-bold text-foreground">{rev.author}</span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">{rev.date}</span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm text-foreground/90">{rev.comment}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ========================================================= */}
+        {/* CARROSSEL HORIZONTAL DE PRODUTOS SEMELHANTES COM SETAS */}
+        {/* ========================================================= */}
+        {similarProducts.length > 0 && (
+          <section className="mt-10 pt-6 border-t border-border">
+            <div className="flex items-baseline justify-between mb-3">
+              <div>
+                <h2 className="text-lg md:text-xl font-bold text-foreground tracking-tight">
+                  Quem viu este produto também comprou
+                </h2>
+                <p className="text-xs text-muted-foreground hidden sm:block">
+                  Produtos similares da categoria com Frete Grátis garantido
+                </p>
               </div>
             </div>
 
-            {/* Filtros e Ordenação */}
-            <div className="mt-5 pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0">
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full sm:w-auto min-w-0">
+            <div className="relative group">
+              {/* Seta Esquerda Flutuante */}
+              {canScrollLeft && (
                 <button
                   type="button"
-                  onClick={() => setFilterRating(null)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-bold transition border shrink-0 ${
-                    filterRating === null
-                      ? "bg-primary text-white border-primary"
-                      : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-                  }`}
+                  onClick={() => scrollCarousel("left")}
+                  aria-label="Rolar para esquerda"
+                  className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 hidden md:flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-800 shadow-xl border border-gray-100 hover:scale-105 active:scale-95 transition-all opacity-0 group-hover:opacity-100 dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-700"
                 >
-                  Todas ({totalReviewsCount})
+                  <ChevronLeft className="h-6 w-6 stroke-[2.5]" />
                 </button>
-                {[5, 4, 3].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setFilterRating(filterRating === star ? null : star)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-bold transition border shrink-0 ${
-                      filterRating === star
-                        ? "bg-primary text-white border-primary"
-                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-                    }`}
+              )}
+
+              {/* Trilho de Rolagem Suave */}
+              <div
+                ref={scrollRef}
+                onScroll={checkScroll}
+                className="flex gap-4 overflow-x-auto scroll-smooth pb-4 pt-1 px-1 select-none"
+                style={{
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
+                {similarProducts.map((item) => (
+                  <div
+                    key={item.id}
+                    className="w-[200px] sm:w-[220px] md:w-[240px] shrink-0 transition-transform duration-200"
                   >
-                    {star}★ ({ratingCounts[star as 1 | 2 | 3 | 4 | 5] || 0})
-                  </button>
+                    <ProductCard product={item} />
+                  </div>
                 ))}
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
-                <span>Ordenar:</span>
+              {/* Seta Direita Flutuante */}
+              {canScrollRight && (
                 <button
                   type="button"
-                  onClick={() => setSortBy("recent")}
-                  className={`font-bold ${sortBy === "recent" ? "text-primary" : "text-muted-foreground"}`}
+                  onClick={() => scrollCarousel("right")}
+                  aria-label="Rolar para direita"
+                  className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 hidden md:flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-800 shadow-xl border border-gray-100 hover:scale-105 active:scale-95 transition-all opacity-0 group-hover:opacity-100 dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-700"
                 >
-                  Mais recentes
+                  <ChevronRight className="h-6 w-6 stroke-[2.5]" />
                 </button>
-                <span>•</span>
-                <button
-                  type="button"
-                  onClick={() => setSortBy("helpful")}
-                  className={`font-bold ${sortBy === "helpful" ? "text-primary" : "text-muted-foreground"}`}
-                >
-                  Mais úteis
-                </button>
-              </div>
-            </div>
-
-            {/* Lista de Avaliações em Texto Limpo */}
-            <div className="mt-4 divide-y divide-border w-full min-w-0">
-              {filteredReviews.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  Nenhuma avaliação encontrada com os filtros selecionados.
-                </p>
-              ) : (
-                filteredReviews.map((rev) => (
-                  <div key={rev.id} className="py-4 space-y-2 w-full min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                        <div className="flex text-amber-400 shrink-0">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-3 w-3 ${i < rev.rating ? "fill-current" : "opacity-30"}`}
-                            />
-                          ))}
-                        </div>
-                        <span className="font-bold text-xs text-foreground truncate max-w-[120px]">{rev.author}</span>
-                        {rev.verified && (
-                          <span className="flex items-center gap-0.5 text-[9px] text-emerald-600 font-bold bg-emerald-500/10 px-1 py-0.5 rounded shrink-0">
-                            <CheckCircle2 className="h-2.5 w-2.5" /> Compra verificada
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{rev.date}</span>
-                    </div>
-
-                    <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed break-words">{rev.comment}</p>
-
-                    {rev.packagingNote && (
-                      <p className="text-[11px] text-muted-foreground italic bg-muted/30 px-2 py-1 rounded-md">
-                        {rev.packagingNote}
-                      </p>
-                    )}
-
-                    <div className="flex items-center gap-3 pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleHelpful(rev.id)}
-                        className="text-[11px] text-muted-foreground hover:text-primary transition flex items-center gap-1"
-                      >
-                        <ThumbsUp className="h-3 w-3" /> Útil ({rev.helpfulCount})
-                      </button>
-                    </div>
-                  </div>
-                ))
               )}
             </div>
           </section>
-
-          {/* Perguntas e Dúvidas */}
-          <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm w-full min-w-0">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-primary" />
-              <h2 className="text-lg sm:text-xl font-black">Perguntas sobre o produto</h2>
-            </div>
-
-            <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2 w-full min-w-0">
-              <Input
-                value={newQuestion}
-                onChange={(e) => setNewQuestion(e.target.value)}
-                placeholder="Tire sua dúvida com a Loja JJ Kuster..."
-                className="flex-1 h-10 text-xs sm:text-sm min-w-0"
-              />
-              <Button type="submit" className="font-bold h-10 px-3 sm:px-4 shrink-0 text-xs sm:text-sm">
-                <Send className="h-3.5 w-3.5 mr-1" /> Perguntar
-              </Button>
-            </form>
-
-            <div className="mt-4 divide-y divide-border w-full min-w-0">
-              {questions.map((q) => (
-                <div key={q.id} className="py-3 w-full min-w-0">
-                  <p className="text-xs sm:text-sm font-bold text-foreground break-words">P: {q.question}</p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">Enviada {q.created_at}</p>
-                  {q.answer && (
-                    <div className="mt-2 rounded-xl bg-muted/40 p-2.5 text-xs text-foreground border-l-2 border-primary break-words">
-                      <span className="font-bold text-primary">Resposta da Loja JJ Kuster:</span> {q.answer}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
+        )}
       </main>
-
-      {/* Modal para Avaliar Produto (Apenas Texto Limpo) */}
-      {showReviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-lg rounded-2xl bg-card p-5 sm:p-6 shadow-2xl border border-border max-h-[92vh] overflow-y-auto">
-            <button
-              type="button"
-              onClick={() => setShowReviewModal(false)}
-              className="absolute top-3 right-3 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <h3 className="text-base sm:text-lg font-black text-foreground">Avaliar este produto</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Compartilhe sua opinião sobre o produto e ajude outros compradores.
-            </p>
-
-            <form onSubmit={handleSubmitReview} className="mt-4 space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1">Sua nota</label>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setReviewRating(star)}
-                      className="p-1 hover:scale-110 transition"
-                    >
-                      <Star
-                        className={`h-6 w-6 sm:h-7 sm:w-7 ${
-                          star <= reviewRating
-                            ? "fill-amber-400 text-amber-400"
-                            : "text-muted-foreground/30"
-                        }`}
-                      />
-                    </button>
-                  ))}
-                  <span className="ml-2 text-xs font-bold text-foreground">
-                    {reviewRating === 5
-                      ? "Excelente!"
-                      : reviewRating === 4
-                        ? "Muito bom"
-                        : reviewRating === 3
-                          ? "Bom"
-                          : reviewRating === 2
-                            ? "Ruim"
-                            : "Péssimo"}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1">Seu nome ou apelido</label>
-                <Input
-                  value={reviewName}
-                  onChange={(e) => setReviewName(e.target.value)}
-                  placeholder="Ex: João da Silva"
-                  className="h-9 text-xs sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1">Sua opinião sobre o produto</label>
-                <textarea
-                  value={reviewComment}
-                  onChange={(e) => setReviewComment(e.target.value)}
-                  placeholder="Conte o que achou do produto, se o material atendeu suas expectativas e se a entrega foi rápida."
-                  className="w-full rounded-xl border border-input bg-background p-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[90px]"
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowReviewModal(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" className="font-bold">
-                  Publicar Avaliação
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       <SiteFooter />
     </div>
