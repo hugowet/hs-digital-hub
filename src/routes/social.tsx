@@ -28,6 +28,11 @@ import {
   Shield,
   Sparkles,
   ArrowLeft,
+  Settings,
+  Smile,
+  Paperclip,
+  CheckCircle2,
+  Upload,
 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -50,8 +55,17 @@ export const Route = createFileRoute("/social")({
 });
 
 // ==========================================
-// CONFIGURAÇÕES GLOBAIS E TIPAGEM
+// TIPAGENS DO HS SOCIAL
 // ==========================================
+interface UserProfile {
+  id: string;
+  name: string;
+  phone: string;
+  avatar: string;
+  bio: string;
+  isConfigured: boolean;
+}
+
 interface ContactItem {
   id: string;
   contactId: string;
@@ -95,18 +109,77 @@ interface SocialStatusItem {
 }
 
 const STORAGE_KEYS = {
+  PERFIL: "hs_social_my_profile",
   GRUPOS: "hs_grupos",
   CONTATOS: "hs_social_contatos_cache",
-  SALAS: "hs_social_salas_cache",
   STATUSES: "hs_social_statuses_cache",
+  MENSAGENS: "hs_messages_cache",
 };
 
+// ==========================================
+// UTILITÁRIO: COMPRESSÃO DE IMAGENS (CANVAS)
+// Evita estouro de cota e travamentos no mobile
+// ==========================================
+async function compressImage(file: File, maxWidth = 1080, maxHeight = 1080, quality = 0.75): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(e.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export function HSSocialPage() {
-  // Usuário Atual
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  // 1. Perfil do Usuário Atual no HS Social
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+    const cached = localStorage.getItem(STORAGE_KEYS.PERFIL);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {}
+    }
+    return {
+      id: "hs_" + Math.random().toString(36).substring(2, 9),
+      name: "Meu Perfil HS",
+      phone: "",
+      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop",
+      bio: "Disponível no HS Social",
+      isConfigured: false,
+    };
+  });
+
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
-  // Navegação Principal: Inicia obrigatoriamente sem sala aberta (null)
+  // Navegação Principal: Inicia sempre na tela de conversas sem nenhuma aberta
   const [activeTab, setActiveTab] = useState<"chats" | "contacts" | "status">("chats");
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [chatSearch, setChatSearch] = useState("");
@@ -117,12 +190,20 @@ export function HSSocialPage() {
   const [messages, setMessages] = useState<SocialMessage[]>([]);
   const [statuses, setStatuses] = useState<SocialStatusItem[]>([]);
 
-  // Modais de Criação e Ação
+  // Modal: Meu Perfil
+  const [showMyProfileModal, setShowMyProfileModal] = useState(false);
+  const [profileNameInput, setProfileNameInput] = useState(currentUser.name);
+  const [profilePhoneInput, setProfilePhoneInput] = useState(currentUser.phone);
+  const [profileBioInput, setProfileBioInput] = useState(currentUser.bio);
+  const [profileAvatarInput, setProfileAvatarInput] = useState(currentUser.avatar);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Modais de Contato
   const [showAddContact, setShowAddContact] = useState(false);
   const [inputPhone, setInputPhone] = useState("");
   const [isValidatingContact, setIsValidatingContact] = useState(false);
 
-  // Grupos
+  // Modais de Grupos
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDesc, setGroupDesc] = useState("");
@@ -130,10 +211,11 @@ export function HSSocialPage() {
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [viewingGroupInfo, setViewingGroupInfo] = useState<SocialRoom | null>(null);
 
-  // Status / Stories
+  // Modais de Status / Stories
   const [showPostStatusModal, setShowPostStatusModal] = useState(false);
   const [statusImageInput, setStatusImageInput] = useState<string | null>(null);
   const [statusCaptionInput, setStatusCaptionInput] = useState("");
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [activeStoryGroup, setActiveStoryGroup] = useState<{
     userId: string;
     authorName: string;
@@ -144,16 +226,16 @@ export function HSSocialPage() {
   const [storyProgress, setStoryProgress] = useState(0);
   const [isStoryPaused, setIsStoryPaused] = useState(false);
 
-  // Perfil do Contato
+  // Perfil de Contato Externo
   const [viewingProfileContact, setViewingProfileContact] = useState<ContactItem | null>(null);
 
-  // Mensagens e Gravação
+  // Mensagens
   const [inputMessage, setInputMessage] = useState("");
   const [selectedMessageForAction, setSelectedMessageForAction] = useState<SocialMessage | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editMessageText, setEditMessageText] = useState("");
 
-  // Áudio Nativo
+  // Gravação de Áudio Nativo
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -164,30 +246,61 @@ export function HSSocialPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const statusCameraInputRef = useRef<HTMLInputElement>(null);
-  const groupPhotoInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Identificação do Usuário
+  // Refs para Câmera e Galeria de Fotos
+  const profileCameraInputRef = useRef<HTMLInputElement>(null);
+  const profileGalleryInputRef = useRef<HTMLInputElement>(null);
+  const groupCameraInputRef = useRef<HTMLInputElement>(null);
+  const groupGalleryInputRef = useRef<HTMLInputElement>(null);
+  const statusCameraInputRef = useRef<HTMLInputElement>(null);
+  const statusGalleryInputRef = useRef<HTMLInputElement>(null);
+
+  // ==========================================
+  // CARREGAR DADOS DA CONTA HS DIGITAL (SUPABASE)
+  // ==========================================
   useEffect(() => {
-    async function loadUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUser(user);
-      } else {
-        let tempId = localStorage.getItem("hs_social_uid");
-        if (!tempId) {
-          tempId = "hs_usr_" + Math.random().toString(36).substring(2, 9);
-          localStorage.setItem("hs_social_uid", tempId);
+    async function loadAccountData() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) {
+          // Consultar a tabela profiles da HS Digital Marketplace
+          const { data: dbProfile } = await supabase
+            .from("profiles")
+            .select("full_name, phone")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          setCurrentUser((prev) => {
+            const updated: UserProfile = {
+              ...prev,
+              id: user.id,
+              name: prev.isConfigured ? prev.name : dbProfile?.full_name || prev.name,
+              phone: prev.isConfigured ? prev.phone : dbProfile?.phone || prev.phone,
+            };
+            localStorage.setItem(STORAGE_KEYS.PERFIL, JSON.stringify(updated));
+            return updated;
+          });
         }
-        setCurrentUser({ id: tempId, email: "visitante@hsdigital.com" });
-      }
+      } catch {}
     }
-    loadUser();
+
+    loadAccountData();
   }, []);
 
-  // 2. Presença Realtime (Online / Offline)
+  // Sincronizar inputs do modal de perfil quando currentUser mudar
   useEffect(() => {
-    if (!currentUser?.id) return;
+    setProfileNameInput(currentUser.name);
+    setProfilePhoneInput(currentUser.phone);
+    setProfileBioInput(currentUser.bio);
+    setProfileAvatarInput(currentUser.avatar);
+  }, [currentUser]);
+
+  // Presença Realtime (Online / Offline)
+  useEffect(() => {
+    if (!currentUser.id) return;
 
     const channel = supabase.channel("hs-social-presence", {
       config: { presence: { key: currentUser.id } },
@@ -209,13 +322,11 @@ export function HSSocialPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser?.id]);
+  }, [currentUser.id]);
 
-  // 3. Carregar e Sincronizar Grupos, Contatos e Status
+  // Carregar Grupos, Contatos e Status
   useEffect(() => {
-    if (!currentUser?.id) return;
-
-    // Carregar Grupos salvos localmente e no banco
+    // 1. Grupos
     const localGrupos: any[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.GRUPOS) || "[]");
     const localRooms: SocialRoom[] = localGrupos.map((g) => ({
       id: String(g.id),
@@ -226,124 +337,31 @@ export function HSSocialPage() {
       adminId: g.adminId || currentUser.id,
       memberIds: g.participantes || [currentUser.id],
     }));
+    setRooms(localRooms);
 
-    // Carregar Contatos do cache ou Supabase
+    // 2. Contatos
     const savedContacts: ContactItem[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTATOS) || "[]");
     setContacts(savedContacts);
 
-    // Carregar Status do cache (expiração de 24h)
+    // 3. Status (Expira em 24h)
     const savedStatuses: SocialStatusItem[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.STATUSES) || "[]");
     const validStatuses = savedStatuses.filter((s) => Date.now() - s.createdAt < 24 * 60 * 60 * 1000);
     setStatuses(validStatuses);
+  }, [currentUser.id]);
 
-    // Sincronizar com Supabase se disponível
-    async function syncSupabaseData() {
-      try {
-        const { data: dbRooms } = await supabase
-          .from("social_rooms" as any)
-          .select("*")
-          .or(`member_ids.cs.{${currentUser.id}},admin_id.eq.${currentUser.id}`);
-
-        if (dbRooms && dbRooms.length > 0) {
-          const mapped: SocialRoom[] = dbRooms.map((r: any) => ({
-            id: r.id,
-            isGroup: r.is_group,
-            name: r.name,
-            description: r.description,
-            avatar: r.avatar_url || "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=150&auto=format&fit=crop",
-            adminId: r.admin_id,
-            memberIds: r.member_ids || [],
-          }));
-          // Mesclar grupos locais com remotos
-          const merged = [...mapped];
-          localRooms.forEach((lr) => {
-            if (!merged.some((m) => m.id === lr.id)) merged.push(lr);
-          });
-          setRooms(merged);
-        } else {
-          setRooms(localRooms);
-        }
-      } catch {
-        setRooms(localRooms);
-      }
-    }
-
-    syncSupabaseData();
-  }, [currentUser?.id]);
-
-  // Sincronizar Mensagens da Sala Ativa
+  // Carregar Mensagens da Sala Ativa
   useEffect(() => {
-    if (!selectedRoomId || !currentUser?.id) return;
+    if (!selectedRoomId) return;
 
-    // Buscar mensagens do localStorage
-    const localMsgs: Record<string, SocialMessage[]> = JSON.parse(localStorage.getItem("hs_messages_cache") || "{}");
+    const localMsgs: Record<string, SocialMessage[]> = JSON.parse(
+      localStorage.getItem(STORAGE_KEYS.MENSAGENS) || "{}"
+    );
     if (localMsgs[selectedRoomId]) {
       setMessages(localMsgs[selectedRoomId]);
     } else {
       setMessages([]);
     }
-
-    // Buscar do Supabase em tempo real
-    async function fetchMessages() {
-      try {
-        const { data } = await supabase
-          .from("social_messages" as any)
-          .select("*")
-          .eq("room_id", selectedRoomId)
-          .order("created_at", { ascending: true });
-
-        if (data && data.length > 0) {
-          const formatted: SocialMessage[] = data.map((m: any) => ({
-            id: m.id,
-            roomId: m.room_id,
-            senderId: m.sender_id,
-            senderName: m.sender_name,
-            type: m.type,
-            content: m.deleted_for_all ? "🚫 Esta mensagem foi apagada" : m.content,
-            mediaUrl: m.media_url,
-            timestamp: new Date(m.created_at).getTime(),
-            isEdited: m.is_edited,
-            deletedForAll: m.deleted_for_all,
-          }));
-          setMessages(formatted);
-        }
-      } catch {}
-    }
-
-    fetchMessages();
-
-    const channel = supabase
-      .channel(`chat-room-${selectedRoomId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "social_messages", filter: `room_id=eq.${selectedRoomId}` },
-        (payload: any) => {
-          if (payload.eventType === "INSERT") {
-            const m = payload.new;
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: m.id,
-                roomId: m.room_id,
-                senderId: m.sender_id,
-                senderName: m.sender_name,
-                type: m.type,
-                content: m.deleted_for_all ? "🚫 Esta mensagem foi apagada" : m.content,
-                mediaUrl: m.media_url,
-                timestamp: new Date(m.created_at).getTime(),
-                isEdited: m.is_edited,
-                deletedForAll: m.deleted_for_all,
-              },
-            ]);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedRoomId, currentUser?.id]);
+  }, [selectedRoomId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -357,119 +375,103 @@ export function HSSocialPage() {
   // Indicador de Status Online
   const isRecipientOnline = useMemo(() => {
     if (!activeRoom || activeRoom.isGroup) return false;
-    const otherId = activeRoom.memberIds.find((id) => id !== currentUser?.id);
+    const otherId = activeRoom.memberIds.find((id) => id !== currentUser.id);
     return otherId ? onlineUserIds.has(otherId) : false;
-  }, [activeRoom, currentUser?.id, onlineUserIds]);
+  }, [activeRoom, currentUser.id, onlineUserIds]);
 
   // ==========================================
-  // 1. VALIDAÇÃO DE CONTATOS (HS Digital vs HS Social)
+  // 1. SALVAR MEU PERFIL (HS SOCIAL)
   // ==========================================
-  const handleValidateAndAddContact = async (e: React.FormEvent) => {
+  const handleSaveMyProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanPhone = inputPhone.replace(/\D/g, "");
-
-    if (cleanPhone.length < 10) {
-      toast.error("Informe um telefone válido com DDD (ex: 69999998888).");
+    if (!profileNameInput.trim()) {
+      toast.error("Informe seu nome completo.");
       return;
     }
 
-    if (/^(\d)\1+$/.test(cleanPhone) || cleanPhone === "12345678901") {
-      toast.error("Número fictício rejeitado. Digite um número real.");
-      return;
-    }
+    setIsSavingProfile(true);
+    const updated: UserProfile = {
+      id: currentUser.id,
+      name: profileNameInput.trim(),
+      phone: profilePhoneInput.trim(),
+      avatar: profileAvatarInput,
+      bio: profileBioInput.trim() || "Disponível no HS Social",
+      isConfigured: true,
+    };
 
-    setIsValidatingContact(true);
+    setCurrentUser(updated);
+    localStorage.setItem(STORAGE_KEYS.PERFIL, JSON.stringify(updated));
+
+    // Se estiver autenticado no marketplace, sincroniza com tabela profiles
     try {
-      // 1. Validar na Base da HS Digital (tabela profiles)
-      const { data: usuarioDigital, error: errDigital } = await supabase
-        .from("profiles")
-        .select("id, full_name, phone")
-        .ilike("phone", `%${cleanPhone}%`)
-        .maybeSingle();
-
-      if (errDigital || !usuarioDigital) {
-        toast.error("Usuário não encontrado na base de dados da HS Digital. Verifique se ele possui conta cadastrada.");
-        setIsValidatingContact(false);
-        return;
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("profiles")
+          .update({
+            full_name: updated.name,
+            phone: updated.phone,
+          })
+          .eq("id", user.id);
       }
+    } catch {}
 
-      if (usuarioDigital.id === currentUser?.id) {
-        toast.error("Você não pode adicionar seu próprio número.");
-        setIsValidatingContact(false);
-        return;
-      }
-
-      // 2. Contato Válido: Criar / Atualizar no HS Social
-      const novoContato: ContactItem = {
-        id: usuarioDigital.id,
-        contactId: usuarioDigital.id,
-        name: usuarioDigital.full_name || `Contato (${cleanPhone})`,
-        phone: usuarioDigital.phone || cleanPhone,
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop",
-        isBlocked: false,
-      };
-
-      const updatedContacts = [novoContato, ...contacts.filter((c) => c.contactId !== novoContato.contactId)];
-      setContacts(updatedContacts);
-      localStorage.setItem(STORAGE_KEYS.CONTATOS, JSON.stringify(updatedContacts));
-
-      toast.success(`${novoContato.name} validado e adicionado ao HS Social!`);
-      setShowAddContact(false);
-      setInputPhone("");
-    } catch {
-      toast.error("Erro ao validar dados no servidor.");
-    } finally {
-      setIsValidatingContact(false);
-    }
+    setIsSavingProfile(false);
+    setShowMyProfileModal(false);
+    toast.success("Perfil do HS Social salvo com sucesso!");
   };
 
-  // Iniciar conversa com contato
-  const startChatWithContact = (contact: ContactItem) => {
-    if (contact.isBlocked) {
-      toast.error("Contato bloqueado. Desbloqueie-o para iniciar uma conversa.");
-      return;
-    }
-
-    let existingRoom = rooms.find(
-      (r) => !r.isGroup && r.memberIds.includes(currentUser.id) && r.memberIds.includes(contact.contactId)
-    );
-
-    if (!existingRoom) {
-      existingRoom = {
-        id: "room_" + contact.contactId,
-        isGroup: false,
-        name: contact.name,
-        avatar: contact.avatar,
-        memberIds: [currentUser.id, contact.contactId],
-      };
-      const updatedRooms = [existingRoom, ...rooms];
-      setRooms(updatedRooms);
-    }
-
-    setSelectedRoomId(existingRoom.id);
-    setActiveTab("chats");
-  };
-
-  // ==========================================
-  // 2. GERENCIAMENTO DE GRUPOS (Persistência e UI)
-  // ==========================================
-  const handleGroupPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => setGroupPhoto(event.target?.result as string);
-    reader.readAsDataURL(file);
+
+    try {
+      setIsProcessingImage(true);
+      const compressed = await compressImage(file, 600, 600, 0.8);
+      setProfileAvatarInput(compressed);
+      toast.success("Foto carregada!");
+    } catch {
+      toast.error("Erro ao processar imagem.");
+    } finally {
+      setIsProcessingImage(false);
+      e.target.value = "";
+    }
   };
 
-  const handleCreateGroupSubmit = async (e: React.FormEvent) => {
+  // ==========================================
+  // 2. GERENCIAMENTO DE GRUPOS (SEM TRAVAMENTOS)
+  // ==========================================
+  const handleGroupPhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsProcessingImage(true);
+      const compressed = await compressImage(file, 600, 600, 0.8);
+      setGroupPhoto(compressed);
+      toast.success("Foto do grupo carregada!");
+    } catch {
+      toast.error("Erro ao carregar foto do grupo.");
+    } finally {
+      setIsProcessingImage(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleCreateGroupSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!groupName.trim() || !currentUser?.id) return;
+    if (!groupName.trim()) {
+      toast.error("Digite o nome do grupo.");
+      return;
+    }
 
     const allMembers = Array.from(new Set([currentUser.id, ...selectedParticipants]));
     const defaultPhoto =
       groupPhoto || "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=150&auto=format&fit=crop";
 
-    const newGroupId = String(Date.now());
+    const newGroupId = "grp_" + Date.now();
     const newGroup: SocialRoom = {
       id: newGroupId,
       isGroup: true,
@@ -480,30 +482,21 @@ export function HSSocialPage() {
       memberIds: allMembers,
     };
 
-    // 1. Salvar no localStorage (hs_grupos)
-    const localGrupos: any[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.GRUPOS) || "[]");
-    localGrupos.push({
-      id: newGroup.id,
-      nome: newGroup.name,
-      descricao: newGroup.description,
-      foto: newGroup.avatar,
-      adminId: newGroup.adminId,
-      participantes: newGroup.memberIds,
-    });
-    localStorage.setItem(STORAGE_KEYS.GRUPOS, JSON.stringify(localGrupos));
-
-    // 2. Salvar no Supabase
+    // 1. Persistir no localStorage
     try {
-      await supabase.from("social_rooms" as any).insert({
+      const localGrupos: any[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.GRUPOS) || "[]");
+      localGrupos.unshift({
         id: newGroup.id,
-        is_group: true,
-        name: newGroup.name,
-        description: newGroup.description,
-        avatar_url: newGroup.avatar,
-        admin_id: currentUser.id,
-        member_ids: allMembers,
+        nome: newGroup.name,
+        descricao: newGroup.description,
+        foto: newGroup.avatar,
+        adminId: newGroup.adminId,
+        participantes: newGroup.memberIds,
       });
-    } catch {}
+      localStorage.setItem(STORAGE_KEYS.GRUPOS, JSON.stringify(localGrupos));
+    } catch (err) {
+      console.error(err);
+    }
 
     setRooms((prev) => [newGroup, ...prev]);
     setSelectedRoomId(newGroup.id);
@@ -515,18 +508,12 @@ export function HSSocialPage() {
     toast.success("Grupo criado com sucesso!");
   };
 
-  const handleExcluirGrupo = async (groupId: string) => {
+  const handleExcluirGrupo = (groupId: string) => {
     if (!confirm("Deseja realmente excluir este grupo permanentemente?")) return;
 
-    // Atualizar no localStorage
     let localGrupos: any[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.GRUPOS) || "[]");
     localGrupos = localGrupos.filter((g) => String(g.id) !== groupId);
     localStorage.setItem(STORAGE_KEYS.GRUPOS, JSON.stringify(localGrupos));
-
-    // Atualizar no Supabase
-    try {
-      await supabase.from("social_rooms" as any).delete().eq("id", groupId);
-    } catch {}
 
     setRooms((prev) => prev.filter((r) => r.id !== groupId));
     if (selectedRoomId === groupId) setSelectedRoomId(null);
@@ -534,27 +521,15 @@ export function HSSocialPage() {
     toast.success("Grupo excluído.");
   };
 
-  const handleSairDoGrupo = async (groupId: string) => {
+  const handleSairDoGrupo = (groupId: string) => {
     if (!confirm("Deseja sair deste grupo?")) return;
 
     let localGrupos: any[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.GRUPOS) || "[]");
     const grupo = localGrupos.find((g) => String(g.id) === groupId);
     if (grupo) {
-      grupo.participantes = (grupo.participantes || []).filter((p: string) => p !== currentUser?.id);
+      grupo.participantes = (grupo.participantes || []).filter((p: string) => p !== currentUser.id);
       localStorage.setItem(STORAGE_KEYS.GRUPOS, JSON.stringify(localGrupos));
     }
-
-    try {
-      await supabase
-        .from("social_rooms" as any)
-        .update({
-          member_ids: supabase.rpc("array_remove", {
-            arr: "member_ids",
-            val: currentUser.id,
-          } as any),
-        })
-        .eq("id", groupId);
-    } catch {}
 
     setRooms((prev) => prev.filter((r) => r.id !== groupId));
     if (selectedRoomId === groupId) setSelectedRoomId(null);
@@ -567,10 +542,11 @@ export function HSSocialPage() {
     if (e) e.stopPropagation();
     if (!confirm("Excluir esta conversa e zerar o histórico?")) return;
 
-    // Limpar cache de mensagens da sala
-    const localMsgs: Record<string, SocialMessage[]> = JSON.parse(localStorage.getItem("hs_messages_cache") || "{}");
+    const localMsgs: Record<string, SocialMessage[]> = JSON.parse(
+      localStorage.getItem(STORAGE_KEYS.MENSAGENS) || "{}"
+    );
     delete localMsgs[roomId];
-    localStorage.setItem("hs_messages_cache", JSON.stringify(localMsgs));
+    localStorage.setItem(STORAGE_KEYS.MENSAGENS, JSON.stringify(localMsgs));
 
     setRooms((prev) => prev.filter((r) => r.id !== roomId));
     if (selectedRoomId === roomId) setSelectedRoomId(null);
@@ -578,29 +554,37 @@ export function HSSocialPage() {
   };
 
   // ==========================================
-  // 3. SISTEMA DE STORIES (Visualização e Rachaduras)
+  // 3. STORIES E STATUS (CÂMERA E GALERIA)
   // ==========================================
-  const handleSelectStatusPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSelectStatusPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setStatusImageInput(event.target?.result as string);
+
+    try {
+      setIsProcessingImage(true);
+      const compressed = await compressImage(file, 1080, 1920, 0.75);
+      setStatusImageInput(compressed);
       setShowPostStatusModal(true);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+    } catch {
+      toast.error("Erro ao carregar imagem para o status.");
+    } finally {
+      setIsProcessingImage(false);
+      e.target.value = "";
+    }
   };
 
   const handlePostStatusSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!statusImageInput || !currentUser?.id) return;
+    if (!statusImageInput) {
+      toast.error("Selecione uma foto para o status.");
+      return;
+    }
 
     const newStatus: SocialStatusItem = {
       id: "st_" + Date.now(),
       userId: currentUser.id,
-      authorName: "Você",
-      authorAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop",
+      authorName: currentUser.name || "Você",
+      authorAvatar: currentUser.avatar,
       imageUrl: statusImageInput,
       caption: statusCaptionInput,
       createdAt: Date.now(),
@@ -608,7 +592,13 @@ export function HSSocialPage() {
 
     const updated = [newStatus, ...statuses];
     setStatuses(updated);
-    localStorage.setItem(STORAGE_KEYS.STATUSES, JSON.stringify(updated));
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.STATUSES, JSON.stringify(updated.slice(0, 15)));
+    } catch {
+      // Caso estoure a cota, mantém apenas os 5 mais recentes
+      localStorage.setItem(STORAGE_KEYS.STATUSES, JSON.stringify(updated.slice(0, 5)));
+    }
 
     toast.success("Status postado! Ele sumirá em 24 horas.");
     setShowPostStatusModal(false);
@@ -649,14 +639,14 @@ export function HSSocialPage() {
             return 0;
           }
         }
-        return prev + 1; // 1% a cada 100ms = 10s
+        return prev + 1;
       });
     }, 100);
 
     return () => clearInterval(timer);
   }, [activeStoryGroup, storyIndex, isStoryPaused]);
 
-  // Função para desenhar as rachaduras / segmentos SVG no anel do story
+  // Rachaduras / Segmentos no anel do story
   const renderStorySegmentedRing = (qtd: number) => {
     const size = 56;
     const strokeWidth = 3;
@@ -695,17 +685,94 @@ export function HSSocialPage() {
   };
 
   // ==========================================
-  // 4. MENSAGENS, FOTOS E ÁUDIO
+  // 4. VALIDAÇÃO DE CONTATOS (BASE HS DIGITAL)
+  // ==========================================
+  const handleValidateAndAddContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPhone = inputPhone.replace(/\D/g, "");
+
+    if (cleanPhone.length < 10) {
+      toast.error("Informe um telefone válido com DDD (ex: 69999998888).");
+      return;
+    }
+
+    if (/^(\d)\1+$/.test(cleanPhone) || cleanPhone === "12345678901") {
+      toast.error("Número fictício rejeitado. Digite um número real.");
+      return;
+    }
+
+    setIsValidatingContact(true);
+    try {
+      const { data: usuarioDigital, error: errDigital } = await supabase
+        .from("profiles")
+        .select("id, full_name, phone")
+        .ilike("phone", `%${cleanPhone}%`)
+        .maybeSingle();
+
+      if (errDigital || !usuarioDigital) {
+        toast.error("Usuário não encontrado na base de dados da HS Digital. Verifique se ele possui conta cadastrada.");
+        setIsValidatingContact(false);
+        return;
+      }
+
+      if (usuarioDigital.id === currentUser.id) {
+        toast.error("Você não pode adicionar seu próprio número.");
+        setIsValidatingContact(false);
+        return;
+      }
+
+      const novoContato: ContactItem = {
+        id: usuarioDigital.id,
+        contactId: usuarioDigital.id,
+        name: usuarioDigital.full_name || `Contato (${cleanPhone})`,
+        phone: usuarioDigital.phone || cleanPhone,
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop",
+        isBlocked: false,
+      };
+
+      const updatedContacts = [novoContato, ...contacts.filter((c) => c.contactId !== novoContato.contactId)];
+      setContacts(updatedContacts);
+      localStorage.setItem(STORAGE_KEYS.CONTATOS, JSON.stringify(updatedContacts));
+
+      toast.success(`${novoContato.name} validado e adicionado ao HS Social!`);
+      setShowAddContact(false);
+      setInputPhone("");
+    } catch {
+      toast.error("Erro ao validar dados no servidor.");
+    } finally {
+      setIsValidatingContact(false);
+    }
+  };
+
+  // Iniciar conversa com contato
+  const startChatWithContact = (contact: ContactItem) => {
+    let room = rooms.find((r) => !r.isGroup && r.memberIds.includes(contact.contactId));
+    if (!room) {
+      room = {
+        id: "dm_" + contact.contactId,
+        isGroup: false,
+        name: contact.name,
+        avatar: contact.avatar,
+        memberIds: [currentUser.id, contact.contactId],
+      };
+      setRooms((prev) => [room!, ...prev]);
+    }
+    setSelectedRoomId(room.id);
+    setActiveTab("chats");
+  };
+
+  // ==========================================
+  // 5. MENSAGENS, FOTOS E GRAVAÇÃO DE ÁUDIO
   // ==========================================
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputMessage.trim() || !selectedRoomId || !currentUser?.id) return;
+    if (!inputMessage.trim() || !selectedRoomId) return;
 
     const newMsg: SocialMessage = {
       id: "msg_" + Date.now(),
       roomId: selectedRoomId,
       senderId: currentUser.id,
-      senderName: "Você",
+      senderName: currentUser.name || "Você",
       type: "text",
       content: inputMessage.trim(),
       timestamp: Date.now(),
@@ -714,50 +781,43 @@ export function HSSocialPage() {
     setMessages((prev) => [...prev, newMsg]);
     setInputMessage("");
 
-    // Persistir no cache local
-    const localMsgs: Record<string, SocialMessage[]> = JSON.parse(localStorage.getItem("hs_messages_cache") || "{}");
+    const localMsgs: Record<string, SocialMessage[]> = JSON.parse(
+      localStorage.getItem(STORAGE_KEYS.MENSAGENS) || "{}"
+    );
     if (!localMsgs[selectedRoomId]) localMsgs[selectedRoomId] = [];
     localMsgs[selectedRoomId].push(newMsg);
-    localStorage.setItem("hs_messages_cache", JSON.stringify(localMsgs));
-
-    // Supabase
-    try {
-      supabase.from("social_messages" as any).insert({
-        room_id: selectedRoomId,
-        sender_id: currentUser.id,
-        sender_name: "Você",
-        type: "text",
-        content: newMsg.content,
-      });
-    } catch {}
+    localStorage.setItem(STORAGE_KEYS.MENSAGENS, JSON.stringify(localMsgs));
   };
 
-  const handleSendPhotoMessage = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSendPhotoMessage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedRoomId || !currentUser?.id) return;
+    if (!file || !selectedRoomId) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
+    try {
+      const compressed = await compressImage(file, 900, 900, 0.75);
       const newMsg: SocialMessage = {
         id: "img_" + Date.now(),
         roomId: selectedRoomId,
         senderId: currentUser.id,
-        senderName: "Você",
+        senderName: currentUser.name || "Você",
         type: "image",
         content: "Foto enviada",
-        mediaUrl: base64,
+        mediaUrl: compressed,
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, newMsg]);
 
-      const localMsgs: Record<string, SocialMessage[]> = JSON.parse(localStorage.getItem("hs_messages_cache") || "{}");
+      const localMsgs: Record<string, SocialMessage[]> = JSON.parse(
+        localStorage.getItem(STORAGE_KEYS.MENSAGENS) || "{}"
+      );
       if (!localMsgs[selectedRoomId]) localMsgs[selectedRoomId] = [];
       localMsgs[selectedRoomId].push(newMsg);
-      localStorage.setItem("hs_messages_cache", JSON.stringify(localMsgs));
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+      localStorage.setItem(STORAGE_KEYS.MENSAGENS, JSON.stringify(localMsgs));
+    } catch {
+      toast.error("Erro ao enviar imagem.");
+    } finally {
+      e.target.value = "";
+    }
   };
 
   // Gravação de Áudio Nativo
@@ -776,12 +836,12 @@ export function HSSocialPage() {
         const reader = new FileReader();
         reader.onload = () => {
           const audioBase64 = reader.result as string;
-          if (selectedRoomId && currentUser?.id) {
+          if (selectedRoomId) {
             const newMsg: SocialMessage = {
               id: "aud_" + Date.now(),
               roomId: selectedRoomId,
               senderId: currentUser.id,
-              senderName: "Você",
+              senderName: currentUser.name || "Você",
               type: "audio",
               content: "Mensagem de voz",
               mediaUrl: audioBase64,
@@ -790,11 +850,11 @@ export function HSSocialPage() {
             setMessages((prev) => [...prev, newMsg]);
 
             const localMsgs: Record<string, SocialMessage[]> = JSON.parse(
-              localStorage.getItem("hs_messages_cache") || "{}"
+              localStorage.getItem(STORAGE_KEYS.MENSAGENS) || "{}"
             );
             if (!localMsgs[selectedRoomId]) localMsgs[selectedRoomId] = [];
             localMsgs[selectedRoomId].push(newMsg);
-            localStorage.setItem("hs_messages_cache", JSON.stringify(localMsgs));
+            localStorage.setItem(STORAGE_KEYS.MENSAGENS, JSON.stringify(localMsgs));
           }
         };
         reader.readAsDataURL(blob);
@@ -874,23 +934,23 @@ export function HSSocialPage() {
   };
 
   return (
-    // ESTRUTURA GERAL: Sem rodapé, sem barra roxa do marketplace, altura 100dvh fixa
+    // ESTRUTURA GERAL: Sem rodapé do marketplace, 100dvh fixa, cores oficiais HS Social
     <div className="flex flex-col h-[100dvh] w-full bg-[#f0f2f5] dark:bg-zinc-950 overflow-hidden font-sans select-none text-zinc-900 dark:text-zinc-100">
       {/* ============================================================== */}
       {/* CABEÇALHO EXCLUSIVO DO HS SOCIAL (BARRA ROXA REMOVIDA) */}
       {/* ============================================================== */}
-      <header className="h-14 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-4 flex items-center justify-between shrink-0 shadow-sm z-20">
-        <div className="flex items-center gap-3">
+      <header className="h-14 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-3 md:px-4 flex items-center justify-between shrink-0 shadow-sm z-20">
+        <div className="flex items-center gap-2 md:gap-3">
           <Link
             to="/"
-            title="Voltar à Loja HS Digital"
+            title="Voltar ao Marketplace HS Digital"
             className="p-1.5 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
 
-          {/* Ícone de Conversa e Nome Configurado */}
-          <div className="flex items-center gap-2.5">
+          {/* Ícone de Conversa e Marca HS Social */}
+          <div className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-sm">
               <MessageSquare className="h-5 w-5" />
             </div>
@@ -905,25 +965,44 @@ export function HSSocialPage() {
           </div>
         </div>
 
-        {/* Botões de Ações Rápidas */}
-        <div className="flex items-center gap-2">
+        {/* AÇÕES SUPERIORES: MEU PERFIL, ADICIONAR CONTATO E NOVO GRUPO */}
+        <div className="flex items-center gap-1.5 md:gap-2">
+          {/* BOTÃO MEU PERFIL COM AVATAR */}
+          <button
+            onClick={() => setShowMyProfileModal(true)}
+            className="flex items-center gap-1.5 py-1 px-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors"
+            title="Configurar Meu Perfil"
+          >
+            <div className="relative">
+              <img
+                src={currentUser.avatar}
+                alt={currentUser.name}
+                className="h-6 w-6 rounded-full object-cover border border-emerald-500"
+              />
+              <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-emerald-500 border border-white" />
+            </div>
+            <span className="text-xs font-bold text-emerald-800 dark:text-emerald-200 hidden sm:inline max-w-[100px] truncate">
+              {currentUser.name.split(" ")[0]}
+            </span>
+          </button>
+
           <Button
             size="sm"
             onClick={() => setShowAddContact(true)}
-            className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-sm"
+            className="h-8 px-2 md:px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1 shadow-sm"
           >
             <UserPlus className="h-4 w-4" />
-            <span className="hidden sm:inline">Adicionar Contato</span>
+            <span className="hidden md:inline">Adicionar</span>
           </Button>
 
           <Button
             size="sm"
             variant="outline"
             onClick={() => setShowCreateGroup(true)}
-            className="h-8 px-2.5 text-xs font-semibold rounded-lg flex items-center gap-1.5"
+            className="h-8 px-2 md:px-2.5 text-xs font-semibold rounded-lg flex items-center gap-1"
           >
             <Users className="h-4 w-4 text-emerald-600" />
-            <span className="hidden sm:inline">Novo Grupo</span>
+            <span className="hidden md:inline">Novo Grupo</span>
           </Button>
         </div>
       </header>
@@ -933,7 +1012,7 @@ export function HSSocialPage() {
       {/* ============================================================== */}
       <div className="flex-1 flex overflow-hidden">
         {/* ========================================== */}
-        {/* BARRA LATERAL (LISTA) */}
+        {/* BARRA LATERAL */}
         {/* ========================================== */}
         <aside
           className={`w-full md:w-[380px] lg:w-[400px] bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0 ${
@@ -972,54 +1051,49 @@ export function HSSocialPage() {
                   : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
-              <Sparkles className="h-4 w-4 text-emerald-500" />
-              Stories
+              <Camera className="h-4 w-4" />
+              Status ({statuses.length})
             </button>
           </div>
 
-          {/* CAMPO DE PESQUISA */}
+          {/* CAMPO DE BUSCA */}
           <div className="p-2.5 border-b border-zinc-100 dark:border-zinc-800">
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
-              <input
-                type="text"
+              <Search className="h-4 w-4 absolute left-3 top-2.5 text-zinc-400" />
+              <Input
+                placeholder="Pesquisar conversa ou contato..."
                 value={chatSearch}
                 onChange={(e) => setChatSearch(e.target.value)}
-                placeholder="Pesquisar conversas ou contatos..."
-                className="w-full pl-9 pr-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 border-none rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                className="pl-9 h-9 text-xs rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none"
               />
             </div>
           </div>
 
-          {/* LISTAGEM DA ABA SELECIONADA */}
-          <div className="flex-1 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800">
-            {/* ABA 1: CONVERSAS E GRUPOS */}
+          {/* CONTEÚDO DAS ABAS */}
+          <div className="flex-1 overflow-y-auto">
+            {/* ABA 1: CONVERSAS */}
             {activeTab === "chats" && (
-              <>
+              <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {rooms.length === 0 ? (
-                  <div className="p-8 text-center text-zinc-400">
-                    <MessageSquare className="h-10 w-10 mx-auto mb-2 opacity-30 text-emerald-600" />
-                    <p className="text-xs font-semibold">Nenhuma conversa no momento.</p>
-                    <p className="text-[11px] mt-1 text-zinc-400">
-                      Adicione um contato ou crie um novo grupo para começar!
-                    </p>
+                  <div className="p-8 text-center text-zinc-400 text-xs">
+                    <MessageSquare className="h-8 w-8 mx-auto mb-2 text-zinc-300" />
+                    Nenhuma conversa aberta. Inicie uma nova conversa na aba de contatos ou crie um grupo!
                   </div>
                 ) : (
                   rooms
                     .filter((r) => r.name.toLowerCase().includes(chatSearch.toLowerCase()))
                     .map((room) => {
-                      const isSelected = selectedRoomId === room.id;
-                      const otherId = !room.isGroup
-                        ? room.memberIds.find((id) => id !== currentUser?.id)
-                        : null;
-                      const isOnline = otherId ? onlineUserIds.has(otherId) : false;
+                      const otherId = room.isGroup ? null : room.memberIds.find((id) => id !== currentUser.id);
+                      const isOtherOnline = otherId ? onlineUserIds.has(otherId) : false;
 
                       return (
                         <div
                           key={room.id}
                           onClick={() => setSelectedRoomId(room.id)}
-                          className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${
-                            isSelected ? "bg-emerald-50/80 dark:bg-emerald-950/20" : ""
+                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
+                            selectedRoomId === room.id
+                              ? "bg-zinc-100 dark:bg-zinc-800"
+                              : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                           }`}
                         >
                           <div className="relative shrink-0">
@@ -1028,11 +1102,10 @@ export function HSSocialPage() {
                               alt={room.name}
                               className="h-12 w-12 rounded-full object-cover border"
                             />
-                            {/* PONTO VERDE (ONLINE) / VERMELHO (OFFLINE) PARA INDIVIDUAIS */}
                             {!room.isGroup && (
                               <span
-                                className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-zinc-900 ${
-                                  isOnline ? "bg-emerald-500" : "bg-red-500"
+                                className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${
+                                  isOtherOnline ? "bg-emerald-500" : "bg-red-500"
                                 }`}
                               />
                             )}
@@ -1040,95 +1113,103 @@ export function HSSocialPage() {
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                              <h4 className="font-semibold text-sm truncate flex items-center gap-1.5">
+                              <h4 className="font-semibold text-xs truncate flex items-center gap-1.5">
                                 {room.name}
                                 {room.isGroup && (
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300">
-                                    Grupo
-                                  </span>
+                                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1 rounded">Grupo</span>
                                 )}
                               </h4>
-                              <button
-                                onClick={(e) => handleDeleteConversation(room.id, e)}
-                                title="Excluir histórico"
-                                className="text-zinc-400 hover:text-red-500 p-1 opacity-50 hover:opacity-100 transition-opacity"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
                             </div>
-                            <p className="text-xs text-zinc-500 truncate mt-0.5">
-                              {room.description || "Toque para abrir a conversa"}
+                            <p className="text-[11px] text-zinc-500 truncate mt-0.5">
+                              {room.description || "Clique para abrir o chat"}
                             </p>
                           </div>
+
+                          <button
+                            onClick={(e) => handleDeleteConversation(room.id, e)}
+                            title="Excluir histórico"
+                            className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-zinc-100 rounded-full transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       );
                     })
                 )}
-              </>
+              </div>
             )}
 
             {/* ABA 2: LISTA DE CONTATOS */}
             {activeTab === "contacts" && (
               <div className="p-2 space-y-1">
                 {contacts.length === 0 ? (
-                  <div className="p-6 text-center text-zinc-400 text-xs">
-                    Nenhum contato adicionado. Clique em "+ Adicionar Contato" no topo.
+                  <div className="p-8 text-center text-zinc-400 text-xs">
+                    <UserCheck className="h-8 w-8 mx-auto mb-2 text-zinc-300" />
+                    Você ainda não adicionou contatos. Clique em "Adicionar" no topo com o número de telefone de quem tem conta na HS Digital!
                   </div>
                 ) : (
-                  contacts.map((contact) => (
-                    <div
-                      key={contact.contactId}
-                      className="flex items-center justify-between p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                    >
+                  contacts
+                    .filter((c) => c.name.toLowerCase().includes(chatSearch.toLowerCase()) || c.phone.includes(chatSearch))
+                    .map((contact) => (
                       <div
-                        onClick={() => setViewingProfileContact(contact)}
-                        className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+                        key={contact.contactId}
+                        className="flex items-center justify-between p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                       >
-                        <img
-                          src={contact.avatar}
-                          alt={contact.name}
-                          className="h-10 w-10 rounded-full object-cover border"
-                        />
-                        <div className="truncate">
-                          <h5 className="font-semibold text-xs truncate flex items-center gap-1.5">
-                            {contact.name}
-                            {contact.isBlocked && (
-                              <span className="text-[9px] bg-red-100 text-red-600 px-1 rounded">Bloqueado</span>
-                            )}
-                          </h5>
-                          <span className="text-[11px] text-zinc-500">{contact.phone}</span>
+                        <div
+                          onClick={() => setViewingProfileContact(contact)}
+                          className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+                        >
+                          <img
+                            src={contact.avatar}
+                            alt={contact.name}
+                            className="h-10 w-10 rounded-full object-cover border"
+                          />
+                          <div className="truncate">
+                            <h5 className="font-semibold text-xs truncate flex items-center gap-1.5">
+                              {contact.name}
+                              {contact.isBlocked && (
+                                <span className="text-[9px] bg-red-100 text-red-600 px-1 rounded">Bloqueado</span>
+                              )}
+                            </h5>
+                            <span className="text-[11px] text-zinc-500">{contact.phone}</span>
+                          </div>
                         </div>
-                      </div>
 
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => startChatWithContact(contact)}
-                        className="h-8 px-2 text-xs text-emerald-600 font-bold"
-                      >
-                        Conversar
-                      </Button>
-                    </div>
-                  ))
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => startChatWithContact(contact)}
+                          className="h-8 px-2 text-xs text-emerald-600 font-bold"
+                        >
+                          Conversar
+                        </Button>
+                      </div>
+                    ))
                 )}
               </div>
             )}
 
-            {/* ABA 3: STORIES COM RACHADURAS SEGMENTADAS */}
+            {/* ABA 3: STATUS COM ACESSO A CÂMERA E GALERIA */}
             {activeTab === "status" && (
               <div className="p-3 space-y-4">
-                {/* BOTÃO POSTAR STATUS COM CÂMERA */}
-                <div className="flex items-center gap-3 p-2 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/50">
-                  <div
-                    onClick={() => statusCameraInputRef.current?.click()}
-                    className="h-12 w-12 rounded-full bg-emerald-600 text-white flex items-center justify-center cursor-pointer hover:bg-emerald-700 transition-colors"
-                  >
-                    <Camera className="h-6 w-6" />
+                {/* BOTÕES POSTAR STATUS (CÂMERA E GALERIA) */}
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/50 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <img
+                        src={currentUser.avatar}
+                        alt="Você"
+                        className="h-12 w-12 rounded-full object-cover border-2 border-emerald-500"
+                      />
+                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border border-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h5 className="font-bold text-xs truncate">Meu Status</h5>
+                      <p className="text-[11px] text-zinc-500">Poste uma foto que dura 24 horas</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h5 className="font-bold text-xs">Postar Story</h5>
-                    <p className="text-[11px] text-zinc-500">Foto que dura 24 horas</p>
-                  </div>
+
+                  {/* Inputs ocultos com refs para Câmera e Galeria */}
                   <input
                     ref={statusCameraInputRef}
                     type="file"
@@ -1137,22 +1218,44 @@ export function HSSocialPage() {
                     onChange={handleSelectStatusPhoto}
                     className="hidden"
                   />
-                  <Button
-                    size="sm"
-                    onClick={() => statusCameraInputRef.current?.click()}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
-                  >
-                    Câmera
-                  </Button>
+                  <input
+                    ref={statusGalleryInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSelectStatusPhoto}
+                    className="hidden"
+                  />
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      onClick={() => statusCameraInputRef.current?.click()}
+                      disabled={isProcessingImage}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5"
+                    >
+                      <Camera className="h-4 w-4" />
+                      Tirar Foto
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => statusGalleryInputRef.current?.click()}
+                      disabled={isProcessingImage}
+                      className="text-xs font-bold flex items-center justify-center gap-1.5 border-emerald-300 text-emerald-700 dark:text-emerald-300"
+                    >
+                      <ImageIcon className="h-4 w-4" />
+                      Galeria
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                  Atualizações de Stories
+                  Atualizações Recentes
                 </div>
 
                 {groupedStories.length === 0 ? (
                   <div className="p-6 text-center text-zinc-400 text-xs">
-                    Nenhum story ativo. Seja o primeiro a postar!
+                    Nenhum status ativo no momento. Seja o primeiro a postar!
                   </div>
                 ) : (
                   groupedStories.map((group) => {
@@ -1168,7 +1271,7 @@ export function HSSocialPage() {
                         }}
                         className="flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer transition-colors"
                       >
-                        {/* ANEL COM RACHADURAS / SEGMENTOS SVG BASEADO NA QTD */}
+                        {/* ANEL COM RACHADURAS / SEGMENTOS SVG */}
                         <div className="relative h-14 w-14 shrink-0 flex items-center justify-center">
                           <svg className="absolute inset-0 h-full w-full -rotate-90">
                             {renderStorySegmentedRing(qtd)}
@@ -1216,7 +1319,7 @@ export function HSSocialPage() {
                       if (activeRoom.isGroup) {
                         setViewingGroupInfo(activeRoom);
                       } else {
-                        const otherId = activeRoom.memberIds.find((id) => id !== currentUser?.id);
+                        const otherId = activeRoom.memberIds.find((id) => id !== currentUser.id);
                         const contact = contacts.find((c) => c.contactId === otherId);
                         if (contact) setViewingProfileContact(contact);
                       }
@@ -1296,7 +1399,7 @@ export function HSSocialPage() {
                   </div>
                 ) : (
                   messages.map((msg) => {
-                    const isMe = msg.senderId === currentUser?.id;
+                    const isMe = msg.senderId === currentUser.id;
 
                     return (
                       <div
@@ -1333,7 +1436,7 @@ export function HSSocialPage() {
                             <div className="flex items-center gap-3 py-1 min-w-[200px]">
                               <button
                                 onClick={() => togglePlayAudio(msg.id, msg.mediaUrl)}
-                                className="h-9 w-9 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 hover:bg-emerald-700 transition-colors shadow-sm"
+                                className="h-9 w-9 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 hover:bg-emerald-700"
                               >
                                 {playingAudioId === msg.id ? (
                                   <Pause className="h-4 w-4" />
@@ -1342,26 +1445,28 @@ export function HSSocialPage() {
                                 )}
                               </button>
                               <div className="flex-1">
-                                <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                <div className="h-1.5 w-full bg-zinc-300 dark:bg-zinc-700 rounded-full overflow-hidden">
                                   <div
-                                    className={`h-full bg-emerald-600 ${
-                                      playingAudioId === msg.id ? "animate-pulse w-full" : "w-1/3"
+                                    className={`h-full bg-emerald-600 transition-all ${
+                                      playingAudioId === msg.id ? "w-2/3" : "w-0"
                                     }`}
                                   />
                                 </div>
-                                <span className="text-[10px] text-zinc-500 mt-1 block">Áudio de voz</span>
+                                <span className="text-[10px] text-zinc-500 mt-1 block">
+                                  {msg.content}
+                                </span>
                               </div>
                             </div>
                           )}
 
                           {/* TEXTO */}
                           {msg.type === "text" && (
-                            <p className="whitespace-pre-wrap leading-relaxed text-xs">{msg.content}</p>
+                            <p className="whitespace-pre-wrap leading-relaxed select-text">{msg.content}</p>
                           )}
 
-                          {/* RODAPÉ DA MENSAGEM */}
-                          <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-zinc-500 dark:text-zinc-400">
-                            {msg.isEdited && <span className="italic mr-1">(editada)</span>}
+                          {/* HORÁRIO E STATUS */}
+                          <div className="flex items-center justify-end gap-1 mt-1 text-[9px] text-zinc-500">
+                            {msg.isEdited && <span className="italic">editada •</span>}
                             <span>
                               {new Date(msg.timestamp).toLocaleTimeString([], {
                                 hour: "2-digit",
@@ -1369,12 +1474,6 @@ export function HSSocialPage() {
                               })}
                             </span>
                             {isMe && <CheckCheck className="h-3 w-3 text-emerald-600" />}
-                            <button
-                              onClick={() => setSelectedMessageForAction(msg)}
-                              className="ml-1 opacity-50 hover:opacity-100"
-                            >
-                              <MoreVertical className="h-3 w-3" />
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -1384,10 +1483,10 @@ export function HSSocialPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* INPUT INFERIOR FIXO */}
-              <div className="p-3 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
+              {/* BARRA INFERIOR DE ENVIO */}
+              <div className="p-3 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
                 {isRecording ? (
-                  <div className="flex items-center justify-between gap-3 bg-red-50 dark:bg-red-950/40 p-2 rounded-2xl border border-red-200">
+                  <div className="flex-1 flex items-center justify-between bg-red-50 dark:bg-red-950/30 px-4 py-2 rounded-xl border border-red-200 dark:border-red-900">
                     <div className="flex items-center gap-2 text-red-600 font-bold text-xs animate-pulse">
                       <div className="h-3 w-3 rounded-full bg-red-600" />
                       Gravando áudio: {recordingSeconds}s
@@ -1395,13 +1494,13 @@ export function HSSocialPage() {
                     <Button
                       size="sm"
                       onClick={stopRecordingAudio}
-                      className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl"
+                      className="bg-red-600 hover:bg-red-700 text-white text-xs h-7 px-3"
                     >
-                      Parar e Enviar
+                      Enviar Áudio
                     </Button>
                   </div>
                 ) : (
-                  <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                  <>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -1409,106 +1508,192 @@ export function HSSocialPage() {
                       onChange={handleSendPhotoMessage}
                       className="hidden"
                     />
+
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      title="Enviar Foto da Galeria"
+                      title="Enviar Foto"
                       className="p-2 text-zinc-500 hover:text-emerald-600 hover:bg-zinc-100 rounded-full transition-colors"
                     >
                       <ImageIcon className="h-5 w-5" />
                     </button>
 
-                    <input
-                      type="text"
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      placeholder="Mensagem..."
-                      className="flex-1 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border-none rounded-full text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
-                    />
-
-                    {inputMessage.trim() ? (
-                      <button
-                        type="submit"
-                        className="p-2.5 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-colors shadow-sm"
-                      >
-                        <Send className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={startRecordingAudio}
-                        title="Gravar Áudio"
-                        className="p-2.5 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-colors shadow-sm"
-                      >
-                        <Mic className="h-4 w-4" />
-                      </button>
-                    )}
-                  </form>
+                    <form onSubmit={handleSendMessage} className="flex-1 flex items-center gap-2">
+                      <Input
+                        placeholder="Digite sua mensagem..."
+                        value={inputMessage}
+                        onChange={(e) => setInputMessage(e.target.value)}
+                        className="h-10 text-xs rounded-xl bg-zinc-100 dark:bg-zinc-800 border-none"
+                      />
+                      {inputMessage.trim() ? (
+                        <Button
+                          type="submit"
+                          size="sm"
+                          className="h-10 w-10 p-0 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={startRecordingAudio}
+                          title="Gravar áudio"
+                          className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center shrink-0 transition-colors"
+                        >
+                          <Mic className="h-5 w-5" />
+                        </button>
+                      )}
+                    </form>
+                  </>
                 )}
               </div>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-zinc-500">
-              <div className="h-20 w-20 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center mb-4">
-                <MessageSquare className="h-10 w-10" />
+            <div className="flex-1 flex items-center justify-center p-6 text-center">
+              <div className="max-w-sm">
+                <div className="h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center mx-auto mb-3 text-emerald-600">
+                  <MessageSquare className="h-8 w-8" />
+                </div>
+                <h3 className="font-bold text-base text-zinc-800 dark:text-zinc-200">
+                  Bem-vindo ao HS Social
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1">
+                  Selecione uma conversa ao lado ou inicie um novo bate-papo seguro com seus contatos e grupos.
+                </p>
               </div>
-              <h3 className="font-bold text-lg text-zinc-800 dark:text-zinc-100">HS Social Conectado</h3>
-              <p className="text-xs text-zinc-500 max-w-sm mt-1 leading-relaxed">
-                Nenhuma conversa selecionada no momento. Selecione um contato na barra ao lado para iniciar um chat rápido.
-              </p>
             </div>
           )}
         </main>
       </div>
 
       {/* ============================================================== */}
-      {/* MODAL 1: VALIDAÇÃO DE CONTATOS (HS DIGITAL VS SOCIAL) */}
+      {/* MODAL 1: MEU PERFIL (CÂMERA, GALERIA, NOME, TELEFONE) */}
       {/* ============================================================== */}
-      {showAddContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 p-5 shadow-2xl border border-zinc-200 dark:border-zinc-800">
+      {showMyProfileModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="font-bold text-sm flex items-center gap-2">
-                <UserPlus className="h-4 w-4 text-emerald-600" /> Adicionar Contato Real
+              <h3 className="font-bold text-sm flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+                <User className="h-4 w-4 text-emerald-600" /> Meu Perfil HS Social
               </h3>
-              <button onClick={() => setShowAddContact(false)} className="text-zinc-400 hover:text-zinc-700">
-                <X className="h-4 w-4" />
+              <button onClick={() => setShowMyProfileModal(false)} className="text-zinc-400 hover:text-zinc-700">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleValidateAndAddContact} className="mt-4 space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  Número com DDD:
-                </label>
-                <Input
-                  type="tel"
-                  required
-                  placeholder="Ex: 69999998888 ou 92991000000"
-                  value={inputPhone}
-                  onChange={(e) => setInputPhone(e.target.value)}
-                  className="mt-1 text-xs"
+            <form onSubmit={handleSaveMyProfile} className="mt-4 space-y-4">
+              {/* FOTO COM BOTÕES DE CÂMERA E GALERIA */}
+              <div className="flex flex-col items-center">
+                <div className="relative">
+                  <img
+                    src={profileAvatarInput}
+                    alt="Foto de Perfil"
+                    className="h-20 w-20 rounded-full object-cover border-4 border-emerald-500 shadow-md"
+                  />
+                  <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-emerald-500 border-2 border-white" />
+                </div>
+
+                {/* Inputs de arquivo para Perfil */}
+                <input
+                  ref={profileCameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  onChange={handleProfilePhotoFile}
+                  className="hidden"
                 />
-                <span className="text-[10px] text-zinc-400 mt-1 block">
-                  O sistema valida na base da HS Digital se o usuário tem conta ativa.
-                </span>
+                <input
+                  ref={profileGalleryInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePhotoFile}
+                  className="hidden"
+                />
+
+                <div className="flex items-center gap-2 mt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => profileCameraInputRef.current?.click()}
+                    disabled={isProcessingImage}
+                    className="h-7 text-[11px] font-semibold flex items-center gap-1 border-emerald-300 text-emerald-700"
+                  >
+                    <Camera className="h-3.5 w-3.5" />
+                    Câmera
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => profileGalleryInputRef.current?.click()}
+                    disabled={isProcessingImage}
+                    className="h-7 text-[11px] font-semibold flex items-center gap-1 border-emerald-300 text-emerald-700"
+                  >
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    Galeria
+                  </Button>
+                </div>
+              </div>
+
+              {/* CAMPOS DE DADOS */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400">
+                    Nome Completo:
+                  </label>
+                  <Input
+                    value={profileNameInput}
+                    onChange={(e) => setProfileNameInput(e.target.value)}
+                    placeholder="Seu nome"
+                    className="text-xs h-9 mt-1"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400">
+                    Número de Telefone (HS Digital):
+                  </label>
+                  <Input
+                    value={profilePhoneInput}
+                    onChange={(e) => setProfilePhoneInput(e.target.value)}
+                    placeholder="Ex: 69999998888"
+                    className="text-xs h-9 mt-1"
+                  />
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    Utilize o mesmo número cadastrado na conta da loja HS Digital.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400">
+                    Recado / Status:
+                  </label>
+                  <Input
+                    value={profileBioInput}
+                    onChange={(e) => setProfileBioInput(e.target.value)}
+                    placeholder="Disponível no HS Social"
+                    className="text-xs h-9 mt-1"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-2 pt-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowAddContact(false)}
-                  className="w-1/2 text-xs"
+                  onClick={() => setShowMyProfileModal(false)}
+                  className="flex-1 text-xs"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isValidatingContact}
-                  className="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                  disabled={isSavingProfile}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
                 >
-                  {isValidatingContact ? "Validando..." : "Validar e Salvar"}
+                  {isSavingProfile ? "Salvando..." : "Salvar Perfil"}
                 </Button>
               </div>
             </form>
@@ -1517,80 +1702,107 @@ export function HSSocialPage() {
       )}
 
       {/* ============================================================== */}
-      {/* MODAL 2: CRIAR GRUPO COM FOTO E PARTICIPANTES */}
+      {/* MODAL 2: CRIAR GRUPO (CÂMERA, GALERIA E PARTICIPANTES) */}
       {/* ============================================================== */}
       {showCreateGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 p-5 shadow-2xl border border-zinc-200 dark:border-zinc-800">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center justify-between pb-3 border-b">
               <h3 className="font-bold text-sm flex items-center gap-2">
                 <Users className="h-4 w-4 text-emerald-600" /> Criar Novo Grupo
               </h3>
               <button onClick={() => setShowCreateGroup(false)} className="text-zinc-400 hover:text-zinc-700">
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
             <form onSubmit={handleCreateGroupSubmit} className="mt-4 space-y-3">
-              {/* Escolha de Foto do Grupo */}
-              <div className="flex items-center gap-3">
-                <div
-                  onClick={() => groupPhotoInputRef.current?.click()}
-                  className="h-14 w-14 rounded-full border-2 border-dashed border-emerald-500 overflow-hidden flex items-center justify-center cursor-pointer bg-zinc-50 dark:bg-zinc-800"
-                >
-                  {groupPhoto ? (
-                    <img src={groupPhoto} alt="Foto" className="h-full w-full object-cover" />
-                  ) : (
-                    <Camera className="h-6 w-6 text-emerald-600" />
-                  )}
+              {/* FOTO DO GRUPO */}
+              <div className="flex flex-col items-center">
+                <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-emerald-500 mb-2">
+                  <img
+                    src={
+                      groupPhoto ||
+                      "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=150&auto=format&fit=crop"
+                    }
+                    alt="Foto Grupo"
+                    className="h-full w-full object-cover"
+                  />
                 </div>
-                <div className="flex-1">
-                  <span className="text-xs font-semibold block">Foto do Grupo</span>
-                  <button
-                    type="button"
-                    onClick={() => groupPhotoInputRef.current?.click()}
-                    className="text-[11px] text-emerald-600 hover:underline"
-                  >
-                    Escolher da Galeria
-                  </button>
-                </div>
+
                 <input
-                  ref={groupPhotoInputRef}
+                  ref={groupCameraInputRef}
                   type="file"
                   accept="image/*"
-                  onChange={handleGroupPhotoUpload}
+                  capture="environment"
+                  onChange={handleGroupPhotoFile}
                   className="hidden"
                 />
+                <input
+                  ref={groupGalleryInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleGroupPhotoFile}
+                  className="hidden"
+                />
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => groupCameraInputRef.current?.click()}
+                    disabled={isProcessingImage}
+                    className="h-6 text-[10px] px-2 border-emerald-300 text-emerald-700"
+                  >
+                    <Camera className="h-3 w-3 mr-1" />
+                    Câmera
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => groupGalleryInputRef.current?.click()}
+                    disabled={isProcessingImage}
+                    className="h-6 text-[10px] px-2 border-emerald-300 text-emerald-700"
+                  >
+                    <ImageIcon className="h-3 w-3 mr-1" />
+                    Galeria
+                  </Button>
+                </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold">Nome do Grupo:</label>
+                <label className="text-[11px] font-bold text-zinc-600">Nome do Grupo:</label>
                 <Input
-                  required
-                  placeholder="Ex: Família & Amigos 🏡"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  className="mt-1 text-xs"
+                  placeholder="Ex: Família HS ou Amigos"
+                  className="text-xs h-9 mt-1"
+                  required
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold">Descrição do Grupo:</label>
+                <label className="text-[11px] font-bold text-zinc-600">Descrição:</label>
                 <Input
-                  placeholder="Regras ou objetivo..."
                   value={groupDesc}
                   onChange={(e) => setGroupDesc(e.target.value)}
-                  className="mt-1 text-xs"
+                  placeholder="Assunto ou regras do grupo"
+                  className="text-xs h-9 mt-1"
                 />
               </div>
 
+              {/* SELEÇÃO DE PARTICIPANTES */}
               <div>
-                <label className="text-xs font-semibold">
-                  Selecionar Participantes ({selectedParticipants.length}):
+                <label className="text-[11px] font-bold text-zinc-600 block mb-1">
+                  Participantes ({selectedParticipants.length}):
                 </label>
-                <div className="max-h-28 overflow-y-auto mt-1 border rounded-lg p-2 space-y-1">
+                <div className="max-h-32 overflow-y-auto border rounded-xl p-2 space-y-1">
                   {contacts.length === 0 ? (
-                    <span className="text-[11px] text-zinc-400">Adicione contatos para incluir no grupo.</span>
+                    <span className="text-[11px] text-zinc-400 block text-center py-2">
+                      Nenhum contato adicionado ainda. Você será o administrador.
+                    </span>
                   ) : (
                     contacts.map((c) => {
                       const isSel = selectedParticipants.includes(c.contactId);
@@ -1602,10 +1814,15 @@ export function HSSocialPage() {
                               isSel ? prev.filter((id) => id !== c.contactId) : [...prev, c.contactId]
                             );
                           }}
-                          className="flex items-center justify-between py-1 cursor-pointer"
+                          className={`flex items-center justify-between p-1.5 rounded-lg text-xs cursor-pointer ${
+                            isSel ? "bg-emerald-50 text-emerald-800 font-bold" : "hover:bg-zinc-50"
+                          }`}
                         >
-                          <span className="text-xs font-medium">{c.name}</span>
-                          <input type="checkbox" checked={isSel} readOnly className="h-3.5 w-3.5" />
+                          <div className="flex items-center gap-2 truncate">
+                            <img src={c.avatar} alt={c.name} className="h-6 w-6 rounded-full object-cover" />
+                            <span className="truncate">{c.name}</span>
+                          </div>
+                          {isSel && <Check className="h-4 w-4 text-emerald-600 shrink-0" />}
                         </div>
                       );
                     })
@@ -1618,13 +1835,13 @@ export function HSSocialPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setShowCreateGroup(false)}
-                  className="w-1/2 text-xs"
+                  className="flex-1 text-xs"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
-                  className="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
                 >
                   Criar Grupo
                 </Button>
@@ -1635,285 +1852,280 @@ export function HSSocialPage() {
       )}
 
       {/* ============================================================== */}
-      {/* MODAL 3: INFORMAÇÕES DO GRUPO (SAIR OU EXCLUIR) */}
+      {/* MODAL 3: POSTAR STATUS (PREVIEW E LEGENDA) */}
       {/* ============================================================== */}
-      {viewingGroupInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xs rounded-2xl bg-white dark:bg-zinc-900 p-5 shadow-2xl border text-center">
-            <img
-              src={viewingGroupInfo.avatar}
-              alt={viewingGroupInfo.name}
-              className="h-20 w-20 rounded-full mx-auto object-cover border-2 border-emerald-500 mb-2 shadow"
-            />
-            <h4 className="font-bold text-base">{viewingGroupInfo.name}</h4>
-            <p className="text-xs text-zinc-500 mt-1">{viewingGroupInfo.description || "Sem descrição"}</p>
-            <span className="text-[11px] text-emerald-600 block mt-1 font-semibold">
-              {viewingGroupInfo.memberIds.length} participantes
-            </span>
-
-            <div className="mt-6 space-y-2">
-              {/* Opção de Sair do Grupo (para membros) */}
-              <Button
-                variant="outline"
-                onClick={() => handleSairDoGrupo(viewingGroupInfo.id)}
-                className="w-full text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center justify-center gap-1.5"
-              >
-                <LogOut className="h-4 w-4" /> Sair do Grupo
-              </Button>
-
-              {/* Opção de Excluir Grupo (para administrador) */}
-              {viewingGroupInfo.adminId === currentUser?.id && (
-                <Button
-                  variant="outline"
-                  onClick={() => handleExcluirGrupo(viewingGroupInfo.id)}
-                  className="w-full text-xs font-bold text-red-600 border-red-300 flex items-center justify-center gap-1.5"
-                >
-                  <Trash2 className="h-4 w-4" /> Excluir Grupo Permanentemente
-                </Button>
-              )}
-
-              <Button
-                variant="ghost"
-                onClick={() => setViewingGroupInfo(null)}
-                className="w-full text-xs text-zinc-500"
-              >
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* MODAL 4: STORIES VIEWER (10s COM PAUSA E BLOQUEIO DE CONTEXTO) */}
-      {/* ============================================================== */}
-      {activeStoryGroup && (
-        <div
-          onMouseDown={() => setIsStoryPaused(true)}
-          onMouseUp={() => setIsStoryPaused(false)}
-          onTouchStart={() => setIsStoryPaused(true)}
-          onTouchEnd={() => setIsStoryPaused(false)}
-          onContextMenu={(e) => e.preventDefault()} // Bloqueia copiar imagem ao segurar
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black select-none"
-        >
-          <div className="relative w-full h-full md:max-w-sm md:h-[680px] bg-zinc-950 md:rounded-3xl overflow-hidden flex flex-col justify-between">
-            {/* Linhas de progresso no topo */}
-            <div className="absolute top-3 inset-x-3 z-30 flex gap-1">
-              {activeStoryGroup.items.map((_, idx) => (
-                <div key={idx} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-white transition-all duration-100"
-                    style={{
-                      width:
-                        idx < storyIndex ? "100%" : idx === storyIndex ? `${storyProgress}%` : "0%",
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Cabeçalho do Story */}
-            <div className="absolute top-6 inset-x-4 z-30 flex items-center justify-between text-white">
-              <div className="flex items-center gap-2">
-                <img
-                  src={activeStoryGroup.authorAvatar}
-                  alt={activeStoryGroup.authorName}
-                  className="h-8 w-8 rounded-full object-cover border border-white"
-                />
-                <div>
-                  <h5 className="font-bold text-xs">{activeStoryGroup.authorName}</h5>
-                  <span className="text-[10px] text-zinc-300">
-                    {new Date(activeStoryGroup.items[storyIndex].createdAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-              </div>
+      {showPostStatusModal && statusImageInput && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-sm w-full p-4 shadow-2xl border border-zinc-200">
+            <div className="flex items-center justify-between pb-2 border-b mb-3">
+              <h3 className="font-bold text-xs">Publicar no Meu Status</h3>
               <button
-                onClick={() => setActiveStoryGroup(null)}
-                className="p-1 rounded-full bg-black/40 text-white"
+                onClick={() => {
+                  setShowPostStatusModal(false);
+                  setStatusImageInput(null);
+                }}
+                className="text-zinc-400 hover:text-zinc-700"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Imagem do Story com Toque nas laterais para avançar/voltar */}
-            <div className="flex-1 flex items-center justify-center bg-black relative">
-              <img
-                src={activeStoryGroup.items[storyIndex].imageUrl}
-                alt="Story"
-                className="w-full h-full object-contain pointer-events-none"
-              />
-              {/* Área lateral esquerda: voltar */}
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (storyIndex > 0) {
-                    setStoryIndex((i) => i - 1);
-                    setStoryProgress(0);
-                  }
-                }}
-                className="absolute left-0 top-16 bottom-16 w-1/3"
-              />
-              {/* Área lateral direita: avançar */}
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (storyIndex < activeStoryGroup.items.length - 1) {
-                    setStoryIndex((i) => i + 1);
-                    setStoryProgress(0);
-                  } else {
-                    setActiveStoryGroup(null);
-                  }
-                }}
-                className="absolute right-0 top-16 bottom-16 w-1/3"
-              />
+            <div className="rounded-2xl overflow-hidden max-h-72 border bg-black flex items-center justify-center">
+              <img src={statusImageInput} alt="Preview Status" className="max-h-72 w-auto object-contain" />
             </div>
 
-            {/* Legenda se houver */}
-            {activeStoryGroup.items[storyIndex].caption && (
-              <div className="absolute bottom-6 inset-x-4 z-30 p-3 rounded-xl bg-black/60 backdrop-blur-sm text-center text-white text-xs font-medium">
-                {activeStoryGroup.items[storyIndex].caption}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+            <form onSubmit={handlePostStatusSubmit} className="mt-3 space-y-3">
+              <Input
+                placeholder="Adicione uma legenda (opcional)..."
+                value={statusCaptionInput}
+                onChange={(e) => setStatusCaptionInput(e.target.value)}
+                className="text-xs h-9"
+              />
 
-      {/* ============================================================== */}
-      {/* MODAL 5: MENU FLUTUANTE DA MENSAGEM */}
-      {/* ============================================================== */}
-      {selectedMessageForAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-xs rounded-2xl bg-white dark:bg-zinc-900 p-4 shadow-2xl border space-y-2 text-xs">
-            <h5 className="font-bold pb-2 border-b">Ações da Mensagem</h5>
-            <button
-              onClick={handleDeleteMessageForMe}
-              className="w-full text-left p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2"
-            >
-              <Trash2 className="h-4 w-4 text-zinc-500" /> Apagar para mim
-            </button>
-
-            {selectedMessageForAction.senderId === currentUser?.id && (
-              <>
-                <button
-                  onClick={handleDeleteMessageForAll}
-                  className="w-full text-left p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 flex items-center gap-2"
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowPostStatusModal(false);
+                    setStatusImageInput(null);
+                  }}
+                  className="flex-1 text-xs"
                 >
-                  <Ban className="h-4 w-4" /> Apagar para todos (Cancelar)
-                </button>
-                {selectedMessageForAction.type === "text" && (
-                  <button
-                    onClick={() => {
-                      setEditingMessageId(selectedMessageForAction.id);
-                      setEditMessageText(selectedMessageForAction.content);
-                      setSelectedMessageForAction(null);
-                    }}
-                    className="w-full text-left p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2"
-                  >
-                    <Edit2 className="h-4 w-4 text-emerald-600" /> Editar
-                  </button>
-                )}
-              </>
-            )}
+                  Descartar
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                >
+                  Publicar Status
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSelectedMessageForAction(null)}
-              className="w-full mt-2 text-xs"
+      {/* ============================================================== */}
+      {/* MODAL 4: ADICIONAR CONTATO POR TELEFONE */}
+      {/* ============================================================== */}
+      {showAddContact && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-zinc-200">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-emerald-600" /> Adicionar Contato
+              </h3>
+              <button onClick={() => setShowAddContact(false)} className="text-zinc-400 hover:text-zinc-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleValidateAndAddContact} className="mt-4 space-y-3">
+              <p className="text-xs text-zinc-500">
+                Digite o número com DDD. O contato só será adicionado se possuir conta ativa na HS Digital.
+              </p>
+
+              <div>
+                <label className="text-[11px] font-bold text-zinc-600">Número de Celular com DDD:</label>
+                <Input
+                  value={inputPhone}
+                  onChange={(e) => setInputPhone(e.target.value)}
+                  placeholder="Ex: 69999998888"
+                  className="text-xs h-9 mt-1"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAddContact(false)}
+                  className="flex-1 text-xs"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isValidatingContact}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                >
+                  {isValidatingContact ? "Validando..." : "Validar e Adicionar"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL 5: VISUALIZADOR DE STORIES (ESTILO INSTA/WHATSAPP) */}
+      {/* ============================================================== */}
+      {activeStoryGroup && (
+        <div
+          className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center select-none"
+          onMouseDown={() => setIsStoryPaused(true)}
+          onMouseUp={() => setIsStoryPaused(false)}
+          onTouchStart={() => setIsStoryPaused(true)}
+          onTouchEnd={() => setIsStoryPaused(false)}
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            if (x > rect.width / 2) {
+              if (storyIndex < activeStoryGroup.items.length - 1) {
+                setStoryIndex((i) => i + 1);
+                setStoryProgress(0);
+              } else {
+                setActiveStoryGroup(null);
+              }
+            } else {
+              if (storyIndex > 0) {
+                setStoryIndex((i) => i - 1);
+                setStoryProgress(0);
+              }
+            }
+          }}
+        >
+          {/* BARRA DE PROGRESSO SEGMENTADA */}
+          <div className="absolute top-4 left-4 right-4 z-20 flex gap-1.5">
+            {activeStoryGroup.items.map((_, idx) => (
+              <div key={idx} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-white transition-all duration-100"
+                  style={{
+                    width:
+                      idx < storyIndex
+                        ? "100%"
+                        : idx === storyIndex
+                        ? `${storyProgress}%`
+                        : "0%",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* CABEÇALHO DO STORY */}
+          <div className="absolute top-8 left-4 right-4 z-20 flex items-center justify-between text-white">
+            <div className="flex items-center gap-2">
+              <img
+                src={activeStoryGroup.authorAvatar}
+                alt={activeStoryGroup.authorName}
+                className="h-9 w-9 rounded-full object-cover border-2 border-white"
+              />
+              <div>
+                <h4 className="font-bold text-xs drop-shadow">{activeStoryGroup.authorName}</h4>
+                <span className="text-[10px] text-white/80 drop-shadow">
+                  {new Date(activeStoryGroup.items[storyIndex].createdAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveStoryGroup(null);
+              }}
+              className="p-1 rounded-full bg-black/40 text-white hover:bg-black/60"
             >
-              Cancelar
-            </Button>
+              <X className="h-6 w-6" />
+            </button>
           </div>
-        </div>
-      )}
 
-      {/* ============================================================== */}
-      {/* MODAL 6: EDITAR MENSAGEM */}
-      {/* ============================================================== */}
-      {editingMessageId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 p-4 shadow-2xl border">
-            <h5 className="font-bold text-xs pb-2 border-b">Editar Mensagem</h5>
-            <Input
-              value={editMessageText}
-              onChange={(e) => setEditMessageText(e.target.value)}
-              className="my-3 text-xs"
-            />
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEditingMessageId(null)}
-                className="w-1/2 text-xs"
-              >
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSaveEditMessage}
-                className="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
-              >
-                Salvar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* MODAL 7: PUBLICAR NOVO STATUS */}
-      {/* ============================================================== */}
-      {showPostStatusModal && statusImageInput && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 p-4 shadow-2xl border">
-            <h4 className="font-bold text-xs mb-3">Publicar Story (24 Horas)</h4>
-            <div className="h-56 rounded-xl overflow-hidden mb-3 border bg-black">
-              <img src={statusImageInput} alt="Preview" className="h-full w-full object-contain" />
-            </div>
-            <Input
-              placeholder="Legenda do story..."
-              value={statusCaptionInput}
-              onChange={(e) => setStatusCaptionInput(e.target.value)}
-              className="text-xs mb-3"
-            />
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowPostStatusModal(false);
-                  setStatusImageInput(null);
-                }}
-                className="w-1/2 text-xs"
-              >
-                Descartar
-              </Button>
-              <Button
-                onClick={handlePostStatusSubmit}
-                className="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
-              >
-                Publicar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* MODAL 8: PERFIL DO CONTATO */}
-      {/* ============================================================== */}
-      {viewingProfileContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xs rounded-2xl bg-white dark:bg-zinc-900 p-6 text-center shadow-2xl border">
+          {/* FOTO DO STORY */}
+          <div className="relative w-full h-full flex items-center justify-center p-4">
             <img
-              src={viewingProfileContact.avatar}
-              alt={viewingProfileContact.name}
-              className="h-20 w-20 rounded-full mx-auto object-cover border-2 border-emerald-500 mb-2 shadow"
+              src={activeStoryGroup.items[storyIndex].imageUrl}
+              alt="Story"
+              className="max-h-[85vh] max-w-full object-contain pointer-events-none"
             />
-            <h4 className="font-bold text-base">{viewingProfileContact.name}</h4>
-            <p className="text-xs text-zinc-500 mt-0.5">{viewingProfileContact.phone}</p>
+          </div>
+
+          {/* LEGENDA */}
+          {activeStoryGroup.items[storyIndex].caption && (
+            <div className="absolute bottom-8 left-4 right-4 z-20 text-center">
+              <p className="inline-block bg-black/60 text-white px-4 py-2 rounded-2xl text-xs backdrop-blur-sm">
+                {activeStoryGroup.items[storyIndex].caption}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL 6: DETALHES DO GRUPO (SAIR OU EXCLUIR) */}
+      {/* ============================================================== */}
+      {viewingGroupInfo && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-zinc-200">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-sm">Informações do Grupo</h3>
+              <button onClick={() => setViewingGroupInfo(null)} className="text-zinc-400 hover:text-zinc-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center mt-4">
+              <img
+                src={viewingGroupInfo.avatar}
+                alt={viewingGroupInfo.name}
+                className="h-20 w-20 rounded-full object-cover border-2 border-emerald-500 shadow-md"
+              />
+              <h4 className="font-bold text-base mt-2">{viewingGroupInfo.name}</h4>
+              <p className="text-xs text-zinc-500 mt-0.5">{viewingGroupInfo.description}</p>
+              <span className="text-[11px] text-emerald-600 font-semibold mt-1">
+                {viewingGroupInfo.memberIds.length} participantes
+              </span>
+            </div>
+
+            <div className="mt-6 space-y-2">
+              {viewingGroupInfo.adminId === currentUser.id ? (
+                <Button
+                  onClick={() => handleExcluirGrupo(viewingGroupInfo.id)}
+                  variant="destructive"
+                  className="w-full text-xs font-bold"
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" /> Excluir Grupo Permanentemente
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => handleSairDoGrupo(viewingGroupInfo.id)}
+                  variant="outline"
+                  className="w-full text-xs font-bold text-red-600 border-red-300"
+                >
+                  <LogOut className="h-4 w-4 mr-1.5" /> Sair do Grupo
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL 7: PERFIL DO CONTATO EXTERNO */}
+      {viewingProfileContact && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-zinc-200">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-sm">Perfil do Contato</h3>
+              <button onClick={() => setViewingProfileContact(null)} className="text-zinc-400 hover:text-zinc-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center mt-4">
+              <img
+                src={viewingProfileContact.avatar}
+                alt={viewingProfileContact.name}
+                className="h-20 w-20 rounded-full object-cover border-2 border-emerald-500"
+              />
+              <h4 className="font-bold text-base mt-2">{viewingProfileContact.name}</h4>
+              <p className="text-xs text-zinc-500 mt-0.5">{viewingProfileContact.phone}</p>
+            </div>
 
             <div className="mt-6 space-y-2">
               <Button
@@ -1923,36 +2135,110 @@ export function HSSocialPage() {
                 }}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
               >
-                Conversar
+                <MessageSquare className="h-4 w-4 mr-1.5" /> Enviar Mensagem
               </Button>
+
               <Button
-                variant="outline"
                 onClick={() => {
-                  const updated = contacts.map((c) =>
-                    c.contactId === viewingProfileContact.contactId
-                      ? { ...c, isBlocked: !c.isBlocked }
-                      : c
+                  setContacts((prev) =>
+                    prev.map((c) =>
+                      c.contactId === viewingProfileContact.contactId
+                        ? { ...c, isBlocked: !c.isBlocked }
+                        : c
+                    )
                   );
-                  setContacts(updated);
-                  localStorage.setItem(STORAGE_KEYS.CONTATOS, JSON.stringify(updated));
                   setViewingProfileContact(null);
                   toast.success(
                     viewingProfileContact.isBlocked ? "Contato desbloqueado." : "Contato bloqueado."
                   );
                 }}
-                className={`w-full text-xs font-bold flex items-center justify-center gap-1.5 ${
+                variant="outline"
+                className={`w-full text-xs font-bold ${
                   viewingProfileContact.isBlocked ? "text-emerald-600" : "text-red-600"
                 }`}
               >
-                <Ban className="h-4 w-4" />
-                {viewingProfileContact.isBlocked ? "Desbloquear" : "Bloquear"}
+                <Ban className="h-4 w-4 mr-1.5" />
+                {viewingProfileContact.isBlocked ? "Desbloquear Contato" : "Bloquear Contato"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MENU FLUTUANTE DE AÇÕES NA MENSAGEM */}
+      {selectedMessageForAction && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl max-w-xs w-full p-3 shadow-xl space-y-1">
+            <h5 className="font-bold text-xs px-2 py-1 text-zinc-400">Opções da Mensagem</h5>
+
+            {selectedMessageForAction.senderId === currentUser.id && selectedMessageForAction.type === "text" && (
+              <button
+                onClick={() => {
+                  setEditingMessageId(selectedMessageForAction.id);
+                  setEditMessageText(selectedMessageForAction.content);
+                  setSelectedMessageForAction(null);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-zinc-100 rounded-xl transition-colors"
+              >
+                <Edit2 className="h-4 w-4 text-emerald-600" /> Editar Mensagem
+              </button>
+            )}
+
+            <button
+              onClick={handleDeleteMessageForMe}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-zinc-100 rounded-xl transition-colors text-zinc-700 dark:text-zinc-300"
+            >
+              <Trash2 className="h-4 w-4 text-zinc-500" /> Apagar para mim
+            </button>
+
+            {selectedMessageForAction.senderId === currentUser.id && (
+              <button
+                onClick={handleDeleteMessageForAll}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-red-50 text-red-600 rounded-xl transition-colors"
+              >
+                <Ban className="h-4 w-4" /> Apagar para todos
+              </button>
+            )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedMessageForAction(null)}
+              className="w-full text-xs mt-2"
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE EDIÇÃO DE MENSAGEM */}
+      {editingMessageId && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl max-w-sm w-full p-4 shadow-xl space-y-3">
+            <h5 className="font-bold text-xs">Editar Mensagem</h5>
+            <Input
+              value={editMessageText}
+              onChange={(e) => setEditMessageText(e.target.value)}
+              className="text-xs h-9"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingMessageId(null)}
+                className="flex-1 text-xs"
+              >
+                Cancelar
               </Button>
               <Button
-                variant="ghost"
-                onClick={() => setViewingProfileContact(null)}
-                className="w-full text-xs text-zinc-500"
+                size="sm"
+                onClick={handleSaveEditMessage}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
               >
-                Fechar
+                Salvar
               </Button>
             </div>
           </div>
