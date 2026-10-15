@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Package, ShoppingCart, Sparkles, Star, Zap } from "lucide-react";
+import { Package, ShoppingCart, Star, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,11 @@ function getConsistentSalesCount(id: string): number {
   return 38 + (positive % 184); // Varia de 38 a 221 vendas
 }
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+}: {
+  product: Product & { originalPrice?: number | null };
+}) {
   const { add } = useCart();
   const navigate = useNavigate();
   const displayTitle = cleanTitle(product.title);
@@ -64,10 +68,14 @@ export function ProductCard({ product }: { product: Product }) {
   const isDigital =
     product.product_type === "digital" || product.category?.includes("digital") || product.category?.includes("cursos");
 
-  const discount =
-    product.compare_at_price && product.compare_at_price > product.price
-      ? Math.round((1 - product.price / product.compare_at_price) * 100)
-      : 0;
+  // Suporte blindado tanto para originalPrice quanto compare_at_price
+  const originalPrice = product.originalPrice ?? product.compare_at_price;
+  const hasOriginalPrice =
+    originalPrice != null && Number(originalPrice) > Number(product.price);
+
+  const discount = hasOriginalPrice
+    ? Math.round((1 - Number(product.price) / Number(originalPrice)) * 100)
+    : 0;
 
   const soldCount =
     product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
@@ -135,10 +143,22 @@ export function ProductCard({ product }: { product: Product }) {
         <p className="text-[11px] text-muted-foreground">{product.stores?.name ?? "HS Digital"}</p>
 
         <div className="mt-auto pt-2">
+          {/* Preço original riscado e discreto acima do preço atual */}
+          {hasOriginalPrice && (
+            <span className="text-xs text-muted-foreground line-through block">
+              {brl(Number(originalPrice))}
+            </span>
+          )}
+
+          {/* Preço atual com desconto dinâmico ao lado no padrão #00a650 */}
           <div className="flex items-baseline gap-2">
-            <span className="text-base md:text-lg font-black text-foreground">{brl(product.price)}</span>
-            {product.compare_at_price && product.compare_at_price > product.price && (
-              <span className="text-xs text-muted-foreground line-through">{brl(product.compare_at_price)}</span>
+            <span className="text-base md:text-lg font-black text-foreground">
+              {brl(product.price)}
+            </span>
+            {discount > 0 && (
+              <span className="text-xs md:text-sm font-bold text-[#00a650]">
+                {discount}% OFF
+              </span>
             )}
           </div>
 
@@ -146,6 +166,13 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
             {getInstallmentText(product.price)}
           </p>
+
+          {/* Selo Frete grátis logo abaixo do parcelamento para produtos físicos */}
+          {!isDigital && (
+            <p className="text-xs font-semibold text-[#00a650]">
+              Frete grátis
+            </p>
+          )}
 
           <div className="mt-2 flex items-center justify-between gap-1 text-[11px] text-muted-foreground">
             <div className="flex items-center gap-1">
