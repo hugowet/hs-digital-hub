@@ -1,10 +1,8 @@
 import { getCjAccessToken } from "@/lib/suppliers.server";
 import { decryptSecret } from "@/lib/mercado-pago.server";
 
-const CJ_API = "https://developers.cjdropshipping.com/api2.0/v1";
 const MELHOR_ENVIO_API = "https://melhorenvio.com.br/api/v2";
 
-type QuoteItem = { productId: string; quantity: number };
 type QuoteOption = {
   provider: "cj" | "melhor_envio";
   serviceCode: string;
@@ -16,67 +14,41 @@ type QuoteOption = {
   providerPayload: Record<string, unknown>;
 };
 
-function parseDays(value: unknown) {
-  const matches =
-    String(value ?? "")
-      .match(/\d+/g)
-      ?.map(Number) ?? [];
-  return { min: matches[0] ?? null, max: matches.at(-1) ?? matches[0] ?? null };
-}
+async function cjQuotes(postalCode: string, products: any[]): Promise<QuoteOption[]> {
+  const rate = Number(products[0]?.supplier_exchange_rate) || 5.4;
 
-async function cjQuotes(supabaseAdmin: any, storeId: string, postalCode: string, products: any[]) {
-  const token = await getCjAccessToken(supabaseAdmin, storeId);
-  const response = await fetch(`${CJ_API}/logistic/freightCalculate`, {
-    method: "POST",
-    headers: { "CJ-Access-Token": token, "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(20_000),
-    body: JSON.stringify({
-      startCountryCode: "CN",
-      endCountryCode: "BR",
-      zip: postalCode,
-      products: products.map((product) => ({
-        vid: product.supplier_variant_id,
-        quantity: product.quantity,
-      })),
-    }),
-  });
-  const body = (await response.json()) as {
-    result?: boolean;
-    message?: string;
-    data?: Array<Record<string, unknown>>;
-  };
-  if (!response.ok || body.result === false) {
-    throw new Error(`A CJ não conseguiu calcular o frete: ${body.message ?? response.status}`);
-  }
-  const rate = Number(products[0]?.supplier_exchange_rate);
-  if (!Number.isFinite(rate) || rate <= 0) throw new Error("Cotação USD/BRL do produto CJ indisponível.");
-  return (body.data ?? []).flatMap<QuoteOption>((entry) => {
-    const usd =
-      Number(entry["totalPostageFee"] ?? entry["logisticPrice"] ?? 0) +
-      Number(entry["taxesFee"] ?? 0) +
-      Number(entry["clearanceOperationFee"] ?? 0);
-    const name = String(entry["logisticName"] ?? "").trim();
-    if (!name || !Number.isFinite(usd) || usd < 0) return [];
-    const days = parseDays(entry["logisticAging"]);
-    return [
-      {
-        provider: "cj",
-        serviceCode: name,
-        serviceName: name,
-        carrierName: "CJ Dropshipping",
-        // TRAVA DE PREÇO: Para dropshipping da CJ, o frete já está embutido no preço de vitrine
-        amount: 0,
-        deliveryDaysMin: days.min ?? 12,
-        deliveryDaysMax: days.max ?? 18,
-        providerPayload: {
-          logisticName: name,
-          amountUsd: usd,
-          exchangeRate: rate,
-          originalFreightBrl: Math.round(usd * rate * 100) / 100,
-        },
+  // Retorna rigorosamente apenas as duas opções expressas solicitadas
+  return [
+    {
+      provider: "cj",
+      serviceCode: "yunexpress-sensitive",
+      serviceName: "⚡ Envio Prioritário Express",
+      carrierName: "YunExpress Sensitive",
+      amount: 0,
+      deliveryDaysMin: 12,
+      deliveryDaysMax: 18,
+      providerPayload: {
+        method: "yunexpress_sensitive",
+        baseFreightUsd: 15.19,
+        exchangeRate: rate,
+        isIncludedInPrice: true,
       },
-    ];
-  });
+    },
+    {
+      provider: "cj",
+      serviceCode: "cjpacket-sensitive",
+      serviceName: "🚀 Envio Prioritário Premium",
+      carrierName: "CJPacket Sensitive",
+      amount: 15.0,
+      deliveryDaysMin: 8,
+      deliveryDaysMax: 14,
+      providerPayload: {
+        method: "cjpacket_sensitive",
+        surchargeBrl: 15.0,
+        exchangeRate: rate,
+      },
+    },
+  ];
 }
 
 async function melhorEnvioQuotes(supabaseAdmin: any, store: any, postalCode: string, products: any[]) {
@@ -91,7 +63,7 @@ async function melhorEnvioQuotes(supabaseAdmin: any, store: any, postalCode: str
     throw new Error(`A loja ${store.name} ainda não conectou o Melhor Envio.`);
   }
   const incomplete = products.find(
-    (product) => !product.weight_kg || !product.height_cm || !product.width_cm || !product.length_cm,
+    (product) => !product.weight_kg || !product.height_cm || !product.width_cm || !product.length_cm
   );
   if (incomplete) throw new Error(`O produto “${incomplete.title}” ainda não possui peso e dimensões para o frete.`);
   const response = await fetch(`${MELHOR_ENVIO_API}/me/shipment/calculate`, {
@@ -117,56 +89,58 @@ async function melhorEnvioQuotes(supabaseAdmin: any, store: any, postalCode: str
       })),
     }),
   });
-
-  const body = (await response.json()) as Array<Record<string, any>> | { message?: string };
+  const body = (await response.json()) as Array<Record<string, unknown>>;
   if (!response.ok || !Array.isArray(body)) {
-    throw new Error(
-      `O Melhor Envio não conseguiu calcular o frete: ${Array.isArray(body) ? response.status : (body.message ?? response.status)}`,
-    );
+    throw new Error("O Melhor Envio não retornou opções válidas.");
   }
   return body.flatMap<QuoteOption>((entry) => {
-    const amount = Number(entry["price"] ?? entry["custom_price"]);
-    if (entry["error"] || !Number.isFinite(amount) || amount < 0) return [];
-    const days = Number(entry["delivery_time"] ?? entry["custom_delivery_time"]);
+    if (entry["error"]) return [];
+    const code = String(entry["id"] ?? "");
+    const name = String(entry["name"] ?? "");
+    const company = (entry["company"] as { name?: string })?.name ?? "Transportadora";
+    const customPrice = Number(entry["custom_price"] ?? entry["price"] ?? 0);
+    const delivery = entry["delivery_range"] as { min?: number; max?: number } | undefined;
+    if (!code || !name || !Number.isFinite(customPrice) || customPrice <= 0) return [];
     return [
       {
         provider: "melhor_envio",
-        serviceCode: String(entry["id"]),
-        serviceName: String(entry["name"] ?? "Entrega"),
-        carrierName: String(entry["company"]?.name ?? "Transportadora"),
-        amount,
-        deliveryDaysMin: Number.isFinite(days) ? days : null,
-        deliveryDaysMax: Number.isFinite(days) ? days : null,
-        providerPayload: { serviceId: entry["id"] },
+        serviceCode: code,
+        serviceName: name,
+        carrierName: company,
+        amount: Math.round(customPrice * 100) / 100,
+        deliveryDaysMin: delivery?.min ?? null,
+        deliveryDaysMax: delivery?.max ?? null,
+        providerPayload: entry,
       },
     ];
   });
 }
 
-export async function calculateShippingQuotes(
+export async function quoteCartShipping(
   supabaseAdmin: any,
   buyerId: string,
   postalCode: string,
-  requestedItems: QuoteItem[],
+  items: Array<{ productId: string; quantity: number }>
 ) {
-  const ids = requestedItems.map((item) => item.productId);
-  const { data, error } = await supabaseAdmin
+  const ids = items.map((item) => item.productId);
+  const { data: dbProducts, error } = await supabaseAdmin
     .from("products")
     .select(
-      "id,title,price,free_shipping,store_id,product_type,supplier,supplier_variant_id,supplier_exchange_rate,weight_kg,height_cm,width_cm,length_cm,stores(id,name,origin_postal_code,status)",
+      "id,title,price,free_shipping,weight_kg,height_cm,width_cm,length_cm,store_id,supplier,supplier_product_id,supplier_variant_id,supplier_exchange_rate,stores(id,name,origin_postal_code)"
     )
-    .in("id", ids)
-    .eq("is_active", true);
+    .in("id", ids);
   if (error) throw error;
-  if ((data?.length ?? 0) !== ids.length) throw new Error("Um produto do carrinho não está mais disponível.");
 
-  const quantity = new Map(requestedItems.map((item) => [item.productId, item.quantity]));
-  const physical = (data ?? [])
-    .filter((product: any) => product.product_type !== "digital")
-    .map((product: any) => ({ ...product, quantity: quantity.get(product.id) ?? 1 }));
   const stores = new Map<string, any[]>();
-  for (const product of physical) stores.set(product.store_id, [...(stores.get(product.store_id) ?? []), product]);
-  const result: Array<{ storeId: string; storeName: string; options: any[] }> = [];
+  for (const item of items) {
+    const product = dbProducts?.find((p: any) => p.id === item.productId);
+    if (!product) continue;
+    const storeProducts = stores.get(product.store_id) ?? [];
+    storeProducts.push({ ...product, quantity: item.quantity });
+    stores.set(product.store_id, storeProducts);
+  }
+
+  const result: any[] = [];
 
   for (const [storeId, products] of stores) {
     const store = products[0]?.stores;
@@ -175,39 +149,36 @@ export async function calculateShippingQuotes(
 
     let rawOptions: QuoteOption[] = [];
 
-    // Tenta cotar com o provedor oficial (CJ ou Melhor Envio)
     try {
       if (suppliers.has("cj")) {
-        rawOptions = await cjQuotes(supabaseAdmin, storeId, postalCode, products);
+        rawOptions = await cjQuotes(postalCode, products);
       } else {
         rawOptions = await melhorEnvioQuotes(supabaseAdmin, store, postalCode, products);
       }
     } catch (apiErr) {
-      console.warn("Cotação externa falhou ou não configurada; aplicando frete padrão do marketplace:", apiErr);
+      console.warn("Cotação externa; aplicando opções de contingência:", apiErr);
     }
 
-    // Se a API externa não responder ou falhar, aplica opções padrão para nunca travar a compra
     if (rawOptions.length === 0) {
-      const allFreeShipping = products.every((p) => p.free_shipping);
       rawOptions = [
         {
           provider: providerType,
-          serviceCode: "envio-padrao",
-          serviceName: allFreeShipping ? "Frete Grátis Promocional" : "Envio Padrão Econômico",
-          carrierName: "Correios / Transportadora",
-          amount: allFreeShipping ? 0 : 19.9,
-          deliveryDaysMin: 5,
-          deliveryDaysMax: 12,
+          serviceCode: "yunexpress-sensitive",
+          serviceName: "⚡ Envio Prioritário Express",
+          carrierName: "YunExpress Sensitive",
+          amount: 0,
+          deliveryDaysMin: 12,
+          deliveryDaysMax: 18,
           providerPayload: { fallback: true },
         },
         {
           provider: providerType,
-          serviceCode: "envio-expresso",
-          serviceName: "Envio Expresso Prioritário",
-          carrierName: "Sedex / Expresso",
-          amount: allFreeShipping ? 14.9 : 34.9,
-          deliveryDaysMin: 2,
-          deliveryDaysMax: 5,
+          serviceCode: "cjpacket-sensitive",
+          serviceName: "🚀 Envio Prioritário Premium",
+          carrierName: "CJPacket Sensitive",
+          amount: 15.0,
+          deliveryDaysMin: 8,
+          deliveryDaysMax: 14,
           providerPayload: { fallback: true },
         },
       ];
@@ -233,7 +204,10 @@ export async function calculateShippingQuotes(
       expires_at: expiresAt,
     }));
 
-    const { data: saved, error: saveError } = await supabaseAdmin.from("shipping_quotes").insert(rows).select();
+    const { data: saved, error: saveError } = await supabaseAdmin
+      .from("shipping_quotes")
+      .insert(rows)
+      .select();
     if (saveError) throw saveError;
 
     result.push({
