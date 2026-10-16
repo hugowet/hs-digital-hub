@@ -40,20 +40,34 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
-  console.error(error);
   const router = useRouter();
+
   useEffect(() => {
     if (error instanceof Error) {
+      console.warn("Recuperação resiliente da rota:", error.message);
       reportLovableError(error, { boundary: "tanstack_root_error_component" });
+
+      // Se for falha de carregamento de chunk ou timeout assíncrono, redireciona suavemente para /
+      if (
+        error.message.includes("dynamically imported") ||
+        error.message.includes("fetch") ||
+        error.message.includes("NetworkError") ||
+        error.message.includes("supabase")
+      ) {
+        const timer = setTimeout(() => {
+          window.location.href = "/";
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
     }
   }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">Esta página não carregou</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Carregando a HS Digital…</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Ocorreu um erro temporário. Você pode tentar atualizar ou voltar para o início.
+          Sincronizando sua conexão segura com a plataforma. Você será redirecionado em instantes.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -78,7 +92,8 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 const SITE_URL = "https://lovable.app";
-const LOGO_PREVIEW_URL = "https://lovable.app/__l5e/assets-v1/39fcaa1a-9680-41a5-9293-4e05e8dc7c2b/hs-digital-logo.png";
+const LOGO_PREVIEW_URL =
+  "https://lovable.app/__l5e/assets-v1/39fcaa1a-9680-41a5-9293-4e05e8dc7c2b/hs-digital-logo.png";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -88,11 +103,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "HS Digital · Marketplace Oficial" },
       {
         name: "description",
-        content: "Marketplace HS Digital: compre eletrônicos, ferramentas, utilidades e novidades com frete garantido para todo o Brasil.",
+        content:
+          "Marketplace HS Digital: compre eletrônicos, ferramentas, utilidades e novidades com frete garantido para todo o Brasil.",
       },
       { name: "author", content: "HS Digital" },
-
-      // OpenGraph
       { property: "og:site_name", content: "HS Digital Marketplace" },
       { property: "og:title", content: "HS Digital · Marketplace Oficial" },
       {
@@ -104,8 +118,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:image", content: LOGO_PREVIEW_URL },
       { property: "og:image:secure_url", content: LOGO_PREVIEW_URL },
       { property: "og:image:type", content: "image/png" },
-
-      // Twitter Cards
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "HS Digital · Marketplace Oficial" },
       {
@@ -139,11 +151,6 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="pt-BR">
       <head>
         <HeadContent />
-        <script
-          async
-          src="https://googlesyndication.com"
-          crossOrigin="anonymous"
-        ></script>
       </head>
       <body>
         {children}
