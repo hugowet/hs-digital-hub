@@ -39,7 +39,7 @@ export const Route = createFileRoute("/_authenticated/carrinho")({
 });
 
 function CartPage() {
-  const { items, setQuantity, remove, subtotal } = useCart();
+  const { items, setQuantity, remove, subtotal, clear } = useCart();
   const navigate = useNavigate();
   const createCheckout = useServerFn(createMarketplaceCheckout);
   const quoteShipping = useServerFn(quoteMarketplaceShipping);
@@ -75,27 +75,19 @@ function CartPage() {
   const [selectedCouponId, setSelectedCouponId] = useState("");
   const [firstPurchaseEligible, setFirstPurchaseEligible] = useState(false);
 
-  // Identifica se há produtos físicos com benefício de frete grátis anunciado
-  const hasFreeShippingItems = items.some((item) => item.freeShipping === true);
-
-  const rawShipping = quotes.reduce((sum, group) => {
+  const shipping = quotes.reduce((sum, group) => {
     const selected = group.options.find((option) => option.id === selectedQuotes[group.storeId]);
     return sum + (selected?.amount ?? 0);
   }, 0);
-
   const selectedCoupon = coupons.find((coupon) => coupon.id === selectedCouponId);
   const requestedCouponDiscount = selectedCoupon
     ? selectedCoupon.kind === "free_shipping"
-      ? Math.min(rawShipping, Number(selectedCoupon.max_discount))
-      : Math.min((rawShipping * Number(selectedCoupon.percent_off)) / 100, Number(selectedCoupon.max_discount))
+      ? Math.min(shipping, Number(selectedCoupon.max_discount))
+      : Math.min((shipping * Number(selectedCoupon.percent_off)) / 100, Number(selectedCoupon.max_discount))
     : 0;
   const couponDiscount = Math.min(requestedCouponDiscount, subtotal * 0.12);
-
-  // Aplica desconto integral de frete quando prometido no produto ou primeira compra
-  const isFreeShippingApplied = hasFreeShippingItems || firstPurchaseEligible;
-  const shippingDiscount = isFreeShippingApplied ? rawShipping : couponDiscount;
-  const shipping = Math.max(0, rawShipping - shippingDiscount);
-  const total = subtotal + shipping;
+  const shippingDiscount = firstPurchaseEligible ? shipping : couponDiscount;
+  const total = subtotal + shipping - shippingDiscount;
 
   useEffect(() => {
     if (items.length > 0) void trackCheckoutAbandonment(items);
@@ -199,7 +191,7 @@ function CartPage() {
 
     let quotesToUse = { ...selectedQuotes };
 
-    // Se ainda não cotou para alguma loja física, calcula automaticamente
+    // Se ainda não cotou para alguma loja física, calcula automaticamente na hora
     if (physicalStoreIds.some((storeId) => !quotesToUse[storeId])) {
       const freshQuotes = await calculateShipping(cleanZip);
       if (freshQuotes) {
@@ -266,24 +258,25 @@ function CartPage() {
                   <ul className="divide-y divide-border">
                     {group.items.map((item) => (
                       <li key={item.productId} className="flex gap-3 p-4">
-                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/30">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                              Sem foto
-                            </div>
-                          )}
-                        </div>
+                        {item.imageUrl && (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.title}
+                            loading="lazy"
+                            className="h-20 w-20 shrink-0 rounded-lg object-cover"
+                          />
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-sm font-medium">{item.title}</p>
-                          <p className="mt-1 font-display text-base font-bold text-primary">{brl(item.price)}</p>
-                          {item.freeShipping && (
-                            <span className="inline-block mt-1 text-[11px] font-semibold text-[#00a650]">
-                              ✓ Frete grátis incluso
+                          <p className="mt-1 font-display font-bold text-primary">{brl(item.price)}</p>
+                          {item.productType === "digital" && (
+                            <span className="mt-1 inline-block rounded bg-success/10 px-1.5 py-0.5 text-[11px] font-semibold text-success">
+                              Entrega digital
                             </span>
                           )}
-                          <div className="mt-2 flex items-center gap-2">
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="flex items-center rounded-lg border border-border">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -309,7 +302,7 @@ function CartPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive ml-2"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
                             onClick={() => remove(item.productId)}
                             aria-label="Remover"
                           >
@@ -330,29 +323,24 @@ function CartPage() {
                   <dt className="text-muted-foreground">Produtos</dt>
                   <dd>{brl(subtotal)}</dd>
                 </div>
-
-                {isFreeShippingApplied && rawShipping > 0 && (
-                  <div className="flex justify-between text-[#00a650]">
-                    <dt>{firstPurchaseEligible ? "Frete grátis 1ª compra" : "Desconto frete promocional"}</dt>
+                {shippingDiscount > 0 && (
+                  <div className="flex justify-between text-success">
+                    <dt>{firstPurchaseEligible ? "Frete grátis da 1ª compra" : "Cupom de frete"}</dt>
                     <dd>− {brl(shippingDiscount)}</dd>
                   </div>
                 )}
-
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between">
                   <dt className="text-muted-foreground">Frete</dt>
-                  <dd className={isFreeShippingApplied ? "font-bold text-[#00a650]" : ""}>
-                    {isFreeShippingApplied
-                      ? "Grátis (Benefício exclusivo)"
-                      : quotes.length === 0
+                  <dd>
+                    {quotes.length === 0
                       ? quoting
                         ? "Calculando..."
                         : "Informe o CEP"
                       : shipping === 0
-                      ? "Grátis"
-                      : brl(shipping)}
+                        ? "Grátis"
+                        : brl(shipping)}
                   </dd>
                 </div>
-
                 <div className="flex justify-between border-t border-border pt-2 font-display text-lg font-bold">
                   <dt>Total</dt>
                   <dd className="text-primary">{brl(total)}</dd>
@@ -472,9 +460,7 @@ function CartPage() {
                               {option.deliveryDaysMax !== null ? ` · até ${option.deliveryDaysMax} dias úteis` : ""}
                             </span>
                           </span>
-                          <strong>
-                            {isFreeShippingApplied || option.amount === 0 ? "Grátis" : brl(option.amount)}
-                          </strong>
+                          <strong>{option.amount === 0 ? "Grátis" : brl(option.amount)}</strong>
                         </label>
                       ))}
                     </div>
@@ -483,12 +469,12 @@ function CartPage() {
               )}
 
               {quotes.length > 0 && firstPurchaseEligible && (
-                <div className="mt-4 rounded-lg border border-[#00a650]/30 bg-[#00a650]/10 p-3 text-sm font-semibold text-[#00a650]">
-                  Seu frete grátis de primeira compra foi aplicado com sucesso!
+                <div className="mt-4 rounded-lg border border-success/30 bg-success/10 p-3 text-sm font-semibold text-success">
+                  Seu frete grátis de primeira compra será aplicado automaticamente.
                 </div>
               )}
 
-              {quotes.length > 0 && coupons.length > 0 && !firstPurchaseEligible && !hasFreeShippingItems && (
+              {quotes.length > 0 && coupons.length > 0 && !firstPurchaseEligible && (
                 <div className="mt-4 border-t border-border pt-4">
                   <label htmlFor="shipping-coupon" className="flex items-center gap-2 text-sm font-semibold">
                     <TicketPercent className="h-4 w-4 text-primary" /> Usar cupom no frete
@@ -507,6 +493,9 @@ function CartPage() {
                       </option>
                     ))}
                   </select>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    O desconto sai da comissão da HS Digital, até R$ 30. O vendedor recebe o frete integral.
+                  </p>
                 </div>
               )}
 
