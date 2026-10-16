@@ -24,7 +24,7 @@ export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
     tag: "Chamada Principal",
     title: "Boas vindas",
     script:
-      "Seja muito bem-vindo à HS Digital! O marketplace que une inovação e praticidade às suas compras. Prepare-se para uma experiência única, rápida e 100% segura.",
+      "Seja muito bem-vindo à HS Digital! o jackson já comprou e aprovou O marketplace que une inovação e praticidade às suas compras. Prepare-se para uma experiência única, rápida e 100% segura.",
   },
   {
     id: "Sugestão principal",
