@@ -591,7 +591,7 @@ function CartPage() {
                   <h3 className="text-sm font-bold text-foreground">Adicione um seguro</h3>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Garantia Estendida Oficial HS Digital estilo Mercado Livre.
+                  Garantia Estendida Oficial HS Digital.
                 </p>
 
                 <div className="space-y-2 pt-1">
