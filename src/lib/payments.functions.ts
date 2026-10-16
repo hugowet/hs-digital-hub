@@ -127,6 +127,13 @@ const checkoutSchema = z.object({
   }),
   shippingQuoteIds: z.record(z.string(), z.string().uuid()),
   couponId: z.string().uuid().optional(),
+  warranty: z
+    .object({
+      id: z.string(),
+      title: z.string(),
+      amount: z.number().min(0),
+    })
+    .optional(),
 });
 
 export const createMarketplaceCheckout = createServerFn({ method: "POST" })
@@ -152,6 +159,53 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
     });
     const { data: orderId, error } = result;
     if (error || !orderId) throw new Error(error?.message ?? "Não foi possível criar o pedido.");
+
+    // Se o comprador contratou Garantia Premium, adiciona o valor ao total do pedido e da transação Mercado Pago
+    if (data.warranty && data.warranty.amount > 0) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const warrantyPrice = Number(data.warranty.amount);
+
+      const { data: order } = await supabaseAdmin
+        .from("orders")
+        .select("total,platform_fee,shipping_address")
+        .eq("id", orderId)
+        .single();
+
+      if (order) {
+        const currentShippingAddress =
+          typeof order.shipping_address === "object" && order.shipping_address !== null
+            ? order.shipping_address
+            : {};
+
+        await supabaseAdmin
+          .from("orders")
+          .update({
+            total: Number(order.total) + warrantyPrice,
+            platform_fee: Number(order.platform_fee) + warrantyPrice,
+            shipping_address: { ...currentShippingAddress, warranty: data.warranty },
+          })
+          .eq("id", orderId);
+
+        const { data: txs } = await supabaseAdmin
+          .from("payment_transactions")
+          .select("id,gross_amount,platform_fee")
+          .eq("order_id", orderId)
+          .order("created_at")
+          .limit(1);
+
+        if (txs && txs.length > 0) {
+          const firstTx = txs[0];
+          await supabaseAdmin
+            .from("payment_transactions")
+            .update({
+              gross_amount: Number(firstTx.gross_amount) + warrantyPrice,
+              platform_fee: Number(firstTx.platform_fee) + warrantyPrice,
+            })
+            .eq("id", firstTx.id);
+        }
+      }
+    }
+
     return { orderId };
   });
 
@@ -314,7 +368,6 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
       throw new Error("O Mercado Pago não permite gerar Pix usando o CPF do titular da conta vendedora.");
     }
 
-    // Busca o nome do comprador cadastrado no perfil para validar no Mercado Pago
     const { data: profile } = await context.supabase
       .from("profiles")
       .select("full_name")
