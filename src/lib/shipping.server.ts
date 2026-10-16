@@ -64,10 +64,16 @@ async function cjQuotes(supabaseAdmin: any, storeId: string, postalCode: string,
         serviceCode: name,
         serviceName: name,
         carrierName: "CJ Dropshipping",
-        amount: Math.round(usd * rate * 100) / 100,
-        deliveryDaysMin: days.min,
-        deliveryDaysMax: days.max,
-        providerPayload: { logisticName: name, amountUsd: usd, exchangeRate: rate },
+        // TRAVA DE PREÇO: Para dropshipping da CJ, o frete já está embutido no preço de vitrine
+        amount: 0,
+        deliveryDaysMin: days.min ?? 12,
+        deliveryDaysMax: days.max ?? 18,
+        providerPayload: {
+          logisticName: name,
+          amountUsd: usd,
+          exchangeRate: rate,
+          originalFreightBrl: Math.round(usd * rate * 100) / 100,
+        },
       },
     ];
   });
