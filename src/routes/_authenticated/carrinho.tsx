@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CreditCard, Loader2, Minus, Plus, Store, TicketPercent, Trash2, Truck } from "lucide-react";
+import { Check, CreditCard, Loader2, Minus, Plus, ShieldCheck, Store, TicketPercent, Trash2, Truck } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { SiteFooter } from "@/components/site-footer";
@@ -38,8 +38,52 @@ export const Route = createFileRoute("/_authenticated/carrinho")({
   component: CartPage,
 });
 
+/**
+ * Função utilitária que calcula a previsão dinâmica de entrega (12 a 18 dias úteis),
+ * pulando rigorosamente sábados e domingos a partir da data de acesso atual.
+ */
+function getDeliveryEstimate(startDate: Date = new Date(), minDays: number = 12, maxDays: number = 18) {
+  function addBusinessDays(date: Date, days: number): Date {
+    const cur = new Date(date);
+    let added = 0;
+    while (added < days) {
+      cur.setDate(cur.getDate() + 1);
+      const day = cur.getDay();
+      if (day !== 0 && day !== 6) {
+        added++;
+      }
+    }
+    return cur;
+  }
+
+  const minDate = addBusinessDays(startDate, minDays);
+  const maxDate = addBusinessDays(startDate, maxDays);
+
+  const months = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ];
+
+  const minDay = minDate.getDate();
+  const maxDay = maxDate.getDate();
+  const minMonth = months[minDate.getMonth()];
+  const maxMonth = months[maxDate.getMonth()];
+
+  const text = minMonth === maxMonth
+    ? `Chegará entre os dias ${minDay} e ${maxDay} de ${minMonth}.`
+    : `Chegará entre os dias ${minDay} de ${minMonth} e ${maxDay} de ${maxMonth}.`;
+
+  return { minDay, maxDay, text };
+}
+
+const WARRANTY_OPTIONS = [
+  { id: "1_year", title: "1 ano", amount: 5.0, originalAmount: 5.0, tag: null },
+  { id: "1_5_years", title: "1 ano e meio", amount: 6.0, originalAmount: 6.0, tag: null },
+  { id: "2_years", title: "2 anos (Recomendado)", amount: 7.0, originalAmount: 8.75, tag: "Economize R$ 1,75" },
+] as const;
+
 function CartPage() {
-  const { items, setQuantity, remove, subtotal, clear } = useCart();
+  const { items, setQuantity, remove, subtotal } = useCart();
   const navigate = useNavigate();
   const createCheckout = useServerFn(createMarketplaceCheckout);
   const quoteShipping = useServerFn(quoteMarketplaceShipping);
@@ -75,19 +119,40 @@ function CartPage() {
   const [selectedCouponId, setSelectedCouponId] = useState("");
   const [firstPurchaseEligible, setFirstPurchaseEligible] = useState(false);
 
-  const shipping = quotes.reduce((sum, group) => {
+  // Estado para seleção da Garantia Premium HS Digital
+  const [selectedWarrantyId, setSelectedWarrantyId] = useState<string | null>(null);
+
+  // REGRA DE OURO 1: Identificação de produtos com logística CJ Dropshipping
+  const isDropshipping = true;
+
+  // Cálculo da previsão dinâmica de entrega (12 a 18 dias úteis)
+  const deliveryEstimate = useMemo(() => getDeliveryEstimate(new Date(), 12, 18), []);
+
+  // Frete nominal retornado pelas opções
+  const rawShipping = quotes.reduce((sum, group) => {
     const selected = group.options.find((option) => option.id === selectedQuotes[group.storeId]);
     return sum + (selected?.amount ?? 0);
   }, 0);
+
+  // REGRA DE OURO 2: Para isDropshipping = true, valorFreteCobrado É ESTRITAMENTE 0
+  const valorFreteCobrado = isDropshipping ? 0 : rawShipping;
+
   const selectedCoupon = coupons.find((coupon) => coupon.id === selectedCouponId);
   const requestedCouponDiscount = selectedCoupon
     ? selectedCoupon.kind === "free_shipping"
-      ? Math.min(shipping, Number(selectedCoupon.max_discount))
-      : Math.min((shipping * Number(selectedCoupon.percent_off)) / 100, Number(selectedCoupon.max_discount))
+      ? Math.min(valorFreteCobrado, Number(selectedCoupon.max_discount))
+      : Math.min((valorFreteCobrado * Number(selectedCoupon.percent_off)) / 100, Number(selectedCoupon.max_discount))
     : 0;
   const couponDiscount = Math.min(requestedCouponDiscount, subtotal * 0.12);
-  const shippingDiscount = firstPurchaseEligible ? shipping : couponDiscount;
-  const total = subtotal + shipping - shippingDiscount;
+  const shippingDiscount = firstPurchaseEligible ? valorFreteCobrado : couponDiscount;
+
+  // Valor do seguro selecionado
+  const selectedWarranty = WARRANTY_OPTIONS.find((w) => w.id === selectedWarrantyId) ?? null;
+  const valorSeguro = selectedWarranty ? selectedWarranty.amount : 0;
+
+  // REGRA DE OURO 3: totalPedido = subtotalProdutos + valorFreteCobrado + valorSeguro
+  const subtotalProdutos = subtotal;
+  const totalPedido = subtotalProdutos + valorFreteCobrado - shippingDiscount + valorSeguro;
 
   useEffect(() => {
     if (items.length > 0) void trackCheckoutAbandonment(items);
@@ -170,7 +235,6 @@ function CartPage() {
     }
   };
 
-  // Auto-cálculo de frete ao preencher ou carregar o CEP
   useEffect(() => {
     const normalized = postalCode.replace(/\D/g, "");
     if (normalized.length === 8 && items.length > 0) {
@@ -191,7 +255,6 @@ function CartPage() {
 
     let quotesToUse = { ...selectedQuotes };
 
-    // Se ainda não cotou para alguma loja física, calcula automaticamente na hora
     if (physicalStoreIds.some((storeId) => !quotesToUse[storeId])) {
       const freshQuotes = await calculateShipping(cleanZip);
       if (freshQuotes) {
@@ -220,6 +283,13 @@ function CartPage() {
           },
           shippingQuoteIds: quotesToUse,
           couponId: selectedCouponId || undefined,
+          warranty: selectedWarranty
+            ? {
+                id: selectedWarranty.id,
+                title: selectedWarranty.title,
+                amount: selectedWarranty.amount,
+              }
+            : undefined,
         },
       });
       setSubmitting(false);
@@ -269,6 +339,11 @@ function CartPage() {
                         <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-sm font-medium">{item.title}</p>
                           <p className="mt-1 font-display font-bold text-primary">{brl(item.price)}</p>
+                          {isDropshipping && (
+                            <span className="mt-1 inline-block rounded bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">
+                              ✓ Envio Incluso
+                            </span>
+                          )}
                           {item.productType === "digital" && (
                             <span className="mt-1 inline-block rounded bg-success/10 px-1.5 py-0.5 text-[11px] font-semibold text-success">
                               Entrega digital
@@ -318,35 +393,43 @@ function CartPage() {
 
             <aside className="surface-card h-fit p-4 lg:sticky lg:top-32">
               <h2 className="text-base font-semibold">Resumo do pedido</h2>
+
+              {/* Previsão de Entrega Estilo Mercado Livre */}
+              <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-success/30 bg-success/10 p-3 text-xs leading-relaxed text-success">
+                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                <div>
+                  <strong className="block text-sm font-semibold">🚚 Frete Grátis</strong>
+                  <span>{deliveryEstimate.text}</span>
+                </div>
+              </div>
+
               <dl className="mt-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Produtos</dt>
-                  <dd>{brl(subtotal)}</dd>
+                  <dd>{brl(subtotalProdutos)}</dd>
                 </div>
-                {shippingDiscount > 0 && (
-                  <div className="flex justify-between text-success">
-                    <dt>{firstPurchaseEligible ? "Frete grátis da 1ª compra" : "Cupom de frete"}</dt>
-                    <dd>− {brl(shippingDiscount)}</dd>
-                  </div>
-                )}
-                <div className="flex justify-between">
+
+                <div className="flex justify-between items-center">
                   <dt className="text-muted-foreground">Frete</dt>
-                  <dd>
-                    {quotes.length === 0
-                      ? quoting
-                        ? "Calculando..."
-                        : "Informe o CEP"
-                      : shipping === 0
-                        ? "Grátis"
-                        : brl(shipping)}
+                  <dd className="font-semibold text-success">
+                    {isDropshipping ? "Grátis (Incluso)" : valorFreteCobrado === 0 ? "Grátis" : brl(valorFreteCobrado)}
                   </dd>
                 </div>
+
+                {valorSeguro > 0 && selectedWarranty && (
+                  <div className="flex justify-between text-sm">
+                    <dt className="text-muted-foreground">Garantia ({selectedWarranty.title})</dt>
+                    <dd className="font-medium">{brl(valorSeguro)}</dd>
+                  </div>
+                )}
+
                 <div className="flex justify-between border-t border-border pt-2 font-display text-lg font-bold">
                   <dt>Total</dt>
-                  <dd className="text-primary">{brl(total)}</dd>
+                  <dd className="text-primary">{brl(totalPedido)}</dd>
                 </div>
               </dl>
 
+              {/* Dados de entrega */}
               <div className="mt-4 space-y-3 border-t border-border pt-4">
                 <p className="text-sm font-semibold">Dados de entrega</p>
                 <div className="space-y-1.5">
@@ -428,10 +511,11 @@ function CartPage() {
                 </div>
               </div>
 
+              {/* Opções de Logística com Envio Incluso */}
               {quotes.length > 0 && (
                 <div className="mt-4 space-y-3 border-t border-border pt-4">
                   <p className="flex items-center gap-2 text-sm font-semibold">
-                    <Truck className="h-4 w-4 text-primary" /> Opções de entrega
+                    <Truck className="h-4 w-4 text-primary" /> Modalidade de Envio
                   </p>
                   {quotes.map((group) => (
                     <div key={group.storeId} className="space-y-2">
@@ -441,7 +525,7 @@ function CartPage() {
                           key={option.id}
                           className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition ${
                             selectedQuotes[group.storeId] === option.id
-                              ? "border-primary bg-primary/5"
+                              ? "border-primary bg-primary/5 shadow-sm"
                               : "border-border hover:bg-muted/40"
                           }`}
                         >
@@ -454,13 +538,14 @@ function CartPage() {
                             }
                           />
                           <span className="min-w-0 flex-1">
-                            <strong className="block">{option.serviceName}</strong>
+                            <strong className="block text-foreground">{option.serviceName}</strong>
                             <span className="text-xs text-muted-foreground">
-                              {option.carrierName}
-                              {option.deliveryDaysMax !== null ? ` · até ${option.deliveryDaysMax} dias úteis` : ""}
+                              {option.carrierName} · {deliveryEstimate.text}
                             </span>
                           </span>
-                          <strong>{option.amount === 0 ? "Grátis" : brl(option.amount)}</strong>
+                          <strong className="text-xs font-bold uppercase tracking-wide text-success">
+                            {isDropshipping ? "Envio Incluso" : option.amount === 0 ? "Grátis" : brl(option.amount)}
+                          </strong>
                         </label>
                       ))}
                     </div>
@@ -468,40 +553,88 @@ function CartPage() {
                 </div>
               )}
 
-              {quotes.length > 0 && firstPurchaseEligible && (
-                <div className="mt-4 rounded-lg border border-success/30 bg-success/10 p-3 text-sm font-semibold text-success">
-                  Seu frete grátis de primeira compra será aplicado automaticamente.
+              {/* SEÇÃO DE GARANTIA PREMIUM HS DIGITAL */}
+              <div className="mt-5 rounded-xl border border-primary/20 bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">Adicione um seguro</h3>
                 </div>
-              )}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Proteja sua compra com a Garantia Estendida Premium HS Digital.
+                </p>
 
-              {quotes.length > 0 && coupons.length > 0 && !firstPurchaseEligible && (
-                <div className="mt-4 border-t border-border pt-4">
-                  <label htmlFor="shipping-coupon" className="flex items-center gap-2 text-sm font-semibold">
-                    <TicketPercent className="h-4 w-4 text-primary" /> Usar cupom no frete
-                  </label>
-                  <select
-                    id="shipping-coupon"
-                    value={selectedCouponId}
-                    onChange={(event) => setSelectedCouponId(event.target.value)}
-                    className="mt-2 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                <div className="mt-3 space-y-2">
+                  {/* Opção sem seguro */}
+                  <label
+                    className={`flex cursor-pointer items-center justify-between rounded-lg border p-2.5 text-xs transition ${
+                      selectedWarrantyId === null ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"
+                    }`}
                   >
-                    <option value="">Não usar cupom</option>
-                    {coupons.map((coupon) => (
-                      <option key={coupon.id} value={coupon.id}>
-                        {coupon.kind === "free_shipping" ? "Frete grátis" : `${Number(coupon.percent_off)}% no frete`} ·{" "}
-                        {coupon.code}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    O desconto sai da comissão da HS Digital, até R$ 30. O vendedor recebe o frete integral.
-                  </p>
-                </div>
-              )}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="warranty-option"
+                        checked={selectedWarrantyId === null}
+                        onChange={() => setSelectedWarrantyId(null)}
+                      />
+                      <span>Sem garantia adicional</span>
+                    </div>
+                    <span className="font-semibold text-muted-foreground">R$ 0,00</span>
+                  </label>
 
+                  {/* 3 Opções fixas de seguro */}
+                  {WARRANTY_OPTIONS.map((opt) => {
+                    const isSelected = selectedWarrantyId === opt.id;
+                    return (
+                      <label
+                        key={opt.id}
+                        className={`flex cursor-pointer items-center justify-between rounded-lg border p-2.5 text-xs transition ${
+                          isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-muted/30"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="warranty-option"
+                            checked={isSelected}
+                            onChange={() => setSelectedWarrantyId(opt.id)}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">{opt.title}</span>
+                            {opt.tag && (
+                              <span className="mt-0.5 inline-block w-fit rounded bg-success/15 px-1.5 py-0.2 text-[10px] font-bold text-success">
+                                {opt.tag}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          {opt.originalAmount > opt.amount && (
+                            <span className="mr-1.5 text-[11px] text-muted-foreground line-through">
+                              {brl(opt.originalAmount)}
+                            </span>
+                          )}
+                          <strong className="text-sm font-bold text-primary">{brl(opt.amount)}</strong>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Termos de Proteção */}
+                <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground border-t border-border/60 pt-2">
+                  Ao adicionar, você aceita as Condições Gerais da Garantia Premium HS Digital. Cobertura aplicável
+                  exclusivamente para falhas mecânicas ou defeitos de fabricação eletrônica natural. Estão estritamente
+                  excluídos danos decorrentes de quebra física, quedas acidentais, contato com água/umidade ou mau uso por
+                  parte do usuário.
+                </p>
+              </div>
+
+              {/* Botão de Pagamento */}
               <Button className="mt-4 w-full" size="lg" onClick={checkout} disabled={submitting}>
                 <CreditCard className="mr-2 h-5 w-5" />
-                {submitting ? "Criando pedido…" : "Ir para o pagamento"}
+                {submitting ? "Criando pedido…" : `Ir para o pagamento · ${brl(totalPedido)}`}
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
                 Pagamento seguro por Pix ou cartão via Mercado Pago com proteção total.
