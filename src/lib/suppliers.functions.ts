@@ -32,7 +32,7 @@ export const syncCjProducts = createServerFn({ method: "POST" })
     const catalog = await syncCjCatalog(
       supabaseAdmin,
       data.storeId,
-      Number(integration.margin_percent),
+      Number(integration.margin_percent)
     );
     return catalog;
   });
@@ -40,7 +40,7 @@ export const syncCjProducts = createServerFn({ method: "POST" })
 export const processSupplierFulfillment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z.object({ fulfillmentId: z.string().uuid(), storeId: z.string().uuid() }).parse(input),
+    z.object({ fulfillmentId: z.string().uuid(), storeId: z.string().uuid() }).parse(input)
   )
   .handler(async ({ data, context }) => {
     await ownedStore(context, data.storeId);
@@ -59,22 +59,19 @@ export const processSupplierFulfillment = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Extrai o PID tanto de links da CJ quanto de IDs diretos
 export function extractCjProductId(input: string): string | null {
   const clean = input.trim();
-  // 1. Formato UUID (ex: 000B9312-456A-4D31-94BD-B083E2A198E8)
-  const uuidMatch = clean.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+  const uuidMatch = clean.match(
+    /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/
+  );
   if (uuidMatch) return uuidMatch[0];
 
-  // 2. Parâmetro de busca ?pid=...
   const pidParam = clean.match(/[?&]pid=([a-zA-Z0-9_-]+)/);
   if (pidParam) return pidParam[1];
 
-  // 3. Slug de URL da CJ: ...-p-1563728192019283748.html
   const slugMatch = clean.match(/-p-([a-zA-Z0-9_-]+)(?:\.html)?/);
   if (slugMatch) return slugMatch[1];
 
-  // 4. Se o usuário colou direto o ID numérico ou alfanumérico
   if (/^[a-zA-Z0-9_-]{8,45}$/.test(clean)) return clean;
 
   return null;
@@ -83,14 +80,15 @@ export function extractCjProductId(input: string): string | null {
 export const importCjProductByUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z.object({
-      storeId: z.string().uuid(),
-      productUrlOrId: z.string().min(5),
-      customMarginPercent: z.number().optional(), // Permite margem avulsa ou usa a padrão da loja
-    }).parse(input)
+    z
+      .object({
+        storeId: z.string().uuid(),
+        productUrlOrId: z.string().min(5),
+        customMarginPercent: z.number().optional(),
+      })
+      .parse(input)
   )
   .handler(async ({ data, context }) => {
-    // Valida permissão do vendedor sobre a loja
     const { data: store } = await context.supabase
       .from("stores")
       .select("id")
@@ -108,22 +106,9 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { getCjAccessToken, getBrlExchangeRate, categoryFor } = await import("@/lib/suppliers.server");
 
-    // Obtém margem configurada da loja se não foi passada uma específica
-    let marginPercent = data.customMarginPercent;
-    if (marginPercent === undefined) {
-      const { data: integ } = await supabaseAdmin
-        .from("supplier_integrations")
-        .select("margin_percent")
-        .eq("store_id", data.storeId)
-        .eq("provider", "cj")
-        .maybeSingle();
-      marginPercent = Number(integ?.margin_percent ?? 30); // Padrão 30% caso não configurado
-    }
-
     const token = await getCjAccessToken(supabaseAdmin, data.storeId);
     const exchange = await getBrlExchangeRate();
 
-    // Consulta os detalhes oficiais do produto na API 2.0 da CJ Dropshipping
     const cjRes = await fetch(
       `https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${encodeURIComponent(pid)}`,
       {
@@ -147,10 +132,20 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
 
     if (costUsd <= 0) throw new Error("Preço de custo do produto inválido na CJ.");
 
-    // Cálculo automático: Custo USD -> Câmbio BRL -> Aplicação da Margem de Lucro
-    const finalPrice = Math.round(costUsd * exchange.rate * (1 + marginPercent / 100) * 100) / 100;
+    // REGRA DE OURO 35% REAL: (Custo USD + $15.19 YunExpress) * Cotação BRL / 0.65
+    const YUNEXPRESS_FREIGHT_USD = 15.19;
+    const custoTotalUsd = costUsd + YUNEXPRESS_FREIGHT_USD;
+    const custoTotalBrl = custoTotalUsd * exchange.rate;
+    const finalPrice = Math.round((custoTotalBrl / 0.65) * 100) / 100;
 
-    // Coleta todas as fotos da galeria e imagem principal
+    // Descontos dinâmicos e quebrados estilo Mercado Livre (19%, 28%, 35%, 63% OFF)
+    const discountTags = [0.19, 0.28, 0.35, 0.42, 0.53, 0.63];
+    const hashSeed = Math.abs(
+      pid.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) + Math.round(costUsd * 10)
+    );
+    const chosenDiscountRate = discountTags[hashSeed % discountTags.length];
+    const compareAtPrice = Math.round((finalPrice / (1 - chosenDiscountRate)) * 100) / 100;
+
     const images: string[] = [
       variant?.variantImage,
       product.bigImage,
@@ -160,15 +155,17 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
 
     const uniqueImages = [...new Set(images)];
 
-    // Salva ou atualiza o produto no catálogo da sua loja
     const productPayload = {
       store_id: data.storeId,
       title: title.slice(0, 160),
       supplier_title_original: title.slice(0, 160),
       supplier_locale: "en",
       description: product.description || `Produto importado da CJ Dropshipping (${title}).`,
-      description_long: product.description || `Produto importado da CJ Dropshipping com estoque sincronizado.`,
+      description_long:
+        product.description || `Produto importado da CJ Dropshipping com estoque sincronizado.`,
       price: finalPrice,
+      compare_at_price: compareAtPrice,
+      free_shipping: true,
       stock: Number(variant?.variantKey || product.warehouseInventoryNum || 50),
       category: categoryFor(`${product.categoryName || ""} ${title}`),
       image_url: uniqueImages[0] ?? null,
