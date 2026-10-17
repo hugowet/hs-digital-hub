@@ -313,25 +313,6 @@ export async function getCjAccessToken(supabaseAdmin: any, storeId: string): Pro
       ? new Date(payload.data.accessTokenExpiryDate).toISOString()
       : new Date(Date.now() + 6 * 24 * 60 * 60_000).toISOString();
 
-    // 5. Salva o token atualizado e criptografado de volta no Supabase para as consultas em tempo real
-    if (integration) {
-      await supabaseAdmin
-        .from("supplier_integrations")
-        .update({
-          access_token_encrypted: encryptedToken,
-          token_expires_at: expiresAt
-        })
-        .eq("store_id", storeId)
-        .eq("supplier", "cj");
-    }
-
-    return newToken;
-  } catch (err) {
-    console.error("Erro crítico no fluxo do plano B da CJ Dropshipping:", err);
-    throw err;
-  }
-}
-
   let encryptedAccessToken = token.accessToken;
   let encryptedRefreshToken: string | null = null;
   try {
