@@ -60,24 +60,31 @@ export function SiteHeader({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setLocalQuery(query);
-  }, [query]);
+    // Só atualiza o campo vindo de fora se o usuário não estiver focado nele digitando
+    if (!searchFocused) {
+      setLocalQuery(query);
+    }
+  }, [query, searchFocused]);
 
-  // Debounce leve para atualizar o filtro sem congelar a tela
+  // Debounce otimizado para não travar o teclado nem sobrecarregar o histórico
   useEffect(() => {
     const timer = setTimeout(() => {
       if (localQuery !== query && onQueryChange) {
         onQueryChange(localQuery);
       }
-    }, 200);
+    }, 350);
     return () => clearTimeout(timer);
   }, [localQuery, onQueryChange, query]);
 
   const matches = useMemo(() => {
-    const normalized = (localQuery ?? "").trim().toLowerCase();
-    if (!normalized || normalized.length < 2) return [];
+    const raw = (localQuery ?? "").trim().toLowerCase();
+    if (!raw || raw.length < 2) return [];
+    const words = raw.split(/\s+/).filter(Boolean);
     return suggestions
-      .filter((item) => `${item.title} ${item.category}`.toLowerCase().includes(normalized))
+      .filter((item) => {
+        const text = `${item.title} ${item.category}`.toLowerCase();
+        return words.every((w) => text.includes(w));
+      })
       .slice(0, 6);
   }, [localQuery, suggestions]);
 
