@@ -14,24 +14,57 @@ type QuoteOption = {
   providerPayload: Record<string, unknown>;
 };
 
-async function cjQuotes(postalCode: string, products: any[]): Promise<QuoteOption[]> {
-  const rate = Number(products[0]?.supplier_exchange_rate) || 5.4;
+// Faixas de desconto conforme especificado: 5, 6, 7, 12, 22, 35, 50, 66, 71%
+const DISCOUNT_TIERS = [5, 6, 7, 12, 22, 35, 50, 66, 71] as const;
 
-  // Retorna rigorosamente apenas as duas opções expressas solicitadas
+function getProductDiscountPercent(productId: string): number {
+  let hash = 0;
+  for (let i = 0; i < productId.length; i++) {
+    hash = (hash << 5) - hash + productId.charCodeAt(i);
+    hash |= 0;
+  }
+  return DISCOUNT_TIERS[Math.abs(hash) % DISCOUNT_TIERS.length];
+}
+
+async function cjQuotes(postalCode: string, products: any[]): Promise<QuoteOption[]> {
+  const rate = Number(products[0]?.supplier_exchange_rate) || 5.2238;
+
+  // Separa produtos abaixo de 87,90
+  const belowThresholdProducts = products.filter((p) => Number(p.price || 0) <= 87.90);
+  const allAboveThreshold = belowThresholdProducts.length === 0;
+
+  let expressAmount = 0;
+  let premiumAmount = 15.0;
+
+  if (allAboveThreshold) {
+    // Todos os produtos estão acima de 87,90:
+    // O cliente já pagou o lucro de 35% embutido no produto, então o frete padrão é GRÁTIS
+    expressAmount = 0;
+    premiumAmount = 15.0;
+  } else {
+    // Existem produtos abaixo de 87,90:
+    // Não houve os 35% de lucro no produto, então cobra a base de R$ 19,90 com o desconto do produto aplicado
+    // Exemplo: 12% de desconto -> 19,90 * 0,88 = R$ 17,51
+    // Exemplo: 71% de desconto -> 19,90 * 0,29 = R$ 5,77
+    const maxDiscount = Math.max(...belowThresholdProducts.map((p) => getProductDiscountPercent(p.id)));
+    expressAmount = Math.round(19.90 * (1 - maxDiscount / 100) * 100) / 100;
+    premiumAmount = Math.round((expressAmount + 15.0) * 100) / 100;
+  }
+
   return [
     {
       provider: "cj",
       serviceCode: "yunexpress-sensitive",
       serviceName: "⚡ Envio Prioritário Express",
       carrierName: "YunExpress Sensitive",
-      amount: 0,
+      amount: expressAmount,
       deliveryDaysMin: 12,
       deliveryDaysMax: 18,
       providerPayload: {
         method: "yunexpress_sensitive",
         baseFreightUsd: 15.19,
         exchangeRate: rate,
-        isIncludedInPrice: true,
+        isFree: expressAmount === 0,
       },
     },
     {
@@ -39,7 +72,7 @@ async function cjQuotes(postalCode: string, products: any[]): Promise<QuoteOptio
       serviceCode: "cjpacket-sensitive",
       serviceName: "🚀 Envio Prioritário Premium",
       carrierName: "CJPacket Sensitive",
-      amount: 15.0,
+      amount: premiumAmount,
       deliveryDaysMin: 8,
       deliveryDaysMax: 14,
       providerPayload: {
@@ -126,7 +159,7 @@ export async function quoteCartShipping(
   const { data: dbProducts, error } = await supabaseAdmin
     .from("products")
     .select(
-      "id,title,price,free_shipping,weight_kg,height_cm,width_cm,length_cm,store_id,supplier,supplier_product_id,supplier_variant_id,supplier_exchange_rate,stores(id,name,origin_postal_code)"
+      "id,title,price,free_shipping,weight_kg,height_cm,width_cm,length_cm,store_id,supplier,supplier_product_id,supplier_variant_id,supplier_exchange_rate,supplier_cost,stores(id,name,origin_postal_code)"
     )
     .in("id", ids);
   if (error) throw error;
@@ -156,17 +189,23 @@ export async function quoteCartShipping(
         rawOptions = await melhorEnvioQuotes(supabaseAdmin, store, postalCode, products);
       }
     } catch (apiErr) {
-      console.warn("Cotação externa; aplicando opções de contingência:", apiErr);
+      console.warn("Cotação externa; aplicando opções de contingência calculadas:", apiErr);
     }
 
     if (rawOptions.length === 0) {
+      const belowThreshold = products.filter((p) => Number(p.price || 0) <= 87.90);
+      let fallbackExpress = 0;
+      if (belowThreshold.length > 0) {
+        const maxDiscount = Math.max(...belowThreshold.map((p) => getProductDiscountPercent(p.id)));
+        fallbackExpress = Math.round(19.90 * (1 - maxDiscount / 100) * 100) / 100;
+      }
       rawOptions = [
         {
           provider: providerType,
           serviceCode: "yunexpress-sensitive",
           serviceName: "⚡ Envio Prioritário Express",
           carrierName: "YunExpress Sensitive",
-          amount: 0,
+          amount: fallbackExpress,
           deliveryDaysMin: 12,
           deliveryDaysMax: 18,
           providerPayload: { fallback: true },
@@ -176,7 +215,7 @@ export async function quoteCartShipping(
           serviceCode: "cjpacket-sensitive",
           serviceName: "🚀 Envio Prioritário Premium",
           carrierName: "CJPacket Sensitive",
-          amount: 15.0,
+          amount: Math.round((fallbackExpress + 15.0) * 100) / 100,
           deliveryDaysMin: 8,
           deliveryDaysMax: 14,
           providerPayload: { fallback: true },
@@ -212,7 +251,7 @@ export async function quoteCartShipping(
 
     result.push({
       storeId,
-      storeName: store.name,
+      storeName: store?.name ?? "HS Digital",
       options: (saved ?? []).map((quote: any) => ({
         id: quote.id,
         provider: quote.provider,
@@ -228,3 +267,6 @@ export async function quoteCartShipping(
 
   return result;
 }
+
+// Blindagem contra erro: garante que calculateShippingQuotes existe como alias exato
+export const calculateShippingQuotes = quoteCartShipping;
