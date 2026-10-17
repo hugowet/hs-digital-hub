@@ -13,8 +13,9 @@ export const quoteMarketplaceShipping = createServerFn({ method: "POST" })
   .inputValidator((input) => quoteSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { calculateShippingQuotes } = await import("@/lib/shipping.server");
-    return calculateShippingQuotes(supabaseAdmin, context.userId, data.postalCode, data.items);
+    const { calculateShippingQuotes, quoteCartShipping } = await import("@/lib/shipping.server");
+    const quoteFn = calculateShippingQuotes || quoteCartShipping;
+    return quoteFn(supabaseAdmin, context.userId, data.postalCode, data.items);
   });
 
 const sellerShippingSchema = z.object({
