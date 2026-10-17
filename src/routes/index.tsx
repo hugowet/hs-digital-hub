@@ -94,7 +94,8 @@ const catalogQueryOptions = (search: HomeSearch) =>
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
 
 export const Route = createFileRoute("/")({
@@ -263,8 +264,9 @@ export function Home() {
     staleTime: 5 * 60_000,
   });
 
-  const setSearch = (changes: HomeSearchUpdate) =>
+  const setSearch = (changes: HomeSearchUpdate, options?: { replace?: boolean }) =>
     navigate({
+      replace: options?.replace ?? true,
       search: (previous) => {
         const next = { ...previous, ...changes } as Record<string, unknown>;
         if (!next["q"]) delete next["q"];
