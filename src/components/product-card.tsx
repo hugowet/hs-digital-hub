@@ -8,6 +8,86 @@ import { useCart } from "@/lib/cart";
 import type { Product } from "@/lib/catalog";
 import { supabase } from "@/integrations/supabase/client";
 
+// Faixas de desconto conforme solicitado: 5, 6, 7, 12, 22, 35, 50, 66, 71%
+export const DISCOUNT_TIERS = [5, 6, 7, 12, 22, 35, 50, 66, 71] as const;
+
+export function getProductDiscountPercent(productId: string): number {
+  let hash = 0;
+  for (let i = 0; i < productId.length; i++) {
+    hash = (hash << 5) - hash + productId.charCodeAt(i);
+    hash |= 0;
+  }
+  return DISCOUNT_TIERS[Math.abs(hash) % DISCOUNT_TIERS.length];
+}
+
+export function cleanTitle(title: string): string {
+  if (!title) return "Produto Selecionado";
+
+  let clean = title
+    // Remove termos de busca e spam de dropshipping
+    .replace(/\b(wish|ebay|aliexpress|amazon|hot sale|quick sale|dropshipping|wholesale|factory price|2023|2024|2025|2026|new arrival|top quality|high quality|free shipping)\b/gi, "")
+    // Remove termos de público genéricos
+    .replace(/\b(europe and america|european and american|ladies|women's|womens|women|men's|mens|men)\b/gi, "")
+    // Tradução e mapeamento de produtos específicos do catálogo
+    .replace(/\bShort shank straight rod\b/gi, "Haste Reta Curta de Precisão")
+    .replace(/\bWireless Bluetooth Earphones?\b/gi, "Fone de Ouvido Bluetooth Sem Fio")
+    .replace(/\bCar Luminous Valve Cap\b/gi, "Tampa de Válvula Automotiva Luminosa")
+    .replace(/\bSmart Watch\b/gi, "Relógio Smartwatch Inteligente")
+    .replace(/\bAluminum Alloy Soft Tail Oil Brake Damping Mountain Bike\b/gi, "Bicicleta Mountain Bike Full Suspension")
+    .replace(/\bPortable Long-Range UHF RFID Scanner Wireless Android\b/gi, "Leitor Coletor RFID UHF Portátil")
+    .replace(/\bBolsa de Negócios Vintage Acabamento Manual\b/gi, "Pasta Executiva Vintage em Couro")
+    .replace(/\bCaixa de Som Bluetooth Sem Fio para Banho\b/gi, "Caixa de Som Bluetooth À Prova D'Água")
+    .replace(/\bColar de Prata S925 Masculino Luxo Fashion Diamante Mosan[a-z]*\b/gi, "Corrente de Prata 925 Masculina Cravejada")
+    .replace(/\bSports Car S1000RR Titanium\b/gi, "Escapamento Esportivo Titanium S1000RR")
+    .replace(/\bAlloy Outdoor Mobile Power\b/gi, "Power Bank Turbo Alumínio")
+    .replace(/\bbusiness automático Hollow\b/gi, "Relógio Automático Esqueleto Hollow")
+    .replace(/\bcarbono para corrida esportiva\b/gi, "Quadro Bicicleta Fibra de Carbono")
+    .replace(/\bBikini\b/gi, "Biquíni Ajustável")
+    .replace(/\bCardigan Han Fan Wears A Sweater Coat\b/gi, "Casaco Cardigan Feminino Tricô")
+    .replace(/\bHousehold Clothing Pajama Set\b/gi, "Conjunto de Pijama Confortável")
+    .replace(/\bT-shirt cotton tops?\b/gi, "Camiseta Básica de Algodão")
+    .replace(/\bWaist Traine.*Corset\b/gi, "Cinta Modeladora Neoprene Efeito Sauna")
+    .replace(/\bZip V-neck Shirts\b/gi, "Blusa Casual com Zíper Gola V")
+    .replace(/\bPlush Plaid Shirt Jacket\b/gi, "Camisa Xadrez Flanelada Térmica")
+    .replace(/\bSwing Collar Draped Shirts & Blouses\b/gi, "Blusa Social Acetinada Elegante")
+    .replace(/\bStreet Slim Jumpsuit Pants\b/gi, "Macacão Feminino Slim Fit")
+    // Dicionário de termos comuns de e-commerce
+    .replace(/\bWireless\b/gi, "Sem Fio")
+    .replace(/\bEarphones?|Headphones?|Headset\b/gi, "Fones de Ouvido")
+    .replace(/\bWatch\b/gi, "Relógio")
+    .replace(/\bSpeaker\b/gi, "Caixa de Som")
+    .replace(/\bPower Bank\b/gi, "Carregador Portátil")
+    .replace(/\bPhone Case\b/gi, "Capa para Celular")
+    .replace(/\bScreen Protector\b/gi, "Película de Proteção")
+    .replace(/\bCharger\b/gi, "Carregador Rápido")
+    .replace(/\bBackpack\b/gi, "Mochila Impermeável")
+    .replace(/\bSunglasses\b/gi, "Óculos de Sol")
+    .replace(/\bJewelry\b/gi, "Joia Elegante")
+    .replace(/\bNecklace\b/gi, "Colar Gargantilha")
+    .replace(/\bBracelet\b/gi, "Pulseira")
+    .replace(/\bRing\b/gi, "Anel Ajustável")
+    .replace(/\bDress\b/gi, "Vestido Elegante")
+    .replace(/\bShirt\b/gi, "Camisa Casual")
+    .replace(/\bPants\b/gi, "Calça Conforto")
+    .replace(/\bShoes\b/gi, "Tênis Esportivo Confort")
+    .replace(/\bJackets?\b/gi, "Jaqueta Corta-Vento")
+    .replace(/\bHoodies?\b/gi, "Moletom com Capuz")
+    .replace(/\bLED Light\b/gi, "Lâmpada LED Inteligente")
+    .replace(/\bDrill\b/gi, "Parafusadeira Furadeira")
+    .replace(/\bTool Set\b/gi, "Kit de Ferramentas")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  // Limita o título para no máximo 60 caracteres no padrão Mercado Livre
+  if (clean.length > 60) {
+    const cut = clean.slice(0, 60);
+    const lastSpace = cut.lastIndexOf(" ");
+    clean = (lastSpace > 30 ? cut.slice(0, lastSpace) : cut) + "...";
+  }
+
+  return clean.replace(/(^\w|\s\w)/g, (m) => m.toUpperCase());
+}
+
 function Stars({ rating }: { rating: number }) {
   return (
     <span className="flex items-center gap-0.5">
@@ -23,7 +103,6 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-// Formatação do parcelamento estilo marketplace
 function getInstallmentDetails(price: number): { text: string } {
   if (price < 15) {
     return { text: "À vista no Pix ou Cartão" };
@@ -35,21 +114,12 @@ function getInstallmentDetails(price: number): { text: string } {
   };
 }
 
-// Separa inteiros e centavos para renderizar centavos sobrescritos como no Mercado Livre
 function formatSplitPrice(price: number) {
   const parts = Number(price || 0).toFixed(2).split(".");
   return {
     reais: Number(parts[0]).toLocaleString("pt-BR"),
     centavos: parts[1] || "00",
   };
-}
-
-function cleanTitle(title: string): string {
-  return title
-    .replace(/\bShort shank straight rod\b/gi, "Haste Reta Curta de Precisão")
-    .replace(/\bWireless Bluetooth Earphones\b/gi, "Fone de Ouvido Bluetooth Sem Fio")
-    .replace(/\bCar Luminous Valve Cap\b/gi, "Tampa de Válvula Automotiva Luminosa")
-    .replace(/\bSmart Watch\b/gi, "Relógio Smartwatch Inteligente");
 }
 
 function getConsistentSalesCount(id: string): number {
@@ -77,22 +147,21 @@ export function ProductCard({
 
   const price = Number(product.price || 0);
 
-  // Âncora psicológica de preço (se o banco não trouxer compare_at_price, simula 32% OFF)
+  // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
+  const discountPercent = getProductDiscountPercent(product.id);
   const rawOriginal = product.originalPrice ?? product.compare_at_price;
   const originalPrice =
     rawOriginal && Number(rawOriginal) > price
       ? Number(rawOriginal)
-      : Math.round((price / 0.68) * 100) / 100;
-
-  const discountPercent = Math.max(
-    5,
-    Math.round(((originalPrice - price) / originalPrice) * 100)
-  );
+      : Math.round((price / (1 - discountPercent / 100)) * 100) / 100;
 
   const priceParts = formatSplitPrice(price);
   const installment = getInstallmentDetails(price);
   const soldCount =
     product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
+
+  // Regra de Frete: acima de 87,90 tem frete grátis, abaixo de 87,90 frete a partir de R$ 5,77
+  const isFreeShipping = price > 87.90 || isDigital;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
@@ -130,7 +199,7 @@ export function ProductCard({
       </div>
 
       <div className="flex flex-1 flex-col p-3.5">
-        {/* Título */}
+        {/* Título Traduzido e Curto */}
         <h3 className="line-clamp-2 text-xs md:text-sm font-normal text-foreground leading-snug">
           <Link
             to="/produto/$productId"
@@ -173,15 +242,22 @@ export function ProductCard({
             {installment.text}
           </p>
 
-          {/* Linha 4: Frete Grátis com complemento */}
+          {/* Linha 4: Frete Grátis ou com Desconto */}
           {!isDigital && (
             <div className="mt-1 flex items-baseline gap-1 text-xs">
-              <span className="font-semibold text-[#00a650]">
-                Frete grátis
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                por ser sua primeira compra
-              </span>
+              {isFreeShipping ? (
+                <>
+                  <span className="font-semibold text-[#00a650]">Frete grátis</span>
+                  <span className="rounded bg-[#00a650]/15 px-1 py-0.2 text-[10px] font-extrabold text-[#00a650]">
+                    FULL
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-[#3483fa]">Frete com desconto</span>
+                  <span className="text-[11px] text-muted-foreground">a partir de R$ 5,77</span>
+                </>
+              )}
             </div>
           )}
 
@@ -212,7 +288,7 @@ export function ProductCard({
                   price: price,
                   imageUrl: product.image_url ?? undefined,
                   maxStock: product.stock ?? 99,
-                  freeShipping: true,
+                  freeShipping: isFreeShipping,
                   storeId: product.store_id,
                   storeName: product.stores?.name ?? "HS Digital",
                   productType: (product.product_type as "physical" | "digital") ?? "physical",
