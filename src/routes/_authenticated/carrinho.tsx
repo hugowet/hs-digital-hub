@@ -52,7 +52,6 @@ export const Route = createFileRoute("/_authenticated/carrinho")({
   component: CartPage,
 });
 
-// Calcula prazo com formato: "Chegará entre os dias X e Y de Mês"
 function getDeliveryEstimate(startDate: Date = new Date(), minDays: number = 12, maxDays: number = 18) {
   function addBusinessDays(date: Date, days: number): Date {
     const cur = new Date(date);
@@ -133,57 +132,51 @@ function CartPage() {
     }>
   >([]);
   const [selectedQuotes, setSelectedQuotes] = useState<Record<string, string>>({});
-
-  // Cupons ganhos nos jogos
-  const [coupons, setCoupons] = useState<
-    Array<{ id: string; code: string; percent_off: number; expires_at: string; status: string }>
-  >([]);
-  const [applyGameCoupon, setApplyGameCoupon] = useState(true);
-
-  // Garantia Premium
-  const [selectedWarrantyId, setSelectedWarrantyId] = useState<string | null>("2_years");
-
-  // Primeira Compra
+  const [coupons, setCoupons] = useState<Awaited<ReturnType<typeof getMyCoupons>>>([]);
   const [firstPurchaseEligible, setFirstPurchaseEligible] = useState(false);
 
-  // Prazos dinâmicos baseados na data de hoje
+  // Integração com Jogos: Cupom opcional
+  const [applyGameCoupon, setApplyGameCoupon] = useState(false);
+  const [selectedWarrantyId, setSelectedWarrantyId] = useState<string | null>(null);
+
+  const FRETE_REFERENCIA_PLATAFORMA = 20.0;
+
+  // Previsões de entrega dinâmicas pulando fins de semana
   const expressEstimate = useMemo(() => getDeliveryEstimate(new Date(), 12, 18), []);
   const premiumEstimate = useMemo(() => getDeliveryEstimate(new Date(), 8, 14), []);
 
-  useEffect(() => {
-    loadCoupons()
-      .then((res) => {
-        if (Array.isArray(res)) setCoupons(res);
-      })
-      .catch(() => {});
-
-    loadFirstPurchaseEligibility()
-      .then((res) => {
-        if (res && typeof res.eligible === "boolean") {
-          setFirstPurchaseEligible(res.eligible);
-        }
-      })
-      .catch(() => {});
-  }, [loadCoupons, loadFirstPurchaseEligibility]);
-
+  // Melhor cupom ganho nos jogos (ex: 5% a 20%)
   const bestGameCoupon = useMemo(() => {
     return coupons.find(
       (c) => c.status === "active" && Number(c.percent_off) > 0 && new Date(c.expires_at).getTime() > Date.now()
     );
   }, [coupons]);
 
-  // Calcula o valor total do frete baseado nas opções selecionadas
-  const valorFreteCobrado = useMemo(() => {
-    let sum = 0;
-    for (const group of quotes) {
-      const selectedId = selectedQuotes[group.storeId] || group.options[0]?.id;
-      const match = group.options.find((o) => o.id === selectedId);
-      if (match) {
-        sum += Number(match.amount || 0);
-      }
-    }
-    return Math.round(sum * 100) / 100;
-  }, [quotes, selectedQuotes]);
+  const gameCouponDiscountPercent = applyGameCoupon && bestGameCoupon ? Number(bestGameCoupon.percent_off) : 0;
+
+  // Lógica de Desconto de Frete (Primeira Compra x Segunda em Diante)
+  let taxaFreteBase = 0;
+  let descontoPercentualFrete = 0;
+
+  if (firstPurchaseEligible) {
+    descontoPercentualFrete = 100;
+    taxaFreteBase = 0;
+  } else {
+    // 50% base da 2ª compra em diante + % do cupom conquistado nos jogos
+    descontoPercentualFrete = Math.min(100, 50 + gameCouponDiscountPercent);
+    taxaFreteBase = Math.round(FRETE_REFERENCIA_PLATAFORMA * (1 - descontoPercentualFrete / 100) * 100) / 100;
+  }
+
+  // Verifica se o usuário escolheu o Envio Prioritário Premium (+ R$ 15,00)
+  const isPremiumShippingSelected = useMemo(() => {
+    return Object.values(selectedQuotes).some((quoteId) => {
+      const match = quotes.flatMap((g) => g.options).find((o) => o.id === quoteId);
+      return match?.serviceName?.includes("Premium");
+    });
+  }, [selectedQuotes, quotes]);
+
+  const adicionalFrete = isPremiumShippingSelected ? 15.0 : 0;
+  const valorFreteCobrado = taxaFreteBase + adicionalFrete;
 
   // Garantia Premium
   const selectedWarranty = WARRANTY_OPTIONS.find((w) => w.id === selectedWarrantyId) ?? null;
@@ -191,7 +184,7 @@ function CartPage() {
 
   // Total travado
   const subtotalProdutos = subtotal;
-  const totalPedido = Math.round((subtotalProdutos + valorFreteCobrado + valorSeguro) * 100) / 100;
+  const totalPedido = subtotalProdutos + valorFreteCobrado + valorSeguro;
 
   useEffect(() => {
     if (items.length > 0) void trackCheckoutAbandonment(items);
@@ -215,454 +208,524 @@ function CartPage() {
   }, []);
 
   useEffect(() => {
-    if (postalCode.replace(/\D/g, "").length === 8 && items.length > 0) {
-      void calculateShipping();
-    }
-  }, [items]);
+    loadCoupons()
+      .then((items) =>
+        setCoupons(
+          items.filter((coupon) => coupon.status === "active" && new Date(coupon.expires_at).getTime() > Date.now())
+        )
+      )
+      .catch(() => undefined);
+  }, [loadCoupons]);
 
-  async function calculateShipping(customCep?: string) {
-    const rawCep = (customCep ?? postalCode).replace(/\D/g, "");
-    if (rawCep.length !== 8) {
-      toast.error("Informe um CEP válido com 8 dígitos.");
-      return;
-    }
-    const physicalItems = items.filter((i) => i.productType !== "digital");
-    if (physicalItems.length === 0) return;
+  useEffect(() => {
+    loadFirstPurchaseEligibility()
+      .then(({ eligible }) => setFirstPurchaseEligible(eligible))
+      .catch(() => setFirstPurchaseEligible(false));
+  }, [loadFirstPurchaseEligibility]);
 
+  const cartSignature = items
+    .map((item) => `${item.productId}:${item.quantity}`)
+    .sort()
+    .join("|");
+
+  const calculateShipping = async (targetZip?: string): Promise<Record<string, string> | null> => {
+    const normalized = (targetZip ?? postalCode).replace(/\D/g, "");
+    if (normalized.length !== 8) {
+      if (!targetZip) toast.error("Informe um CEP válido com 8 números.");
+      return null;
+    }
     setQuoting(true);
     try {
-      const quotesRes = await quoteShipping({
+      const validItems = items
+        .map((item: any) => ({
+          productId: item.productId ?? item.product_id ?? item.id,
+          quantity: Number(item.quantity) || 1,
+        }))
+        .filter((item) => typeof item.productId === "string" && item.productId.length > 0);
+
+      const result = await quoteShipping({
         data: {
-          postalCode: rawCep,
-          items: physicalItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+          postalCode: normalized,
+          items: validItems,
         },
       });
 
-      setQuotes(quotesRes as any);
-
-      const defaults: Record<string, string> = {};
-      for (const group of quotesRes as any) {
-        if (group.options[0]) {
-          defaults[group.storeId] = group.options[0].id;
-        }
-      }
-      setSelectedQuotes((prev) => ({ ...defaults, ...prev }));
-      toast.success("Opções de envio calculadas com sucesso!");
-    } catch (err: any) {
-      toast.error(err?.message || "Não foi possível calcular o frete para este CEP.");
+      setQuotes(result);
+      const chosen = Object.fromEntries(
+        result.map((group) => {
+          // Marca por padrão a primeira opção (⚡ Envio Prioritário Express)
+          const defaultOpt = group.options[0];
+          return [group.storeId, defaultOpt?.id ?? ""];
+        })
+      );
+      setSelectedQuotes(chosen);
+      return chosen;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível calcular o frete.");
+      return null;
     } finally {
       setQuoting(false);
     }
-  }
+  };
 
-  async function handleCheckout() {
-    if (items.length === 0) return;
-    const hasPhysical = items.some((i) => i.productType !== "digital");
+  useEffect(() => {
+    const normalized = postalCode.replace(/\D/g, "");
+    if (normalized.length === 8 && items.length > 0) {
+      void calculateShipping(normalized);
+    }
+  }, [postalCode, cartSignature]);
 
-    if (hasPhysical) {
-      if (!name || !phone || !address || !city || !state || !postalCode) {
-        toast.error("Preencha todos os campos do endereço de entrega.");
-        return;
-      }
-      if (quotes.length === 0) {
-        toast.error("Calcule o frete informando seu CEP antes de continuar.");
+  const checkout = async () => {
+    const physicalStoreIds = groups
+      .filter((group) => group.items.some((item) => item.productType !== "digital"))
+      .map((group) => group.storeId);
+
+    const cleanZip = postalCode.replace(/\D/g, "");
+    if (!name.trim() || !address.trim() || !city.trim() || state.trim().length !== 2 || cleanZip.length !== 8) {
+      toast.error("Preencha nome, endereço, cidade, UF e CEP para entrega.");
+      return;
+    }
+
+    let quotesToUse = { ...selectedQuotes };
+
+    if (physicalStoreIds.some((storeId) => !quotesToUse[storeId])) {
+      const freshQuotes = await calculateShipping(cleanZip);
+      if (freshQuotes) {
+        quotesToUse = freshQuotes;
+      } else {
+        toast.error("Aguarde o cálculo do frete para prosseguir.");
         return;
       }
     }
 
     setSubmitting(true);
     try {
-      const selectedQuotesList = Object.entries(selectedQuotes).map(([storeId, quoteId]) => ({
-        storeId,
-        quoteId,
-      }));
-
       const res = await createCheckout({
         data: {
-          items: items.map((i) => ({
-            productId: i.productId,
-            quantity: i.quantity,
-            warrantyId: selectedWarrantyId ?? undefined,
-          })),
-          shippingQuotes: selectedQuotesList,
-          address: hasPhysical
+          items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+          shippingAddress: {
+            name: name.trim(),
+            phone: phone.trim(),
+            address: address.trim(),
+            city: city.trim(),
+            state: state.trim().toUpperCase(),
+            postalCode: cleanZip,
+            note: note.trim(),
+          },
+          shippingQuoteIds: quotesToUse,
+          couponId: applyGameCoupon && bestGameCoupon ? bestGameCoupon.id : undefined,
+          warranty: selectedWarranty
             ? {
-                recipientName: name,
-                phone,
-                streetAddress: address,
-                city,
-                state,
-                postalCode: postalCode.replace(/\D/g, ""),
-                note: note || undefined,
+                id: selectedWarranty.id,
+                title: selectedWarranty.title,
+                amount: selectedWarranty.amount,
               }
             : undefined,
-          appliedCouponCode: applyGameCoupon && bestGameCoupon ? bestGameCoupon.code : undefined,
         },
       });
 
-      if (res?.paymentUrl) {
-        window.location.href = res.paymentUrl;
-      } else {
-        toast.error("Não foi possível gerar o link de pagamento. Tente novamente.");
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Erro ao processar checkout.");
+      navigate({ to: "/pedido/$orderId", params: { orderId: res.orderId } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao iniciar pagamento.");
     } finally {
       setSubmitting(false);
     }
-  }
-
-  if (items.length === 0) {
-    return (
-      <div className="flex min-h-screen flex-col bg-background">
-        <SiteHeader />
-        <main className="container mx-auto flex flex-1 flex-col items-center justify-center p-6 text-center">
-          <Truck className="h-16 w-16 text-muted-foreground/30 mb-4" />
-          <h1 className="text-2xl font-bold">Seu carrinho está vazio</h1>
-          <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-            Explore milhares de produtos importados e nacionais com envio prioritário.
-          </p>
-          <Button asChild className="mt-6">
-            <Link to="/">Continuar Comprando</Link>
-          </Button>
-        </main>
-        <SiteFooter />
-      </div>
-    );
-  }
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="min-h-screen bg-background">
       <SiteHeader />
+      <main className="mx-auto w-full max-w-6xl px-4 py-8">
+        <h1 className="text-2xl font-bold tracking-tight">Carrinho de Compras</h1>
 
-      <main className="container mx-auto flex-1 p-4 md:p-8 max-w-6xl">
-        <h1 className="text-2xl font-black tracking-tight mb-6 flex items-center gap-2">
-          <span>Seu Carrinho</span>
-          <span className="text-sm font-normal text-muted-foreground">({items.length} itens)</span>
-        </h1>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8">
-          {/* Lista de Produtos agrupados por loja */}
-          <div className="space-y-6">
-            {groups.map((group) => (
-              <section key={group.storeId} className="rounded-xl border border-border bg-card p-4 shadow-2xs">
-                <div className="flex items-center gap-2 border-b pb-3 mb-3 text-xs font-semibold text-muted-foreground">
-                  <Store className="h-4 w-4" />
-                  <span>Vendido e entregue por {group.storeName}</span>
-                </div>
-
-                <div className="divide-y divide-border">
-                  {group.items.map((item) => (
-                    <div key={item.productId} className="py-3 flex gap-3 items-center">
-                      {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.title}
-                          className="h-16 w-16 object-contain rounded-md border bg-muted/20 p-1 shrink-0"
-                        />
-                      ) : (
-                        <div className="h-16 w-16 rounded-md border bg-muted/20 flex items-center justify-center shrink-0">
-                          <Truck className="h-6 w-6 text-muted-foreground/40" />
-                        </div>
-                      )}
-
-                      <div className="flex-1 min-w-0">
-                        <Link
-                          to="/produto/$productId"
-                          params={{ productId: item.productId }}
-                          className="text-xs md:text-sm font-medium line-clamp-2 hover:text-primary leading-snug"
-                        >
-                          {item.title}
-                        </Link>
-                        <div className="mt-1 flex items-baseline gap-2">
-                          <span className="text-sm md:text-base font-bold">{brl(item.price)}</span>
-                          <span className="text-[11px] text-muted-foreground">cada</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-7 w-7"
-                          onClick={() => setQuantity(item.productId, item.quantity - 1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="text-xs font-semibold w-5 text-center">{item.quantity}</span>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-7 w-7"
-                          onClick={() => setQuantity(item.productId, item.quantity + 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => remove(item.productId)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ))}
+        {items.length === 0 ? (
+          <div className="mt-8 rounded-xl border border-dashed border-border p-12 text-center">
+            <p className="text-muted-foreground">Seu carrinho está vazio.</p>
+            <Button asChild className="mt-4">
+              <Link to="/">Continuar Comprando</Link>
+            </Button>
           </div>
+        ) : (
+          <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_380px]">
+            {/* Lista de Itens por Loja */}
+            <div className="space-y-6">
+              {groups.map((group) => (
+                <section key={group.storeId} className="rounded-xl border border-border bg-card p-4 shadow-2xs">
+                  <header className="flex items-center gap-2 border-b border-border pb-3 text-sm font-semibold">
+                    <Store className="h-4 w-4 text-primary" />
+                    <span>{group.storeName}</span>
+                  </header>
 
-          {/* Painel Lateral: Endereço, Frete, Garantia e Resumo */}
-          <aside className="space-y-4">
-            <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
-              <h3 className="text-sm font-bold">Endereço de Entrega</h3>
-              <div>
-                <Label htmlFor="postalCode" className="text-xs">
-                  CEP *
-                </Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    id="postalCode"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
-                    placeholder="00000-000"
-                    maxLength={9}
-                    className="text-xs"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => calculateShipping()}
-                    disabled={quoting}
-                  >
-                    {quoting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Calcular"}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Input
-                  placeholder="Nome completo *"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="text-xs"
-                />
-                <Input
-                  placeholder="Telefone (com DDD) *"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="text-xs"
-                />
-                <Input
-                  placeholder="Endereço e número *"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="text-xs"
-                />
-                <div className="grid grid-cols-[1fr_64px] gap-2">
-                  <Input
-                    placeholder="Cidade *"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="text-xs"
-                  />
-                  <Input
-                    placeholder="UF *"
-                    value={state}
-                    maxLength={2}
-                    onChange={(e) => setState(e.target.value.toUpperCase())}
-                    className="text-xs uppercase"
-                  />
-                </div>
-              </div>
+                  <div className="divide-y divide-border">
+                    {group.items.map((item) => (
+                      <div key={item.productId} className="flex items-center gap-4 py-3">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.title}
+                            className="h-16 w-16 rounded-md object-contain p-1 border"
+                          />
+                        ) : (
+                          <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center">
+                            <Store className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium leading-snug line-clamp-2">{item.title}</h4>
+                          <p className="text-sm font-bold text-foreground mt-1">{brl(item.price)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-7 w-7"
+                            onClick={() => setQuantity(item.productId, item.quantity - 1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="text-xs font-semibold w-5 text-center">{item.quantity}</span>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-7 w-7"
+                            onClick={() => setQuantity(item.productId, item.quantity + 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => remove(item.productId)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))}
             </div>
 
-            {/* SELEÇÃO DAS OPÇÕES DE ENVIO */}
-            {quotes.length > 0 && (
+            {/* Painel Lateral: Endereço, Frete, Garantia e Resumo */}
+            <aside className="space-y-4">
               <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-bold">Modalidade de Envio</h3>
+                <h3 className="text-sm font-bold">Endereço de Entrega</h3>
+                <div>
+                  <Label htmlFor="postalCode" className="text-xs">
+                    CEP *
+                  </Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      id="postalCode"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      placeholder="00000-000"
+                      maxLength={9}
+                      className="text-xs"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => calculateShipping()}
+                      disabled={quoting}
+                    >
+                      {quoting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Calcular"}
+                    </Button>
+                  </div>
                 </div>
 
-                {quotes.map((group) => {
-                  const currentSelectedId = selectedQuotes[group.storeId] || group.options[0]?.id;
-                  const expressOption = group.options[0];
-                  const premiumOption = group.options[1];
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Nome completo *"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="text-xs"
+                  />
+                  <Input
+                    placeholder="Telefone (com DDD)"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="text-xs"
+                  />
+                  <Input
+                    placeholder="Endereço e número *"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="text-xs"
+                  />
+                  <div className="grid grid-cols-[1fr_64px] gap-2">
+                    <Input
+                      placeholder="Cidade *"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="text-xs"
+                    />
+                    <Input
+                      placeholder="UF *"
+                      value={state}
+                      maxLength={2}
+                      onChange={(e) => setState(e.target.value.toUpperCase())}
+                      className="text-xs uppercase"
+                    />
+                  </div>
+                </div>
+              </div>
 
-                  return (
-                    <div key={group.storeId} className="space-y-2">
-                      {/* Opção 1: Envio Prioritário Express */}
-                      {expressOption && (
-                        <label
-                          className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 text-xs transition ${
-                            currentSelectedId === expressOption.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:bg-muted/30"
-                          }`}
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <input
-                              type="radio"
-                              name={`shipping-${group.storeId}`}
-                              checked={currentSelectedId === expressOption.id}
-                              onChange={() =>
-                                setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: expressOption.id }))
-                              }
-                              className="mt-0.5"
-                            />
-                            <div>
-                              <strong className="block text-foreground font-semibold">
-                                {expressOption.serviceName}
-                              </strong>
-                              <span className="text-[11px] text-muted-foreground block mt-0.5">
-                                {expressEstimate.text}
-                              </span>
-                            </div>
-                          </div>
-                          <strong className={`text-xs font-bold uppercase tracking-wide ${expressOption.amount === 0 ? "text-[#00a650]" : "text-foreground"}`}>
-                            {expressOption.amount === 0 ? "Grátis" : brl(expressOption.amount)}
-                          </strong>
-                        </label>
-                      )}
+              {/* SELEÇÃO DAS 2 OPÇÕES DE LOGÍSTICA EXCLUSIVAS */}
+              {quotes.length > 0 && (
+                <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-bold">Modalidade de Envio</h3>
+                  </div>
 
-                      {/* Opção 2: Envio Prioritário Premium */}
-                      {premiumOption && (
-                        <label
-                          className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 text-xs transition ${
-                            currentSelectedId === premiumOption.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:bg-muted/30"
-                          }`}
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <input
-                              type="radio"
-                              name={`shipping-${group.storeId}`}
-                              checked={currentSelectedId === premiumOption.id}
-                              onChange={() =>
-                                setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: premiumOption.id }))
-                              }
-                              className="mt-0.5"
-                            />
-                            <div>
-                              <strong className="block text-foreground font-semibold">
-                                {premiumOption.serviceName}
-                              </strong>
-                              <span className="text-[11px] text-muted-foreground block mt-0.5">
-                                {premiumEstimate.text}
-                              </span>
+                  {quotes.map((group) => {
+                    const currentSelectedId = selectedQuotes[group.storeId] || group.options[0]?.id;
+                    const expressOption = group.options[0];
+                    const premiumOption = group.options[1];
+
+                    return (
+                      <div key={group.storeId} className="space-y-2">
+                        {/* Opção 1: Envio Prioritário Express */}
+                        {expressOption && (
+                          <label
+                            className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 text-xs transition ${
+                              currentSelectedId === expressOption.id
+                                ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                : "border-border hover:bg-muted/30"
+                            }`}
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <input
+                                type="radio"
+                                name={`shipping-${group.storeId}`}
+                                checked={currentSelectedId === expressOption.id}
+                                onChange={() =>
+                                  setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: expressOption.id }))
+                                }
+                                className="mt-0.5"
+                              />
+                              <div>
+                                <strong className="block text-foreground font-semibold">
+                                  ⚡ Envio Prioritário Express
+                                </strong>
+                                <span className="text-[11px] text-muted-foreground block mt-0.5">
+                                  YunExpress Sensitive · {expressEstimate.text}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                          <strong className="text-xs font-bold text-primary">
-                            {brl(premiumOption.amount)}
-                          </strong>
-                        </label>
-                      )}
+                            <strong className="text-xs font-bold uppercase tracking-wide text-success">
+                              {firstPurchaseEligible ? "Grátis" : "Envio Incluso"}
+                            </strong>
+                          </label>
+                        )}
+
+                        {/* Opção 2: Envio Prioritário Premium */}
+                        {premiumOption && (
+                          <label
+                            className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 text-xs transition ${
+                              currentSelectedId === premiumOption.id
+                                ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                : "border-border hover:bg-muted/30"
+                            }`}
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <input
+                                type="radio"
+                                name={`shipping-${group.storeId}`}
+                                checked={currentSelectedId === premiumOption.id}
+                                onChange={() =>
+                                  setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: premiumOption.id }))
+                                }
+                                className="mt-0.5"
+                              />
+                              <div>
+                                <strong className="block text-foreground font-semibold">
+                                  🚀 Envio Prioritário Premium
+                                </strong>
+                                <span className="text-[11px] text-muted-foreground block mt-0.5">
+                                  CJPacket Sensitive · {premiumEstimate.text}
+                                </span>
+                              </div>
+                            </div>
+                            <strong className="text-xs font-bold text-primary">Adicional de R$ 15,00</strong>
+                          </label>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* INTEGRAÇÃO COM A ABA DE JOGOS: CUPOM ACUMULATIVO */}
+              {!firstPurchaseEligible && bestGameCoupon && (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-50/40 p-3.5 shadow-2xs">
+                  <div className="flex items-start gap-2.5">
+                    <Checkbox
+                      id="game-coupon"
+                      checked={applyGameCoupon}
+                      onCheckedChange={(checked) => setApplyGameCoupon(Boolean(checked))}
+                    />
+                    <div className="grid gap-0.5 leading-none">
+                      <label
+                        htmlFor="game-coupon"
+                        className="text-xs font-bold text-emerald-950 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Gamepad2 className="h-3.5 w-3.5 text-emerald-600" />
+                        Usar cupom dos jogos (+{bestGameCoupon.percent_off}% OFF)
+                      </label>
+                      <p className="text-[11px] text-emerald-700 mt-1">
+                        Acumule seus pontos da Roleta/Raspadinha sobre os 50% de desconto base da plataforma!
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  </div>
+                </div>
+              )}
 
-            {/* SELEÇÃO DE GARANTIA ESTENDIDA */}
-            <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-bold">Garantia Blindada HS</h3>
-              </div>
+              {/* SEÇÃO DE GARANTIA PREMIUM HS DIGITAL */}
+              <div className="rounded-xl border border-primary/20 bg-card p-4 shadow-2xs space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">Adicione um seguro</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Garantia Estendida Oficial HS Digital.
+                </p>
 
-              <div className="space-y-1.5">
-                {WARRANTY_OPTIONS.map((warranty) => (
+                <div className="space-y-2 pt-1">
                   <label
-                    key={warranty.id}
                     className={`flex cursor-pointer items-center justify-between rounded-lg border p-2.5 text-xs transition ${
-                      selectedWarrantyId === warranty.id
-                        ? "border-primary bg-primary/5 ring-1 ring-primary"
-                        : "border-border hover:bg-muted/30"
+                      selectedWarrantyId === null ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <input
                         type="radio"
-                        name="warranty-selection"
-                        checked={selectedWarrantyId === warranty.id}
-                        onChange={() => setSelectedWarrantyId(warranty.id)}
+                        name="warranty-option"
+                        checked={selectedWarrantyId === null}
+                        onChange={() => setSelectedWarrantyId(null)}
                       />
-                      <span>{warranty.title}</span>
-                      {warranty.tag && (
-                        <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600">
-                          {warranty.tag}
-                        </span>
-                      )}
+                      <span>Sem garantia adicional</span>
                     </div>
-                    <strong>+{brl(warranty.amount)}</strong>
+                    <span className="font-semibold text-muted-foreground">R$ 0,00</span>
                   </label>
-                ))}
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedWarrantyId(null)}
-                  className="text-[11px] text-muted-foreground hover:underline block pt-1"
-                >
-                  Continuar apenas com a garantia padrão de 90 dias
-                </button>
+                  {WARRANTY_OPTIONS.map((opt) => {
+                    const isSelected = selectedWarrantyId === opt.id;
+                    return (
+                      <label
+                        key={opt.id}
+                        className={`flex cursor-pointer items-center justify-between rounded-lg border p-2.5 text-xs transition ${
+                          isSelected
+                            ? "border-primary bg-primary/5 ring-1 ring-primary"
+                            : "border-border hover:bg-muted/30"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="warranty-option"
+                            checked={isSelected}
+                            onChange={() => setSelectedWarrantyId(opt.id)}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">{opt.title}</span>
+                            {opt.tag && (
+                              <span className="mt-0.5 inline-block w-fit rounded bg-emerald-100 px-1.5 py-0.2 text-[10px] font-bold text-emerald-700">
+                                {opt.tag}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          {opt.originalAmount > opt.amount && (
+                            <span className="mr-1.5 text-[11px] text-muted-foreground line-through">
+                              {brl(opt.originalAmount)}
+                            </span>
+                          )}
+                          <strong className="text-sm font-bold text-primary">{brl(opt.amount)}</strong>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <p className="text-[10px] leading-relaxed text-muted-foreground border-t border-border pt-2">
+                  Ao adicionar, você aceita as Condições Gerais da Garantia Premium HS Digital. Cobertura aplicável
+                  exclusivamente para falhas mecânicas ou defeitos de fabricação eletrônica natural. Estão
+                  estritamente excluídos danos decorrentes de quebra física, quedas acidentais, contato com
+                  água/umidade ou mau uso por parte do usuário.
+                </p>
               </div>
-            </div>
 
-            {/* RESUMO DO PEDIDO */}
-            <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
-              <h3 className="text-sm font-bold border-b pb-2">Resumo do Pedido</h3>
+              {/* RESUMO DE VALORES E TRAVA DE PREÇO */}
+              <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
+                <h3 className="text-sm font-bold border-b border-border pb-2">Resumo do Pedido</h3>
 
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Subtotal produtos</span>
-                  <span>{brl(subtotalProdutos)}</span>
-                </div>
-
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Frete</span>
-                  <span className={valorFreteCobrado === 0 ? "font-bold text-[#00a650]" : ""}>
-                    {quotes.length === 0 ? "A calcular" : valorFreteCobrado === 0 ? "Grátis" : brl(valorFreteCobrado)}
-                  </span>
-                </div>
-
-                {valorSeguro > 0 && (
+                <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Garantia estendida</span>
-                    <span>{brl(valorSeguro)}</span>
+                    <span>Subtotal dos produtos</span>
+                    <span className="text-foreground font-medium">{brl(subtotalProdutos)}</span>
                   </div>
-                )}
 
-                <div className="border-t pt-2 flex justify-between text-sm font-bold text-foreground">
-                  <span>Total</span>
-                  <span className="text-lg text-primary">{brl(totalPedido)}</span>
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Frete de referência</span>
+                    <span className="line-through">{brl(FRETE_REFERENCIA_PLATAFORMA)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-emerald-600 font-medium">
+                      {firstPurchaseEligible
+                        ? "Desconto 1ª compra (100% OFF)"
+                        : `Desconto de frete (${descontoPercentualFrete}% OFF)`}
+                    </span>
+                    <span className="text-emerald-600 font-semibold">
+                      - {brl((FRETE_REFERENCIA_PLATAFORMA * descontoPercentualFrete) / 100)}
+                    </span>
+                  </div>
+
+                  {taxaFreteBase > 0 && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Frete base cobrado</span>
+                      <span>{brl(taxaFreteBase)}</span>
+                    </div>
+                  )}
+
+                  {adicionalFrete > 0 && (
+                    <div className="flex justify-between text-primary font-medium">
+                      <span>Adicional Envio Premium</span>
+                      <span>+ {brl(adicionalFrete)}</span>
+                    </div>
+                  )}
+
+                  {valorSeguro > 0 && (
+                    <div className="flex justify-between text-primary font-medium">
+                      <span>Garantia Premium</span>
+                      <span>+ {brl(valorSeguro)}</span>
+                    </div>
+                  )}
                 </div>
+
+                <div className="border-t border-border pt-3 flex items-baseline justify-between">
+                  <span className="text-sm font-bold">Total a pagar:</span>
+                  <span className="text-xl font-extrabold text-foreground">{brl(totalPedido)}</span>
+                </div>
+
+                <Button className="w-full font-bold" size="lg" onClick={checkout} disabled={submitting}>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  {submitting ? "Criando pedido…" : `Concluir Pagamento · ${brl(totalPedido)}`}
+                </Button>
+                <p className="text-center text-[11px] text-muted-foreground">
+                  🔒 Checkout seguro via Mercado Pago com proteção total da transação.
+                </p>
               </div>
-
-              <Button
-                size="lg"
-                className="w-full font-bold mt-4 shadow-md"
-                onClick={handleCheckout}
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finalizando...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="mr-2 h-4 w-4" /> Concluir Pedido
-                  </>
-                )}
-              </Button>
-            </div>
-          </aside>
-        </div>
+            </aside>
+          </div>
+        )}
       </main>
-
       <SiteFooter />
     </div>
   );
