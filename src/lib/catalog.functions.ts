@@ -60,7 +60,7 @@ async function signProductBatch(products: Product[]) {
 
 // MANTIDO: Projeção original com os nomes exatos esperados pelo seu front-end
 const projection =
-  "id,title,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier";
+  "id,title,supplier_title_original,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier";
 
 const catalogInput = z.object({
   page: z.number().int().min(0).max(1_000).default(0),
@@ -95,7 +95,91 @@ async function queryCatalog(input: CatalogInput) {
   // BLINDADO: Puxa da tabela física 'products' que criamos e populamos com seus 1.000 produtos reais
   let query = supabasePublic.from("products").select(projection, { count: "exact" }).eq("is_active", true);
 
-  if (input.query) query = query.ilike("title", `%${input.query.replace(/[%_,]/g, " ")}%`);
+  if (input.query) {
+    const raw = input.query.trim().toLowerCase();
+    const normalized = raw
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s-]/g, " ");
+
+    const stopWords = new Set(["de", "do", "da", "dos", "das", "em", "no", "na", "para", "pra", "com", "sem", "e", "ou", "o", "a", "os", "as", "um", "uma"]);
+    const tokens = normalized
+      .split(/\s+/)
+      .filter((w) => w.length >= 2 && !stopWords.has(w));
+
+    const SYNONYMS_MAP: Record<string, string[]> = {
+      "caixa de som": ["speaker", "sound", "subwoofer", "som", "alto-falante"],
+      "caixas de som": ["speaker", "sound", "subwoofer", "som", "alto-falante"],
+      "caixa som": ["speaker", "sound", "subwoofer", "som"],
+      "caixa": ["box", "speaker", "case"],
+      "som": ["sound", "speaker", "audio", "subwoofer"],
+      "fone": ["headphone", "earphone", "earbuds", "headset"],
+      "fones": ["headphone", "earphone", "earbuds", "headset"],
+      "fone de ouvido": ["headphone", "earphone", "earbuds", "headset"],
+      "fones de ouvido": ["headphone", "earphone", "earbuds", "headset"],
+      "ouvido": ["earphone", "earbuds"],
+      "relogio": ["watch", "smartwatch"],
+      "relogios": ["watch", "smartwatch"],
+      "smartwatch": ["watch", "relogio"],
+      "celular": ["smartphone", "phone"],
+      "celulares": ["smartphone", "phone"],
+      "telefone": ["phone", "smartphone"],
+      "carregador": ["charger", "power bank", "cabo"],
+      "carregadores": ["charger", "power bank"],
+      "cabo": ["cable", "cord"],
+      "capa": ["case", "cover"],
+      "capinha": ["case", "cover"],
+      "ventilador": ["fan", "cooler"],
+      "ventiladores": ["fan", "cooler"],
+      "bicicleta": ["bike", "bicycle"],
+      "bike": ["bicycle", "bike"],
+      "tenis": ["sneakers", "shoes", "sapato"],
+      "sapato": ["shoes", "boots"],
+      "camisa": ["shirt", "t-shirt"],
+      "camiseta": ["t-shirt", "shirt"],
+      "roupa": ["clothing", "wear"],
+      "vestido": ["dress"],
+      "calca": ["pants", "trousers"],
+      "jaqueta": ["jacket", "coat"],
+      "casaco": ["coat", "jacket"],
+      "mochila": ["backpack", "bag"],
+      "bolsa": ["bag", "handbag"],
+      "oculos": ["sunglasses", "glasses"],
+      "cadeira": ["chair"],
+      "mouse": ["mouse"],
+      "teclado": ["keyboard"],
+      "led": ["light", "lamp"],
+      "lampada": ["lamp", "bulb", "light"],
+      "furadeira": ["drill"],
+      "brinco": ["earring"],
+      "colar": ["necklace"],
+      "anel": ["ring"],
+      "pulseira": ["bracelet"],
+    };
+
+    const matchingSynonyms: string[] = [];
+    if (SYNONYMS_MAP[normalized]) matchingSynonyms.push(...SYNONYMS_MAP[normalized]);
+    if (SYNONYMS_MAP[raw]) matchingSynonyms.push(...SYNONYMS_MAP[raw]);
+    for (const t of tokens) {
+      if (SYNONYMS_MAP[t]) matchingSynonyms.push(...SYNONYMS_MAP[t]);
+    }
+
+    const uniqueTerms = Array.from(new Set([raw, normalized, ...tokens, ...matchingSynonyms]))
+      .map((t) => t.replace(/[%_,]/g, " ").trim())
+      .filter((t) => t.length >= 2)
+      .slice(0, 6);
+
+    if (uniqueTerms.length > 0) {
+      const orClauses: string[] = [];
+      for (const term of uniqueTerms) {
+        orClauses.push(`title.ilike.%${term}%`);
+        orClauses.push(`supplier_title_original.ilike.%${term}%`);
+        orClauses.push(`category.ilike.%${term}%`);
+        orClauses.push(`description.ilike.%${term}%`);
+      }
+      query = query.or(orClauses.join(","));
+    }
+  }
   if (input.category) query = query.eq("category", input.category);
   if (input.range === "a") query = query.lte("price", 50);
   if (input.range === "b") query = query.gte("price", 50).lte("price", 100);
