@@ -242,7 +242,7 @@ async function cjRequest<T>(path: string, token: string, init?: RequestInit): Pr
 }
 
 export async function getCjAccessToken(supabaseAdmin: any, storeId: string): Promise<string> {
-  // 1. Busca a integração ativa do vendedor no banco de dados
+  // 1. Busca a integração ativa do vendedor no banco de dados do Supabase
   const { data: integration, error } = await supabaseAdmin
     .from("supplier_integrations")
     .select("api_key, access_token_encrypted, token_expires_at")
@@ -250,34 +250,55 @@ export async function getCjAccessToken(supabaseAdmin: any, storeId: string): Pro
     .eq("supplier", "cj")
     .maybeSingle();
 
-  if (error || !integration) {
-    const envKey = process.env["CJ_DROPSHIPPING_API_KEY"];
-    if (!envKey) throw new Error("A chave da CJ Dropshipping ainda não está configurada no painel da HS Digital.");
-    return envKey;
-  }
-
-  // 2. Se o Access Token já gravado antes ainda estiver válido, usa ele direto
-  if (integration.access_token_encrypted && integration.token_expires_at && new Date(integration.token_expires_at) > new Date()) {
+  // 2. Se o Access Token já gravado antes ainda estiver dentro do prazo de validade, usa ele direto
+  if (integration?.access_token_encrypted && integration.token_expires_at && new Date(integration.token_expires_at) > new Date()) {
     try {
       const decrypted = await decryptSecret(integration.access_token_encrypted);
       if (decrypted) return decrypted;
     } catch (e) {
-      console.error("Erro ao descriptografar o token em cache:", e);
+      console.error("Erro ao descriptografar o token ativo em cache:", e);
     }
   }
 
-  // 3. Se expirou ou não existe, descriptografa a API Key e pede um novo via POST
+  // 3. Fallback inteligente para recuperar a API Key de fontes seguras se o fluxo padrão falhar
+  let apiKey = process.env["CJ_DROPSHIPPING_API_KEY"]?.trim();
+
+  if (!apiKey && integration?.api_key) {
+    try {
+      apiKey = await decryptSecret(integration.api_key);
+    } catch {
+      apiKey = integration.api_key.trim();
+    }
+  }
+
+  // Fallback alternativo: Busca na coluna cj_api_key da tabela stores para segurança multi-vendedor
+  if (!apiKey && storeId) {
+    const { data: storeData } = await supabaseAdmin
+      .from("stores")
+      .select("cj_api_key")
+      .eq("id", storeId)
+      .maybeSingle();
+    const storeKey = (storeData as any)?.cj_api_key;
+    if (storeKey && typeof storeKey === "string") {
+      apiKey = storeKey.trim();
+    }
+  }
+
+  if (!apiKey) {
+    throw new Error("A chave de API da CJ Dropshipping não foi encontrada no banco ou nas configurações da HS Digital.");
+  }
+
+  // 4. Renova o token de acesso utilizando a rota e o método POST oficial da API da CJ
   try {
-    const rawApiKey = await decryptSecret(integration.api_key);
     await waitForCjRateLimit();
 
     const response = await fetch("https://cjdropshipping.com", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey: rawApiKey }),
+      body: JSON.stringify({ apiKey }),
     });
 
-    if (!response.ok) throw new Error("Falha ao sincronizar dados e obter resposta dos servidores da CJ.");
+    if (!response.ok) throw new Error("Falha ao sincronizar dados e obter resposta dos servidores externos da CJ.");
 
     const payload = await response.json();
     if (!payload.result || !payload.data?.accessToken) {
@@ -287,20 +308,22 @@ export async function getCjAccessToken(supabaseAdmin: any, storeId: string): Pro
     const newToken = payload.data.accessToken;
     const encryptedToken = await encryptSecret(newToken);
     
-    // Configura a expiração padrão baseada no retorno oficial do fornecedor
+    // Configura a expiração baseada no retorno oficial ou em uma janela segura de 6 dias
     const expiresAt = payload.data.accessTokenExpiryDate 
       ? new Date(payload.data.accessTokenExpiryDate).toISOString()
       : new Date(Date.now() + 6 * 24 * 60 * 60_000).toISOString();
 
-    // 4. Grava o token ativo de volta no banco para manter as consultas em tempo real funcionando
-    await supabaseAdmin
-      .from("supplier_integrations")
-      .update({
-        access_token_encrypted: encryptedToken,
-        token_expires_at: expiresAt
-      })
-      .eq("store_id", storeId)
-      .eq("supplier", "cj");
+    // 5. Salva o token atualizado e criptografado de volta no Supabase para as consultas em tempo real
+    if (integration) {
+      await supabaseAdmin
+        .from("supplier_integrations")
+        .update({
+          access_token_encrypted: encryptedToken,
+          token_expires_at: expiresAt
+        })
+        .eq("store_id", storeId)
+        .eq("supplier", "cj");
+    }
 
     return newToken;
   } catch (err) {
@@ -308,53 +331,6 @@ export async function getCjAccessToken(supabaseAdmin: any, storeId: string): Pro
     throw err;
   }
 }
-
-  // 2. Busca a API Key da CJ em múltiplas fontes seguras com fallback:
-  //    a) Variável de ambiente CJ_DROPSHIPPING_API_KEY
-  //    b) Salva no campo access_token_encrypted da tabela supplier_integrations
-  //    c) Salva na coluna cj_api_key da tabela stores
-  let apiKey = process.env["CJ_DROPSHIPPING_API_KEY"]?.trim();
-
-  if (!apiKey && integration?.access_token_encrypted) {
-    let candidate = integration.access_token_encrypted;
-    try {
-      candidate = await decryptSecret(candidate);
-    } catch {
-      // Valor em texto plano
-    }
-    if (candidate && candidate.includes("@api@")) {
-      apiKey = candidate.trim();
-    }
-  }
-
-  if (!apiKey && storeId) {
-    const { data: storeData } = await supabaseAdmin
-      .from("stores")
-      .select("*")
-      .eq("id", storeId)
-      .maybeSingle();
-    const storeKey = (storeData as any)?.cj_api_key;
-    if (storeKey && typeof storeKey === "string" && storeKey.includes("@api@")) {
-      apiKey = storeKey.trim();
-    }
-  }
-
-  if (!apiKey) {
-    throw new Error("A chave da CJ Dropshipping não foi encontrada. Configure-a no painel do vendedor ou nas variáveis de ambiente.");
-  }
-
-  const token = await cjRequest<CjToken>("/authentication/getAccessToken", "", {
-    method: "POST",
-    headers: { "CJ-Access-Token": "" },
-    body: JSON.stringify({ apiKey }),
-  });
-  if (!token.accessToken) {
-    throw new Error("A CJ Dropshipping não emitiu o token de acesso. Verifique sua API Key.");
-  }
-
-  const expiresAt = token.accessTokenExpiryDate
-    ? new Date(token.accessTokenExpiryDate).toISOString()
-    : new Date(Date.now() + 179 * 24 * 60 * 60_000).toISOString();
 
   let encryptedAccessToken = token.accessToken;
   let encryptedRefreshToken: string | null = null;
