@@ -241,31 +241,73 @@ async function cjRequest<T>(path: string, token: string, init?: RequestInit): Pr
   throw new Error("A CJ Dropshipping limitou temporariamente a sincronização.");
 }
 
-export async function getCjAccessToken(supabaseAdmin: any, storeId: string) {
-  const { data: integration } = await supabaseAdmin
+export async function getCjAccessToken(supabaseAdmin: any, storeId: string): Promise<string> {
+  // 1. Busca a integração ativa do vendedor no banco de dados
+  const { data: integration, error } = await supabaseAdmin
     .from("supplier_integrations")
-    .select("access_token_encrypted,token_expires_at,margin_percent")
+    .select("api_key, access_token_encrypted, token_expires_at")
     .eq("store_id", storeId)
-    .eq("provider", "cj")
+    .eq("supplier", "cj")
     .maybeSingle();
 
-  // 1. Se já temos um Access Token válido em cache com mais de 5 minutos de validade
-  if (
-    integration?.access_token_encrypted &&
-    integration.token_expires_at &&
-    new Date(integration.token_expires_at).getTime() > Date.now() + 5 * 60_000
-  ) {
+  if (error || !integration) {
+    const envKey = process.env["CJ_DROPSHIPPING_API_KEY"];
+    if (!envKey) throw new Error("A chave da CJ Dropshipping ainda não está configurada no painel da HS Digital.");
+    return envKey;
+  }
+
+  // 2. Se o Access Token já gravado antes ainda estiver válido, usa ele direto
+  if (integration.access_token_encrypted && integration.token_expires_at && new Date(integration.token_expires_at) > new Date()) {
     try {
       const decrypted = await decryptSecret(integration.access_token_encrypted);
-      if (decrypted && decrypted.startsWith("API@")) {
-        return decrypted;
-      }
-    } catch {
-      if (integration.access_token_encrypted.startsWith("API@")) {
-        return integration.access_token_encrypted;
-      }
+      if (decrypted) return decrypted;
+    } catch (e) {
+      console.error("Erro ao descriptografar o token em cache:", e);
     }
   }
+
+  // 3. Se expirou ou não existe, descriptografa a API Key e pede um novo via POST
+  try {
+    const rawApiKey = await decryptSecret(integration.api_key);
+    await waitForCjRateLimit();
+
+    const response = await fetch("https://cjdropshipping.com", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: rawApiKey }),
+    });
+
+    if (!response.ok) throw new Error("Falha ao sincronizar dados e obter resposta dos servidores da CJ.");
+
+    const payload = await response.json();
+    if (!payload.result || !payload.data?.accessToken) {
+      throw new Error(payload.message || "Chave de API inválida ou rejeitada pelo fornecedor.");
+    }
+
+    const newToken = payload.data.accessToken;
+    const encryptedToken = await encryptSecret(newToken);
+    
+    // Configura a expiração padrão baseada no retorno oficial do fornecedor
+    const expiresAt = payload.data.accessTokenExpiryDate 
+      ? new Date(payload.data.accessTokenExpiryDate).toISOString()
+      : new Date(Date.now() + 6 * 24 * 60 * 60_000).toISOString();
+
+    // 4. Grava o token ativo de volta no banco para manter as consultas em tempo real funcionando
+    await supabaseAdmin
+      .from("supplier_integrations")
+      .update({
+        access_token_encrypted: encryptedToken,
+        token_expires_at: expiresAt
+      })
+      .eq("store_id", storeId)
+      .eq("supplier", "cj");
+
+    return newToken;
+  } catch (err) {
+    console.error("Erro crítico no fluxo do plano B da CJ Dropshipping:", err);
+    throw err;
+  }
+}
 
   // 2. Busca a API Key da CJ em múltiplas fontes seguras com fallback:
   //    a) Variável de ambiente CJ_DROPSHIPPING_API_KEY
