@@ -244,42 +244,98 @@ async function cjRequest<T>(path: string, token: string, init?: RequestInit): Pr
 export async function getCjAccessToken(supabaseAdmin: any, storeId: string) {
   const { data: integration } = await supabaseAdmin
     .from("supplier_integrations")
-    .select("access_token_encrypted,token_expires_at")
+    .select("access_token_encrypted,token_expires_at,margin_percent")
     .eq("store_id", storeId)
     .eq("provider", "cj")
     .maybeSingle();
 
+  // 1. Se já temos um Access Token válido em cache com mais de 5 minutos de validade
   if (
     integration?.access_token_encrypted &&
     integration.token_expires_at &&
     new Date(integration.token_expires_at).getTime() > Date.now() + 5 * 60_000
   ) {
-    return decryptSecret(integration.access_token_encrypted);
+    try {
+      const decrypted = await decryptSecret(integration.access_token_encrypted);
+      if (decrypted && decrypted.startsWith("API@")) {
+        return decrypted;
+      }
+    } catch {
+      if (integration.access_token_encrypted.startsWith("API@")) {
+        return integration.access_token_encrypted;
+      }
+    }
   }
 
-  const apiKey = process.env["CJ_DROPSHIPPING_API_KEY"];
-  if (!apiKey) throw new Error("A chave da CJ Dropshipping ainda não está configurada.");
+  // 2. Busca a API Key da CJ em múltiplas fontes seguras com fallback:
+  //    a) Variável de ambiente CJ_DROPSHIPPING_API_KEY
+  //    b) Salva no campo access_token_encrypted da tabela supplier_integrations
+  //    c) Salva na coluna cj_api_key da tabela stores
+  let apiKey = process.env["CJ_DROPSHIPPING_API_KEY"]?.trim();
+
+  if (!apiKey && integration?.access_token_encrypted) {
+    let candidate = integration.access_token_encrypted;
+    try {
+      candidate = await decryptSecret(candidate);
+    } catch {
+      // Valor em texto plano
+    }
+    if (candidate && candidate.includes("@api@")) {
+      apiKey = candidate.trim();
+    }
+  }
+
+  if (!apiKey && storeId) {
+    const { data: storeData } = await supabaseAdmin
+      .from("stores")
+      .select("*")
+      .eq("id", storeId)
+      .maybeSingle();
+    const storeKey = (storeData as any)?.cj_api_key;
+    if (storeKey && typeof storeKey === "string" && storeKey.includes("@api@")) {
+      apiKey = storeKey.trim();
+    }
+  }
+
+  if (!apiKey) {
+    throw new Error("A chave da CJ Dropshipping não foi encontrada. Configure-a no painel do vendedor ou nas variáveis de ambiente.");
+  }
+
   const token = await cjRequest<CjToken>("/authentication/getAccessToken", "", {
     method: "POST",
     headers: { "CJ-Access-Token": "" },
     body: JSON.stringify({ apiKey }),
   });
-  if (!token.accessToken) throw new Error("A CJ Dropshipping não emitiu o acesso esperado.");
+  if (!token.accessToken) {
+    throw new Error("A CJ Dropshipping não emitiu o token de acesso. Verifique sua API Key.");
+  }
 
   const expiresAt = token.accessTokenExpiryDate
     ? new Date(token.accessTokenExpiryDate).toISOString()
     : new Date(Date.now() + 179 * 24 * 60 * 60_000).toISOString();
+
+  let encryptedAccessToken = token.accessToken;
+  let encryptedRefreshToken: string | null = null;
+  try {
+    encryptedAccessToken = await encryptSecret(token.accessToken);
+    encryptedRefreshToken = token.refreshToken ? await encryptSecret(token.refreshToken) : null;
+  } catch (encErr) {
+    console.warn("Aviso ao criptografar token CJ:", encErr);
+  }
+
   await supabaseAdmin
     .from("supplier_integrations")
-    .update({
-      access_token_encrypted: await encryptSecret(token.accessToken),
-      refresh_token_encrypted: token.refreshToken ? await encryptSecret(token.refreshToken) : null,
+    .upsert({
+      store_id: storeId,
+      provider: "cj",
+      access_token_encrypted: encryptedAccessToken,
+      refresh_token_encrypted: encryptedRefreshToken,
       token_expires_at: expiresAt,
       status: "active",
       last_error: null,
-    })
-    .eq("store_id", storeId)
-    .eq("provider", "cj");
+      margin_percent: integration?.margin_percent ?? 35,
+    }, { onConflict: "store_id,provider" });
+
   return token.accessToken;
 }
 
