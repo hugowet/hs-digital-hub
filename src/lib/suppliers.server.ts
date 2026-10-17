@@ -68,7 +68,7 @@ function parseTranslations(content: string, expected: number) {
   const parsed = JSON.parse(cleaned) as { translations?: unknown };
   if (!Array.isArray(parsed.translations) || parsed.translations.length !== expected)
     throw new Error("A tradução retornou uma quantidade inesperada de títulos.");
-  return parsed.translations.map((value) => String(value).trim().slice(0, 160));
+  return parsed.translations.map((value) => String(value).trim().slice(0, 70));
 }
 
 async function translateProductTitles(titles: string[]) {
@@ -85,7 +85,7 @@ async function translateProductTitles(titles: string[]) {
   const result = streamText({
     model: provider.responses("openai/gpt-6-astra"),
     instructions:
-      "Traduza títulos de produtos de e-commerce do inglês para português do Brasil. Preserve marcas, modelos, medidas e siglas. Não invente características. Responda somente JSON válido no formato {\"translations\":[\"...\"]}, mantendo exatamente a ordem e a quantidade.",
+      "Traduza títulos de produtos de e-commerce do inglês para português do Brasil em formato conciso, limpo e atraente (estilo Mercado Livre, máximo de 60 caracteres). Remova termos redundantes, tags promocionais e códigos de fornecedor. Preserve marcas reais, modelos e especificações essenciais. Não invente características. Responda somente JSON válido no formato {\"translations\":[\"...\"]}, mantendo exatamente a ordem e a quantidade.",
     messages: [{ role: "user", content: JSON.stringify(titles) }],
     providerOptions: {
       openai: {
@@ -244,42 +244,98 @@ async function cjRequest<T>(path: string, token: string, init?: RequestInit): Pr
 export async function getCjAccessToken(supabaseAdmin: any, storeId: string) {
   const { data: integration } = await supabaseAdmin
     .from("supplier_integrations")
-    .select("access_token_encrypted,token_expires_at")
+    .select("access_token_encrypted,token_expires_at,margin_percent")
     .eq("store_id", storeId)
     .eq("provider", "cj")
     .maybeSingle();
 
+  // 1. Se já temos um Access Token válido em cache com mais de 5 minutos de validade
   if (
     integration?.access_token_encrypted &&
     integration.token_expires_at &&
     new Date(integration.token_expires_at).getTime() > Date.now() + 5 * 60_000
   ) {
-    return decryptSecret(integration.access_token_encrypted);
+    try {
+      const decrypted = await decryptSecret(integration.access_token_encrypted);
+      if (decrypted && decrypted.startsWith("API@")) {
+        return decrypted;
+      }
+    } catch {
+      if (integration.access_token_encrypted.startsWith("API@")) {
+        return integration.access_token_encrypted;
+      }
+    }
   }
 
-  const apiKey = process.env["CJ_DROPSHIPPING_API_KEY"];
-  if (!apiKey) throw new Error("A chave da CJ Dropshipping ainda não está configurada.");
+  // 2. Busca a API Key da CJ em múltiplas fontes seguras com fallback:
+  //    a) Variável de ambiente CJ_DROPSHIPPING_API_KEY
+  //    b) Salva no campo access_token_encrypted da tabela supplier_integrations
+  //    c) Salva na coluna cj_api_key da tabela stores
+  let apiKey = process.env["CJ_DROPSHIPPING_API_KEY"]?.trim();
+
+  if (!apiKey && integration?.access_token_encrypted) {
+    let candidate = integration.access_token_encrypted;
+    try {
+      candidate = await decryptSecret(candidate);
+    } catch {
+      // Valor em texto plano
+    }
+    if (candidate && candidate.includes("@api@")) {
+      apiKey = candidate.trim();
+    }
+  }
+
+  if (!apiKey && storeId) {
+    const { data: storeData } = await supabaseAdmin
+      .from("stores")
+      .select("*")
+      .eq("id", storeId)
+      .maybeSingle();
+    const storeKey = (storeData as any)?.cj_api_key;
+    if (storeKey && typeof storeKey === "string" && storeKey.includes("@api@")) {
+      apiKey = storeKey.trim();
+    }
+  }
+
+  if (!apiKey) {
+    throw new Error("A chave da CJ Dropshipping não foi encontrada. Configure-a no painel do vendedor ou nas variáveis de ambiente.");
+  }
+
   const token = await cjRequest<CjToken>("/authentication/getAccessToken", "", {
     method: "POST",
     headers: { "CJ-Access-Token": "" },
     body: JSON.stringify({ apiKey }),
   });
-  if (!token.accessToken) throw new Error("A CJ Dropshipping não emitiu o acesso esperado.");
+  if (!token.accessToken) {
+    throw new Error("A CJ Dropshipping não emitiu o token de acesso. Verifique sua API Key.");
+  }
 
   const expiresAt = token.accessTokenExpiryDate
     ? new Date(token.accessTokenExpiryDate).toISOString()
     : new Date(Date.now() + 179 * 24 * 60 * 60_000).toISOString();
+
+  let encryptedAccessToken = token.accessToken;
+  let encryptedRefreshToken: string | null = null;
+  try {
+    encryptedAccessToken = await encryptSecret(token.accessToken);
+    encryptedRefreshToken = token.refreshToken ? await encryptSecret(token.refreshToken) : null;
+  } catch (encErr) {
+    console.warn("Aviso ao criptografar token CJ:", encErr);
+  }
+
   await supabaseAdmin
     .from("supplier_integrations")
-    .update({
-      access_token_encrypted: await encryptSecret(token.accessToken),
-      refresh_token_encrypted: token.refreshToken ? await encryptSecret(token.refreshToken) : null,
+    .upsert({
+      store_id: storeId,
+      provider: "cj",
+      access_token_encrypted: encryptedAccessToken,
+      refresh_token_encrypted: encryptedRefreshToken,
       token_expires_at: expiresAt,
       status: "active",
       last_error: null,
-    })
-    .eq("store_id", storeId)
-    .eq("provider", "cj");
+      margin_percent: integration?.margin_percent ?? 35,
+    }, { onConflict: "store_id,provider" });
+
   return token.accessToken;
 }
 
@@ -545,7 +601,18 @@ async function importCjProduct(
     product.productImage,
     ...(product.productImageSet ?? []),
   ].filter((value): value is string => Boolean(value?.startsWith("https://")));
-  const price = Math.round(cost * exchange.rate * (1 + marginPercent / 100) * 100) / 100;
+  // Regra de precificação estrita:
+  // Custo base em BRL da CJ Dropshipping (custo USD * taxa de câmbio USD/BRL)
+  // Exemplo da regra: um produto de R$ 147,55 na CJ com 35% de lucro sai por R$ 199,19.
+  // 1. Se o custo base for até R$ 87,90: o preço na loja é exatamente o custo base da CJ (sem os 35% de lucro embutido).
+  //    O lucro da loja virá na cobrança do frete de R$ 19,90 (com descontos dinâmicos) no carrinho.
+  // 2. Se o custo base for maior que R$ 87,90: aplica a margem de 35% de lucro no preço do produto, e no carrinho o frete será grátis.
+  const costBrl = Math.round(cost * exchange.rate * 100) / 100;
+  const targetMargin = marginPercent > 0 ? marginPercent : 35;
+  const price =
+    costBrl > 87.9
+      ? Math.round(costBrl * (1 + targetMargin / 100) * 100) / 100
+      : costBrl;
   const productData = {
     store_id: storeId,
     title: title.slice(0, 160),
@@ -878,16 +945,18 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
     orderNumber: `HS-${fulfillment.order_id}-${fulfillment.store_id}`,
     shippingCustomerName: addressValue(address, "name", "recipient_name"),
     shippingCountryCode: "BR",
-    shippingCountry: "Brazil",
+    shippingCountry: "BR",
     shippingProvince: addressValue(address, "state"),
     shippingCity: addressValue(address, "city"),
     shippingAddress: addressValue(address, "address", "street_address"),
-    shippingZip: addressValue(address, "postal_code", "zip").replace(/\D/g, ""),
+shippingZip: addressValue(address, "postal_code", "zip").replace(/\D/g, ""),
+
     shippingPhone: addressValue(address, "phone").replace(/\D/g, ""),
     fromCountryCode: "CN",
     logisticName: shipment?.service_code ?? "",
     payType: 2,
-    platform: "other",
+platform: "API",
+storeId: "CJ5881059",
     products,
   };
   if (
