@@ -277,22 +277,24 @@ function CartPage() {
         quoteId,
       }));
 
-      const res = await createCheckout({
+          const res = await createCheckout({
         data: {
           items: items.map((i) => ({
             productId: i.productId,
             quantity: i.quantity,
             warrantyId: selectedWarrantyId ?? undefined,
           })),
-          shippingQuotes: selectedQuotesList,
-          address: hasPhysical
+          // CORREÇÃO 1: Mapeia para uma lista de strings contendo apenas os IDs selecionados
+          shippingQuoteIds: Object.values(selectedQuotes),
+          // CORREÇÃO 2: Formata os nomes das propriedades exatamente como o Zod/Supabase exigem
+          shippingAddress: hasPhysical
             ? {
-                recipientName: name,
-                phone,
-                streetAddress: address,
-                city,
-                state,
-                postalCode: postalCode.replace(/\D/g, ""),
+                recipient_name: name,      // Corrigido para minúsculo com underline
+                phone: phone,
+                street_address: address,   // Corrigido para minúsculo com underline
+                city: city,
+                state: state,
+                postal_code: postalCode.replace(/\D/g, ""), // Corrigido para minúsculo com underline
                 note: note || undefined,
               }
             : undefined,
