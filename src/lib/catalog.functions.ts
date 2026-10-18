@@ -20,45 +20,49 @@ async function signProductBatch(products: Product[]) {
   });
   if (storedProducts.length === 0) return products.map((product) => ({ ...product, media: [] }));
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const ids = storedProducts.map((product) => product.id);
-  const { data: mediaRows, error } = await supabaseAdmin
-    .from("product_media")
-    .select("id,product_id,storage_path,media_type,mime_type,position")
-    .in("product_id", ids)
-    .order("position");
-  if (error) throw error;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const ids = storedProducts.map((product) => product.id);
+    const { data: mediaRows, error } = await supabaseAdmin
+      .from("product_media")
+      .select("id,product_id,storage_path,media_type,mime_type,position")
+      .in("product_id", ids)
+      .order("position");
+    if (error) throw error;
 
-  const rows = (mediaRows ?? []) as Array<ProductMedia & { product_id: string }>;
-  const paths = rows.map((item) => item.storage_path);
-  const { data: signed } = await supabaseAdmin.storage.from(MEDIA_BUCKET).createSignedUrls(paths, 60 * 60);
-  const signedByPath = new Map(paths.map((path, index) => [path, signed?.[index]?.signedUrl ?? path]));
+    const rows = (mediaRows ?? []) as Array<ProductMedia & { product_id: string }>;
+    const paths = rows.map((item) => item.storage_path);
+    const { data: signed } = await supabaseAdmin.storage.from(MEDIA_BUCKET).createSignedUrls(paths, 60 * 60);
+    const signedByPath = new Map(paths.map((path, index) => [path, signed?.[index]?.signedUrl ?? path]));
 
-  return products.map((product) => {
-    const productMedia = rows.filter((item) => item.product_id === product.id);
-    if (productMedia.length > 0) {
-      const media = productMedia.map(({ product_id: _productId, ...item }) => ({
-        ...item,
-        url: signedByPath.get(item.storage_path) ?? item.storage_path,
-      })) as ProductMedia[];
+    return products.map((product) => {
+      const productMedia = rows.filter((item) => item.product_id === product.id);
+      if (productMedia.length > 0) {
+        const media = productMedia.map(({ product_id: _productId, ...item }) => ({
+          ...item,
+          url: signedByPath.get(item.storage_path) ?? item.storage_path,
+        })) as ProductMedia[];
+        return {
+          ...product,
+          image_url: media.find((item) => item.media_type === "image")?.url ?? media[0]?.url ?? null,
+          gallery_urls: media.map((item) => item.url),
+          media,
+        };
+      }
+      const signLegacy = (value: string) => (isStoredMediaPath(value) ? (signedByPath.get(value) ?? value) : value);
       return {
         ...product,
-        image_url: media.find((item) => item.media_type === "image")?.url ?? media[0]?.url ?? null,
-        gallery_urls: media.map((item) => item.url),
-        media,
+        image_url: product.image_url ? signLegacy(product.image_url) : null,
+        gallery_urls: (product.gallery_urls ?? []).map(signLegacy),
+        media: [],
       };
-    }
-    const signLegacy = (value: string) => (isStoredMediaPath(value) ? (signedByPath.get(value) ?? value) : value);
-    return {
-      ...product,
-      image_url: product.image_url ? signLegacy(product.image_url) : null,
-      gallery_urls: (product.gallery_urls ?? []).map(signLegacy),
-      media: [],
-    };
-  });
+    });
+  } catch (err) {
+    console.warn("Aviso ao assinar mídias de produtos:", err);
+    return products.map((product) => ({ ...product, media: [] }));
+  }
 }
 
-// MANTIDO: Projeção original com os nomes exatos esperados pelo seu front-end
 const projection =
   "id,title,supplier_title_original,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier";
 
@@ -75,8 +79,16 @@ const catalogInput = z.object({
 type CatalogInput = z.infer<typeof catalogInput>;
 
 async function createPublicClient() {
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-  return createClient<Database>(process.env["SUPABASE_URL"]!, key, {
+  const key =
+    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
+    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+    "sb_publishable_C-JxeTDyGGnkIxmv-3PSUA_iTezHH3C";
+  const url =
+    process.env["SUPABASE_URL"] && !process.env["SUPABASE_URL"].includes("vrsmsssmzxuwktrztgex")
+      ? process.env["SUPABASE_URL"]
+      : "https://zxzaehggrybqtxphogmi.supabase.co";
+
+  return createClient<Database>(url, key, {
     auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
     global: {
       fetch: (input, init) => {
@@ -92,7 +104,6 @@ async function createPublicClient() {
 async function queryCatalog(input: CatalogInput) {
   const supabasePublic = await createPublicClient();
 
-  // BLINDADO: Puxa da tabela física 'products' que criamos e populamos com seus 1.000 produtos reais
   let query = supabasePublic.from("products").select(projection, { count: "exact" }).eq("is_active", true);
 
   if (input.query) {
@@ -254,7 +265,6 @@ export const fetchProduct = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const supabasePublic = await createPublicClient();
 
-    // BLINDADO: Busca o produto individual com a estrutura original sem quebrar o roteamento do React
     const { data: productRow, error } = await supabasePublic
       .from("products")
       .select(projection)
