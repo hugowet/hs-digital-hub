@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
