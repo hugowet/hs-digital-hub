@@ -305,6 +305,7 @@ function SellerCenterPage() {
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e extrato</TabsTrigger>
           <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
+          <TabsTrigger value="amazon-affiliate">Importador Amazon</TabsTrigger>
         </TabsList>
 
         {/* Aba de Pedidos e Rastreio */}
