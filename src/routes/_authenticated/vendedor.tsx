@@ -469,12 +469,13 @@ function SellerCenterPage() {
             </section>
             <SellerShippingSettings storeId={store.id} />
           </div>
-          <TabsContent value="amazon-affiliate" className="pt-4">
-  <AmazonAffiliateImporter />
-</TabsContent>
+        </TabsContent>
+
+        <TabsContent value="amazon-affiliate" className="pt-4">
+          <AmazonAffiliateImporter />
         </TabsContent>
       </Tabs>
-    </Shell>
+   </Shell>
   );
 }
 
