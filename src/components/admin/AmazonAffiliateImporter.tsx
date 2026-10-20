@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
-const AUTHORIZED_ADMIN_EMAIL = "hugoet373@gmail.com";
+const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
 const PROFIT_MARGIN_MULTIPLIER = 1.35; // 35% de margem estável de lucro bruto
 
@@ -42,7 +42,7 @@ export function AmazonAffiliateImporter() {
         const email = user?.email?.toLowerCase() || null;
         setCurrentUserEmail(email);
 
-        if (email === AUTHORIZED_ADMIN_EMAIL && user) {
+        if (email && ALLOWED_EMAILS.includes(email) && user) {
           // Busca a loja do administrador ou a loja principal
           const { data: store } = await supabase
             .from("stores")
@@ -155,7 +155,7 @@ export function AmazonAffiliateImporter() {
   }
 
   // REQUISITO 1: Trava de Segurança por e-mail exclusivo
-  if (currentUserEmail !== AUTHORIZED_ADMIN_EMAIL) {
+  if (!currentUserEmail || !ALLOWED_EMAILS.includes(currentUserEmail)) {
     return (
       <div className="mx-auto my-8 max-w-lg rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
