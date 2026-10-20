@@ -305,7 +305,6 @@ function SellerCenterPage() {
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e extrato</TabsTrigger>
           <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
-          <TabsTrigger value="amazon-affiliate">Importador Amazon</TabsTrigger>
         </TabsList>
 
         {/* Aba de Pedidos e Rastreio */}
@@ -469,11 +468,6 @@ function SellerCenterPage() {
             </section>
             <SellerShippingSettings storeId={store.id} />
           </div>
-        </TabsContent>
-
-        {/* Aba do Importador Amazon */}
-        <TabsContent value="amazon-affiliate" className="pt-4">
-          <AmazonAffiliateImporter />
         </TabsContent>
       </Tabs>
     </Shell>
@@ -1294,6 +1288,430 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           <Label htmlFor="p-price">Preço (R$) *</Label>
           <Input
             id="p-price"
-            value={pri
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            required
+            placeholder="0,00"
+          />
+        </div>
+        <div>
+          <Label htmlFor="p-stock">Estoque *</Label>
+          <Input
+            id="p-stock"
+            type="number"
+            min="0"
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            required
+          />
+        </div>
+      </div>
+      <div>
+        <Label htmlFor="p-cat">Categoria *</Label>
+        <select
+          id="p-cat"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="w-full h-10 px-3 border rounded-md bg-background text-sm mt-1"
+        >
+          {CATEGORIES.map((c) => (
+            <option key={c.slug} value={c.slug}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <Label htmlFor="p-desc">Descrição</Label>
+        <Textarea
+          id="p-desc"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={4}
+          placeholder="Detalhes completos do produto"
+        />
+      </div>
+      <div>
+        <Label htmlFor="p-type">Tipo de Produto *</Label>
+        <select
+          id="p-type"
+          value={productType}
+          onChange={(e) => setProductType(e.target.value as "physical" | "digital")}
+          className="w-full h-10 px-3 border rounded-md bg-background text-sm mt-1"
+        >
+          <option value="physical">Físico (Correios / Transportadora)</option>
+          <option value="digital">Digital (Download / Link direto)</option>
+        </select>
+      </div>
+      {productType === "digital" && (
+        <div>
+          <Label htmlFor="p-url">Link de Entrega / Download *</Label>
+          <Input
+            id="p-url"
+            value={deliveryUrl}
+            onChange={(e) => setDeliveryUrl(e.target.value)}
+            placeholder="https://..."
+            required
+          />
+        </div>
+      )}
+      {productType === "physical" && (
+        <div>
+          <Label>Peso e dimensões da embalagem para frete *</Label>
+          <div className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div>
+              <span className="text-xs text-muted-foreground">Peso (kg)</span>
+              <Input
+                aria-label="Peso em kg"
+                value={weightKg}
+                onChange={(e) => setWeightKg(e.target.value)}
+                placeholder="Ex: 0.5"
+                required
+              />
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground">Altura (cm)</span>
+              <Input
+                aria-label="Altura em cm"
+                value={heightCm}
+                onChange={(e) => setHeightCm(e.target.value)}
+                placeholder="Ex: 10"
+                required
+              />
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground">Largura (cm)</span>
+              <Input
+                aria-label="Largura em cm"
+                value={widthCm}
+                onChange={(e) => setWidthCm(e.target.value)}
+                placeholder="Ex: 15"
+                required
+              />
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground">Comprimento (cm)</span>
+              <Input
+                aria-label="Comprimento em cm"
+                value={lengthCm}
+                onChange={(e) => setLengthCm(e.target.value)}
+                placeholder="Ex: 20"
+                required
+              />
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Valores usados pelo Melhor Envio para cotar fretes reais.
+          </p>
+        </div>
+      )}
+      <div>
+        <Label htmlFor="p-files">Fotos do Produto (até 10)</Label>
+        <Input
+          id="p-files"
+          type="file"
+          multiple
+          accept="image/*,video/*"
+          onChange={(e) => setFiles(Array.from(e.target.files || []))}
+          className="mt-1"
+        />
+      </div>
+      <Button type="submit" disabled={submitting} className="w-full">
+        {submitting ? "Cadastrando produto..." : "Publicar Produto"}
+      </Button>
+    </form>
+  );
+}
 
-... [truncated — file is 67685 bytes, showing first 51200]
+function SellerOrdersTab({ storeId }: { storeId: string }) {
+  const qc = useQueryClient();
+  const processFulfillment = useServerFn(processSupplierFulfillment);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [trackingNote, setTrackingNote] = useState<Record<string, string>>({});
+  const [orderFilter, setOrderFilter] = useState<"paid" | "pending" | "all">("paid");
+
+  const { data: orders = [], isLoading } = useQuery({
+    queryKey: ["seller-orders", storeId],
+    queryFn: async () => {
+      const { data: items, error: itemsError } = await supabase
+        .from("order_items")
+        .select("order_id,title,quantity,unit_price,seller_amount")
+        .eq("store_id", storeId);
+      if (itemsError) throw itemsError;
+      if (!items || items.length === 0) return [];
+
+      const orderIds = Array.from(new Set(items.map((i) => i.order_id)));
+      const [{ data: ordersData }, { data: trackingEvents }, { data: fulfillments }] =
+        await Promise.all([
+          supabase
+            .from("orders")
+            .select("id,created_at,payment_status,total,shipping_address")
+            .in("id", orderIds)
+                        .order("created_at", { ascending: false }),
+          supabase
+            .from("order_tracking_events")
+            .select("order_id,status,note,created_at")
+            .in("order_id", orderIds)
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("supplier_fulfillments")
+            .select("id,order_id,provider,status,external_order_id,tracking_code,last_error")
+            .eq("store_id", storeId)
+            .in("order_id", orderIds),
+        ]);
+
+      return (ordersData ?? []).map((ord) => ({
+        ...ord,
+        items: items.filter((i) => i.order_id === ord.id),
+        events: (trackingEvents ?? []).filter((e) => e.order_id === ord.id),
+        fulfillments: (fulfillments ?? []).filter((item) => item.order_id === ord.id),
+      }));
+    },
+  });
+
+  const addStatus = async (orderId: string, status: string, defaultNote: string) => {
+    try {
+      setUpdatingId(orderId);
+      const note = trackingNote[orderId]?.trim() || defaultNote;
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error("Você precisa estar autenticado.");
+
+      const { error } = await supabase.from("order_tracking_events").insert({
+        order_id: orderId,
+        status,
+        note,
+        created_by: user.user.id,
+      });
+      if (error) throw error;
+
+      toast.success("Status atualizado!");
+      setTrackingNote((prev) => ({ ...prev, [orderId]: "" }));
+      await qc.invalidateQueries({ queryKey: ["seller-orders", storeId] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao atualizar status");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  if (isLoading) return <p className="text-sm text-muted-foreground py-6">Carregando pedidos...</p>;
+
+  const paidOrders = orders.filter((o) => o.payment_status === "approved");
+  const pendingOrders = orders.filter((o) => o.payment_status !== "approved");
+  const displayedOrders =
+    orderFilter === "paid" ? paidOrders : orderFilter === "pending" ? pendingOrders : orders;
+
+  return (
+    <div className="space-y-4">
+      {/* Filtros de Pedidos Pagos vs Aguardando Pagamento */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+        <Button
+          variant={orderFilter === "paid" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setOrderFilter("paid")}
+          className="gap-2"
+        >
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          Pagos e Prontos para Envio ({paidOrders.length})
+        </Button>
+        <Button
+          variant={orderFilter === "pending" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setOrderFilter("pending")}
+          className="gap-2"
+        >
+          <Clock className="h-4 w-4 text-amber-500" />
+          Aguardando Pagamento ({pendingOrders.length})
+        </Button>
+        <Button
+          variant={orderFilter === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setOrderFilter("all")}
+          className="gap-2"
+        >
+          Todos os Pedidos ({orders.length})
+        </Button>
+      </div>
+
+      {displayedOrders.map((ord) => {
+        const addr = ord.shipping_address as Record<string, any> | null;
+        const lastEvent = ord.events.at(-1)?.status ?? "confirmed";
+
+        return (
+          <div key={ord.id} className="surface-card p-5 border border-border rounded-xl space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+              <div>
+                <span className="text-xs text-muted-foreground">
+                  Pedido #{ord.id.slice(0, 8).toUpperCase()}
+                </span>
+                <p className="text-sm font-semibold">
+                  {new Date(ord.created_at).toLocaleString("pt-BR")}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-2.5 py-1 text-xs rounded-full font-semibold ${ord.payment_status === "approved" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}
+                >
+                  {ord.payment_status === "approved" ? "PAGO" : "AGUARDANDO PAGAMENTO"}
+                </span>
+                <span className="px-2.5 py-1 text-xs rounded-full bg-muted font-medium capitalize">
+                  {lastEvent === "confirmed" && "Confirmado"}
+                  {lastEvent === "preparing" && "Em separação"}
+                  {lastEvent === "shipped" && "Enviado"}
+                  {lastEvent === "out_for_delivery" && "Saiu para entrega"}
+                  {lastEvent === "delivered" && "Entregue"}
+                </span>
+              </div>
+            </div>
+
+            {/* Endereço completo para postagem nos Correios */}
+            {addr && (
+              <div className="bg-muted/40 p-3 rounded-lg text-xs space-y-1">
+                <p className="font-semibold text-foreground">
+                  📦 Endereço de Entrega do Cliente (para os Correios):
+                </p>
+                <p>
+                  <strong>Destinatário:</strong>{" "}
+                  {addr["name"] || addr["recipient_name"] || "Cliente"} · Tel:{" "}
+                  {addr["phone"] || "Não informado"}
+                </p>
+                <p>
+                  <strong>Endereço:</strong> {addr["address"] || addr["street_address"]}
+                  {addr["complement"] ? `, ${addr["complement"]}` : ""} - {addr["city"]}
+                </p>
+              </div>
+            )}
+
+            {/* Itens do pedido */}
+            <div className="space-y-1 text-sm">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Itens:</p>
+              {ord.items.map((i, idx) => (
+                <div key={idx} className="flex justify-between text-xs">
+                  <span>
+                    {i.quantity}x {i.title}
+                  </span>
+                  <span className="font-semibold text-success">{brl(Number(i.seller_amount))}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Atualização de etapas e código de rastreio */}
+            {ord.fulfillments.map((fulfillment) => (
+              <div
+                key={fulfillment.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 text-xs"
+              >
+                <span>
+                  <strong>{fulfillment.provider === "cj" ? "CJ Dropshipping" : "Dropi"}</strong> ·{" "}
+                  {fulfillment.status === "submitted"
+                    ? "Pedido enviado"
+                    : fulfillment.status === "failed"
+                      ? "Falha no envio"
+                      : "Aguardando envio"}
+                  {fulfillment.tracking_code ? ` · Rastreio ${fulfillment.tracking_code}` : ""}
+                </span>
+                {fulfillment.provider === "cj" &&
+                  ["pending", "retry", "failed"].includes(fulfillment.status) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await processFulfillment({
+                            data: { fulfillmentId: fulfillment.id, storeId },
+                          });
+                          toast.success("Pedido encaminhado à CJ Dropshipping.");
+                          await qc.invalidateQueries({ queryKey: ["seller-orders", storeId] });
+                        } catch (error) {
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : "Não foi possível encaminhar o pedido.",
+                          );
+                        }
+                      }}
+                    >
+                      Enviar agora
+                    </Button>
+                  )}
+              </div>
+            ))}
+            <div className="border-t border-border pt-3 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground">
+                Atualizar envio nos Correios:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={lastEvent === "preparing" ? "secondary" : "outline"}
+                  disabled={updatingId === ord.id}
+                  onClick={() => addStatus(ord.id, "preparing", "Pedido em separação para envio")}
+                >
+                  Em separação
+                </Button>
+
+                <div className="flex flex-1 min-w-[240px] gap-1">
+                  <Input
+                    placeholder="Código de rastreio Correios (ex: AA123456789BR)"
+                    value={trackingNote[ord.id] || ""}
+                    onChange={(e) => setTrackingNote({ ...trackingNote, [ord.id]: e.target.value })}
+                    className="h-9 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={updatingId === ord.id}
+                    onClick={() =>
+                      addStatus(
+                        ord.id,
+                        "shipped",
+                        trackingNote[ord.id]
+                          ? `Rastreio Correios: ${trackingNote[ord.id]}`
+                          : "Objeto postado nos Correios",
+                      )
+                    }
+                  >
+                    Marcar Enviado
+                  </Button>
+                </div>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={updatingId === ord.id}
+                  onClick={() =>
+                    addStatus(
+                      ord.id,
+                      "out_for_delivery",
+                      "Objeto saiu para entrega ao destinatário",
+                    )
+                  }
+                >
+                  Saiu para entrega
+                </Button>
+
+                <Button
+                  size="sm"
+                  className="bg-success text-success-foreground hover:bg-success/90"
+                  disabled={updatingId === ord.id}
+                  onClick={() => addStatus(ord.id, "delivered", "Objeto entregue ao cliente")}
+                >
+                  Entregue
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {displayedOrders.length === 0 && (
+        <div className="surface-card p-8 text-center text-sm text-muted-foreground">
+          {orderFilter === "paid"
+            ? "Nenhum pedido pago aguardando envio no momento."
+            : orderFilter === "pending"
+              ? "Nenhum pedido aguardando pagamento no momento."
+              : "Nenhum pedido registrado nesta loja."}
+        </div>
+      )}
+    </div>
+  );
+}
