@@ -246,19 +246,42 @@ export function AmazonAffiliateImporter() {
               />
             </div>
 
-            {/* Campo 4: URL da Imagem */}
+                 {/* Campo 4: Descrição Longa da Amazon */}
             <div className="space-y-1.5">
-              <Label htmlFor="prod-img" className="text-sm font-semibold flex items-center gap-1.5">
-                <ImageIcon className="h-4 w-4 text-blue-600" /> URL da Imagem do Produto
-              </Label>
-              <Input
-                id="prod-img"
-                placeholder="https://m.media-amazon.com/images/..."
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="h-11 font-mono text-xs focus-visible:ring-blue-600"
-                required
+              <label htmlFor="prod-desc" className="text-sm font-semibold flex items-center gap-1.5">
+                📝 Descrição / Especificações da Amazon
+              </label>
+              <textarea
+                id="prod-desc"
+                placeholder="Cole aqui os tópicos 'Sobre este item' ou detalhes técnicos da Amazon..."
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                rows={4}
+                className="w-full p-2.5 bg-background rounded-md border border-input text-sm outline-none focus:border-blue-600"
               />
+            </div>
+
+            {/* Campo 5: Múltiplas URLs de Imagens */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold flex items-center gap-1.5">
+                <ImageIcon className="h-4 w-4 text-blue-600" /> URLs das Imagens do Produto
+              </label>
+              {imagens.map((url, index) => (
+                <Input
+                  key={index}
+                  placeholder={`Link da Foto ${index + 1}`}
+                  value={url}
+                  onChange={(e) => handleAlterarFoto(index, e.target.value)}
+                  className="h-11 font-mono text-xs focus-visible:ring-blue-600 mb-2"
+                />
+              ))}
+              <button 
+                type="button" 
+                onClick={adicionarCampoFoto} 
+                className="text-xs bg-secondary text-blue-600 font-bold py-2 px-3 rounded-md border border-blue-200 hover:bg-slate-100 transition-colors mt-1"
+              >
+                + Adicionar outra foto
+              </button>
             </div>
           </div>
 
