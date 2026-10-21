@@ -370,8 +370,7 @@ export function Home() {
           </>
         )}
 {/* BANNER DE FRETE GRÁTIS ANTES DAS CATEGORIAS */}
-// Altere o py atual para um menor, como py-6:
-<section className="relative mb-8 rounded-2xl bg-[#0d2a22] py-6 px-8 border-2 border-emerald-500 ...">
+<section className="relative mb-8 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-emerald-700 to-emerald-950 p-3 shadow-xl motion-safe:animate-pulse sm:p-5">
   <div className="flex flex-col items-center gap-5 rounded-xl bg-black/70 p-4 sm:p-6 md:flex-row">
     <img
       src="/images/banner-frete-gratis.jpg"
