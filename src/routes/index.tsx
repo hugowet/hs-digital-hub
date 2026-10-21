@@ -379,7 +379,7 @@ export function Home() {
     />
 
     <div className="text-center text-white md:text-left">
-      <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
+      <span className="inline-flex items-center gap-2 rounded-full bg-red-300 px-3 py-1 text-xs font-black uppercase">
         <Zap className="h-4 w-4" />
         
       </span>
