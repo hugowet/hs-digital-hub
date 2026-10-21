@@ -12,6 +12,10 @@ import {
   Video,
   Layers,
   FileText,
+  Plus,
+  Trash2,
+  ListChecks,
+  ClipboardPaste,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
 
-// Regra de Margem de Lucro Dinâmica:
+// Regra de Margem Dinâmica:
 // - Até R$ 80 -> 35%
 // - Acima de R$ 100 -> 17%
 // - Entre R$ 80 e R$ 100 -> 25% (faixa de transição)
@@ -32,6 +36,12 @@ function getMarginRate(cost: number): number {
   if (cost <= 80) return 0.35;
   if (cost > 100) return 0.17;
   return 0.25;
+}
+
+interface SpecItem {
+  id: string;
+  key: string;
+  value: string;
 }
 
 export function AmazonAffiliateImporter() {
@@ -47,7 +57,14 @@ export function AmazonAffiliateImporter() {
   const [imageUrl, setImageUrl] = useState("");
   const [galleryInput, setGalleryInput] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [specs, setSpecs] = useState<SpecItem[]>([
+    { id: "1", key: "Marca", value: "" },
+    { id: "2", key: "Modelo", value: "" },
+    { id: "3", key: "Voltagem", value: "" },
+  ]);
   const [submitting, setSubmitting] = useState(false);
+  const [autoFillJson, setAutoFillJson] = useState("");
+  const [showAutoFillBox, setShowAutoFillBox] = useState(false);
 
   // 1. Verificação de Autenticação e Trava de Segurança
   useEffect(() => {
@@ -84,6 +101,49 @@ export function AmazonAffiliateImporter() {
 
     loadUserAndStore();
   }, []);
+
+  // Adicionar / Remover Especificações
+  const addSpec = () => {
+    setSpecs((prev) => [...prev, { id: Math.random().toString(), key: "", value: "" }]);
+  };
+
+  const updateSpec = (id: string, field: "key" | "value", val: string) => {
+    setSpecs((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: val } : item))
+    );
+  };
+
+  const removeSpec = (id: string) => {
+    setSpecs((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  // Preenchimento Automático via JSON gerado pelo Script da Amazon
+  const handleApplyAutoFill = (jsonString?: string) => {
+    const raw = jsonString || autoFillJson;
+    if (!raw.trim()) return toast.error("Cole o conteúdo extraído da Amazon.");
+    try {
+      const data = JSON.parse(raw);
+      if (data.title) setTitle(data.title);
+      if (data.costPrice) setCostPrice(String(data.costPrice));
+      if (data.description) setDescription(data.description);
+      if (data.mainImage) setImageUrl(data.mainImage);
+      if (data.gallery) setGalleryInput(Array.isArray(data.gallery) ? data.gallery.join("\n") : data.gallery);
+      if (data.videoUrl) setVideoUrl(data.videoUrl);
+      if (data.specs && typeof data.specs === "object") {
+        const newSpecs: SpecItem[] = Object.entries(data.specs).map(([key, value]) => ({
+          id: Math.random().toString(),
+          key,
+          value: String(value),
+        }));
+        if (newSpecs.length > 0) setSpecs(newSpecs);
+      }
+      setShowAutoFillBox(false);
+      setAutoFillJson("");
+      toast.success("Campos e especificações preenchidos com sucesso!");
+    } catch {
+      toast.error("Formato inválido. Certifique-se de colar o JSON copiado pelo script.");
+    }
+  };
 
   // Cálculos de Margem Dinâmica em tempo real
   const rawCost = parseFloat(costPrice.replace(",", ".")) || 0;
@@ -129,6 +189,15 @@ export function AmazonAffiliateImporter() {
     setSubmitting(true);
     const finalAffiliateUrl = formatAmazonAffiliateLink(amazonUrl);
     const allGalleryUrls = Array.from(new Set([imageUrl.trim(), ...parsedGalleryUrls]));
+
+    // Monta o objeto de especificações técnicas
+    const specsObject: Record<string, string> = {};
+    specs.forEach((item) => {
+      if (item.key.trim() && item.value.trim()) {
+        specsObject[item.key.trim()] = item.value.trim();
+      }
+    });
+
     const finalDescription = description.trim() || "Produto oficial importado com garantia e entrega rápida via Amazon.";
 
     try {
@@ -149,6 +218,7 @@ export function AmazonAffiliateImporter() {
         supplier: "amazon",
         product_type: "physical",
         specifications: {
+          ...specsObject,
           affiliate_url: finalAffiliateUrl,
           partner: "amazon",
           affiliate_id: AMAZON_AFFILIATE_TAG,
@@ -164,7 +234,7 @@ export function AmazonAffiliateImporter() {
 
       if (error) throw error;
 
-      toast.success("Produto Amazon publicado com sucesso na vitrine!");
+      toast.success("Produto Amazon com especificações publicado na vitrine!");
       setTitle("");
       setAmazonUrl("");
       setCostPrice("");
@@ -172,6 +242,11 @@ export function AmazonAffiliateImporter() {
       setImageUrl("");
       setGalleryInput("");
       setVideoUrl("");
+      setSpecs([
+        { id: "1", key: "Marca", value: "" },
+        { id: "2", key: "Modelo", value: "" },
+        { id: "3", key: "Voltagem", value: "" },
+      ]);
     } catch (err: any) {
       toast.error(err.message || "Erro ao publicar o produto.");
     } finally {
@@ -187,7 +262,6 @@ export function AmazonAffiliateImporter() {
     );
   }
 
-  // Trava de Segurança por e-mail exclusivo
   if (!currentUserEmail || !ALLOWED_EMAILS.includes(currentUserEmail)) {
     return (
       <div className="mx-auto my-8 max-w-lg rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center">
@@ -217,14 +291,52 @@ export function AmazonAffiliateImporter() {
             <div>
               <h1 className="text-xl font-bold text-foreground">Importador Direto Amazon Associates</h1>
               <p className="text-sm text-muted-foreground">
-                Cadastre ofertas com link de afiliado, descrição personalizada, fotos e margem dinâmica.
+                Cadastre ofertas com especificações técnicas completas, descrição e margem automática.
               </p>
             </div>
           </div>
-          <Badge className="bg-blue-600/10 text-blue-700 hover:bg-blue-600/20 dark:text-blue-300">
-            ID: {AMAZON_AFFILIATE_TAG}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAutoFillBox(!showAutoFillBox)}
+              className="border-blue-300 text-blue-700 hover:bg-blue-50 text-xs font-semibold"
+            >
+              <ClipboardPaste className="h-3.5 w-3.5 mr-1" />
+              Preenchimento Rápido
+            </Button>
+            <Badge className="bg-blue-600/10 text-blue-700 hover:bg-blue-600/20 dark:text-blue-300">
+              ID: {AMAZON_AFFILIATE_TAG}
+            </Badge>
+          </div>
         </div>
+
+        {/* Caixa de Preenchimento Rápido */}
+        {showAutoFillBox && (
+          <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 space-y-2 dark:border-blue-900 dark:bg-blue-950/40">
+            <Label className="text-xs font-bold text-blue-900 dark:text-blue-200">
+              Cole abaixo os dados gerados pelo Script da Amazon para preencher tudo de uma vez:
+            </Label>
+            <Textarea
+              rows={3}
+              placeholder="Cole o JSON copiado da Amazon aqui..."
+              value={autoFillJson}
+              onChange={(e) => setAutoFillJson(e.target.value)}
+              className="text-xs font-mono bg-white dark:bg-background"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleApplyAutoFill()}
+                className="bg-blue-600 text-white hover:bg-blue-700 text-xs h-8"
+              >
+                Aplicar aos Campos
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -237,7 +349,7 @@ export function AmazonAffiliateImporter() {
             </Label>
             <Input
               id="prod-title"
-              placeholder="Ex: Fone de Ouvido Bluetooth JBL Wave Buds"
+              placeholder="Ex: Ar Condicionado Split Hi Wall LG Dual Inverter Voice 18000 BTUs"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-11 focus-visible:ring-blue-600"
@@ -260,7 +372,7 @@ export function AmazonAffiliateImporter() {
             />
           </div>
 
-          {/* Preço de Custo */}
+          {/* Preço de Custo e Imagem Principal */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="prod-cost" className="text-sm font-semibold flex items-center gap-1.5">
@@ -270,7 +382,7 @@ export function AmazonAffiliateImporter() {
                 id="prod-cost"
                 type="number"
                 step="0.01"
-                placeholder="Ex: 65.00 ou 140.00"
+                placeholder="Ex: 75.00 ou 180.00"
                 value={costPrice}
                 onChange={(e) => setCostPrice(e.target.value)}
                 className="h-11 font-mono text-sm focus-visible:ring-blue-600"
@@ -278,7 +390,6 @@ export function AmazonAffiliateImporter() {
               />
             </div>
 
-            {/* Imagem Principal */}
             <div className="space-y-1.5">
               <Label htmlFor="prod-img" className="text-sm font-semibold flex items-center gap-1.5">
                 <ImageIcon className="h-4 w-4 text-blue-600" /> URL da Imagem Principal
@@ -302,33 +413,74 @@ export function AmazonAffiliateImporter() {
             <Textarea
               id="prod-desc"
               rows={4}
-              placeholder="Cole aqui os detalhes, especificações e diferenciais do produto da Amazon..."
+              placeholder="Cole aqui a descrição detalhada e benefícios do produto..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="text-sm focus-visible:ring-blue-600 leading-relaxed"
             />
-            <span className="text-[11px] text-muted-foreground">
-              Se deixar em branco, será inserida a descrição padrão de garantia oficial.
-            </span>
+          </div>
+
+          {/* ESPECIFICAÇÕES DO PRODUTO (Tabela Chave/Valor igual à foto) */}
+          <div className="space-y-2 rounded-lg border border-border/80 bg-muted/20 p-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-bold flex items-center gap-1.5">
+                <ListChecks className="h-4 w-4 text-blue-600" /> Especificações do Produto
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addSpec}
+                className="h-8 text-xs font-semibold"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Linha
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Preencha com detalhes técnicos (ex: Marca, Modelo, Voltagem, Potência, Dimensões).
+            </p>
+
+            <div className="space-y-2 pt-2">
+              {specs.map((item) => (
+                <div key={item.id} className="flex items-center gap-2">
+                  <Input
+                    placeholder="Característica (ex: Cor)"
+                    value={item.key}
+                    onChange={(e) => updateSpec(item.id, "key", e.target.value)}
+                    className="h-9 text-xs flex-1 bg-background"
+                  />
+                  <Input
+                    placeholder="Valor (ex: Branco)"
+                    value={item.value}
+                    onChange={(e) => updateSpec(item.id, "value", e.target.value)}
+                    className="h-9 text-xs flex-1 bg-background font-medium"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeSpec(item.id)}
+                    className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Galeria de Fotos Adicionais */}
           <div className="space-y-1.5">
             <Label htmlFor="prod-gallery" className="text-sm font-semibold flex items-center gap-1.5">
-              <Layers className="h-4 w-4 text-blue-600" /> Fotos Adicionais da Galeria (uma por linha ou com vírgula)
+              <Layers className="h-4 w-4 text-blue-600" /> Fotos Adicionais da Galeria (uma por linha)
             </Label>
             <Textarea
               id="prod-gallery"
               placeholder="https://m.media-amazon.com/images/I/exemplo1.jpg&#10;https://m.media-amazon.com/images/I/exemplo2.jpg"
               value={galleryInput}
               onChange={(e) => setGalleryInput(e.target.value)}
-              className="font-mono text-xs min-h-[75px] focus-visible:ring-blue-600"
+              className="font-mono text-xs min-h-[70px] focus-visible:ring-blue-600"
             />
-            {parsedGalleryUrls.length > 0 && (
-              <span className="text-[11px] text-muted-foreground">
-                {parsedGalleryUrls.length} foto(s) adicional(is) detectada(s).
-              </span>
-            )}
           </div>
 
           {/* Vídeo do Produto */}
@@ -346,7 +498,7 @@ export function AmazonAffiliateImporter() {
           </div>
 
           {/* Botão de Publicação */}
-          <div className="pt-3">
+          <div className="pt-2">
             <Button
               type="submit"
               disabled={submitting || rawCost <= 0}
@@ -390,19 +542,20 @@ export function AmazonAffiliateImporter() {
             </Badge>
           </div>
 
-          {/* Miniaturas da Galeria */}
-          {parsedGalleryUrls.length > 0 && (
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {parsedGalleryUrls.slice(0, 4).map((url, i) => (
-                <div key={i} className="h-10 w-10 flex-shrink-0 rounded border bg-muted/30 overflow-hidden">
-                  <img src={url} alt={`Galeria ${i + 1}`} className="h-full w-full object-cover" />
-                </div>
-              ))}
-              {parsedGalleryUrls.length > 4 && (
-                <div className="h-10 w-10 flex-shrink-0 rounded border bg-muted/60 flex items-center justify-center text-[10px] font-bold text-muted-foreground">
-                  +{parsedGalleryUrls.length - 4}
-                </div>
-              )}
+          {/* Resumo de Especificações Cadastradas */}
+          {specs.filter((s) => s.key && s.value).length > 0 && (
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5 text-xs">
+              <span className="font-bold text-foreground">Especificações Inclusas:</span>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {specs
+                  .filter((s) => s.key && s.value)
+                  .map((s, idx) => (
+                    <div key={idx} className="flex justify-between border-b border-border/40 pb-0.5 text-[11px]">
+                      <span className="text-muted-foreground">{s.key}:</span>
+                      <span className="font-medium text-foreground">{s.value}</span>
+                    </div>
+                  ))}
+              </div>
             </div>
           )}
 
