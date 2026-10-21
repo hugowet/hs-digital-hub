@@ -370,17 +370,17 @@ export function Home() {
           </>
         )}
 {/* BANNER DE FRETE GRÁTIS ANTES DAS CATEGORIAS */}
-<section className="relative mb-8 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-650 via-emerald-400 to-emerald-950 p-3 shadow-xl motion-safe:animate-pulse sm:p-5">
+<section className="relative mb-8 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-emerald-700 to-emerald-950 p-3 shadow-xl motion-safe:animate-pulse sm:p-5">
   <div className="flex flex-col items-center gap-5 rounded-xl bg-black/70 p-4 sm:p-6 md:flex-row">
     <img
       src="/images/banner-frete-gratis.jpg"
       alt="HS Digital: frete grátis na sua primeira compra"
-      className="w-full max-w-[350px] rounded-xl border-2 border-emerald-200 object-cover shadow-lg"
+      className="w-full max-w-[450px] rounded-xl border-2 border-emerald-400 object-cover shadow-lg"
     />
 
     <div className="text-center text-white md:text-left">
-      <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-2 py-1 text-xs font-black uppercase">
-        <Zap className="h-2 w-4" />
+      <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
+        <Zap className="h-4 w-4" />
         
       </span>
 
