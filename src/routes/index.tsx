@@ -385,12 +385,12 @@ export function Home() {
       </span>
 
       <h2 className="mt-3 text-2xl font-black uppercase sm:text-4xl">
-        Frete grátis na sua{" "}
-        <span className="text-emerald-300">primeira compra!</span>
+        Venha para HS Digital{" "}
+        <span className="text-emerald-300">!</span>
       </h2>
 
       <p className="mt-2 text-sm text-white/85">
-        Confira os produtos participantes e as condições do benefício no carrinho.
+     
       </p>
 
       <button
@@ -399,7 +399,7 @@ export function Home() {
         className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:scale-105 hover:bg-amber-300"
       >
         <Gift className="h-5 w-5" />
-        VER PRODUTOS COM FRETE GRÁTIS
+         EVOLUA SEU JEITO DE COMPRAR
       </button>
     </div>
   </div>
