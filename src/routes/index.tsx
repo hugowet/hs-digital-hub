@@ -375,7 +375,7 @@ export function Home() {
     <img
       src="/images/banner-frete-gratis.jpg"
       alt="HS Digital: frete grátis na sua primeira compra"
-      className="w-full max-w-[150px] rounded-xl border-2 border-emerald-400 object-cover shadow-lg"
+      className="w-full max-w-[350px] rounded-xl border-2 border-emerald-400 object-cover shadow-lg"
     />
 
     <div className="text-center text-white md:text-left">
