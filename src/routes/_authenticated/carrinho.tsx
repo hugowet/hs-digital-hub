@@ -52,7 +52,6 @@ export const Route = createFileRoute("/_authenticated/carrinho")({
   component: CartPage,
 });
 
-// Calcula prazo com formato: "Chegará entre os dias X e Y de Mês"
 function getDeliveryEstimate(startDate: Date = new Date(), minDays: number = 12, maxDays: number = 18) {
   function addBusinessDays(date: Date, days: number): Date {
     const cur = new Date(date);
@@ -134,19 +133,14 @@ function CartPage() {
   >([]);
   const [selectedQuotes, setSelectedQuotes] = useState<Record<string, string>>({});
 
-  // Cupons ganhos nos jogos
   const [coupons, setCoupons] = useState<
     Array<{ id: string; code: string; percent_off: number; expires_at: string; status: string }>
   >([]);
   const [applyGameCoupon, setApplyGameCoupon] = useState(true);
 
-  // Garantia Premium
   const [selectedWarrantyId, setSelectedWarrantyId] = useState<string | null>("2_years");
-
-  // Primeira Compra
   const [firstPurchaseEligible, setFirstPurchaseEligible] = useState(false);
 
-  // Prazos dinâmicos baseados na data de hoje
   const expressEstimate = useMemo(() => getDeliveryEstimate(new Date(), 12, 18), []);
   const premiumEstimate = useMemo(() => getDeliveryEstimate(new Date(), 8, 14), []);
 
@@ -172,7 +166,6 @@ function CartPage() {
     );
   }, [coupons]);
 
-  // Calcula o valor total do frete baseado nas opções selecionadas
   const valorFreteCobrado = useMemo(() => {
     let sum = 0;
     for (const group of quotes) {
@@ -185,11 +178,9 @@ function CartPage() {
     return Math.round(sum * 100) / 100;
   }, [quotes, selectedQuotes]);
 
-  // Garantia Premium
   const selectedWarranty = WARRANTY_OPTIONS.find((w) => w.id === selectedWarrantyId) ?? null;
   const valorSeguro = selectedWarranty ? selectedWarranty.amount : 0;
 
-  // Total travado
   const subtotalProdutos = subtotal;
   const totalPedido = Math.round((subtotalProdutos + valorFreteCobrado + valorSeguro) * 100) / 100;
 
@@ -214,16 +205,21 @@ function CartPage() {
       });
   }, []);
 
+  // CÁLCULO AUTOMÁTICO DE FRETE AO DIGITAR 8 DÍGITOS OU QUANDO OS ITENS MUDAREM
   useEffect(() => {
-    if (postalCode.replace(/\D/g, "").length === 8 && items.length > 0) {
-      void calculateShipping();
+    const clean = postalCode.replace(/\D/g, "");
+    if (clean.length === 8 && items.length > 0) {
+      const timer = setTimeout(() => {
+        void calculateShipping(clean, false);
+      }, 400);
+      return () => clearTimeout(timer);
     }
-  }, [items]);
+  }, [postalCode, items]);
 
-  async function calculateShipping(customCep?: string) {
+  async function calculateShipping(customCep?: string, showToast = true) {
     const rawCep = (customCep ?? postalCode).replace(/\D/g, "");
     if (rawCep.length !== 8) {
-      toast.error("Informe um CEP válido com 8 dígitos.");
+      if (showToast) toast.error("Informe um CEP válido com 8 dígitos.");
       return;
     }
     const physicalItems = items.filter((i) => i.productType !== "digital");
@@ -231,6 +227,12 @@ function CartPage() {
 
     setQuoting(true);
     try {
+      // 1. Assegura sessão ativa para evitar 'Invalid token'
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        await supabase.auth.refreshSession();
+      }
+
       const quotesRes = await quoteShipping({
         data: {
           postalCode: rawCep,
@@ -247,9 +249,35 @@ function CartPage() {
         }
       }
       setSelectedQuotes((prev) => ({ ...defaults, ...prev }));
-      toast.success("Opções de envio calculadas com sucesso!");
+      if (showToast) toast.success("Opções de envio calculadas com sucesso!");
     } catch (err: any) {
-      toast.error(err?.message || "Não foi possível calcular o frete para este CEP.");
+      // 2. Se houver falha de token, tenta renovar e recalcular automaticamente
+      if (err?.message?.includes("token") || err?.message?.includes("Unauthorized")) {
+        try {
+          const { error: refreshErr } = await supabase.auth.refreshSession();
+          if (!refreshErr) {
+            const retryRes = await quoteShipping({
+              data: {
+                postalCode: rawCep,
+                items: physicalItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+              },
+            });
+            setQuotes(retryRes as any);
+            const defaults: Record<string, string> = {};
+            for (const group of retryRes as any) {
+              if (group.options[0]) defaults[group.storeId] = group.options[0].id;
+            }
+            setSelectedQuotes((prev) => ({ ...defaults, ...prev }));
+            if (showToast) toast.success("Opções de envio calculadas com sucesso!");
+            return;
+          }
+        } catch {
+          // Continua para o tratamento de erro padrão
+        }
+      }
+      if (showToast) {
+        toast.error(err?.message || "Não foi possível calcular o frete para este CEP.");
+      }
     } finally {
       setQuoting(false);
     }
@@ -320,7 +348,7 @@ function CartPage() {
           <Truck className="h-16 w-16 text-muted-foreground/30 mb-4" />
           <h1 className="text-2xl font-bold">Seu carrinho está vazio</h1>
           <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-            Explore milhares de produtos importados e nacionais com envio prioritário.
+            Navegue pelos produtos e adicione suas compras ao carrinho para continuar.
           </p>
           <Button asChild className="mt-6">
             <Link to="/">Continuar Comprando</Link>
@@ -334,78 +362,81 @@ function CartPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <SiteHeader />
+      <main className="container mx-auto max-w-6xl flex-1 px-4 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">Carrinho de Compras</h1>
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/">Continuar Comprando</Link>
+          </Button>
+        </div>
 
-      <main className="container mx-auto flex-1 p-4 md:p-8 max-w-6xl">
-        <h1 className="text-2xl font-black tracking-tight mb-6 flex items-center gap-2">
-          <span>Seu Carrinho</span>
-          <span className="text-sm font-normal text-muted-foreground">({items.length} itens)</span>
-        </h1>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8">
-          {/* Lista de Produtos agrupados por loja */}
-          <div className="space-y-6">
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Lista de Itens por Loja */}
+          <div className="lg:col-span-2 space-y-6">
             {groups.map((group) => (
               <section key={group.storeId} className="rounded-xl border border-border bg-card p-4 shadow-2xs">
-                <div className="flex items-center gap-2 border-b pb-3 mb-3 text-xs font-semibold text-muted-foreground">
-                  <Store className="h-4 w-4" />
-                  <span>Vendido e entregue por {group.storeName}</span>
+                <div className="flex items-center gap-2 border-b border-border pb-3 mb-4 text-sm font-semibold">
+                  <Store className="h-4 w-4 text-primary" />
+                  <span>{group.storeName}</span>
                 </div>
 
                 <div className="divide-y divide-border">
                   {group.items.map((item) => (
-                    <div key={item.productId} className="py-3 flex gap-3 items-center">
+                    <div key={item.productId} className="py-4 first:pt-0 last:pb-0 flex gap-4 items-start">
                       {item.imageUrl ? (
                         <img
                           src={item.imageUrl}
                           alt={item.title}
-                          className="h-16 w-16 object-contain rounded-md border bg-muted/20 p-1 shrink-0"
+                          className="h-20 w-20 rounded-md object-cover border border-border shrink-0"
                         />
                       ) : (
-                        <div className="h-16 w-16 rounded-md border bg-muted/20 flex items-center justify-center shrink-0">
-                          <Truck className="h-6 w-6 text-muted-foreground/40" />
+                        <div className="h-20 w-20 rounded-md bg-muted flex items-center justify-center text-xs text-muted-foreground shrink-0">
+                          Sem foto
                         </div>
                       )}
 
                       <div className="flex-1 min-w-0">
-                        <Link
-                          to="/produto/$productId"
-                          params={{ productId: item.productId }}
-                          className="text-xs md:text-sm font-medium line-clamp-2 hover:text-primary leading-snug"
-                        >
-                          {item.title}
-                        </Link>
+                        <h4 className="font-medium text-sm line-clamp-2">{item.title}</h4>
                         <div className="mt-1 flex items-baseline gap-2">
-                          <span className="text-sm md:text-base font-bold">{brl(item.price)}</span>
-                          <span className="text-[11px] text-muted-foreground">cada</span>
+                          <span className="font-bold text-base">{brl(item.price)}</span>
+                          <span className="text-xs text-muted-foreground">unidade</span>
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-3">
+                          <div className="flex items-center border border-border rounded-md">
+                            <button
+                              type="button"
+                              onClick={() => setQuantity(item.productId, item.quantity - 1)}
+                              className="px-2 py-1 text-muted-foreground hover:text-foreground"
+                              aria-label="Diminuir quantidade"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </button>
+                            <span className="px-2 text-xs font-semibold">{item.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => setQuantity(item.productId, item.quantity + 1)}
+                              className="px-2 py-1 text-muted-foreground hover:text-foreground"
+                              aria-label="Aumentar quantidade"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          </div>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => remove(item.productId)}
+                            className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                            aria-label="Remover item"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-7 w-7"
-                          onClick={() => setQuantity(item.productId, item.quantity - 1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="text-xs font-semibold w-5 text-center">{item.quantity}</span>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-7 w-7"
-                          onClick={() => setQuantity(item.productId, item.quantity + 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => remove(item.productId)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div className="text-right">
+                        <span className="font-bold text-sm">{brl(item.price * item.quantity)}</span>
                       </div>
                     </div>
                   ))}
@@ -434,227 +465,230 @@ function CartPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => calculateShipping()}
+                    onClick={() => calculateShipping(undefined, true)}
                     disabled={quoting}
                   >
-                    {quoting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Calcular"}
+                    {quoting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Calcular"}
                   </Button>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div>
+                <Label htmlFor="name" className="text-xs">
+                  Nome Completo *
+                </Label>
                 <Input
-                  placeholder="Nome completo *"
+                  id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="text-xs"
+                  placeholder="Seu nome"
+                  className="text-xs mt-1"
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="phone" className="text-xs">
+                  Telefone / WhatsApp *
+                </Label>
                 <Input
-                  placeholder="Telefone (com DDD) *"
+                  id="phone"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="text-xs"
+                  placeholder="(00) 00000-0000"
+                  className="text-xs mt-1"
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="address" className="text-xs">
+                  Endereço com Número *
+                </Label>
                 <Input
-                  placeholder="Endereço e número *"
+                  id="address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="text-xs"
+                  placeholder="Rua, Número, Bairro, Compl."
+                  className="text-xs mt-1"
                 />
-                <div className="grid grid-cols-[1fr_64px] gap-2">
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="city" className="text-xs">
+                    Cidade *
+                  </Label>
                   <Input
-                    placeholder="Cidade *"
+                    id="city"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    className="text-xs"
-                  />
-                  <Input
-                    placeholder="UF *"
-                    value={state}
-                    maxLength={2}
-                    onChange={(e) => setState(e.target.value.toUpperCase())}
-                    className="text-xs uppercase"
+                    placeholder="Cidade"
+                    className="text-xs mt-1"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="state" className="text-xs">
+                    Estado *
+                  </Label>
+                  <Input
+                    id="state"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    placeholder="UF"
+                    maxLength={2}
+                    className="text-xs mt-1 uppercase"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="note" className="text-xs">
+                  Ponto de Referência (Opcional)
+                </Label>
+                <Input
+                  id="note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Próximo à praça..."
+                  className="text-xs mt-1"
+                />
               </div>
             </div>
 
-            {/* SELEÇÃO DAS OPÇÕES DE ENVIO */}
+            {/* OPÇÕES DE FRETE POR LOJA */}
             {quotes.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-bold">Modalidade de Envio</h3>
-                </div>
+                <h3 className="text-sm font-bold flex items-center gap-1.5">
+                  <Truck className="h-4 w-4 text-primary" /> Modalidades de Envio
+                </h3>
 
-                {quotes.map((group) => {
-                  const currentSelectedId = selectedQuotes[group.storeId] || group.options[0]?.id;
-                  const expressOption = group.options[0];
-                  const premiumOption = group.options[1];
+                {quotes.map((group) => (
+                  <div key={group.storeId} className="space-y-2 border-b border-border pb-3 last:border-b-0 last:pb-0">
+                    <p className="text-xs font-semibold text-muted-foreground">{group.storeName}</p>
+                    <div className="space-y-2">
+                      {group.options.map((opt) => {
+                        const isSelected = (selectedQuotes[group.storeId] || group.options[0]?.id) === opt.id;
+                        const isYunExpress = opt.serviceCode.includes("yunexpress") || opt.carrierName.includes("YunExpress");
+                        const estimate = isYunExpress ? expressEstimate : premiumEstimate;
 
-                  return (
-                    <div key={group.storeId} className="space-y-2">
-                      {/* Opção 1: Envio Prioritário Express */}
-                      {expressOption && (
-                        <label
-                          className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 text-xs transition ${
-                            currentSelectedId === expressOption.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:bg-muted/30"
-                          }`}
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <input
-                              type="radio"
-                              name={`shipping-${group.storeId}`}
-                              checked={currentSelectedId === expressOption.id}
-                              onChange={() =>
-                                setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: expressOption.id }))
-                              }
-                              className="mt-0.5"
-                            />
-                            <div>
-                              <strong className="block text-foreground font-semibold">
-                                {expressOption.serviceName}
-                              </strong>
-                              <span className="text-[11px] text-muted-foreground block mt-0.5">
-                                {expressEstimate.text}
-                              </span>
+                        return (
+                          <label
+                            key={opt.id}
+                            className={`flex cursor-pointer items-start justify-between rounded-lg border p-2.5 transition text-xs ${
+                              isSelected
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:border-muted-foreground/40"
+                            }`}
+                          >
+                            <div className="flex items-start gap-2">
+                              <input
+                                type="radio"
+                                name={`shipping-${group.storeId}`}
+                                checked={isSelected}
+                                onChange={() =>
+                                  setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: opt.id }))
+                                }
+                                className="mt-0.5"
+                              />
+                              <div>
+                                <p className="font-semibold text-foreground">{opt.serviceName}</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">{estimate.text}</p>
+                              </div>
                             </div>
-                          </div>
-                          <strong className={`text-xs font-bold uppercase tracking-wide ${expressOption.amount === 0 ? "text-[#00a650]" : "text-foreground"}`}>
-                            {expressOption.amount === 0 ? "Grátis" : brl(expressOption.amount)}
-                          </strong>
-                        </label>
-                      )}
-
-                      {/* Opção 2: Envio Prioritário Premium */}
-                      {premiumOption && (
-                        <label
-                          className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 text-xs transition ${
-                            currentSelectedId === premiumOption.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:bg-muted/30"
-                          }`}
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <input
-                              type="radio"
-                              name={`shipping-${group.storeId}`}
-                              checked={currentSelectedId === premiumOption.id}
-                              onChange={() =>
-                                setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: premiumOption.id }))
-                              }
-                              className="mt-0.5"
-                            />
-                            <div>
-                              <strong className="block text-foreground font-semibold">
-                                {premiumOption.serviceName}
-                              </strong>
-                              <span className="text-[11px] text-muted-foreground block mt-0.5">
-                                {premiumEstimate.text}
-                              </span>
-                            </div>
-                          </div>
-                          <strong className="text-xs font-bold text-primary">
-                            {brl(premiumOption.amount)}
-                          </strong>
-                        </label>
-                      )}
+                            <span className="font-bold text-foreground">
+                              {opt.amount === 0 ? "Grátis" : brl(opt.amount)}
+                            </span>
+                          </label>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* SELEÇÃO DE GARANTIA ESTENDIDA */}
+            {/* GARANTIA ESTENDIDA */}
             <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-bold">Garantia Blindada HS</h3>
-              </div>
+              <h3 className="text-sm font-bold flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" /> Garantia Estendida
+              </h3>
+              <div className="space-y-2">
+                {WARRANTY_OPTIONS.map((w) => {
+                  const isSelected = selectedWarrantyId === w.id;
+                  return (
+                    <label
+                      key={w.id}
+                      className={`flex cursor-pointer items-center justify-between rounded-lg border p-2.5 transition text-xs ${
+                        isSelected
+                          ? "border-emerald-600 bg-emerald-500/5"
+                          : "border-border hover:border-muted-foreground/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="warranty"
+                          checked={isSelected}
+                          onChange={() => setSelectedWarrantyId(w.id)}
+                        />
+                        <div>
+                          <p className="font-semibold">{w.title}</p>
+                          {w.tag && <span className="text-[10px] text-emerald-600 font-bold">{w.tag}</span>}
+                        </div>
+                      </div>
+                      <span className="font-bold">{brl(w.amount)}</span>
+                    </label>
+                  );
+                })}
 
-              <div className="space-y-1.5">
-                {WARRANTY_OPTIONS.map((warranty) => (
-                  <label
-                    key={warranty.id}
-                    className={`flex cursor-pointer items-center justify-between rounded-lg border p-2.5 text-xs transition ${
-                      selectedWarrantyId === warranty.id
-                        ? "border-primary bg-primary/5 ring-1 ring-primary"
-                        : "border-border hover:bg-muted/30"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="warranty-selection"
-                        checked={selectedWarrantyId === warranty.id}
-                        onChange={() => setSelectedWarrantyId(warranty.id)}
-                      />
-                      <span>{warranty.title}</span>
-                      {warranty.tag && (
-                        <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600">
-                          {warranty.tag}
-                        </span>
-                      )}
-                    </div>
-                    <strong>+{brl(warranty.amount)}</strong>
-                  </label>
-                ))}
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedWarrantyId(null)}
-                  className="text-[11px] text-muted-foreground hover:underline block pt-1"
-                >
-                  Continuar apenas com a garantia padrão de 90 dias
-                </button>
+                <label className="flex cursor-pointer items-center gap-2 pt-1 text-xs text-muted-foreground">
+                  <input
+                    type="radio"
+                    name="warranty"
+                    checked={selectedWarrantyId === null}
+                    onChange={() => setSelectedWarrantyId(null)}
+                  />
+                  <span>Sem garantia adicional (apenas garantia legal)</span>
+                </label>
               </div>
             </div>
 
             {/* RESUMO DO PEDIDO */}
             <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
-              <h3 className="text-sm font-bold border-b pb-2">Resumo do Pedido</h3>
-
+              <h3 className="text-sm font-bold">Resumo do Pedido</h3>
               <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Subtotal produtos</span>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal dos produtos</span>
                   <span>{brl(subtotalProdutos)}</span>
                 </div>
 
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Frete</span>
-                  <span className={valorFreteCobrado === 0 ? "font-bold text-[#00a650]" : ""}>
-                    {quotes.length === 0 ? "A calcular" : valorFreteCobrado === 0 ? "Grátis" : brl(valorFreteCobrado)}
-                  </span>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Frete</span>
+                  <span>{valorFreteCobrado === 0 ? "Grátis" : brl(valorFreteCobrado)}</span>
                 </div>
 
                 {valorSeguro > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Garantia estendida</span>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Garantia Estendida</span>
                     <span>{brl(valorSeguro)}</span>
                   </div>
                 )}
 
-                <div className="border-t pt-2 flex justify-between text-sm font-bold text-foreground">
+                <div className="border-t border-border pt-2 flex justify-between font-bold text-base">
                   <span>Total</span>
-                  <span className="text-lg text-primary">{brl(totalPedido)}</span>
+                  <span className="text-primary">{brl(totalPedido)}</span>
                 </div>
               </div>
 
               <Button
-                size="lg"
-                className="w-full font-bold mt-4 shadow-md"
                 onClick={handleCheckout}
                 disabled={submitting}
+                className="w-full bg-[#00a650] hover:bg-[#008f45] text-white font-bold h-11 text-sm shadow-md"
               >
                 {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finalizando...
-                  </>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <CreditCard className="mr-2 h-4 w-4" /> Concluir Pedido
+                    <Zap className="h-4 w-4 mr-1.5 fill-current" /> Finalizar Pedido
                   </>
                 )}
               </Button>
@@ -662,7 +696,6 @@ function CartPage() {
           </aside>
         </div>
       </main>
-
       <SiteFooter />
     </div>
   );
