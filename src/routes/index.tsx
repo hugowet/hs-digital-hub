@@ -370,7 +370,7 @@ export function Home() {
           </>
         )}
 {/* BANNER DE FRETE GRÁTIS ANTES DAS CATEGORIAS */}
-<section className="relative mb-8 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-emerald-700 to-emerald-950 p-3 shadow-xl motion-safe:animate-pulse sm:p-5">
+<section className="relative mb-8 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-650 via-emerald-400 to-emerald-950 p-3 shadow-xl motion-safe:animate-pulse sm:p-5">
   <div className="flex flex-col items-center gap-5 rounded-xl bg-black/70 p-4 sm:p-6 md:flex-row">
     <img
       src="/images/banner-frete-gratis.jpg"
