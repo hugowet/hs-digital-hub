@@ -11,6 +11,7 @@ import {
   Truck,
   Video,
   Layers,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
 
-// Regra de Margem Dinâmica:
+// Regra de Margem de Lucro Dinâmica:
 // - Até R$ 80 -> 35%
 // - Acima de R$ 100 -> 17%
 // - Entre R$ 80 e R$ 100 -> 25% (faixa de transição)
@@ -42,6 +43,7 @@ export function AmazonAffiliateImporter() {
   const [title, setTitle] = useState("");
   const [amazonUrl, setAmazonUrl] = useState("");
   const [costPrice, setCostPrice] = useState("");
+  const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [galleryInput, setGalleryInput] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
@@ -90,7 +92,7 @@ export function AmazonAffiliateImporter() {
   const calculatedSalePrice = rawCost > 0 ? Number((rawCost * (1 + currentMarginRate)).toFixed(2)) : 0;
   const grossProfit = rawCost > 0 ? Number((calculatedSalePrice - rawCost).toFixed(2)) : 0;
 
-  // Processa as URLs da galeria digitadas no textarea
+  // Processa as URLs da galeria
   const parsedGalleryUrls = galleryInput
     .split(/[\n,]+/)
     .map((url) => url.trim())
@@ -126,15 +128,15 @@ export function AmazonAffiliateImporter() {
 
     setSubmitting(true);
     const finalAffiliateUrl = formatAmazonAffiliateLink(amazonUrl);
-
-    // Monta a lista completa de imagens da galeria (garantindo imagem principal na lista)
     const allGalleryUrls = Array.from(new Set([imageUrl.trim(), ...parsedGalleryUrls]));
+    const finalDescription = description.trim() || "Produto oficial importado com garantia e entrega rápida via Amazon.";
 
     try {
       const payload: any = {
         store_id: storeId,
         title: title.trim(),
-        description: `Produto oficial importado com garantia e entrega rápida via Amazon.`,
+        description: finalDescription,
+        description_long: finalDescription,
         price: calculatedSalePrice,
         compare_at_price: Number((calculatedSalePrice * 1.25).toFixed(2)),
         supplier_cost: rawCost,
@@ -166,6 +168,7 @@ export function AmazonAffiliateImporter() {
       setTitle("");
       setAmazonUrl("");
       setCostPrice("");
+      setDescription("");
       setImageUrl("");
       setGalleryInput("");
       setVideoUrl("");
@@ -214,7 +217,7 @@ export function AmazonAffiliateImporter() {
             <div>
               <h1 className="text-xl font-bold text-foreground">Importador Direto Amazon Associates</h1>
               <p className="text-sm text-muted-foreground">
-                Cadastre ofertas com link de afiliado, margem dinâmica automática (35% até R$80 / 17% acima de R$100), fotos e vídeos.
+                Cadastre ofertas com link de afiliado, descrição personalizada, fotos e margem dinâmica.
               </p>
             </div>
           </div>
@@ -227,7 +230,7 @@ export function AmazonAffiliateImporter() {
       <div className="grid gap-6 md:grid-cols-3">
         {/* Formulário Principal */}
         <form onSubmit={handlePublish} className="space-y-4 md:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
-          {/* Título */}
+          {/* Nome/Título */}
           <div className="space-y-1.5">
             <Label htmlFor="prod-title" className="text-sm font-semibold">
               Nome/Título do Produto na Vitrine
@@ -257,8 +260,8 @@ export function AmazonAffiliateImporter() {
             />
           </div>
 
+          {/* Preço de Custo */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Preço de Custo */}
             <div className="space-y-1.5">
               <Label htmlFor="prod-cost" className="text-sm font-semibold flex items-center gap-1.5">
                 <DollarSign className="h-4 w-4 text-emerald-600" /> Preço de Custo na Amazon (R$)
@@ -267,7 +270,7 @@ export function AmazonAffiliateImporter() {
                 id="prod-cost"
                 type="number"
                 step="0.01"
-                placeholder="Ex: 75.00 ou 120.00"
+                placeholder="Ex: 65.00 ou 140.00"
                 value={costPrice}
                 onChange={(e) => setCostPrice(e.target.value)}
                 className="h-11 font-mono text-sm focus-visible:ring-blue-600"
@@ -275,7 +278,7 @@ export function AmazonAffiliateImporter() {
               />
             </div>
 
-            {/* URL da Imagem Principal */}
+            {/* Imagem Principal */}
             <div className="space-y-1.5">
               <Label htmlFor="prod-img" className="text-sm font-semibold flex items-center gap-1.5">
                 <ImageIcon className="h-4 w-4 text-blue-600" /> URL da Imagem Principal
@@ -291,6 +294,24 @@ export function AmazonAffiliateImporter() {
             </div>
           </div>
 
+          {/* Descrição do Produto */}
+          <div className="space-y-1.5">
+            <Label htmlFor="prod-desc" className="text-sm font-semibold flex items-center gap-1.5">
+              <FileText className="h-4 w-4 text-blue-600" /> Descrição do Produto
+            </Label>
+            <Textarea
+              id="prod-desc"
+              rows={4}
+              placeholder="Cole aqui os detalhes, especificações e diferenciais do produto da Amazon..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="text-sm focus-visible:ring-blue-600 leading-relaxed"
+            />
+            <span className="text-[11px] text-muted-foreground">
+              Se deixar em branco, será inserida a descrição padrão de garantia oficial.
+            </span>
+          </div>
+
           {/* Galeria de Fotos Adicionais */}
           <div className="space-y-1.5">
             <Label htmlFor="prod-gallery" className="text-sm font-semibold flex items-center gap-1.5">
@@ -301,7 +322,7 @@ export function AmazonAffiliateImporter() {
               placeholder="https://m.media-amazon.com/images/I/exemplo1.jpg&#10;https://m.media-amazon.com/images/I/exemplo2.jpg"
               value={galleryInput}
               onChange={(e) => setGalleryInput(e.target.value)}
-              className="font-mono text-xs min-h-[85px] focus-visible:ring-blue-600"
+              className="font-mono text-xs min-h-[75px] focus-visible:ring-blue-600"
             />
             {parsedGalleryUrls.length > 0 && (
               <span className="text-[11px] text-muted-foreground">
@@ -324,7 +345,7 @@ export function AmazonAffiliateImporter() {
             />
           </div>
 
-          {/* Botão de Envio */}
+          {/* Botão de Publicação */}
           <div className="pt-3">
             <Button
               type="submit"
@@ -369,7 +390,7 @@ export function AmazonAffiliateImporter() {
             </Badge>
           </div>
 
-          {/* Prévia de Miniaturas da Galeria */}
+          {/* Miniaturas da Galeria */}
           {parsedGalleryUrls.length > 0 && (
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {parsedGalleryUrls.slice(0, 4).map((url, i) => (
@@ -385,7 +406,7 @@ export function AmazonAffiliateImporter() {
             </div>
           )}
 
-          {/* Cálculo de Margem Dinâmica */}
+          {/* Cálculo de Margem */}
           <div className="space-y-2 border-t border-border pt-3 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>Custo original:</span>
@@ -412,4 +433,3 @@ export function AmazonAffiliateImporter() {
     </div>
   );
 }
-
