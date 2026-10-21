@@ -3,12 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
   BadgeCheck,
-  CheckCircle2,
+  Camera,
   ChevronLeft,
   ChevronRight,
   CreditCard,
   FileText,
   Heart,
+  Image as ImageIcon,
   MessageSquare,
   Minus,
   Plus,
@@ -17,8 +18,11 @@ import {
   Share2,
   ShieldCheck,
   ShoppingCart,
+  Sliders,
   Star,
   Truck,
+  Upload,
+  X,
   Zap,
 } from "lucide-react";
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
@@ -92,7 +96,7 @@ interface ReviewItem {
   rating: number;
   date: string;
   comment: string;
-  packagingNote?: string;
+  photos?: string[];
   helpfulCount: number;
   verified: boolean;
 }
@@ -122,9 +126,32 @@ export function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
+
+  // Efeito de Zoom na foto principal
+  const [zoomPos, setZoomPos] = useState<{ x: number; y: number } | null>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    setZoomPos({ x, y });
+  };
+
+  const handleMouseLeave = () => {
+    setZoomPos(null);
+  };
+
+  // Perguntas e Respostas
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
+
+  // Avaliações de Clientes com Fotos
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [newReviewAuthor, setNewReviewAuthor] = useState("");
+  const [newReviewComment, setNewReviewComment] = useState("");
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewPhotos, setNewReviewPhotos] = useState<string[]>([]);
+  const [showReviewForm, setShowReviewForm] = useState(false);
 
   const carouselRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -147,6 +174,48 @@ export function ProductDetailPage() {
       }
     },
   });
+
+  // Carrega e persiste avaliações
+  useEffect(() => {
+    if (!productId) return;
+    const storageKey = `hs_reviews_${productId}`;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        setReviews(JSON.parse(saved));
+      } else {
+        // Avaliações demonstrativas iniciais com fotos de exemplo
+        const initialReviews: ReviewItem[] = [
+          {
+            id: "rev_1",
+            author: "Marcos Vinicius",
+            rating: 5,
+            date: "Há 4 dias",
+            comment: "Excelente qualidade! Veio muito bem embalado, original e chegou antes do prazo previsto. Recomendo muito!",
+            verified: true,
+            helpfulCount: 12,
+            photos: [
+              product?.image_url || "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&auto=format&fit=crop&q=80",
+            ],
+          },
+          {
+            id: "rev_2",
+            author: "Juliana Santos",
+            rating: 5,
+            date: "Há 1 semana",
+            comment: "Superou as expectativas. Vale cada centavo! Atendimento da loja também foi nota 10.",
+            verified: true,
+            helpfulCount: 8,
+            photos: [],
+          },
+        ];
+        setReviews(initialReviews);
+        localStorage.setItem(storageKey, JSON.stringify(initialReviews));
+      }
+    } catch {
+      // Ignora erro de local storage
+    }
+  }, [productId, product?.image_url]);
 
   useEffect(() => {
     initAbandonmentWatcher();
@@ -204,6 +273,20 @@ export function ProductDetailPage() {
     }
     return list.length > 0 ? list : ["https://placehold.co/600x600/f3f4f6/666666?text=Sem+Foto"];
   }, [product]);
+
+  // ESPECIFICAÇÕES DO PRODUTO (PARSER INTELIGENTE)
+  const parsedSpecs = useMemo(() => {
+    if (!product?.specifications) return [];
+    if (typeof product.specifications === "object" && !Array.isArray(product.specifications)) {
+      return Object.entries(product.specifications).filter(([k, v]) => Boolean(k && String(v).trim()));
+    }
+    if (Array.isArray(product.specifications)) {
+      return (product.specifications as any[])
+        .map((item) => [item.key || item.label || item.name, item.value])
+        .filter(([k, v]) => Boolean(k && String(v).trim()));
+    }
+    return [];
+  }, [product?.specifications]);
 
   const updateCarouselArrows = useCallback(() => {
     const el = carouselRef.current;
@@ -265,6 +348,62 @@ export function ProductDetailPage() {
     toast.success("Pergunta enviada com sucesso!");
   };
 
+  // Upload de fotos na avaliação
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Por favor, selecione apenas arquivos de imagem.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setNewReviewPhotos((prev) => [...prev, String(event.target?.result)]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeUploadPhoto = (index: number) => {
+    setNewReviewPhotos((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleSubmitReview = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReviewAuthor.trim() || !newReviewComment.trim()) {
+      toast.error("Por favor, preencha seu nome e seu comentário.");
+      return;
+    }
+
+    const reviewObj: ReviewItem = {
+      id: `rev_${Date.now()}`,
+      author: newReviewAuthor.trim(),
+      rating: newReviewRating,
+      date: "Hoje",
+      comment: newReviewComment.trim(),
+      photos: newReviewPhotos,
+      verified: true,
+      helpfulCount: 0,
+    };
+
+    const updated = [reviewObj, ...reviews];
+    setReviews(updated);
+    try {
+      localStorage.setItem(`hs_reviews_${productId}`, JSON.stringify(updated));
+    } catch {}
+
+    setNewReviewAuthor("");
+    setNewReviewComment("");
+    setNewReviewRating(5);
+    setNewReviewPhotos([]);
+    setShowReviewForm(false);
+    toast.success("Sua avaliação com fotos foi publicada com sucesso!");
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -314,7 +453,7 @@ export function ProductDetailPage() {
           <span className="line-clamp-1 text-foreground font-medium">{product.title}</span>
         </div>
 
-        {/* Card Principal */}
+        {/* 1. CARD PRINCIPAL (FOTOS COM ZOOM E COMPRA) */}
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
             {/* Galeria de Fotos */}
@@ -336,22 +475,42 @@ export function ProductDetailPage() {
                 </div>
               )}
 
-              <div className="relative aspect-square w-full flex-1 overflow-hidden rounded-xl border border-border bg-muted/20">
+              {/* Imagem Principal com Zoom Lupa ao Passar o Mouse */}
+              <div
+                className="relative aspect-square w-full flex-1 overflow-hidden rounded-xl border border-border bg-muted/20 cursor-crosshair select-none"
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+              >
                 <img
                   src={imagesList[selectedImage] || imagesList[0]}
                   alt={product.title}
-                  className="h-full w-full object-contain p-2"
+                  style={
+                    zoomPos
+                      ? {
+                          transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                          transform: "scale(2)",
+                        }
+                      : { transform: "scale(1)" }
+                  }
+                  className="h-full w-full object-contain p-2 transition-transform duration-100 ease-out"
                 />
+
                 <button
                   type="button"
                   onClick={() => {
                     setIsFavorite(!isFavorite);
                     toast.success(!isFavorite ? "Salvo nos seus favoritos!" : "Removido dos favoritos.");
                   }}
-                  className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-background/80 shadow-md backdrop-blur-sm"
+                  className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-background/80 shadow-md backdrop-blur-sm z-10"
                 >
                   <Heart className={`h-5 w-5 ${isFavorite ? "fill-rose-500 text-rose-500" : "text-muted-foreground"}`} />
                 </button>
+
+                {zoomPos && (
+                  <div className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-black/70 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                    🔍 Zoom ativado
+                  </div>
+                )}
               </div>
             </div>
 
@@ -379,7 +538,7 @@ export function ProductDetailPage() {
                   </span>
                 </div>
 
-                {/* BLOCO DE PREÇO OFICIAL */}
+                {/* Bloco de Preço */}
                 <div className="mt-4 rounded-xl bg-muted/20 p-4 border border-border/80">
                   <div className="flex items-center gap-2 leading-none">
                     <span className="rounded bg-[#00a650] px-1.5 py-0.5 text-[11px] font-bold text-white">
@@ -500,7 +659,243 @@ export function ProductDetailPage() {
           </div>
         </div>
 
-        {/* CARROSSEL DE PRODUTOS SEMELHANTES COM SETAS LATERAIS */}
+        {/* 2. DESCRIÇÃO DO PRODUTO (LOGO ABAIXO DO PRODUTO) */}
+        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
+          <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" /> Descrição do Produto
+          </h2>
+          <div className="mt-4 space-y-4 text-sm text-foreground/90 leading-relaxed">
+            <p className="whitespace-pre-line text-sm sm:text-base text-foreground/90 font-normal">
+              {product.description_long || product.description || "Descrição completa em processamento."}
+            </p>
+          </div>
+        </section>
+
+        {/* 3. ESPECIFICAÇÕES TÉCNICAS DO PRODUTO */}
+        {parsedSpecs.length > 0 && (
+          <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
+            <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
+              <Sliders className="h-5 w-5 text-primary" /> Especificações Técnicas
+            </h2>
+            <div className="mt-4 overflow-hidden rounded-xl border border-border">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <tbody>
+                  {parsedSpecs.map(([label, val], idx) => (
+                    <tr
+                      key={idx}
+                      className={idx % 2 === 0 ? "bg-muted/30" : "bg-card"}
+                    >
+                      <td className="w-1/3 sm:w-1/4 p-3 font-semibold text-muted-foreground border-b border-border">
+                        {String(label)}
+                      </td>
+                      <td className="p-3 text-foreground font-medium border-b border-border">
+                        {String(val)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* 4. AVALIAÇÕES E COMENTÁRIOS COM FOTOS DE CLIENTES */}
+        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border gap-3">
+            <div>
+              <h2 className="text-lg sm:text-xl font-black text-foreground flex items-center gap-2">
+                <Star className="h-5 w-5 text-amber-500 fill-amber-500" /> Avaliações dos Clientes
+              </h2>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-2xl font-black text-foreground">
+                  {Number(product.rating ?? 4.9).toFixed(1)}
+                </span>
+                <div className="flex text-amber-500">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star key={s} className="h-4 w-4 fill-amber-500" />
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground">({reviews.length} avaliações)</span>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => setShowReviewForm(!showReviewForm)}
+              className="font-bold text-xs"
+              variant={showReviewForm ? "outline" : "default"}
+            >
+              {showReviewForm ? "Cancelar Avaliação" : "Avaliar Produto com Fotos"}
+            </Button>
+          </div>
+
+          {/* Formulário de Nova Avaliação */}
+          {showReviewForm && (
+            <form onSubmit={handleSubmitReview} className="mt-6 rounded-xl border border-primary/30 bg-muted/20 p-4 space-y-4">
+              <h3 className="font-bold text-sm text-foreground">Deixe sua opinião e fotos do produto</h3>
+
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">Sua Nota:</label>
+                <div className="flex gap-1.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setNewReviewRating(star)}
+                      className="p-1 focus:outline-none"
+                    >
+                      <Star
+                        className={`h-6 w-6 ${
+                          star <= newReviewRating
+                            ? "fill-amber-500 text-amber-500"
+                            : "text-muted-foreground/40"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">Seu Nome:</label>
+                <Input
+                  value={newReviewAuthor}
+                  onChange={(e) => setNewReviewAuthor(e.target.value)}
+                  placeholder="Ex: João Silva"
+                  className="text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">Seu Comentário:</label>
+                <textarea
+                  value={newReviewComment}
+                  onChange={(e) => setNewReviewComment(e.target.value)}
+                  placeholder="Conte o que achou do produto, da entrega e da qualidade..."
+                  rows={3}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  required
+                />
+              </div>
+
+              {/* Upload de Fotos do Cliente */}
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-2">
+                  Adicionar Fotos Reais do Produto:
+                </label>
+                <div className="flex flex-wrap gap-2 items-center">
+                  {newReviewPhotos.map((photo, pIdx) => (
+                    <div key={pIdx} className="relative h-16 w-16 rounded-lg border border-border overflow-hidden group">
+                      <img src={photo} alt="" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeUploadPhoto(pIdx)}
+                        className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs hover:bg-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+
+                  <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary/60 bg-background text-muted-foreground hover:text-foreground transition">
+                    <Camera className="h-5 w-5 mb-0.5" />
+                    <span className="text-[9px] font-medium">+ Foto</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <Button type="submit" className="font-bold text-xs bg-primary text-primary-foreground">
+                  <Send className="h-3.5 w-3.5 mr-1.5" /> Publicar Avaliação
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {/* Lista de Avaliações com Fotos */}
+          <div className="mt-6 space-y-4">
+            {reviews.map((rev) => (
+              <div key={rev.id} className="rounded-xl border border-border/80 bg-card p-4 text-xs sm:text-sm space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-foreground">{rev.author}</span>
+                    {rev.verified && (
+                      <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                        <BadgeCheck className="h-3 w-3" /> Compra Verificada
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">{rev.date}</span>
+                </div>
+
+                <div className="flex text-amber-500">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`h-3.5 w-3.5 ${
+                        star <= rev.rating ? "fill-amber-500" : "text-muted-foreground/30"
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                <p className="text-foreground/90 leading-relaxed">{rev.comment}</p>
+
+                {/* Galeria de Fotos da Avaliação */}
+                {rev.photos && rev.photos.length > 0 && (
+                  <div className="pt-2 flex gap-2 overflow-x-auto">
+                    {rev.photos.map((pUrl, pIdx) => (
+                      <a
+                        key={pIdx}
+                        href={pUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-lg border border-border overflow-hidden hover:opacity-90 transition"
+                      >
+                        <img src={pUrl} alt="" className="h-full w-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 5. PERGUNTAS E RESPOSTAS */}
+        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
+          <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-primary" /> Perguntas e Respostas
+          </h2>
+          <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2">
+            <Input
+              value={newQuestion}
+              onChange={(e) => setNewQuestion(e.target.value)}
+              placeholder="Escreva sua pergunta para a Loja JJ Kuster..."
+              className="flex-1"
+            />
+            <Button type="submit" className="shrink-0 font-bold">
+              <Send className="h-4 w-4 mr-1.5" /> Perguntar
+            </Button>
+          </form>
+          <div className="mt-6 space-y-3">
+            {questions.map((q) => (
+              <div key={q.id} className="rounded-xl border border-border/70 bg-muted/20 p-3 text-xs">
+                <p className="font-semibold text-foreground">"{q.question}"</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{q.created_at}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 6. RECOMENDAÇÃO DE PRODUTOS POR ÚLTIMO ("Quem viu este produto também comprou") */}
         {relatedProducts.length > 0 && (
           <section className="mt-8 rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between pb-3 border-b border-border mb-4">
@@ -547,55 +942,6 @@ export function ProductDetailPage() {
             </div>
           </section>
         )}
-
-        {/* Descrição */}
-        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
-          <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" /> Descrição do Produto
-          </h2>
-          <div className="mt-4 space-y-4 text-sm text-foreground/90 leading-relaxed">
-            <div>
-              <h3 className="font-bold text-base text-foreground">{product.title}</h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                Produto novo, lacrado e com envio imediato e compra garantida.
-              </p>
-            </div>
-            <div className="border-t border-border/60 pt-4">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                Detalhes & Especificações
-              </h4>
-              <p className="whitespace-pre-line text-xs sm:text-sm text-foreground/80">
-                {product.description_long || product.description || "Descrição completa em processamento."}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Perguntas */}
-        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
-          <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" /> Perguntas e Respostas
-          </h2>
-          <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2">
-            <Input
-              value={newQuestion}
-              onChange={(e) => setNewQuestion(e.target.value)}
-              placeholder="Escreva sua pergunta para a Loja JJ Kuster..."
-              className="flex-1"
-            />
-            <Button type="submit" className="shrink-0 font-bold">
-              <Send className="h-4 w-4 mr-1.5" /> Perguntar
-            </Button>
-          </form>
-          <div className="mt-6 space-y-3">
-            {questions.map((q) => (
-              <div key={q.id} className="rounded-xl border border-border/70 bg-muted/20 p-3 text-xs">
-                <p className="font-semibold text-foreground">"{q.question}"</p>
-                <p className="text-[10px] text-muted-foreground mt-1">{q.created_at}</p>
-              </div>
-            ))}
-          </div>
-        </section>
       </main>
 
       <SiteFooter />
