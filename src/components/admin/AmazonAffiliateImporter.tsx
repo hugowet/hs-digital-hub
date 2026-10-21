@@ -16,6 +16,7 @@ import {
   Trash2,
   ListChecks,
   ClipboardPaste,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,14 +29,53 @@ import { Textarea } from "@/components/ui/textarea";
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
 
-// Regra de Margem Dinâmica:
-// - Até R$ 80 -> 35%
-// - Acima de R$ 100 -> 17%
-// - Entre R$ 80 e R$ 100 -> 25% (faixa de transição)
-function getMarginRate(cost: number): number {
-  if (cost <= 80) return 0.35;
-  if (cost > 100) return 0.17;
-  return 0.25;
+/**
+ * Tabela Oficial de Margens sobre o Custo:
+ * 1. Até R$ 30,00 -> 120%
+ * 2. R$ 30,01 até R$ 100,00 -> 60%
+ * 3. R$ 100,01 até R$ 300,00 -> 40%
+ * 4. R$ 300,01 até R$ 1.000,00 -> 20%
+ * 5. R$ 1.000,01 até R$ 2.000,00 -> 14%
+ * 6. R$ 2.000,01 até R$ 5.000,00 -> 9%
+ * 7. R$ 5.000,01 até R$ 10.000,00 -> 7%
+ * 8. R$ 10.000,01 até R$ 30.000,00 -> 5%
+ */
+export function getAmazonMarginRate(cost: number): number {
+  if (cost <= 30) return 1.20;
+  if (cost <= 100) return 0.60;
+  if (cost <= 300) return 0.40;
+  if (cost <= 1000) return 0.20;
+  if (cost <= 2000) return 0.14;
+  if (cost <= 5000) return 0.09;
+  if (cost <= 10000) return 0.07;
+  return 0.05;
+}
+
+/**
+ * Regra de Arredondamento obrigatório em ,90 ou ,97:
+ * - Se centavos >= 0.94 -> ,97
+ * - Se centavos exatos 0.00 -> (inteiro - 1) + 0.90 (ex: 44.00 -> 43.90)
+ * - Demais casos -> ,90
+ */
+export function calculateAmazonFinalPrice(cost: number): number {
+  if (cost <= 0) return 0;
+  const margin = getAmazonMarginRate(cost);
+  const raw = cost * (1 + margin);
+  const baseInt = Math.floor(raw);
+  const cents = Math.round((raw - baseInt) * 100);
+
+  let finalPrice: number;
+  if (cents >= 94) {
+    finalPrice = baseInt + 0.97;
+  } else if (cents >= 90) {
+    finalPrice = baseInt + 0.90;
+  } else if (cents === 0) {
+    finalPrice = (baseInt - 1) + 0.90;
+  } else {
+    finalPrice = baseInt + 0.90;
+  }
+
+  return Number(finalPrice.toFixed(2));
 }
 
 interface SpecItem {
@@ -63,10 +103,11 @@ export function AmazonAffiliateImporter() {
     { id: "3", key: "Voltagem", value: "" },
   ]);
   const [submitting, setSubmitting] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   const [autoFillJson, setAutoFillJson] = useState("");
   const [showAutoFillBox, setShowAutoFillBox] = useState(false);
 
-  // 1. Verificação de Autenticação e Trava de Segurança
+  // Verificação de Autenticação
   useEffect(() => {
     async function loadUserAndStore() {
       try {
@@ -102,7 +143,7 @@ export function AmazonAffiliateImporter() {
     loadUserAndStore();
   }, []);
 
-  // Adicionar / Remover Especificações
+  // Especificações
   const addSpec = () => {
     setSpecs((prev) => [...prev, { id: Math.random().toString(), key: "", value: "" }]);
   };
@@ -117,7 +158,7 @@ export function AmazonAffiliateImporter() {
     setSpecs((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // Preenchimento Automático via JSON gerado pelo Script da Amazon
+  // Preenchimento Automático via JSON
   const handleApplyAutoFill = (jsonString?: string) => {
     const raw = jsonString || autoFillJson;
     if (!raw.trim()) return toast.error("Cole o conteúdo extraído da Amazon.");
@@ -145,11 +186,11 @@ export function AmazonAffiliateImporter() {
     }
   };
 
-  // Cálculos de Margem Dinâmica em tempo real
+  // Cálculos de Margem Dinâmica com a nova regra
   const rawCost = parseFloat(costPrice.replace(",", ".")) || 0;
-  const currentMarginRate = getMarginRate(rawCost);
+  const currentMarginRate = getAmazonMarginRate(rawCost);
   const currentMarginPercent = Math.round(currentMarginRate * 100);
-  const calculatedSalePrice = rawCost > 0 ? Number((rawCost * (1 + currentMarginRate)).toFixed(2)) : 0;
+  const calculatedSalePrice = calculateAmazonFinalPrice(rawCost);
   const grossProfit = rawCost > 0 ? Number((calculatedSalePrice - rawCost).toFixed(2)) : 0;
 
   // Processa as URLs da galeria
@@ -176,7 +217,7 @@ export function AmazonAffiliateImporter() {
     }
   };
 
-  // Ação de Publicar na Vitrine
+  // Ação de Publicar Produto Novo
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -190,7 +231,6 @@ export function AmazonAffiliateImporter() {
     const finalAffiliateUrl = formatAmazonAffiliateLink(amazonUrl);
     const allGalleryUrls = Array.from(new Set([imageUrl.trim(), ...parsedGalleryUrls]));
 
-    // Monta o objeto de especificações técnicas
     const specsObject: Record<string, string> = {};
     specs.forEach((item) => {
       if (item.key.trim() && item.value.trim()) {
@@ -231,7 +271,6 @@ export function AmazonAffiliateImporter() {
       }
 
       const { error } = await supabase.from("products").insert(payload);
-
       if (error) throw error;
 
       toast.success("Produto Amazon com especificações publicado na vitrine!");
@@ -251,6 +290,50 @@ export function AmazonAffiliateImporter() {
       toast.error(err.message || "Erro ao publicar o produto.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Recalcular Preço de Todos os Produtos Amazon Já Cadastrados
+  const handleRecalculateAllAmazonProducts = async () => {
+    if (!confirm("Deseja aplicar a nova regra de preços com terminação ,90 ou ,97 em todos os produtos da Amazon já cadastrados?")) {
+      return;
+    }
+
+    setRecalculating(true);
+    try {
+      const { data: prods, error } = await supabase
+        .from("products")
+        .select("id, title, supplier_cost, price")
+        .eq("supplier", "amazon");
+
+      if (error) throw error;
+      if (!prods || prods.length === 0) {
+        toast.info("Nenhum produto da Amazon encontrado para recalcular.");
+        return;
+      }
+
+      let updatedCount = 0;
+      for (const p of prods) {
+        const cost = Number(p.supplier_cost) || 0;
+        if (cost > 0) {
+          const newPrice = calculateAmazonFinalPrice(cost);
+          const newCompareAt = Number((newPrice * 1.25).toFixed(2));
+          await supabase
+            .from("products")
+            .update({
+              price: newPrice,
+              compare_at_price: newCompareAt,
+            })
+            .eq("id", p.id);
+          updatedCount++;
+        }
+      }
+
+      toast.success(`${updatedCount} produto(s) da Amazon atualizado(s) com as novas margens!`);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao recalcular produtos da vitrine.");
+    } finally {
+      setRecalculating(false);
     }
   };
 
@@ -283,7 +366,7 @@ export function AmazonAffiliateImporter() {
     <div className="mx-auto max-w-4xl space-y-6 py-4">
       {/* Cabeçalho */}
       <div className="flex flex-col gap-2 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/70 via-blue-50/30 to-background p-6 dark:border-blue-950 dark:from-blue-950/30">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
               <ShoppingBag className="h-5 w-5" />
@@ -295,7 +378,19 @@ export function AmazonAffiliateImporter() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={recalculating}
+              onClick={handleRecalculateAllAmazonProducts}
+              className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs font-semibold"
+              title="Aplica a nova tabela de preços a todos os produtos Amazon já na vitrine"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 mr-1 ${recalculating ? "animate-spin" : ""}`} />
+              Recalcular Vitrine Amazon
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -382,7 +477,7 @@ export function AmazonAffiliateImporter() {
                 id="prod-cost"
                 type="number"
                 step="0.01"
-                placeholder="Ex: 75.00 ou 180.00"
+                placeholder="Ex: 20.00 ou 1500.00"
                 value={costPrice}
                 onChange={(e) => setCostPrice(e.target.value)}
                 className="h-11 font-mono text-sm focus-visible:ring-blue-600"
@@ -420,7 +515,7 @@ export function AmazonAffiliateImporter() {
             />
           </div>
 
-          {/* ESPECIFICAÇÕES DO PRODUTO (Tabela Chave/Valor igual à foto) */}
+          {/* ESPECIFICAÇÕES DO PRODUTO */}
           <div className="space-y-2 rounded-lg border border-border/80 bg-muted/20 p-4">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-bold flex items-center gap-1.5">
@@ -469,7 +564,7 @@ export function AmazonAffiliateImporter() {
             </div>
           </div>
 
-          {/* Galeria de Fotos Adicionais */}
+          {/* Galeria de Fotos */}
           <div className="space-y-1.5">
             <Label htmlFor="prod-gallery" className="text-sm font-semibold flex items-center gap-1.5">
               <Layers className="h-4 w-4 text-blue-600" /> Fotos Adicionais da Galeria (uma por linha)
@@ -509,7 +604,7 @@ export function AmazonAffiliateImporter() {
               ) : (
                 <>
                   <Sparkles className="mr-2 h-5 w-5" />
-                  Publicar na Vitrine (Margem +{currentMarginPercent}%)
+                  Publicar na Vitrine (Margem +{currentMarginPercent}% · Final R$ {calculatedSalePrice.toFixed(2)})
                 </>
               )}
             </Button>
@@ -522,7 +617,6 @@ export function AmazonAffiliateImporter() {
             Resumo da Estrutura
           </h3>
 
-          {/* Prévia da Imagem Principal */}
           <div className="relative flex h-36 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-muted/40">
             {imageUrl ? (
               <img
@@ -542,7 +636,6 @@ export function AmazonAffiliateImporter() {
             </Badge>
           </div>
 
-          {/* Resumo de Especificações Cadastradas */}
           {specs.filter((s) => s.key && s.value).length > 0 && (
             <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5 text-xs">
               <span className="font-bold text-foreground">Especificações Inclusas:</span>
@@ -571,8 +664,11 @@ export function AmazonAffiliateImporter() {
             </div>
             <div className="flex justify-between border-t border-border pt-2 text-base font-bold text-foreground">
               <span>Preço na Loja:</span>
-              <span className="font-mono text-emerald-600">R$ {calculatedSalePrice.toFixed(2)}</span>
+              <span className="font-mono text-emerald-600 font-extrabold">R$ {calculatedSalePrice.toFixed(2)}</span>
             </div>
+            <p className="text-[10px] text-muted-foreground text-right italic">
+              Terminação comercial: {calculatedSalePrice.toFixed(2).endsWith("97") ? ",97" : ",90"}
+            </p>
           </div>
 
           <div className="rounded-lg bg-blue-50/70 p-3 text-xs text-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
