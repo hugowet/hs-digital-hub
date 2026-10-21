@@ -375,13 +375,13 @@ export function Home() {
     <img
       src="/images/banner-frete-gratis.jpg"
       alt="HS Digital: frete grátis na sua primeira compra"
-      className="w-full max-w-[280px] rounded-xl border-2 border-emerald-400 object-cover shadow-lg"
+      className="w-full max-w-[350px] rounded-xl border-2 border-emerald-400 object-cover shadow-lg"
     />
 
     <div className="text-center text-white md:text-left">
       <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
         <Zap className="h-4 w-4" />
-        Oferta especial
+        
       </span>
 
       <h2 className="mt-3 text-2xl font-black uppercase sm:text-4xl">
