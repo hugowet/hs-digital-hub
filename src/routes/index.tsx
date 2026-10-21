@@ -369,6 +369,41 @@ export function Home() {
             </section>
           </>
         )}
+{/* BANNER DE FRETE GRÁTIS ANTES DAS CATEGORIAS */}
+<section className="relative mb-8 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-emerald-700 to-emerald-950 p-3 shadow-xl motion-safe:animate-pulse sm:p-5">
+  <div className="flex flex-col items-center gap-5 rounded-xl bg-black/70 p-4 sm:p-6 md:flex-row">
+    <img
+      src="/images/banner-frete-gratis.jpg"
+      alt="HS Digital: frete grátis na sua primeira compra"
+      className="w-full max-w-[280px] rounded-xl border-2 border-emerald-400 object-cover shadow-lg"
+    />
+
+    <div className="text-center text-white md:text-left">
+      <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
+        <Zap className="h-4 w-4" />
+        Oferta especial
+      </span>
+
+      <h2 className="mt-3 text-2xl font-black uppercase sm:text-4xl">
+        Frete grátis na sua{" "}
+        <span className="text-emerald-300">primeira compra!</span>
+      </h2>
+
+      <p className="mt-2 text-sm text-white/85">
+        Confira os produtos participantes e as condições do benefício no carrinho.
+      </p>
+
+      <button
+        type="button"
+        onClick={() => setSearch({ free: true, category: null })}
+        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:scale-105 hover:bg-amber-300"
+      >
+        <Gift className="h-5 w-5" />
+        VER PRODUTOS COM FRETE GRÁTIS
+      </button>
+    </div>
+  </div>
+</section>
 
         <div className="mx-auto max-w-7xl px-4 py-6">
           {/* CATEGORIAS EM DESTAQUE */}
