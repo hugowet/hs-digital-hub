@@ -377,10 +377,6 @@ export function Home() {
       alt="HS Digital: frete grátis na sua primeira compra"
       className="w-full max-w-[450px] rounded-xl border-2 border-emerald-400 object-cover shadow-lg"
     />
-
-    <div className="text-center text-white md:text-left">
-      <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
-        <Zap className="h-4 w-4" />
         
       </span>
 
