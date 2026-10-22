@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { safeOrigin, sha256 } from "@/lib/mercado-pago.server";
@@ -8,14 +9,30 @@ const quoteSchema = z.object({
   items: z.array(z.object({ productId: z.string().uuid(), quantity: z.number().int().min(1).max(99) })).min(1).max(50),
 });
 
+async function getOptionalUserId(): Promise<string | null> {
+  try {
+    const request = getRequest();
+    const authHeader = request?.headers?.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+    const token = authHeader.replace("Bearer ", "");
+    if (!token || token.split(".").length !== 3) return null;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin.auth.getUser(token);
+    return data?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const quoteMarketplaceShipping = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input) => quoteSchema.parse(input))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data }) => {
+    const userId = await getOptionalUserId();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { calculateShippingQuotes, quoteCartShipping } = await import("@/lib/shipping.server");
     const quoteFn = calculateShippingQuotes || quoteCartShipping;
-    return quoteFn(supabaseAdmin, context.userId, data.postalCode, data.items);
+    return quoteFn(supabaseAdmin, userId, data.postalCode, data.items);
   });
 
 const sellerShippingSchema = z.object({
