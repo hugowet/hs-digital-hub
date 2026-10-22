@@ -294,56 +294,6 @@ function CartPage() {
     }
   }
 
-      const quotesRes = await quoteShipping({
-        data: {
-          postalCode: rawCep,
-          items: physicalItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-        },
-      });
-
-      setQuotes(quotesRes as any);
-
-      const defaults: Record<string, string> = {};
-      for (const group of quotesRes as any) {
-        if (group.options[0]) {
-          defaults[group.storeId] = group.options[0].id;
-        }
-      }
-      setSelectedQuotes((prev) => ({ ...defaults, ...prev }));
-      if (showToast) toast.success("Opções de envio calculadas com sucesso!");
-    } catch (err: any) {
-      // 2. Se houver falha de token, tenta renovar e recalcular automaticamente
-      if (err?.message?.includes("token") || err?.message?.includes("Unauthorized")) {
-        try {
-          const { error: refreshErr } = await supabase.auth.refreshSession();
-          if (!refreshErr) {
-            const retryRes = await quoteShipping({
-              data: {
-                postalCode: rawCep,
-                items: physicalItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-              },
-            });
-            setQuotes(retryRes as any);
-            const defaults: Record<string, string> = {};
-            for (const group of retryRes as any) {
-              if (group.options[0]) defaults[group.storeId] = group.options[0].id;
-            }
-            setSelectedQuotes((prev) => ({ ...defaults, ...prev }));
-            if (showToast) toast.success("Opções de envio calculadas com sucesso!");
-            return;
-          }
-        } catch {
-          // Continua para o tratamento de erro padrão
-        }
-      }
-      if (showToast) {
-        toast.error(err?.message || "Não foi possível calcular o frete para este CEP.");
-      }
-    } finally {
-      setQuoting(false);
-    }
-  }
-
   async function handleCheckout() {
     if (items.length === 0) return;
     const hasPhysical = items.some((i) => i.productType !== "digital");
