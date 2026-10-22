@@ -227,20 +227,6 @@ function CartPage() {
 
     setQuoting(true);
     try {
-      // 1. Assegura sessão válida e não expirada antes de requisitar
-      const { data: sessionData } = await supabase.auth.getSession();
-      const session = sessionData?.session;
-      const isExpired = session?.expires_at ? session.expires_at * 1000 < Date.now() + 30_000 : true;
-
-      if (!session || isExpired) {
-        const { error: refreshErr } = await supabase.auth.refreshSession();
-        if (refreshErr) {
-          toast.error("Sua sessão expirou. Faça login novamente para calcular o frete.");
-          navigate({ to: "/auth", search: { reason: "login-required", redirect: "/carrinho" } });
-          return;
-        }
-      }
-
       const quotesRes = await quoteShipping({
         data: {
           postalCode: rawCep,
@@ -259,33 +245,7 @@ function CartPage() {
       setSelectedQuotes((prev) => ({ ...defaults, ...prev }));
       if (showToast) toast.success("Opções de envio calculadas com sucesso!");
     } catch (err: any) {
-      // 2. Se ainda assim houver erro de token, tenta forçar novo refresh e reexecuta
-      if (err?.message?.includes("token") || err?.message?.includes("Unauthorized")) {
-        try {
-          const { error: refreshErr } = await supabase.auth.refreshSession();
-          if (!refreshErr) {
-            const retryRes = await quoteShipping({
-              data: {
-                postalCode: rawCep,
-                items: physicalItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-              },
-            });
-            setQuotes(retryRes as any);
-            const defaults: Record<string, string> = {};
-            for (const group of retryRes as any) {
-              if (group.options[0]) defaults[group.storeId] = group.options[0].id;
-            }
-            setSelectedQuotes((prev) => ({ ...defaults, ...prev }));
-            if (showToast) toast.success("Opções de envio calculadas com sucesso!");
-            return;
-          }
-        } catch {
-          // Continua para o tratamento de erro
-        }
-        toast.error("Sessão expirada. Por favor, entre novamente na sua conta.");
-        navigate({ to: "/auth", search: { reason: "login-required", redirect: "/carrinho" } });
-        return;
-      }
+      console.error("[calculateShipping] Erro na cotação de frete:", err);
       if (showToast) {
         toast.error(err?.message || "Não foi possível calcular o frete para este CEP.");
       }
