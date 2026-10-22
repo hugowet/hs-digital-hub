@@ -246,6 +246,17 @@ function CartPage() {
       if (showToast) toast.success("Opções de envio calculadas com sucesso!");
     } catch (err: any) {
       console.error("[calculateShipping] Erro na cotação de frete:", err);
+      const isAuthError =
+        err?.message?.includes("Unauthorized") ||
+        err?.message?.includes("Invalid token") ||
+        err?.message?.includes("No authorization header");
+
+      if (isAuthError) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        navigate({ to: "/auth", search: { reason: "login-required", redirect: "/carrinho" } });
+        return;
+      }
+
       if (showToast) {
         toast.error(err?.message || "Não foi possível calcular o frete para este CEP.");
       }
