@@ -37,15 +37,9 @@ async function cjQuotes(postalCode: string, products: any[]): Promise<QuoteOptio
   let premiumAmount = 15.0;
 
   if (allAboveThreshold) {
-    // Todos os produtos estão acima de 87,90:
-    // O cliente já pagou o lucro de 35% embutido no produto, então o frete padrão é GRÁTIS
     expressAmount = 0;
     premiumAmount = 15.0;
   } else {
-    // Existem produtos abaixo de 87,90:
-    // Não houve os 35% de lucro no produto, então cobra a base de R$ 19,90 com o desconto do produto aplicado
-    // Exemplo: 12% de desconto -> 19,90 * 0,88 = R$ 17,51
-    // Exemplo: 71% de desconto -> 19,90 * 0,29 = R$ 5,77
     const maxDiscount = Math.max(...belowThresholdProducts.map((p) => getProductDiscountPercent(p.id)));
     expressAmount = Math.round(19.90 * (1 - maxDiscount / 100) * 100) / 100;
     premiumAmount = Math.round((expressAmount + 15.0) * 100) / 100;
@@ -151,7 +145,7 @@ async function melhorEnvioQuotes(supabaseAdmin: any, store: any, postalCode: str
 
 export async function quoteCartShipping(
   supabaseAdmin: any,
-  buyerId: string,
+  buyerId: string | null | undefined,
   postalCode: string,
   items: Array<{ productId: string; quantity: number }>
 ) {
@@ -223,10 +217,31 @@ export async function quoteCartShipping(
       ];
     }
 
+    const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
+
+    // Se o comprador ainda não estiver autenticado, retorna as opções calculadas sem gravar no banco
+    if (!buyerId) {
+      result.push({
+        storeId,
+        storeName: store?.name ?? "HS Digital",
+        options: rawOptions.map((option, idx) => ({
+          id: `preview_${storeId}_${idx}`,
+          provider: option.provider,
+          serviceName: option.serviceName,
+          carrierName: option.carrierName,
+          amount: Number(option.amount),
+          deliveryDaysMin: option.deliveryDaysMin,
+          deliveryDaysMax: option.deliveryDaysMax,
+          expiresAt,
+        })),
+      });
+      continue;
+    }
+
     const canonicalItems = products
       .map((product) => ({ product_id: product.id, quantity: product.quantity }))
       .sort((a, b) => a.product_id.localeCompare(b.product_id));
-    const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
+
     const rows = rawOptions.map((option) => ({
       buyer_id: buyerId,
       store_id: storeId,
@@ -268,5 +283,4 @@ export async function quoteCartShipping(
   return result;
 }
 
-// Blindagem contra erro: garante que calculateShippingQuotes existe como alias exato
 export const calculateShippingQuotes = quoteCartShipping;
