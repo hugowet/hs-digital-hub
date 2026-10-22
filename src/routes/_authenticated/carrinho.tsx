@@ -246,22 +246,88 @@ function CartPage() {
       if (showToast) toast.success("Opções de envio calculadas com sucesso!");
     } catch (err: any) {
       console.error("[calculateShipping] Erro na cotação de frete:", err);
-      const isAuthError =
-        err?.message?.includes("Unauthorized") ||
-        err?.message?.includes("Invalid token") ||
-        err?.message?.includes("No authorization header");
-
-      if (isAuthError) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        navigate({ to: "/auth", search: { reason: "login-required", redirect: "/carrinho" } });
-        return;
-      }
-
+      // NUNCA redireciona para o login durante a cotação
       if (showToast) {
         toast.error(err?.message || "Não foi possível calcular o frete para este CEP.");
       }
     } finally {
       setQuoting(false);
+    }
+  }
+
+  async function handleCheckout() {
+    if (items.length === 0) return;
+    const hasPhysical = items.some((i) => i.productType !== "digital");
+
+    if (hasPhysical) {
+      if (!name || !phone || !address || !city || !state || !postalCode) {
+        toast.error("Preencha todos os campos do endereço de entrega.");
+        return;
+      }
+      if (quotes.length === 0) {
+        toast.error("Calcule o frete informando seu CEP antes de continuar.");
+        return;
+      }
+    }
+
+    // Checa sessão somente no momento de fechar a compra
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session) {
+      toast.info("Faça login para concluir o pedido.");
+      navigate({ to: "/auth", search: { reason: "login-required", redirect: "/carrinho" } });
+      return;
+    }
+
+    // Se as cotações foram calculadas antes do login (com prefixo preview_), recalcula para salvar no banco
+    const hasPreview = Object.values(selectedQuotes).some((qId) => String(qId).startsWith("preview_"));
+    if (hasPreview) {
+      setSubmitting(true);
+      try {
+        await calculateShipping(postalCode, false);
+      } finally {
+        setSubmitting(false);
+      }
+    }
+
+    setSubmitting(true);
+    try {
+      const selectedQuotesList = Object.entries(selectedQuotes).map(([storeId, quoteId]) => ({
+        storeId,
+        quoteId,
+      }));
+
+      const res = await createCheckout({
+        data: {
+          items: items.map((i) => ({
+            productId: i.productId,
+            quantity: i.quantity,
+            warrantyId: selectedWarrantyId ?? undefined,
+          })),
+          shippingQuotes: selectedQuotesList,
+          address: hasPhysical
+            ? {
+                recipientName: name,
+                phone,
+                streetAddress: address,
+                city,
+                state,
+                postalCode: postalCode.replace(/\D/g, ""),
+                note: note || undefined,
+              }
+            : undefined,
+          appliedCouponCode: applyGameCoupon && bestGameCoupon ? bestGameCoupon.code : undefined,
+        },
+      });
+
+      if (res?.paymentUrl) {
+        window.location.href = res.paymentUrl;
+      } else {
+        toast.error("Não foi possível gerar o link de pagamento. Tente novamente.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao processar checkout.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
