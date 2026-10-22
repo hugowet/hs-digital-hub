@@ -7,15 +7,17 @@ export const attachSupabaseAuth = createMiddleware({ type: "function" }).client(
       data: { session },
     } = await supabase.auth.getSession();
 
-    // Se o token estiver expirado ou a menos de 60 segundos de expirar, renova antes do envio
-    if (session?.expires_at && session.expires_at * 1000 < Date.now() + 60_000) {
+    // Se não houver sessão ou estiver a menos de 60 segundos de expirar,
+    // getUser() aciona a renovação nativa com mutex do Supabase
+    if (!session || (session.expires_at && session.expires_at * 1000 < Date.now() + 60_000)) {
       try {
-        const { data: refreshed, error } = await supabase.auth.refreshSession();
-        if (!error && refreshed?.session) {
-          session = refreshed.session;
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (!userError && userData?.user) {
+          const { data: fresh } = await supabase.auth.getSession();
+          session = fresh.session;
         }
       } catch (err) {
-        console.warn("[AuthAttacher] Falha ao renovar sessão:", err);
+        console.warn("[AuthAttacher] Falha ao renovar token:", err);
       }
     }
 
