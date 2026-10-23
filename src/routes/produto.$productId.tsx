@@ -650,6 +650,21 @@ export function ProductDetailPage() {
                   </span>
                 </div>
 
+                {/* Selo de origem do envio: internacional (CJ) ou nacional */}
+                <div className="mt-2">
+                  {(product as any)?.supplier === "cj" ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-600">
+                      <Truck className="h-3.5 w-3.5" />
+                      Envio internacional ✈️ — prazo médio de 12 a 18 dias úteis
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600">
+                      <Truck className="h-3.5 w-3.5" />
+                      Envio nacional 🇧🇷 — entrega mais rápida
+                    </span>
+                  )}
+                </div>
+
                 {/* Bloco de Preço */}
                 <div className="mt-4 rounded-xl bg-muted/20 p-4 border border-border/80">
                   <div className="flex items-center gap-2 leading-none">
