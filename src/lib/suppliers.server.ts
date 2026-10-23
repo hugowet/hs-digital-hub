@@ -106,6 +106,72 @@ async function translateProductTitles(titles: string[]) {
   return parseTranslations(content, titles.length);
 }
 
+export type CjDetailContent = { description: string | null; specifications: Record<string, string> };
+
+/** Translates official CJ descriptions/specifications to pt-BR without inventing data. */
+export async function translateProductDetails(items: CjDetailContent[]): Promise<CjDetailContent[]> {
+  if (items.length === 0) return [];
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  if (!apiKey) throw new Error("A tradução automática ainda não está disponível.");
+  const runIdFetch = createLovableAiGatewayRunIdFetch();
+  const provider = createOpenAI({
+    baseURL: "https://ai.gateway.lovable.dev/v1",
+    apiKey,
+    headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+    fetch: runIdFetch.fetch,
+  });
+  const payload = items.map((item) => ({
+    description: item.description ?? "",
+    specifications: Object.entries(item.specifications).map(([label, value]) => ({ label, value })),
+  }));
+  const result = streamText({
+    model: provider.responses("openai/gpt-6-astra"),
+    instructions:
+      "Traduza para português do Brasil descrições e especificações técnicas de produtos de e-commerce. Traduza fielmente, sem inventar, remover ou acrescentar dados técnicos; preserve números, unidades, medidas e marcas. Mantenha quebras de linha da descrição. Remova da descrição apenas linhas vazias de rótulo sem conteúdo como 'Product Image:'. Traduza rótulos e valores das especificações (ex.: 'Plastic bags' -> 'Sacos plásticos'). Responda somente JSON com {\"items\":[...]} na mesma ordem e quantidade da entrada.",
+    messages: [{ role: "user", content: JSON.stringify(payload) }],
+    maxRetries: 0,
+    output: Output.object({
+      schema: z.object({
+        items: z.array(z.object({
+          description: z.string(),
+          specifications: z.array(z.object({ label: z.string(), value: z.string() })),
+        })),
+      }),
+    }),
+    providerOptions: {
+      openai: {
+        store: false,
+        forceReasoning: true,
+        reasoningEffort: "low",
+        reasoningSummary: "auto",
+        include: ["reasoning.encrypted_content"],
+      },
+    },
+  });
+  let parsed: any;
+  try {
+    parsed = await result.output;
+  } catch {
+    const text = await result.text;
+    parsed = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  }
+  const out = Array.isArray(parsed?.items) ? parsed.items : [];
+  if (out.length !== items.length) throw new Error("A tradução das fichas retornou quantidade inesperada.");
+  return out.map((item: any, index: number) => {
+    const specifications: Record<string, string> = {};
+    for (const spec of Array.isArray(item?.specifications) ? item.specifications : []) {
+      const label = String(spec?.label ?? "").trim();
+      const value = String(spec?.value ?? "").trim();
+      if (label && value) specifications[label] = value;
+    }
+    const description = String(item?.description ?? "").trim();
+    return {
+      description: description || items[index]!.description,
+      specifications: Object.keys(specifications).length ? specifications : items[index]!.specifications,
+    };
+  });
+}
+
 export async function translateCjProductBatch(
   supabaseAdmin: any,
   batchSize = 50,
