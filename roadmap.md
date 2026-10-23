@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## HS Social e Aura
+- [x] Conversas privadas persistentes por número exato cadastrado no perfil; envio, resposta ao vivo e reabertura validados entre duas contas. Conta temporária removida.
+- [x] Stories de texto e foto com expiração de 24 horas; publicação, reabertura e exclusão validadas.
+- [x] Aura somente na vitrine; ausência na HS Social e conta validada, acesso sem login bloqueado.
+
 ## Correção do carrinho solicitada por Hugo
 - [x] Restaurar somente duas modalidades de envio, preservando custos e prazos reais.
 - [x] Garantir preço com frete grátis embutido já no produto, sem acréscimo surpresa no carrinho; validado produto → carrinho → pedido.

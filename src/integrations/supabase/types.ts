@@ -1167,6 +1167,119 @@ export type Database = {
           },
         ]
       }
+      social_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          member_a: string
+          member_b: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_a: string
+          member_b: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_a?: string
+          member_b?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_conversations_member_a_fkey"
+            columns: ["member_a"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_conversations_member_b_fkey"
+            columns: ["member_b"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "social_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_stories: {
+        Row: {
+          caption: string
+          created_at: string
+          expires_at: string
+          id: string
+          media_path: string | null
+          user_id: string
+        }
+        Insert: {
+          caption?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          media_path?: string | null
+          user_id: string
+        }
+        Update: {
+          caption?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          media_path?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_stories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           balance: number
@@ -1957,6 +2070,30 @@ export type Database = {
           _usd_brl_rate: number
         }
         Returns: number
+      }
+      social_contact_profiles: {
+        Args: never
+        Returns: {
+          full_name: string
+          id: string
+        }[]
+      }
+      social_mark_read: {
+        Args: { _conversation_id: string }
+        Returns: undefined
+      }
+      social_normalize_phone: { Args: { _phone: string }; Returns: string }
+      social_open_by_phone: {
+        Args: { _phone: string }
+        Returns: {
+          conversation_id: string
+          full_name: string
+          profile_id: string
+        }[]
+      }
+      social_publish_story: {
+        Args: { _caption: string; _media_path?: string }
+        Returns: string
       }
       start_arcade_game: {
         Args: { _game_type: string }

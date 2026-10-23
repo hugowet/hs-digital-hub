@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
   type ErrorComponentProps,
@@ -162,6 +163,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -169,7 +171,7 @@ function RootComponent() {
         <RadioProvider>
           <Outlet />
           <Toaster position="top-center" richColors />
-          <AuraChatWidget />
+          {pathname === "/" && <AuraChatWidget />}
         </RadioProvider>
       </CartProvider>
     </QueryClientProvider>
