@@ -39,7 +39,7 @@ export function includeFirstPurchaseMargin<T extends ShippingOption>(options: T[
     const items = [...(option.providerPayload.priced_items ?? [])];
     const first = items[0];
     if (!first) return option;
-    items[0] = { ...first, unit_price: Number((Number(first.unit_price) + 10 / first.quantity).toFixed(2)) };
+    items[0] = { ...first, unit_price: Number((Number(first.unit_price) + 10 / first.quantity).toFixed(6)) };
     // Persist the exact rounded addition, so the ledger and customer total agree.
     const margin = Number(((items[0].unit_price - first.unit_price) * first.quantity).toFixed(2));
     return { ...option, providerPayload: { ...option.providerPayload, priced_items: items,

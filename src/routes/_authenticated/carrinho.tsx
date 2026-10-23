@@ -130,6 +130,7 @@ function CartPage() {
         amount: number;
         itemPrices?: Array<{ product_id: string; unit_price: number; quantity: number }>;
         supplierFreight?: number;
+        embeddedFreeShipping?: boolean;
         deliveryDaysMin: number | null;
         deliveryDaysMax: number | null;
       }>;
@@ -199,7 +200,7 @@ function CartPage() {
     const quoted = pricedItems.find((entry) => entry.product_id === item.productId && entry.quantity === item.quantity);
     return sum + (quoted ? Number(quoted.unit_price) : item.price) * item.quantity;
   }, 0);
-  const embeddedShipping = selectedOptions.some((option) => option.amount === 0 && Number(option.supplierFreight) > 0);
+  const embeddedShipping = selectedOptions.some((option) => option.embeddedFreeShipping);
   const firstPurchaseMargin = firstPurchaseEligible && !embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? 10 : 0;
   const totalPedido = Math.round((subtotalProdutos + valorFreteCobrado + valorSeguro + firstPurchaseMargin) * 100) / 100;
 
@@ -581,7 +582,7 @@ function CartPage() {
                 </div>
 
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Frete</span>
+                  <span>{embeddedShipping && valorFreteCobrado > 0 ? "Adicional Premium" : "Frete"}</span>
                   {!embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? (
                     <span className="flex items-center gap-1.5">
                       <span className="line-through opacity-60">{brl(valorFreteCobrado)}</span>
