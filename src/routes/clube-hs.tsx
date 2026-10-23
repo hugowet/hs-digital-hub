@@ -97,10 +97,10 @@ export function ClubeHsPage() {
               <Crown className="w-3.5 h-3.5" /> Clube HS Digital
             </div>
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
-              Suba de nível com o <span className="text-amber-400">Clube HS</span>
+              Sua música merece o <span className="text-amber-400">Clube HS</span>
             </h1>
             <p className="text-slate-200 text-base sm:text-lg">
-              Sua música e suas compras na HS Digital, com as condições de cada benefício apresentadas abaixo.
+              Curta a Rádio HS sem interrupções promocionais da nossa loja. Seja membro por R$ 19,90/mês, sem fidelidade.
             </p>
           </div>
 
@@ -122,22 +122,22 @@ export function ClubeHsPage() {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-10">
           <div className="text-center max-w-xl mx-auto mb-10">
             <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-              Tudo o que você ganha sendo membro
+              Mais música. Menos interrupções.
             </h2>
             <p className="text-sm text-slate-500 mt-2">
-              Rádio sem chamadas promocionais da HS Digital após a confirmação da assinatura. Anúncios das emissoras podem continuar.
+              Deixe as chamadas da nossa loja de fora e aproveite sua programação favorita com o Clube HS.
             </p>
           </div>
 
           {/* Grid de Benefícios */}
-          <div className="grid sm:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 gap-6">
             <div className="flex flex-col items-center text-center p-5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
               <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
                 <Truck className="w-6 h-6" />
               </div>
-              <h3 className="font-semibold text-slate-900 text-base">Frete com custo embutido</h3>
+              <h3 className="font-semibold text-slate-900 text-base">Frete grátis a partir de R$ 89,90</h3>
               <p className="text-xs text-slate-500 mt-2">
-                A partir de R$ 89,90, o envio permanece incluído no preço. Abaixo desse valor, o frete é cobrado conforme o pedido; a assinatura não altera essa regra.
+                Aproveite suas compras com frete grátis a partir de R$ 89,90. Uma vantagem da HS Digital para todos os clientes, assinantes ou não. Abaixo desse valor, consulte o frete no pedido.
               </p>
             </div>
 
@@ -145,21 +145,12 @@ export function ClubeHsPage() {
               <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-4">
                 <Zap className="w-6 h-6" />
               </div>
-              <h3 className="font-semibold text-slate-900 text-base">Rádio sem chamadas HS</h3>
+              <h3 className="font-semibold text-slate-900 text-base">Sua rádio, sem chamadas da loja</h3>
               <p className="text-xs text-slate-500 mt-2">
-                Membros ativos não recebem as chamadas promocionais do locutor HS. A programação e os anúncios da emissora não são alterados.
+                Benefício do assinante: ouça sem as chamadas promocionais da HS Digital enquanto sua assinatura estiver ativa. Anúncios próprios das emissoras podem continuar.
               </p>
             </div>
 
-            <div className="flex flex-col items-center text-center p-5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-4">
-                <Crown className="w-6 h-6" />
-              </div>
-              <h3 className="font-semibold text-slate-900 text-base">Streaming e prioridade</h3>
-              <p className="text-xs text-slate-500 mt-2">
-                Disney+ ou outro streaming e entrega prioritária ainda não estão incluídos: dependem de parceria e confirmação do serviço de entrega.
-              </p>
-            </div>
           </div>
 
           {/* Lista de destaques */}
@@ -168,7 +159,6 @@ export function ClubeHsPage() {
               "Assinatura recorrente mensal sem fidelidade ou carência",
               "Cobrança segura e automatizada via Mercado Pago",
               "Identificação e selo de Membro Ativo no seu perfil",
-              "Benefícios externos somente após confirmação de parceria",
             ].map((text, i) => (
               <div key={i} className="flex items-center gap-3 text-sm text-slate-600">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -197,7 +187,7 @@ export function ClubeHsPage() {
                   </>
                 ) : (
                   <>
-                    Assinar Clube HS por R$ 19,90/mês
+                    Quero ser Clube HS · R$ 19,90/mês
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </>
                 )}
