@@ -19,7 +19,7 @@ type QuoteOption = {
 async function cjQuotes(supabaseAdmin: any, storeId: string, postalCode: string, products: any[]): Promise<QuoteOption[]> {
   const token = await getCjAccessToken(supabaseAdmin, storeId);
   const exchange = await getUsdBrlRate(supabaseAdmin, storeId);
-  const currentItems = [];
+  const currentItems: Array<{ productId: string; quantity: number; costUsd: number }> = [];
   for (const product of products) {
     if (!product.supplier_variant_id) throw new Error("Produto sem variante CJ confirmada.");
     const variant = await cjRequest<any>(`/product/variant/queryByVid?vid=${encodeURIComponent(product.supplier_variant_id)}`, token);
