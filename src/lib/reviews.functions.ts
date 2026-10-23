@@ -19,8 +19,10 @@ export const getProductReviews = createServerFn({ method: "GET" })
     const result = await db.from("product_reviews").select("id,author,rating,comment,photo_paths,verified,created_at")
       .eq("product_id", data.productId).order("created_at", { ascending: false }).limit(100);
     if (result.error) throw new Error(result.error.message);
+    // Sign only paths referenced by publicly readable reviews, never caller-supplied paths.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     return Promise.all((result.data ?? []).map(async (row) => {
-      const signed = row.photo_paths.length ? await db.storage.from("review-photos").createSignedUrls(row.photo_paths, 3600) : null;
+      const signed = row.photo_paths.length ? await supabaseAdmin.storage.from("review-photos").createSignedUrls(row.photo_paths, 3600) : null;
       if (signed?.error) throw new Error("Não foi possível carregar as fotos das avaliações.");
       return { id: row.id, author: row.author, rating: row.rating, comment: row.comment, verified: row.verified,
         date: new Date(row.created_at).toLocaleDateString("pt-BR"), helpfulCount: 0,

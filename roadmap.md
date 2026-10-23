@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Abertura e segurança das avaliações
+- [x] Acrescentar destaques de Clube HS, afiliados, jogos/cupons e Rádio HS após Lupi: sequência, botão entrar e uma vez por sessão validados no celular; jogos validados na conta compradora.
+- [x] Restringir acesso direto às fotos de avaliações ao proprietário; removida política pública e assinatura limitada a caminhos de avaliações lidas publicamente no servidor.
+
 ## Avaliações, rádio e Clube HS
 - [x] Corrigir persistência de avaliações com fotos: envio na conta de Hugo, recarga e leitura pública com foto decodificada validados; avaliação temporária removida.
 - [x] Corrigir reinícios por buffer e unificar players; transmissão MP3 avançou continuamente por 34 segundos com eventos de espera sem trocar conexão. 14 testes passaram incluindo preços/frete preservados.
