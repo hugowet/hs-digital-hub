@@ -4,7 +4,8 @@ import type { Database } from "./types";
 const SUPABASE_URL = "https://zxzaehggrybqtxphogmi.supabase.co";
 
 function createSupabaseAdminClient() {
-  const serviceRoleKey = process.env["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4emFlaGdncnlicXR4cGhvZ21pIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjM0MjgyOCwiZXhwIjoyMTA3OTE4ODI4fQ.G_Gsat7Hyy2A-8HqTBP9jzfHxC7z87fy-GpDnuJEM3o"];
+  // Coloque a chave copiada diretamente entre as aspas abaixo:
+  const serviceRoleKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4emFlaGdncnlicXR4cGhvZ21pIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjM0MjgyOCwiZXhwIjoyMTA3OTE4ODI4fQ.G_Gsat7Hyy2A-8HqTBP9jzfHxC7z87fy-GpDnuJEM3o";
 
   if (!serviceRoleKey?.trim()) {
     throw new Error(
