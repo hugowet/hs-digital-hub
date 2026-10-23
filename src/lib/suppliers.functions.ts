@@ -125,6 +125,7 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
     }
 
     const product = cjJson.data;
+    const { mapCjDetails } = await import("@/lib/cj-content");
     const variant = product.variants?.[0];
     const vid = variant?.vid || product.pid;
     const title = (product.productNameEn || product.productName || "Produto CJ Dropshipping").trim();
@@ -160,9 +161,9 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
       title: title.slice(0, 160),
       supplier_title_original: title.slice(0, 160),
       supplier_locale: "en",
-      description: product.description || `Produto importado da CJ Dropshipping (${title}).`,
-      description_long:
-        product.description || `Produto importado da CJ Dropshipping com estoque sincronizado.`,
+      ...mapCjDetails(product),
+      supplier_details_original: product,
+      supplier_details_synced_at: new Date().toISOString(),
       price: finalPrice,
       compare_at_price: compareAtPrice,
       free_shipping: true,
@@ -185,13 +186,17 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
 
     const { data: existing } = await supabaseAdmin
       .from("products")
-      .select("id")
+      .select("id,title,supplier_locale")
       .eq("store_id", data.storeId)
       .eq("supplier", "cj")
       .eq("supplier_product_id", product.pid)
       .maybeSingle();
 
     if (existing?.id) {
+      if (existing.supplier_locale === "pt-BR") {
+        productPayload.title = existing.title;
+        productPayload.supplier_locale = "pt-BR";
+      }
       await supabaseAdmin.from("products").update(productPayload).eq("id", existing.id);
       return { success: true, updated: true, productId: existing.id, title, price: finalPrice };
     }
