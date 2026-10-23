@@ -41,6 +41,7 @@ import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { storefrontDay } from "@/lib/storefront-selection";
 import { supabase } from "@/integrations/supabase/client";
 import { useRadio } from "@/lib/radio-context";
+import lupiBannerSquare from "@/assets/lupi-banner-square.jpg";
 
 type HomeSearch = {
   q?: string | undefined;
@@ -249,6 +250,13 @@ export function Home() {
     catalogQueryOptions(routeSearch),
   );
   const products = data.pages.flatMap((page) => page.products);
+
+  const [showLupiBanner, setShowLupiBanner] = useState(false);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setShowLupiBanner((value) => !value), 5000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const { data: activeCategories = [] } = useQuery({
     queryKey: ["active-store-categories"],
