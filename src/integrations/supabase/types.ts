@@ -1792,6 +1792,15 @@ export type Database = {
         Args: { _buyer_id: string; _order_id: string }
         Returns: undefined
       }
+      cj_quoted_unit_price: {
+        Args: {
+          _product_id: string
+          _quantity: number
+          _quote_id: string
+          _zip: string
+        }
+        Returns: number
+      }
       create_marketplace_order: {
         Args: { _items: Json; _shipping_address: Json }
         Returns: string
