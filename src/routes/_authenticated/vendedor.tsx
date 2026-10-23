@@ -834,6 +834,82 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
   );
 }
 
+function SellerRequestForm({ userId, onCreated }: { userId: string | null; onCreated: () => void }) {
+  const [storeName, setStoreName] = useState("");
+  const [storeDescription, setStoreDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId) return;
+    const name = storeName.trim();
+    if (name.length < 2) {
+      toast.error("Informe o nome da sua loja.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const slug = `${name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${Date.now().toString(36)}`;
+      const { error } = await supabase.from("stores").insert({
+        owner_id: userId,
+        name,
+        slug,
+        description: storeDescription.trim() || null,
+        status: "pending",
+      });
+      if (error) throw error;
+      toast.success("Solicitação enviada! Aguarde a aprovação do administrador.");
+      onCreated();
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível enviar a solicitação.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-md py-12">
+      <div className="text-center">
+        <ShoppingBag className="mx-auto h-12 w-12 text-primary" />
+        <h1 className="mt-4 text-xl font-bold">Venda na HS Digital</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Você não precisa de outra conta: com o mesmo e-mail você compra e vende. Envie sua solicitação e, após a
+          aprovação do administrador, seu painel de vendedor é liberado.
+        </p>
+      </div>
+      <form onSubmit={handleSubmit} className="surface-card mt-6 space-y-4 p-6">
+        <div>
+          <Label htmlFor="store-name">Nome da loja</Label>
+          <Input
+            id="store-name"
+            required
+            minLength={2}
+            maxLength={80}
+            value={storeName}
+            onChange={(e) => setStoreName(e.target.value)}
+            className="mt-1"
+            placeholder="Ex.: Loja do Hugo"
+          />
+        </div>
+        <div>
+          <Label htmlFor="store-description">O que você vai vender? (opcional)</Label>
+          <Textarea
+            id="store-description"
+            maxLength={300}
+            value={storeDescription}
+            onChange={(e) => setStoreDescription(e.target.value)}
+            className="mt-1"
+            placeholder="Ex.: eletrônicos, acessórios, produtos digitais..."
+          />
+        </div>
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? "Enviando..." : "Solicitar aprovação para vender"}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 function SellerOrdersTab({ storeId }: { storeId: string }) {
   return (
     <div className="surface-card p-5 text-sm text-muted-foreground">
