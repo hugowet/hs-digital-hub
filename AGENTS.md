@@ -32,6 +32,7 @@
 - Catalog search uses a trigger-maintained accent-normalized text column and intersects per-word synonym groups; supplier totals use exact database counts rather than the seller product page size.
 - Physical checkout uses short-lived, buyer-bound server quotes per store; CJ quotes are converted from USD and own-stock products use each seller's Melhor Envio OAuth account, while platform commission never applies to shipping.
 - CJ item-only base prices use the shared supplier pricing helper; live CEP quotes allocate confirmed consolidated freight before markup and store unit-price snapshots for atomic checkout, keeping supplier freight out of the commission base and preventing double charging. A leased bounded cron refresh updates base costs; no supplier fetch runs during storefront loading.
+- Personalized CJ quotes run after hydration from the signed-in user's saved-address query; share cached quotes per user/product/quantity/CEP and serialize visible-card requests to avoid supplier bursts and stale destinations.
 Game rewards are issued and rate-limited atomically in the database; shipping coupons expire after 24 hours and are redeemed atomically during checkout, funded only from platform commission up to R$ 30.
 - Authentication uses email/password and Google; biometric/passkey authentication is intentionally excluded because it caused deployment startup failures.
 - Cart, orders, games, seller tools, and administration live under the authenticated route gate so logout blocks every private surface.

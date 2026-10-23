@@ -3,7 +3,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Package, ShoppingCart, Star, Zap } from "lucide-react";
 import { toast } from "sonner";
 
-import { Input } from "@/components/ui/input";
 import { useCjPrice } from "@/lib/use-cj-price";
 import { Button } from "@/components/ui/button";
 import { brl, compact } from "@/lib/format";
@@ -148,8 +147,8 @@ export function ProductCard({
     product.category?.includes("digital") ||
     product.category?.includes("cursos");
 
-  const cj = useCjPrice(product.id);
   const isCj = product.supplier === "cj";
+  const cj = useCjPrice(product.id, 1, isCj, true);
   const price = isCj && cj.price !== null ? cj.price : Number(product.price || 0);
 
   // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
@@ -169,7 +168,7 @@ export function ProductCard({
   const isFreeShipping = (isCj ? cj.shipping === 0 : price >= 89.90) || isDigital;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
+    <article ref={cj.ref} className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
       {/* Imagem do Produto */}
       <div className="relative aspect-square max-h-56 w-full overflow-hidden bg-muted/20">
         {product.image_url ? (
@@ -220,15 +219,6 @@ export function ProductCard({
           {product.stores?.name ?? "HS Digital"}
         </p>
 
-        {isCj && <div className="mt-2 space-y-1.5">
-          <label className="text-xs text-muted-foreground" htmlFor={`cep-${product.id}`}>Entrega no CEP</label>
-          <div className="flex gap-1">
-            <Input id={`cep-${product.id}`} aria-label="CEP de entrega" inputMode="numeric" maxLength={9} value={cj.postalCode} onChange={(e) => cj.setPostalCode(e.target.value)} placeholder="00000-000" className="min-w-0" />
-            <Button size="sm" variant="outline" disabled={cj.loading} onClick={() => cj.calculate()}>{cj.loading ? "…" : "Calcular"}</Button>
-          </div>
-          {cj.error && <p role="alert" className="text-xs text-destructive">{cj.error}</p>}
-          {cj.service && <p className="text-xs text-muted-foreground">{cj.service}</p>}
-        </div>}
         {/* Bloco de Preços no Estilo Mercado Livre */}
         <div className="mt-auto pt-3">
           {/* Linha 1: [XX% OFF] + Preço Riscado */}
