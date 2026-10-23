@@ -919,9 +919,49 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
 }
 
 function SellerSalesManager({ storeId, transactions }: { storeId: string; transactions: any[] }) {
+  const { data: payoutOrders = [] } = useQuery({
+    queryKey: ["store-payouts", storeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id,status,payment_status,payout_status,payout_released_at,order_items!inner(store_id,seller_amount)")
+        .eq("order_items.store_id", storeId)
+        .eq("payment_status", "paid");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const held = payoutOrders
+    .filter((o: any) => o.payout_status === "held")
+    .reduce((sum: number, o: any) => sum + o.order_items.reduce((s: number, i: any) => s + Number(i.seller_amount), 0), 0);
+  const released = payoutOrders
+    .filter((o: any) => o.payout_status === "released")
+    .reduce((sum: number, o: any) => sum + o.order_items.reduce((s: number, i: any) => s + Number(i.seller_amount), 0), 0);
+
   return (
-    <div className="surface-card p-5 text-sm text-muted-foreground">
-      Total de transações registradas: {transactions.length}
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="surface-card p-5">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Clock className="h-4 w-4" /> A liberar (aguardando entrega)
+          </div>
+          <p className="mt-2 text-2xl font-bold text-foreground">{brl(held)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            O valor de cada venda é liberado quando o pedido chega ao cliente sem reclamação.
+          </p>
+        </div>
+        <div className="surface-card p-5">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <CheckCircle2 className="h-4 w-4 text-success" /> Liberado para você
+          </div>
+          <p className="mt-2 text-2xl font-bold text-foreground">{brl(released)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Vendas entregues e confirmadas.</p>
+        </div>
+      </div>
+      <div className="surface-card p-5 text-sm text-muted-foreground">
+        Total de transações registradas: {transactions.length}
+      </div>
     </div>
   );
 }
