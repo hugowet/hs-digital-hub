@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Preço CJ com envio
+- [ ] Conferir custo real do produto e envio escolhido antes da margem por faixas; não duplicar frete.
+- [ ] Atualizar preços automaticamente quando custos CJ mudarem; definir destino e serviço para cotação real.
+
 ## Vitrine diária
 - [x] Renovar diariamente a seleção de Todos, equilibrando categorias e priorizando vendas reais.
 - [x] Validar seleção, paginação e preservação da busca e dos filtros: 12 categorias, mudança diária e páginas sem repetição; cinco testes passaram.
