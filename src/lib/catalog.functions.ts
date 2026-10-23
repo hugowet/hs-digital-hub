@@ -79,8 +79,8 @@ const catalogInput = z.object({
 type CatalogInput = z.infer<typeof catalogInput>;
 
 async function createPublicClient() {
-  const key = "sb_publishable_C-JxeTDyGGnkIxmv-3PSUA_iTezHH3C";
-  const url = "https://zxzaehggrybqtxphogmi.supabase.co";
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? "";
+  const url = process.env.SUPABASE_URL ?? "";
 
   return createClient<Database>(url, key, {
     auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
