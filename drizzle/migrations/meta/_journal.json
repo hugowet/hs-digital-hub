@@ -141,6 +141,20 @@
       "when": 1792788586631,
       "tag": "0019_verified_storefront_sales_window",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792789250937,
+      "tag": "0020_validated_cj_landed_checkout",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792789349274,
+      "tag": "0021_cj_price_refresh_leases",
+      "breakpoints": true
     }
   ]
 }

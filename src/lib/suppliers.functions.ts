@@ -162,25 +162,17 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
     const product = cjJson.data;
     const { mapCjDetails } = await import("@/lib/cj-content");
     const variant = product.variants?.[0];
-    const vid = variant?.vid || product.pid;
+    const vid = variant?.vid;
+    if (!vid) throw new Error("A CJ não retornou uma variante válida.");
     const title = (product.productNameEn || product.productName || "Produto CJ Dropshipping").trim();
     const costUsd = Number(variant?.variantSellPrice ?? product.sellPrice ?? 0);
 
     if (costUsd <= 0) throw new Error("Preço de custo do produto inválido na CJ.");
 
-    // REGRA DE OURO 35% REAL: (Custo USD + $15.19 YunExpress) * Cotação BRL / 0.65
-    const YUNEXPRESS_FREIGHT_USD = 15.19;
-    const custoTotalUsd = costUsd + YUNEXPRESS_FREIGHT_USD;
-    const custoTotalBrl = custoTotalUsd * exchange.rate;
-    const finalPrice = Math.round((custoTotalBrl / 0.65) * 100) / 100;
-
-    // Descontos dinâmicos e quebrados estilo Mercado Livre (19%, 28%, 35%, 63% OFF)
-    const discountTags = [0.19, 0.28, 0.35, 0.42, 0.53, 0.63];
-    const hashSeed = Math.abs(
-      pid.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) + Math.round(costUsd * 10)
-    );
-    const chosenDiscountRate = discountTags[hashSeed % discountTags.length];
-    const compareAtPrice = Math.round((finalPrice / (1 - chosenDiscountRate)) * 100) / 100;
+    // Import keeps an item-only base; destination-specific landed pricing is quoted separately.
+    const { calculateFinalPrice } = await import("@/lib/pricing");
+    const finalPrice = calculateFinalPrice(Math.round(costUsd * exchange.rate * 100) / 100);
+    const compareAtPrice = null;
 
     const images: string[] = [
       variant?.variantImage,
@@ -201,7 +193,7 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
       supplier_details_synced_at: new Date().toISOString(),
       price: finalPrice,
       compare_at_price: compareAtPrice,
-      free_shipping: true,
+      free_shipping: false,
       stock: Number(variant?.variantKey || product.warehouseInventoryNum || 50),
       category: categoryFor(`${product.categoryName || ""} ${title}`),
       image_url: uniqueImages[0] ?? null,

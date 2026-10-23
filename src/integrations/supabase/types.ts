@@ -1553,6 +1553,44 @@ export type Database = {
           },
         ]
       }
+      supplier_price_refresh_jobs: {
+        Row: {
+          cursor_id: string | null
+          last_error: string | null
+          lease_token: string | null
+          lease_until: string | null
+          next_attempt_at: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          cursor_id?: string | null
+          last_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          next_attempt_at?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          cursor_id?: string | null
+          last_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          next_attempt_at?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_price_refresh_jobs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_addresses: {
         Row: {
           city: string
@@ -1791,6 +1829,33 @@ export type Database = {
       cancel_unpaid_marketplace_order_for_buyer: {
         Args: { _buyer_id: string; _order_id: string }
         Returns: undefined
+      }
+      cj_quoted_unit_price: {
+        Args: {
+          _product_id: string
+          _quantity: number
+          _quote_id: string
+          _zip: string
+        }
+        Returns: number
+      }
+      claim_cj_price_refresh: {
+        Args: { _store_id: string }
+        Returns: {
+          cursor_id: string | null
+          last_error: string | null
+          lease_token: string | null
+          lease_until: string | null
+          next_attempt_at: string
+          store_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "supplier_price_refresh_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       create_marketplace_order: {
         Args: { _items: Json; _shipping_address: Json }

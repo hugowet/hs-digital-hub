@@ -33,6 +33,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useCjPrice } from "@/lib/use-cj-price";
 import { useCart } from "@/lib/cart";
 import { fetchProduct, fetchProducts } from "@/lib/catalog.functions";
 import { brl } from "@/lib/format";
@@ -65,7 +66,7 @@ export const Route = createFileRoute("/produto/$productId")({
         { title },
         { name: "description", content: desc },
         { property: "og:site_name", content: "HS Digital · Loja JJ Kuster" },
-        { property: "og:title", title },
+        { property: "og:title", content: title },
         { property: "og:description", content: desc },
         { property: "og:type", content: "product" },
         { property: "og:url", content: pageUrl },
@@ -280,7 +281,9 @@ export function ProductDetailPage() {
     return Number.isFinite(rawStock) && rawStock > 0 ? rawStock : 99;
   }, [product?.stock]);
 
-  const price = Number(product?.price || 0);
+  const cj = useCjPrice(productId, quantity);
+  const isCj = product?.supplier === "cj";
+  const price = isCj && cj.price !== null ? cj.price : Number(product?.price || 0);
   const rawOriginal = product?.compare_at_price;
   const originalPrice =
     rawOriginal && Number(rawOriginal) > price
@@ -665,6 +668,15 @@ export function ProductDetailPage() {
                   )}
                 </div>
 
+                {isCj && <div className="mt-4 space-y-2">
+                  <label htmlFor="product-delivery-cep" className="text-sm font-medium">Entrega no CEP</label>
+                  <div className="flex gap-2">
+                    <Input id="product-delivery-cep" inputMode="numeric" maxLength={9} value={cj.postalCode} onChange={(e) => cj.setPostalCode(e.target.value)} placeholder="00000-000" />
+                    <Button variant="outline" disabled={cj.loading} onClick={() => cj.calculate()}>{cj.loading ? "Consultando…" : "Calcular"}</Button>
+                  </div>
+                  {cj.error && <p role="alert" className="text-sm text-destructive">{cj.error}</p>}
+                  {cj.service && <p className="text-sm text-muted-foreground">{cj.service} · {cj.shipping === 0 ? "Frete incluso" : `Frete ${brl(cj.shipping)}`}</p>}
+                </div>}
                 {/* Bloco de Preço */}
                 <div className="mt-4 rounded-xl bg-muted/20 p-4 border border-border/80">
                   <div className="flex items-center gap-2 leading-none">
@@ -676,6 +688,7 @@ export function ProductDetailPage() {
                     </span>
                   </div>
 
+                  {isCj && cj.price === null && <p className="mt-2 text-xs text-muted-foreground">A partir de · envio a calcular pelo CEP</p>}
                   <div className="mt-2 flex items-baseline gap-1">
                     <span className="text-sm font-semibold text-foreground">R$</span>
                     <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
