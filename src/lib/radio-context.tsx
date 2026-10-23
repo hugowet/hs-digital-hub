@@ -383,7 +383,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   };
 
   const togglePlay = () => {
-    if (isPlaying) {
+    if (isPlaying || shouldBePlayingRef.current) {
       pause();
     } else {
       play();

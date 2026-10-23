@@ -42,6 +42,7 @@ export function RadioHSPage() {
     currentTrackIndex,
     currentTrack,
     isPlaying,
+    isReconnecting,
     volume,
     isMuted,
     isVipClube,
@@ -167,6 +168,7 @@ export function RadioHSPage() {
             <p className="text-xs text-slate-500">{currentTrack.album}</p>
           </div>
 
+          {isReconnecting && <p role="status" className="text-center text-muted-foreground text-xs mb-3">Reconectando à emissora...</p>}
           {/* Controles Principais */}
           <div className="flex items-center justify-center gap-6 mb-6">
             <button
@@ -184,7 +186,8 @@ export function RadioHSPage() {
                   ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30"
                   : "bg-blue-600 hover:bg-blue-500 shadow-blue-600/30"
               }`}
-              title={isPlaying ? "Pausar" : "Tocar"}
+              title={isPlaying || isReconnecting ? "Pausar" : "Tocar"}
+              aria-label={isPlaying || isReconnecting ? "Pausar" : "Tocar"}
             >
               {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 ml-1" />}
             </button>
@@ -233,7 +236,7 @@ export function RadioHSPage() {
                   : "bg-slate-800 text-slate-500 border-slate-700"
               }`}
             >
-              {locutorEnabled ? "Locutor Ativado" : "Locutor Pausado"}
+              {isVipClube ? "Sem chamadas HS" : locutorEnabled ? "Locutor Ativado" : "Locutor Pausado"}
             </button>
           </div>
         </div>
@@ -265,8 +268,7 @@ export function RadioHSPage() {
             <h3 className="text-xl font-bold text-white">Gostando da Rádio HS?</h3>
             <p className="text-xs text-slate-300 mt-2 leading-relaxed">
               Assine o <strong className="text-amber-400">Clube HS</strong> por apenas{" "}
-              <strong>R$ 19,90/mês</strong> e ouça sem chamadas promocionais da HS Digital. Anúncios da emissora podem continuar. Consulte as condições de frete no Clube HS. Região de
-              Perdizes!
+              <strong>R$ 19,90/mês</strong> e ouça sem chamadas promocionais da HS Digital. Anúncios da emissora podem continuar. Consulte as condições de frete no Clube HS.
             </p>
 
             <div className="mt-6 flex flex-col gap-2.5">
@@ -292,7 +294,7 @@ export function RadioHSPage() {
 
             <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Membros do clube têm player 100% liberado.
+              Sem chamadas promocionais HS para membros ativos.
             </div>
           </div>
         </div>
