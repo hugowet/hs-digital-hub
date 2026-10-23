@@ -3,6 +3,14 @@ import { Radio, Volume2, Play, Pause, ArrowLeft, Crown } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 
 export const Route = createFileRoute('/radio-hs')({
+  head: () => ({ meta: [
+    { title: 'Rádio HS · Música na HS Digital' },
+    { name: 'description', content: 'Ouça a Rádio HS Digital e acompanhe sua programação.' },
+    { property: 'og:title', content: 'Rádio HS · HS Digital' },
+    { property: 'og:description', content: 'Acompanhe a programação da Rádio HS Digital.' },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary' },
+  ] }),
   component: RadioComponent,
 })
 
