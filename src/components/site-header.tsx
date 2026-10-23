@@ -60,13 +60,11 @@ export function SiteHeader({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Só atualiza o campo vindo de fora se o usuário não estiver focado nele digitando
     if (!searchFocused) {
       setLocalQuery(query);
     }
   }, [query, searchFocused]);
 
-  // Debounce otimizado para não travar o teclado nem sobrecarregar o histórico
   useEffect(() => {
     const timer = setTimeout(() => {
       if (localQuery !== query && onQueryChange) {
@@ -144,179 +142,137 @@ export function SiteHeader({
     inputRef.current?.blur();
     if (onQueryChange) {
       onQueryChange(localQuery);
-    } else {
-      navigate({ to: "/", search: { q: localQuery || undefined } });
     }
   };
 
   return (
-    <header className="sticky top-0 z-50 brand-gradient text-primary-foreground shadow-md">
-      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2.5 sm:py-3">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Link to="/" className="flex shrink-0 items-center gap-2">
-            <img
-              src={logoAsset.url}
-              alt="HS Digital"
-              width={40}
-              height={40}
-              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full ring-1 ring-white/20 object-cover"
-            />
-            <span className="font-display text-base sm:text-lg font-bold tracking-tight max-sm:hidden">
-              HS Digital
-            </span>
+    <header className="sticky top-0 z-40 w-full border-b border-primary/20 bg-primary px-4 py-2.5 text-primary-foreground shadow-md">
+      <div className="mx-auto max-w-6xl">
+        <div className="flex items-center gap-3">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 font-bold tracking-tight shrink-0">
+            {logoAsset?.url ? (
+              <img
+                src={logoAsset.url}
+                alt="HS Digital"
+                className="h-9 w-auto max-w-[120px] object-contain sm:h-10 sm:max-w-[150px]"
+              />
+            ) : (
+              <span className="text-lg font-black tracking-tighter text-white">HS DIGITAL</span>
+            )}
           </Link>
 
           {/* Barra de Pesquisa */}
-          <div className="relative flex-1 min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative flex-1 max-w-xl">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 triggerSearch();
               }}
-              action="/"
-              method="get"
-              className="w-full m-0 p-0"
+              className="relative flex items-center"
             >
+              <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
               <input
                 ref={inputRef}
                 type="search"
-                enterKeyHint="search"
                 value={localQuery}
                 onChange={(e) => setLocalQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
-                onBlur={() => window.setTimeout(() => setSearchFocused(false), 200)}
-                placeholder="Buscar produtos e lojas..."
-                aria-label="Buscar produtos e lojas"
-                className="h-10 w-full rounded-full border border-white/15 bg-white pl-9 pr-9 text-sm text-foreground outline-none ring-primary-glow/60 placeholder:text-muted-foreground focus:ring-2"
+                onBlur={() => setTimeout(() => setSearchFocused(false), 250)}
+                placeholder="Buscar produtos, marcas e muito mais..."
+                className="h-10 w-full rounded-full border-0 bg-white pl-9 pr-10 text-sm text-foreground shadow-inner focus:outline-none focus:ring-2 focus:ring-accent"
               />
+              {localQuery ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLocalQuery("");
+                    if (onQueryChange) onQueryChange("");
+                  }}
+                  className="absolute right-3 grid h-5 w-5 place-items-center text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
             </form>
-            {localQuery && (
-              <button
-                type="button"
-                onClick={() => {
-                  setLocalQuery("");
-                  if (onQueryChange) onQueryChange("");
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
 
-            {/* Menu de Sugestões Rápidas */}
+            {/* Sugestões de Busca */}
             {searchFocused && matches.length > 0 && (
-              <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl">
-                <div className="bg-muted/40 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-xl border border-border bg-popover p-1.5 shadow-2xl animate-in fade-in zoom-in-95">
+                <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Sugestões
                 </div>
                 {matches.map((item) => (
-                  <Button
+                  <button
                     key={item.id}
                     type="button"
-                    variant="ghost"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => {
-                      inputRef.current?.blur();
+                    onMouseDown={() => {
                       setLocalQuery(item.title);
                       if (onQueryChange) onQueryChange(item.title);
                       setSearchFocused(false);
-                      navigate({ to: "/produto/$productId", params: { productId: item.id } });
                     }}
-                    className="h-auto w-full justify-between rounded-none px-4 py-3 text-left text-sm hover:bg-muted/60"
+                    className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
-                    <span className="truncate font-medium">{item.title}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground ml-2 capitalize">
+                    <span className="font-medium line-clamp-1">{item.title}</span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">
                       {item.category}
                     </span>
-                  </Button>
+                  </button>
                 ))}
               </div>
             )}
           </div>
 
-          <nav className="flex items-center gap-1 sm:gap-1.5">
-            {/* 🟢 Botão Verde-Claro HS Social (Desktop Topo) */}
-            <Link
-              to="/social"
-              className="relative hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-400/35 hover:bg-emerald-400/30 transition shadow-sm"
-              title="HS Social - Mensagens, Grupos e Status"
-            >
-              <MessageCircle className="h-3.5 w-3.5 text-emerald-300" />
-              <span>HS Social</span>
-            </Link>
-
+          {/* Navegação e Ações */}
+          <nav className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Carrinho */}
-            {signedIn && (
-              <Link
-                to="/carrinho"
-                className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10"
-                aria-label="Carrinho"
-                title="Meu Carrinho"
-              >
-                <ShoppingCart className="h-5 w-5" />
-                {count > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-primary-glow px-1 text-[11px] font-bold">
-                    {count}
-                  </span>
-                )}
-              </Link>
-            )}
-
-            {/* Programa de Afiliados */}
             <Link
-              to="/afiliados"
-              className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 text-primary-foreground"
-              aria-label="Programa de Afiliados"
-              title="Programa de Afiliados (Ganhe 10%)"
+              to="/carrinho"
+              className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10"
+              aria-label="Carrinho"
             >
-              <Share2 className="h-5 w-5" />
+              <ShoppingCart className="h-5 w-5" />
+              {count > 0 && (
+                <span className="absolute -top-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-accent text-[11px] font-bold text-accent-foreground shadow-sm">
+                  {count > 9 ? "9+" : count}
+                </span>
+              )}
             </Link>
 
             {signedIn ? (
               <>
-                <Link
-                  to="/notificacoes"
-                  className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden"
-                  aria-label="Notificações"
-                >
-                  <Bell className="h-5 w-5" />
-                  {unreadMessages > 0 && (
-                    <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold">
-                      {unreadMessages}
-                    </span>
-                  )}
-                </Link>
-
+                {/* Menu de Usuário (Desktop) */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground max-sm:hidden"
-                      aria-label="Menu da conta"
+                    <button
+                      type="button"
+                      className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 max-sm:hidden"
+                      aria-label="Minha conta"
                     >
                       <User className="h-5 w-5" />
-                    </Button>
+                      {unreadMessages > 0 && (
+                        <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-primary" />
+                      )}
+                    </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-60">
-                    <DropdownMenuLabel>Minha conta HS Digital</DropdownMenuLabel>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
                       <User className="mr-2 h-4 w-4" />
-                      Minha conta
+                      Meus dados e endereços
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/compras" })}>
+                      <ShoppingBag className="mr-2 h-4 w-4" />
+                      Minhas compras
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => navigate({ to: "/social" })}>
                       <MessageCircle className="mr-2 h-4 w-4 text-emerald-500" />
                       HS Social
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => navigate({ to: "/conta" })}>
-                      <MapPin className="mr-2 h-4 w-4" />
-                      Meus endereços
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => navigate({ to: "/compras" })}>
-                      <ShoppingBag className="mr-2 h-4 w-4" />
-                      Minhas compras
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/clube-hs" })}>
+                      <Crown className="mr-2 h-4 w-4 text-amber-500" />
+                      Clube HS
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => navigate({ to: "/afiliados" })}>
                       <Share2 className="mr-2 h-4 w-4 text-emerald-500" />
@@ -399,7 +355,6 @@ export function SiteHeader({
               Afiliados (10%)
             </Link>
 
-            {/* 🟢 Botão Verde-Claro HS Social no Submenu */}
             <Link
               to="/social"
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-emerald-400/20 text-emerald-200 hover:bg-emerald-400/30 border border-emerald-400/30 transition-colors"
@@ -445,7 +400,6 @@ export function SiteHeader({
               Início
             </Link>
 
-            {/* Botão HS Social no Mobile */}
             <Link
               to="/social"
               onClick={() => setOpen(false)}
@@ -531,6 +485,18 @@ export function SiteHeader({
               <Store className="h-4 w-4" />
               Venda na HS Digital
             </Link>
+
+            {/* Link Admin para dispositivos móveis */}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-primary hover:bg-primary-foreground/10 font-semibold"
+              >
+                <User className="h-4 w-4" />
+                Painel Admin
+              </Link>
+            )}
 
             {signedIn ? (
               <button
