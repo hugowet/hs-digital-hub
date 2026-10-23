@@ -244,7 +244,7 @@ export async function getUsdBrlRate(supabaseAdmin: any, storeId: string): Promis
 
   try {
     const response = await fetch(
-      `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarPeriodo(dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)?${params.toString()}`,
+      `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarPeriodo(dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)?${params.toString().replace(/\+/g, "%20")}`,
       { signal: AbortSignal.timeout(10_000) },
     );
     if (!response.ok) throw new Error(`HTTP ${response.status}`);

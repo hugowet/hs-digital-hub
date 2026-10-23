@@ -4,6 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
+  head: () => ({ meta: [
+    { title: "Minha conta · HS Digital" },
+    { name: "description", content: "Compras e serviços da sua conta HS Digital." },
+    { property: "og:title", content: "Minha conta · HS Digital" },
+    { property: "og:description", content: "Área da conta HS Digital." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   beforeLoad: async ({ location }) => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
