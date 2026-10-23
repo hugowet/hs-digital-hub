@@ -1,0 +1,13 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS supplier_details_original jsonb, ADD COLUMN IF NOT EXISTS supplier_details_synced_at timestamptz, ADD COLUMN IF NOT EXISTS catalog_search_text text NOT NULL DEFAULT '';
+CREATE OR REPLACE FUNCTION public.normalize_catalog_text(value text) RETURNS text LANGUAGE sql IMMUTABLE SET search_path=public AS $$ SELECT lower(translate(coalesce(value,''), 'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇáàâãäéèêëíìîïóòôõöúùûüç', 'AAAAAEEEEIIIIOOOOOUUUUCaaaaaeeeeiiiiooooouuuuc')); $$;
+CREATE OR REPLACE FUNCTION public.update_catalog_search_text() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$ BEGIN NEW.catalog_search_text := public.normalize_catalog_text(concat_ws(' ',NEW.title,NEW.supplier_title_original,NEW.category,NEW.description,NEW.description_long,NEW.specifications::text)); RETURN NEW; END; $$;
+CREATE TRIGGER products_catalog_search_text BEFORE INSERT OR UPDATE OF title,supplier_title_original,category,description,description_long,specifications ON public.products FOR EACH ROW EXECUTE FUNCTION public.update_catalog_search_text();
+UPDATE public.products SET catalog_search_text=public.normalize_catalog_text(concat_ws(' ',title,supplier_title_original,category,description,description_long,specifications::text));
+CREATE TABLE public.supplier_content_jobs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),store_id uuid NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,operation text NOT NULL CHECK(operation IN ('titles','details')),status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','running','paused','completed')),processed integer NOT NULL DEFAULT 0,lock_expires_at timestamptz,lock_token uuid,pause_reason text,updated_at timestamptz NOT NULL DEFAULT now(),UNIQUE(store_id,operation));
+GRANT SELECT ON public.supplier_content_jobs TO authenticated;
+GRANT ALL ON public.supplier_content_jobs TO service_role;
+ALTER TABLE public.supplier_content_jobs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY supplier_content_owner_read ON public.supplier_content_jobs FOR SELECT TO authenticated USING (EXISTS(SELECT 1 FROM public.stores s WHERE s.id=store_id AND s.owner_id=auth.uid()) OR public.has_role(auth.uid(),'admin'));
+INSERT INTO public.supplier_content_jobs(store_id,operation) SELECT DISTINCT store_id,operation FROM public.products CROSS JOIN (VALUES ('titles'),('details')) AS ops(operation) WHERE supplier='cj' ON CONFLICT DO NOTHING;
+CREATE INDEX products_cj_missing_details ON public.products(store_id,id) WHERE supplier='cj' AND supplier_details_synced_at IS NULL;
+CREATE INDEX products_cj_missing_titles ON public.products(store_id,id) WHERE supplier='cj' AND (supplier_locale IS NULL OR supplier_locale<>'pt-BR');

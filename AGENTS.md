@@ -27,6 +27,8 @@
 - Supplier products use stable provider variant IDs; CJ USD costs are converted with the latest validated BCB USD/BRL selling rate before applying margin; CJ full-catalog imports use a persistent bounded queue; Dropi catalog contracts use admin-configured server-only mappings with SSRF-safe URLs; paid orders enter an idempotent fulfillment queue; all supplier credentials stay server-only.
 - The public catalog is server-prefetched and paginated; supplier synchronization writes durable rows and never runs during a shopper page load, so large catalogs do not block the storefront.
 - CJ customer-facing titles are translated server-side in bounded batches and persisted with the original supplier text, so translation never delays storefront reads.
+- CJ content updates use separate durable per-store title/detail jobs with expiring database leases and persisted pauses; all import paths preserve Portuguese titles and share official-detail mapping, without changing pricing.
+- Catalog search uses a trigger-maintained accent-normalized text column and intersects per-word synonym groups; supplier totals use exact database counts rather than the seller product page size.
 - Physical checkout uses short-lived, buyer-bound server quotes per store; CJ quotes are converted from USD and own-stock products use each seller's Melhor Envio OAuth account, while platform commission never applies to shipping.
 Game rewards are issued and rate-limited atomically in the database; shipping coupons expire after 24 hours and are redeemed atomically during checkout, funded only from platform commission up to R$ 30.
 - Authentication uses email/password and Google; biometric/passkey authentication is intentionally excluded because it caused deployment startup failures.

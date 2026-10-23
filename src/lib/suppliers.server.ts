@@ -1,6 +1,8 @@
 import { decryptSecret, encryptSecret } from "@/lib/mercado-pago.server";
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText } from "ai";
+import { streamText, Output } from "ai";
+import { z } from "zod";
+import { mapCjDetails } from "@/lib/cj-content";
 import { createLovableAiGatewayRunIdFetch } from "@/lib/ai-run-id.server";
 
 const CJ_API = "https://developers.cjdropshipping.com/api2.0/v1";
@@ -19,7 +21,7 @@ type CjToken = {
   refreshTokenExpiryDate?: string;
 };
 
-type CjProduct = {
+type CjProduct = Record<string, unknown> & {
   pid?: string;
   bigImage?: string;
   productNameEn?: string;
@@ -87,6 +89,8 @@ async function translateProductTitles(titles: string[]) {
     instructions:
       "Traduza títulos de produtos de e-commerce do inglês para português do Brasil em formato conciso, limpo e atraente (estilo Mercado Livre, máximo de 60 caracteres). Remova termos redundantes, tags promocionais e códigos de fornecedor. Preserve marcas reais, modelos e especificações essenciais. Não invente características. Responda somente JSON válido no formato {\"translations\":[\"...\"]}, mantendo exatamente a ordem e a quantidade.",
     messages: [{ role: "user", content: JSON.stringify(titles) }],
+    maxRetries: 0,
+    output: Output.object({ schema: z.object({ translations: z.array(z.string()) }) }),
     providerOptions: {
       openai: {
         store: false,
@@ -106,15 +110,17 @@ export async function translateCjProductBatch(
   supabaseAdmin: any,
   batchSize = 50,
   idRange?: { start: string; end?: string },
+  storeId?: string,
 ) {
   const safeBatchSize = Math.min(50, Math.max(1, Math.trunc(batchSize)));
   let query = supabaseAdmin
     .from("products")
     .select("id,title,supplier_title_original")
     .eq("supplier", "cj")
-    .neq("supplier_locale", "pt-BR")
+    .or("supplier_locale.is.null,supplier_locale.neq.pt-BR")
     .order("id")
     .limit(safeBatchSize);
+  if (storeId) query = query.eq("store_id", storeId);
   if (idRange) {
     query = query.gte("id", idRange.start);
     if (idRange.end) query = query.lt("id", idRange.end);
@@ -144,7 +150,8 @@ export async function translateCjProductBatch(
     .from("products")
     .select("id", { count: "exact", head: true })
     .eq("supplier", "cj")
-    .neq("supplier_locale", "pt-BR");
+    .or("supplier_locale.is.null,supplier_locale.neq.pt-BR");
+  if (storeId) countQuery = countQuery.eq("store_id", storeId);
   if (idRange) {
     countQuery = countQuery.gte("id", idRange.start);
     if (idRange.end) countQuery = countQuery.lt("id", idRange.end);
@@ -212,7 +219,7 @@ async function waitForCjRateLimit() {
   cjLastRequestAt = Date.now();
 }
 
-async function cjRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
+export async function cjRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await waitForCjRateLimit();
     const response = await fetch(`${CJ_API}${path}`, {
@@ -562,10 +569,9 @@ async function importCjProduct(
     title: title.slice(0, 160),
     supplier_title_original: title.slice(0, 160),
     supplier_locale: "en",
-    description:
-      "Produto real da CJ Dropshipping, selecionado entre os mais procurados da categoria.",
-    description_long:
-      "Produto real do catálogo CJ Dropshipping, com estoque sincronizado pelo fornecedor.",
+    ...mapCjDetails(product),
+    supplier_details_original: product,
+    supplier_details_synced_at: new Date().toISOString(),
     price,
     stock: queued.stock,
     category: categoryFor(`${product.categoryName ?? ""} ${title}`),
@@ -585,12 +591,17 @@ async function importCjProduct(
   };
   const { data: existingProduct, error: lookupError } = await supabaseAdmin
     .from("products")
-    .select("id")
+    .select("id,title,supplier_locale,supplier_title_original")
     .eq("store_id", storeId)
     .eq("supplier", "cj")
     .eq("supplier_variant_id", vid)
     .maybeSingle();
   if (lookupError) throw lookupError;
+  if (existingProduct?.supplier_locale === "pt-BR") {
+    productData.title = existingProduct.title;
+    productData.supplier_locale = "pt-BR";
+    productData.supplier_title_original = title.slice(0, 160);
+  }
   const { error } = existingProduct
     ? await supabaseAdmin.from("products").update(productData).eq("id", existingProduct.id)
     : await supabaseAdmin.from("products").insert(productData);
