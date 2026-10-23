@@ -219,7 +219,8 @@ function CartPage() {
     if (postalCode.replace(/\D/g, "").length === 8 && items.length > 0) {
       void calculateShipping();
     }
-  }, [items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, postalCode]);
 
   async function calculateShipping(customCep?: string) {
     const rawCep = (customCep ?? postalCode).replace(/\D/g, "");
@@ -273,31 +274,33 @@ function CartPage() {
 
     setSubmitting(true);
     try {
-      const selectedQuotesList = Object.entries(selectedQuotes).map(([storeId, quoteId]) => ({
-        storeId,
-        quoteId,
-      }));
+      const shippingQuoteIds = Object.fromEntries(
+        Object.entries(selectedQuotes).filter(([, quoteId]) => Boolean(quoteId)),
+      );
 
       const res = await createCheckout({
         data: {
           items: items.map((i) => ({
             productId: i.productId,
             quantity: i.quantity,
-            warrantyId: selectedWarrantyId ?? undefined,
           })),
-          shippingQuotes: selectedQuotesList,
-          address: hasPhysical
+          shippingAddress: hasPhysical
             ? {
-                recipientName: name,
+                name,
                 phone,
-                streetAddress: address,
+                address,
                 city,
                 state,
                 postalCode: postalCode.replace(/\D/g, ""),
-                note: note || undefined,
+                note: note || "",
               }
             : undefined,
-          appliedCouponCode: applyGameCoupon && bestGameCoupon ? bestGameCoupon.code : undefined,
+          shippingQuoteIds,
+          couponId: applyGameCoupon && bestGameCoupon ? bestGameCoupon.id : undefined,
+          warranty:
+            selectedWarranty && selectedWarranty.amount > 0
+              ? { id: selectedWarranty.id, title: selectedWarranty.title, amount: selectedWarranty.amount }
+              : undefined,
         },
       });
 
