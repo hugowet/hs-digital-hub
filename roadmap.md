@@ -1,5 +1,11 @@
 # HS Digital — MVP
 
+## Ajustes atuais do catálogo CJ
+- [ ] Mostrar total real de produtos CJ na aba Fornecedores.
+- [ ] Melhorar busca por palavras, acentos e nomes de produtos.
+- [ ] Atualizar descrições e especificações oficiais de todos os produtos CJ cadastrados em lotes retomáveis.
+- [ ] Concluir títulos em português, mostrando progresso e impedimentos reais.
+
 - [x] Exibir o Lupi empurrando um carrinho cheio e, depois, revelar “HS Digital Marketplace” e “Evoluindo com tecnologia” antes de entrar no site.
 
 - [x] Bloquear carrinho e todas as páginas internas após o logout.
