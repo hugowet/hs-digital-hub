@@ -1,3 +1,4 @@
+import { calculateFinalPrice } from "@/lib/pricing";
 import { categoryFor } from "@/lib/suppliers.server";
 
 export type DropiFieldMapping = {

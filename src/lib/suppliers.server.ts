@@ -1,3 +1,4 @@
+import { calculateFinalPrice } from "@/lib/pricing";
 import { decryptSecret, encryptSecret } from "@/lib/mercado-pago.server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText, Output } from "ai";
