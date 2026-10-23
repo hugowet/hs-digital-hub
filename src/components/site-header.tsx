@@ -33,6 +33,7 @@ import {
 import { useCart } from "@/lib/cart";
 import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeCatalogSearch } from "@/lib/catalog-search";
 
 export function SiteHeader({
   query = "",
@@ -77,12 +78,12 @@ export function SiteHeader({
   }, [localQuery, onQueryChange, query]);
 
   const matches = useMemo(() => {
-    const raw = (localQuery ?? "").trim().toLowerCase();
+    const raw = normalizeCatalogSearch(localQuery ?? "");
     if (!raw || raw.length < 2) return [];
     const words = raw.split(/\s+/).filter(Boolean);
     return suggestions
       .filter((item) => {
-        const text = `${item.title} ${item.category}`.toLowerCase();
+        const text = normalizeCatalogSearch(`${item.title} ${item.category}`);
         return words.every((w) => text.includes(w));
       })
       .slice(0, 6);

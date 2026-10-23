@@ -49,7 +49,7 @@ import { CATEGORIES } from "@/lib/catalog";
 import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
-import { processSupplierFulfillment, syncCjProducts } from "@/lib/suppliers.functions";
+import { processSupplierFulfillment, syncCjProducts, getCjSupplierStatus, updateCjContent } from "@/lib/suppliers.functions";
 import { getSellerShippingConfiguration, saveSellerOriginPostalCode, startMelhorEnvioConnection } from "@/lib/shipping.functions";
 
 export const Route = createFileRoute("/_authenticated/vendedor")({
@@ -61,6 +61,10 @@ export const Route = createFileRoute("/_authenticated/vendedor")({
         name: "description",
         content: "Gerencie sua loja, produtos, vendas e pedidos na HS Digital.",
       },
+      { property: "og:title", content: "Seller Center · HS Digital" },
+      { property: "og:description", content: "Gerencie produtos, fornecedores e pedidos da sua loja HS Digital." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: SellerCenterPage,
@@ -317,27 +321,7 @@ function SellerCenterPage() {
 
         {/* Aba de Fornecedores */}
         <TabsContent value="suppliers" className="pt-4">
-          <div className="surface-card p-5 space-y-4">
-            <h3 className="font-semibold text-base">Integrações de Fornecedores</h3>
-            <p className="text-sm text-muted-foreground">
-              Sincronize produtos e acompanhe pedidos de fulfillment automático.
-            </p>
-            <Button
-              onClick={async () => {
-                try {
-                  toast.info("Iniciando sincronização com CJ Dropshipping...");
-                  await syncCj();
-                  toast.success("Sincronização concluída!");
-                } catch (err: any) {
-                  toast.error(err.message || "Erro na sincronização.");
-                }
-              }}
-              variant="outline"
-              className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" /> Sincronizar Catálogo CJ
-            </Button>
-          </div>
+          <CjSupplierPanel storeId={store.id} />
         </TabsContent>
 
         {/* Aba Importador Amazon */}
@@ -393,6 +377,56 @@ function SellerCenterPage() {
       </Dialog>
     </Shell>
   );
+}
+
+function CjSupplierPanel({ storeId }: { storeId: string }) {
+  const statusFn = useServerFn(getCjSupplierStatus);
+  const contentFn = useServerFn(updateCjContent);
+  const syncFn = useServerFn(syncCjProducts);
+  const [busy, setBusy] = useState<string | null>(null);
+  const { data, isPending, error, refetch } = useQuery({
+    queryKey: ["cj-supplier-status", storeId],
+    queryFn: () => statusFn({ data: { storeId } }),
+    refetchInterval: 15_000,
+  });
+  const run = async (operation: "titles" | "details" | "catalog") => {
+    setBusy(operation);
+    try {
+      const result = operation === "catalog"
+        ? await syncFn({ data: { storeId } })
+        : await contentFn({ data: { storeId, operation } });
+      if (result.error) toast.error(result.error);
+      else if (result.busy) toast.info("Uma atualização já está em andamento.");
+      else toast.success(operation === "catalog" ? "Lote do catálogo processado." : `${result.processed} produtos atualizados neste lote.`);
+      await refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível atualizar a CJ.");
+    } finally { setBusy(null); }
+  };
+  const labels = { pending: "Aguardando próximo lote", running: "Em andamento", paused: "Pausado", completed: "Concluído" };
+  return <section className="space-y-5 py-2">
+    <h2 className="text-lg font-semibold">CJ Dropshipping</h2>
+    {isPending && <p className="text-sm text-muted-foreground">Carregando totais...</p>}
+    {error && <p role="alert" className="text-sm text-destructive">Não foi possível consultar os produtos da CJ.</p>}
+    {data && <>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-border py-5 lg:grid-cols-4">
+        {[["Produtos importados", data.total.toLocaleString("pt-BR")], ["Ativos na vitrine", data.active.toLocaleString("pt-BR")], ["Títulos em português", `${data.translated.toLocaleString("pt-BR")} / ${data.total.toLocaleString("pt-BR")}`], ["Fichas consultadas na CJ", `${data.details.toLocaleString("pt-BR")} / ${data.total.toLocaleString("pt-BR")}`]].map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-lg font-semibold break-words">{value}</dd></div>)}
+      </dl>
+      {data.catalog && <p className="text-sm text-muted-foreground">Categorias: {data.catalog.completed_categories} de {data.catalog.total_categories} · {labels[data.catalog.status] ?? data.catalog.status}</p>}
+      {data.catalog?.pause_reason && <p className="text-sm text-destructive">{data.catalog.pause_reason}</p>}
+      <div className="space-y-3">
+        {data.jobs.map((job) => <div key={job.operation} className="border-b border-border pb-3">
+          <p className="text-sm font-medium">{job.operation === "titles" ? "Tradução dos títulos" : "Descrições e especificações oficiais"} · {labels[job.status] ?? job.status}</p>
+          {job.pause_reason && <p role="alert" className="mt-1 break-words text-sm text-destructive">{job.pause_reason}</p>}
+        </div>)}
+      </div>
+    </>}
+    <div className="flex flex-wrap gap-3">
+      <Button variant="outline" disabled={!!busy} onClick={() => run("catalog")}><RefreshCw className="h-4 w-4" />{busy === "catalog" ? "Sincronizando..." : "Sincronizar catálogo CJ"}</Button>
+      <Button variant="outline" disabled={!!busy} onClick={() => run("titles")}><RefreshCw className="h-4 w-4" />{busy === "titles" ? "Traduzindo..." : "Traduzir títulos"}</Button>
+      <Button variant="outline" disabled={!!busy} onClick={() => run("details")}><Package className="h-4 w-4" />{busy === "details" ? "Consultando CJ..." : "Atualizar fichas técnicas"}</Button>
+    </div>
+  </section>;
 }
 
 function SellerMercadoPagoTab({
