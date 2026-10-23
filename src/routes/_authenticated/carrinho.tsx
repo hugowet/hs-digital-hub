@@ -219,7 +219,8 @@ function CartPage() {
     if (postalCode.replace(/\D/g, "").length === 8 && items.length > 0) {
       void calculateShipping();
     }
-  }, [items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, postalCode]);
 
   async function calculateShipping(customCep?: string) {
     const rawCep = (customCep ?? postalCode).replace(/\D/g, "");
