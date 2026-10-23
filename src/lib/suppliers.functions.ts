@@ -104,10 +104,10 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { getCjAccessToken, getBrlExchangeRate, categoryFor } = await import("@/lib/suppliers.server");
+    const { getCjAccessToken, getUsdBrlRate, categoryFor } = await import("@/lib/suppliers.server");
 
     const token = await getCjAccessToken(supabaseAdmin, data.storeId);
-    const exchange = await getBrlExchangeRate();
+    const exchange = await getUsdBrlRate(supabaseAdmin, data.storeId);
 
     const cjRes = await fetch(
       `https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${encodeURIComponent(pid)}`,
