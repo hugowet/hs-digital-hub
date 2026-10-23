@@ -1,0 +1,3 @@
+CREATE OR REPLACE FUNCTION public.social_mark_read(_conversation_id uuid) RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path=public AS $$ UPDATE public.social_messages SET read_at=now() WHERE conversation_id=_conversation_id AND sender_id<>auth.uid() AND read_at IS NULL AND EXISTS(SELECT 1 FROM public.social_conversations c WHERE c.id=_conversation_id AND auth.uid() IN(c.member_a,c.member_b)) $$;
+REVOKE ALL ON FUNCTION public.social_mark_read(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.social_mark_read(uuid) TO authenticated,service_role;
