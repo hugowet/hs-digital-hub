@@ -40,3 +40,5 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Public catalog mutations revalidate the current user before changing private state and redirect unauthenticated attempts with a visible login notice.
 - Games and game coupons are buyer-only on both UI and server. Arcade sessions are single-use, coin awards are server-capped, 10% shipping coupons are issued atomically every 1,000 coins, and free shipping is limited to once per user per month.
 - HS Social uses the authenticated account, exact normalized phone lookup through a restricted RPC, participant-scoped conversations/messages, and server-expiring stories visible only to contacts; private story media uses short-lived signed URLs. Browser caches never define identity or message delivery.
+- Reviews persist via authenticated RPC with paid-order verification and privately stored, signed photos; browser storage never defines feedback.
+- Radio routes share one audio provider with bounded, delayed buffer recovery and cancellation on pause/change; Club suppresses HS announcements only, not station ads.
