@@ -1,6 +1,10 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
+import { getProductReviews, publishProductReview } from "@/lib/reviews.functions";
+import { reviewPhotoPath } from "@/lib/reviews";
 import {
   AlertCircle,
   BadgeCheck,
@@ -120,9 +124,9 @@ function formatSplitPrice(price: number) {
   };
 }
 
-// Comprime imagem para caber com folga no localStorage sem estourar cota
+// Reduz o tamanho da foto antes de enviá-la ao armazenamento privado
 async function compressImageToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
@@ -148,8 +152,10 @@ async function compressImageToDataUrl(file: File): Promise<string> {
         ctx?.drawImage(img, 0, 0, width, height);
         resolve(canvas.toDataURL("image/jpeg", 0.7));
       };
+      img.onerror = () => reject(new Error("Foto inválida."));
       img.src = String(e.target?.result);
     };
+    reader.onerror = () => reject(new Error("Não foi possível ler a foto."));
     reader.readAsDataURL(file);
   });
 }
@@ -186,7 +192,15 @@ export function ProductDetailPage() {
   const [newQuestion, setNewQuestion] = useState("");
 
   // Avaliações de Clientes com Fotos
-  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const loadReviews = useServerFn(getProductReviews);
+  const publishReview = useServerFn(publishProductReview);
+  const [savingReview, setSavingReview] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const { data: reviews = [], error: reviewsError, refetch: reloadReviews } = useQuery({
+    queryKey: ["product-reviews", productId],
+    queryFn: () => loadReviews({ data: { productId } }),
+    refetchInterval: 45 * 60 * 1000,
+  });
   const [newReviewAuthor, setNewReviewAuthor] = useState("");
   const [newReviewComment, setNewReviewComment] = useState("");
   const [newReviewRating, setNewReviewRating] = useState(5);
@@ -214,55 +228,6 @@ export function ProductDetailPage() {
       }
     },
   });
-
-  // Carrega e persiste avaliações sem fotos fictícias
-  useEffect(() => {
-    if (!productId) return;
-    const storageKey = `hs_reviews_${productId}`;
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Remove fotos fictícias de avaliações antigas salvas
-          const cleaned = parsed.map((r) => {
-            if (r.id === "rev_1" || r.id === "rev_2") {
-              return { ...r, photos: [] };
-            }
-            return r;
-          });
-          setReviews(cleaned);
-          return;
-        }
-      }
-
-      // Avaliações iniciais apenas com texto (sem fotos fictícias)
-      const initialReviews: ReviewItem[] = [
-        {
-          id: "rev_1",
-          author: "Marcos Vinicius",
-          rating: 5,
-          date: "Há 4 dias",
-          comment: "Excelente qualidade! Veio muito bem embalado, original e chegou antes do prazo previsto. Recomendo muito!",
-          verified: true,
-          helpfulCount: 12,
-          photos: [],
-        },
-        {
-          id: "rev_2",
-          author: "Juliana Santos",
-          rating: 5,
-          date: "Há 1 semana",
-          comment: "Superou as expectativas. Vale cada centavo! Atendimento da loja também foi nota 10.",
-          verified: true,
-          helpfulCount: 8,
-          photos: [],
-        },
-      ];
-      setReviews(initialReviews);
-      localStorage.setItem(storageKey, JSON.stringify(initialReviews));
-    } catch {}
-  }, [productId]);
 
   useEffect(() => {
     initAbandonmentWatcher();
@@ -440,57 +405,50 @@ export function ProductDetailPage() {
     toast.success("Pergunta enviada com sucesso!");
   };
 
-  // Upload de fotos na avaliação
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith("image/")) {
-        toast.error("Por favor, selecione apenas arquivos de imagem.");
-        continue;
-      }
-      try {
-        const compressed = await compressImageToDataUrl(file);
-        setNewReviewPhotos((prev) => [...prev, compressed]);
-      } catch {}
-    }
-  };
-
-  const removeUploadPhoto = (index: number) => {
-    setNewReviewPhotos((prev) => prev.filter((_, idx) => idx !== index));
-  };
-
-  const handleSubmitReview = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newReviewAuthor.trim() || !newReviewComment.trim()) {
-      toast.error("Por favor, preencha seu nome e seu comentário.");
-      return;
-    }
-
-    const reviewObj: ReviewItem = {
-      id: `rev_${Date.now()}`,
-      author: newReviewAuthor.trim(),
-      rating: newReviewRating,
-      date: "Hoje",
-      comment: newReviewComment.trim(),
-      photos: newReviewPhotos,
-      verified: true,
-      helpfulCount: 0,
-    };
-
-    const updated = [reviewObj, ...reviews];
-    setReviews(updated);
+    const files = Array.from(e.target.files ?? []);
+    if (files.length + newReviewPhotos.length > 5) { toast.error("Selecione até 5 fotos."); return; }
+    setUploadingPhotos(true);
     try {
-      localStorage.setItem(`hs_reviews_${productId}`, JSON.stringify(updated));
-    } catch {}
+      const photos = [];
+      for (const file of files) {
+        if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) throw new Error("Selecione imagens de até 5 MB.");
+        photos.push(await compressImageToDataUrl(file));
+      }
+      setNewReviewPhotos((prev) => [...prev, ...photos]);
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Não foi possível ler a foto."); }
+    finally { setUploadingPhotos(false); e.target.value = ""; }
+  };
 
-    setNewReviewAuthor("");
-    setNewReviewComment("");
-    setNewReviewRating(5);
-    setNewReviewPhotos([]);
-    setShowReviewForm(false);
-    toast.success("Sua avaliação foi publicada com sucesso!");
+  const removeUploadPhoto = (index: number) => setNewReviewPhotos((prev) => prev.filter((_, idx) => idx !== index));
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (savingReview || uploadingPhotos) return;
+    setSavingReview(true);
+    const paths: string[] = [];
+    let published = false;
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) throw new Error("Faça login para publicar sua avaliação.");
+      const id = crypto.randomUUID();
+      for (const [index, photo] of newReviewPhotos.entries()) {
+        const blob = await (await fetch(photo)).blob();
+        const path = reviewPhotoPath(data.user.id, productId, id, index);
+        const upload = await supabase.storage.from("review-photos").upload(path, blob, { contentType: "image/jpeg" });
+        if (upload.error) throw new Error("Não foi possível salvar a foto. Tente novamente.");
+        paths.push(path);
+      }
+      await publishReview({ data: { id, productId, author: newReviewAuthor, rating: newReviewRating, comment: newReviewComment, photoPaths: paths } });
+      published = true;
+      const refreshed = await reloadReviews();
+      if (refreshed.error) throw new Error("Avaliação salva; não foi possível atualizar a lista. Recarregue a página.");
+      setNewReviewAuthor(""); setNewReviewComment(""); setNewReviewRating(5); setNewReviewPhotos([]); setShowReviewForm(false);
+      toast.success("Sua avaliação foi salva com sucesso!");
+    } catch (err) {
+      if (!published && paths.length) await supabase.storage.from("review-photos").remove(paths);
+      toast.error(err instanceof Error ? err.message : "Não foi possível salvar a avaliação.");
+    } finally { setSavingReview(false); }
   };
 
   if (isLoading) {
@@ -643,7 +601,7 @@ export function ProductDetailPage() {
                   <span>+{salesCount} vendidos</span>
                   <span>•</span>
                   <span className="flex items-center gap-1 text-amber-500 font-bold">
-                    ★ {Number(product.rating ?? 4.9).toFixed(1)}
+                    ★ {reviews.length ? (reviews.reduce((sum, rev) => sum + rev.rating, 0) / reviews.length).toFixed(1) : "—"}
                   </span>
                 </div>
 
@@ -800,7 +758,7 @@ export function ProductDetailPage() {
               </h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-2xl font-black text-foreground">
-                  {Number(product.rating ?? 4.9).toFixed(1)}
+                  {reviews.length ? (reviews.reduce((sum, rev) => sum + rev.rating, 0) / reviews.length).toFixed(1) : "—"}
                 </span>
                 <div className="flex text-amber-500">
                   {[1, 2, 3, 4, 5].map((s) => (
@@ -904,8 +862,8 @@ export function ProductDetailPage() {
               </div>
 
               <div className="pt-2 flex justify-end">
-                <Button type="submit" className="font-bold text-xs bg-primary text-primary-foreground">
-                  <Send className="h-3.5 w-3.5 mr-1.5" /> Publicar Avaliação
+                <Button type="submit" disabled={savingReview || uploadingPhotos} className="font-bold text-xs bg-primary text-primary-foreground">
+                  <Send className="h-3.5 w-3.5 mr-1.5" /> {savingReview ? "Salvando..." : uploadingPhotos ? "Preparando fotos..." : "Publicar Avaliação"}
                 </Button>
               </div>
             </form>
@@ -913,6 +871,8 @@ export function ProductDetailPage() {
 
           {/* Lista de Avaliações */}
           <div className="mt-6 space-y-4">
+            {reviewsError && <p role="alert" className="text-destructive">Não foi possível carregar as avaliações. <Button variant="ghost" onClick={() => reloadReviews()}>Tentar novamente</Button></p>}
+            {!reviewsError && reviews.length === 0 && <p className="text-muted-foreground">Nenhuma avaliação publicada ainda.</p>}
             {reviews.map((rev) => (
               <div key={rev.id} className="rounded-xl border border-border/80 bg-card p-4 text-xs sm:text-sm space-y-2">
                 <div className="flex items-center justify-between">

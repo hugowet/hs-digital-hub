@@ -183,6 +183,13 @@
       "when": 1792792449488,
       "tag": "0025_hs_social_read_receipt_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792794957118,
+      "tag": "0026_persistent_product_reviews",
+      "breakpoints": true
     }
   ]
 }

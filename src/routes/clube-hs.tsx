@@ -25,10 +25,10 @@ export const Route = createFileRoute("/clube-hs")({
       { title: "Clube HS · Assinatura de Fidelidade & Frete Grátis" },
       {
         name: "description",
-        content: "Assine o Clube HS por R$ 19,90/mês e tenha frete grátis em Perdizes, ofertas relâmpago antecipadas e suporte VIP.",
+        content: "Assine o Clube HS por R$ 19,90/mês e tenha rádio sem chamadas promocionais da HS Digital. Consulte as condições de frete e os benefícios disponíveis.",
       },
       { property: "og:title", content: "Clube HS · Assinatura de Fidelidade & Frete Grátis" },
-      { property: "og:description", content: "Assine o Clube HS por R$ 19,90/mês e tenha frete grátis em Perdizes, ofertas relâmpago antecipadas e suporte VIP." },
+      { property: "og:description", content: "Assine o Clube HS por R$ 19,90/mês e tenha rádio sem chamadas promocionais da HS Digital. Consulte as condições de frete e os benefícios disponíveis." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -53,10 +53,11 @@ export function ClubeHsPage() {
     queryKey: ["user-clube-status", sessionData?.id],
     enabled: !!sessionData?.id,
     queryFn: async () => {
+      if (!sessionData) return null;
       const { data } = await supabase
         .from("profiles")
         .select("is_clube_hs")
-        .eq("id", sessionData!.id)
+        .eq("id", sessionData.id)
         .maybeSingle();
       return data;
     },
@@ -93,13 +94,13 @@ export function ClubeHsPage() {
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="space-y-4 max-w-xl text-center md:text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-xs font-semibold uppercase tracking-wider text-amber-300">
-              <Crown className="w-3.5 h-3.5" /> Exclusivo Região Perdizes
+              <Crown className="w-3.5 h-3.5" /> Clube HS Digital
             </div>
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
               Suba de nível com o <span className="text-amber-400">Clube HS</span>
             </h1>
             <p className="text-slate-200 text-base sm:text-lg">
-              Economize em todas as compras, receba primeiro e garanta benefícios sob medida direto do Seller Center para Perdizes e arredores.
+              Sua música e suas compras na HS Digital, com as condições de cada benefício apresentadas abaixo.
             </p>
           </div>
 
@@ -124,7 +125,7 @@ export function ClubeHsPage() {
               Tudo o que você ganha sendo membro
             </h2>
             <p className="text-sm text-slate-500 mt-2">
-              Vantagens ativas automaticamente na sua conta assim que a assinatura é confirmada.
+              Rádio sem chamadas promocionais da HS Digital após a confirmação da assinatura. Anúncios das emissoras podem continuar.
             </p>
           </div>
 
@@ -134,9 +135,9 @@ export function ClubeHsPage() {
               <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
                 <Truck className="w-6 h-6" />
               </div>
-              <h3 className="font-semibold text-slate-900 text-base">Frete Grátis em Perdizes</h3>
+              <h3 className="font-semibold text-slate-900 text-base">Frete com custo embutido</h3>
               <p className="text-xs text-slate-500 mt-2">
-                Envio prioritário gratuito para todas as compras enviadas para o bairro de Perdizes.
+                A partir de R$ 89,90, o envio permanece incluído no preço. Abaixo desse valor, o frete é cobrado conforme o pedido; a assinatura não altera essa regra.
               </p>
             </div>
 
@@ -144,9 +145,9 @@ export function ClubeHsPage() {
               <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-4">
                 <Zap className="w-6 h-6" />
               </div>
-              <h3 className="font-semibold text-slate-900 text-base">Ofertas Antecipadas</h3>
+              <h3 className="font-semibold text-slate-900 text-base">Rádio sem chamadas HS</h3>
               <p className="text-xs text-slate-500 mt-2">
-                Acesse ofertas relâmpago, cupons especiais e estoques limitados 1 hora antes de todo mundo.
+                Membros ativos não recebem as chamadas promocionais do locutor HS. A programação e os anúncios da emissora não são alterados.
               </p>
             </div>
 
@@ -154,9 +155,9 @@ export function ClubeHsPage() {
               <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-4">
                 <Crown className="w-6 h-6" />
               </div>
-              <h3 className="font-semibold text-slate-900 text-base">Processamento VIP</h3>
+              <h3 className="font-semibold text-slate-900 text-base">Streaming e prioridade</h3>
               <p className="text-xs text-slate-500 mt-2">
-                Fila expressa no Seller Center para separação, embalagem e expedição prioritária dos pacotes.
+                Disney+ ou outro streaming e entrega prioritária ainda não estão incluídos: dependem de parceria e confirmação do serviço de entrega.
               </p>
             </div>
           </div>
@@ -167,7 +168,7 @@ export function ClubeHsPage() {
               "Assinatura recorrente mensal sem fidelidade ou carência",
               "Cobrança segura e automatizada via Mercado Pago",
               "Identificação e selo de Membro Ativo no seu perfil",
-              "Atendimento prioritário com suporte humano",
+              "Benefícios externos somente após confirmação de parceria",
             ].map((text, i) => (
               <div key={i} className="flex items-center gap-3 text-sm text-slate-600">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />

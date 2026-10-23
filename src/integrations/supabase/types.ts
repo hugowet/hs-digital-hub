@@ -878,6 +878,57 @@ export type Database = {
           },
         ]
       }
+      product_reviews: {
+        Row: {
+          author: string
+          comment: string
+          created_at: string
+          id: string
+          photo_paths: string[]
+          product_id: string
+          rating: number
+          user_id: string
+          verified: boolean
+        }
+        Insert: {
+          author: string
+          comment: string
+          created_at?: string
+          id?: string
+          photo_paths?: string[]
+          product_id: string
+          rating: number
+          user_id: string
+          verified?: boolean
+        }
+        Update: {
+          author?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          photo_paths?: string[]
+          product_id?: string
+          rating?: number
+          user_id?: string
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           catalog_search_text: string
@@ -2061,6 +2112,17 @@ export type Database = {
           expires_at: string
           outcome: string
         }[]
+      }
+      publish_product_review: {
+        Args: {
+          _author: string
+          _comment: string
+          _id: string
+          _photo_paths: string[]
+          _product_id: string
+          _rating: number
+        }
+        Returns: string
       }
       release_expired_marketplace_orders: { Args: never; Returns: number }
       reprice_cj_products_brl: {
