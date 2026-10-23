@@ -92,6 +92,13 @@
       "when": 1792780180306,
       "tag": "0012_cj_content_jobs_and_catalog_search",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792784121751,
+      "tag": "0013_conta_unica_aprovacao_vendedor_e_repasse_na_entrega",
+      "breakpoints": true
     }
   ]
 }
