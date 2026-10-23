@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## Preço CJ com envio
+- [x] Remover campos de cálculo dos produtos; consultar automaticamente o CEP do endereço salvo após login, priorizando o padrão. Cotação real automática validada na conta de Hugo; três testes de endereço passaram.
 - [x] Confirmar custo CJ atual + envio oficial pelo CEP antes da margem por faixas; snapshots usados no carrinho e pedido sem duplicar frete. Pedido real sem cobrança conferido e cancelado; 14 testes passaram.
 - [x] Atualizar custos base por fila agendada e preço com envio a cada nova cotação pelo CEP/serviço; lote real de 10 variantes validado. Atualização do catálogo completo ocorre gradualmente, sujeita aos limites CJ; rotina nova depende de publicação.
 

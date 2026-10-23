@@ -281,8 +281,8 @@ export function ProductDetailPage() {
     return Number.isFinite(rawStock) && rawStock > 0 ? rawStock : 99;
   }, [product?.stock]);
 
-  const cj = useCjPrice(productId, quantity);
   const isCj = product?.supplier === "cj";
+  const cj = useCjPrice(productId, quantity, isCj);
   const price = isCj && cj.price !== null ? cj.price : Number(product?.price || 0);
   const rawOriginal = product?.compare_at_price;
   const originalPrice =
@@ -669,11 +669,7 @@ export function ProductDetailPage() {
                 </div>
 
                 {isCj && <div className="mt-4 space-y-2">
-                  <label htmlFor="product-delivery-cep" className="text-sm font-medium">Entrega no CEP</label>
-                  <div className="flex gap-2">
-                    <Input id="product-delivery-cep" inputMode="numeric" maxLength={9} value={cj.postalCode} onChange={(e) => cj.setPostalCode(e.target.value)} placeholder="00000-000" />
-                    <Button variant="outline" disabled={cj.loading} onClick={() => cj.calculate()}>{cj.loading ? "Consultando…" : "Calcular"}</Button>
-                  </div>
+                  {cj.loading && <p role="status" className="text-sm text-muted-foreground">Consultando entrega…</p>}
                   {cj.error && <p role="alert" className="text-sm text-destructive">{cj.error}</p>}
                   {cj.service && <p className="text-sm text-muted-foreground">{cj.service} · {cj.shipping === 0 ? "Frete incluso" : `Frete ${brl(cj.shipping)}`}</p>}
                 </div>}
