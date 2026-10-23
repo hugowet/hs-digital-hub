@@ -155,6 +155,13 @@
       "when": 1792789349274,
       "tag": "0021_cj_price_refresh_leases",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792791606814,
+      "tag": "0022_cj_first_purchase_margin_already_in_price",
+      "breakpoints": true
     }
   ]
 }
