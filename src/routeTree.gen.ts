@@ -16,7 +16,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ClubeHsRouteImport } from './routes/clube-hs'
 import { Route as RadioRouteImport } from './routes/radio'
 import { Route as RadioHsRouteImport } from './routes/radio-hs'
-import { Route as SocialRouteImport } from './routes/social'
 import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedCarrinhoRouteImport } from './routes/_authenticated/carrinho'
@@ -25,6 +24,7 @@ import { Route as AuthenticatedContaRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedCuponsRouteImport } from './routes/_authenticated/cupons'
 import { Route as AuthenticatedJogosRouteImport } from './routes/_authenticated/jogos'
 import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
+import { Route as AuthenticatedSocialRouteImport } from './routes/_authenticated/social'
 import { Route as AuthenticatedVendedorRouteImport } from './routes/_authenticated/vendedor'
 import { Route as ProdutoProductIdRouteImport } from './routes/produto.$productId'
 import { Route as AuthenticatedPedidoOrderIdRouteImport } from './routes/_authenticated/pedido.$orderId'
@@ -70,11 +70,6 @@ const RadioHsRoute = RadioHsRouteImport.update({
   path: '/radio-hs',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SocialRoute = SocialRouteImport.update({
-  id: '/social',
-  path: '/social',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TrendsRoute = TrendsRouteImport.update({
   id: '/trends',
   path: '/trends',
@@ -116,6 +111,11 @@ const AuthenticatedNotificacoesRoute =
     path: '/notificacoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSocialRoute = AuthenticatedSocialRouteImport.update({
+  id: '/social',
+  path: '/social',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedVendedorRoute = AuthenticatedVendedorRouteImport.update({
   id: '/vendedor',
   path: '/vendedor',
@@ -182,7 +182,6 @@ export interface FileRoutesByFullPath {
   '/clube-hs': typeof ClubeHsRoute
   '/radio': typeof RadioRoute
   '/radio-hs': typeof RadioHsRoute
-  '/social': typeof SocialRoute
   '/trends': typeof TrendsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/carrinho': typeof AuthenticatedCarrinhoRoute
@@ -191,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/cupons': typeof AuthenticatedCuponsRoute
   '/jogos': typeof AuthenticatedJogosRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
+  '/social': typeof AuthenticatedSocialRoute
   '/vendedor': typeof AuthenticatedVendedorRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
@@ -209,7 +209,6 @@ export interface FileRoutesByTo {
   '/clube-hs': typeof ClubeHsRoute
   '/radio': typeof RadioRoute
   '/radio-hs': typeof RadioHsRoute
-  '/social': typeof SocialRoute
   '/trends': typeof TrendsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/carrinho': typeof AuthenticatedCarrinhoRoute
@@ -218,6 +217,7 @@ export interface FileRoutesByTo {
   '/cupons': typeof AuthenticatedCuponsRoute
   '/jogos': typeof AuthenticatedJogosRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
+  '/social': typeof AuthenticatedSocialRoute
   '/vendedor': typeof AuthenticatedVendedorRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
@@ -238,7 +238,6 @@ export interface FileRoutesById {
   '/clube-hs': typeof ClubeHsRoute
   '/radio': typeof RadioRoute
   '/radio-hs': typeof RadioHsRoute
-  '/social': typeof SocialRoute
   '/trends': typeof TrendsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/carrinho': typeof AuthenticatedCarrinhoRoute
@@ -247,6 +246,7 @@ export interface FileRoutesById {
   '/_authenticated/cupons': typeof AuthenticatedCuponsRoute
   '/_authenticated/jogos': typeof AuthenticatedJogosRoute
   '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
+  '/_authenticated/social': typeof AuthenticatedSocialRoute
   '/_authenticated/vendedor': typeof AuthenticatedVendedorRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/_authenticated/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
@@ -267,7 +267,6 @@ export interface FileRouteTypes {
     | '/clube-hs'
     | '/radio'
     | '/radio-hs'
-    | '/social'
     | '/trends'
     | '/admin'
     | '/carrinho'
@@ -276,6 +275,7 @@ export interface FileRouteTypes {
     | '/cupons'
     | '/jogos'
     | '/notificacoes'
+    | '/social'
     | '/vendedor'
     | '/produto/$productId'
     | '/pedido/$orderId'
@@ -294,7 +294,6 @@ export interface FileRouteTypes {
     | '/clube-hs'
     | '/radio'
     | '/radio-hs'
-    | '/social'
     | '/trends'
     | '/admin'
     | '/carrinho'
@@ -303,6 +302,7 @@ export interface FileRouteTypes {
     | '/cupons'
     | '/jogos'
     | '/notificacoes'
+    | '/social'
     | '/vendedor'
     | '/produto/$productId'
     | '/pedido/$orderId'
@@ -322,7 +322,6 @@ export interface FileRouteTypes {
     | '/clube-hs'
     | '/radio'
     | '/radio-hs'
-    | '/social'
     | '/trends'
     | '/_authenticated/admin'
     | '/_authenticated/carrinho'
@@ -331,6 +330,7 @@ export interface FileRouteTypes {
     | '/_authenticated/cupons'
     | '/_authenticated/jogos'
     | '/_authenticated/notificacoes'
+    | '/_authenticated/social'
     | '/_authenticated/vendedor'
     | '/produto/$productId'
     | '/_authenticated/pedido/$orderId'
@@ -351,7 +351,6 @@ export interface RootRouteChildren {
   ClubeHsRoute: typeof ClubeHsRoute
   RadioRoute: typeof RadioRoute
   RadioHsRoute: typeof RadioHsRoute
-  SocialRoute: typeof SocialRoute
   TrendsRoute: typeof TrendsRoute
   ProdutoProductIdRoute: typeof ProdutoProductIdRoute
   ApiPublicMelhorEnvioOauthCallbackRoute: typeof ApiPublicMelhorEnvioOauthCallbackRoute
@@ -414,13 +413,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RadioHsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/social': {
-      id: '/social'
-      path: '/social'
-      fullPath: '/social'
-      preLoaderRoute: typeof SocialRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/trends': {
       id: '/trends'
       path: '/trends'
@@ -475,6 +467,13 @@ declare module '@tanstack/react-router' {
       path: '/notificacoes'
       fullPath: '/notificacoes'
       preLoaderRoute: typeof AuthenticatedNotificacoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/social': {
+      id: '/_authenticated/social'
+      path: '/social'
+      fullPath: '/social'
+      preLoaderRoute: typeof AuthenticatedSocialRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/vendedor': {
@@ -558,6 +557,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCuponsRoute: typeof AuthenticatedCuponsRoute
   AuthenticatedJogosRoute: typeof AuthenticatedJogosRoute
   AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
+  AuthenticatedSocialRoute: typeof AuthenticatedSocialRoute
   AuthenticatedVendedorRoute: typeof AuthenticatedVendedorRoute
   AuthenticatedPedidoOrderIdRoute: typeof AuthenticatedPedidoOrderIdRoute
 }
@@ -570,6 +570,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCuponsRoute: AuthenticatedCuponsRoute,
   AuthenticatedJogosRoute: AuthenticatedJogosRoute,
   AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
+  AuthenticatedSocialRoute: AuthenticatedSocialRoute,
   AuthenticatedVendedorRoute: AuthenticatedVendedorRoute,
   AuthenticatedPedidoOrderIdRoute: AuthenticatedPedidoOrderIdRoute,
 }
@@ -585,7 +586,6 @@ const rootRouteChildren: RootRouteChildren = {
   ClubeHsRoute: ClubeHsRoute,
   RadioRoute: RadioRoute,
   RadioHsRoute: RadioHsRoute,
-  SocialRoute: SocialRoute,
   TrendsRoute: TrendsRoute,
   ProdutoProductIdRoute: ProdutoProductIdRoute,
   ApiPublicMelhorEnvioOauthCallbackRoute:
