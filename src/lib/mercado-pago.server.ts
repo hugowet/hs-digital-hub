@@ -12,10 +12,8 @@ function base64ToBytes(value: string) {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
-// ⚠️ Se MP_TOKEN_ENCRYPTION_KEY não estiver no .env / secrets, dispara erro aqui:
 async function encryptionKey() {
-  const secret = process.env["MP_TOKEN_ENCRYPTION_KEY"] || "chave-secreta-fallback-hs-digital-32c";
-  if (!secret) throw new Error("A chave de proteção do Mercado Pago não está configurada.");
+  const secret = process.env["MP_TOKEN_ENCRYPTION_KEY"] || "hs-digital-secret-encryption-key-2026";
   const digest = await crypto.subtle.digest("SHA-256", encoder.encode(secret));
   return crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
@@ -99,7 +97,7 @@ export async function mercadoPagoRequest<T>(path: string, accessToken: string, i
       detail = "";
     }
     throw new Error(
-      detail ? `Mercado Pago recusou a operação: ${detail}` : `Mercado Pago recusou a operação [${response.status}].`,
+      detail ? `Mercado Pago: ${detail}` : `Mercado Pago recusou a operação (HTTP ${response.status}).`,
     );
   }
   return JSON.parse(body) as T;
