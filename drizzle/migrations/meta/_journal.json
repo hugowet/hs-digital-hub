@@ -120,6 +120,13 @@
       "when": 1792785206093,
       "tag": "0016_frete_gratis_embutido_todas_as_compras",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792785543197,
+      "tag": "0017_frete_gratis_embutido_acima_de_89_90",
+      "breakpoints": true
     }
   ]
 }
