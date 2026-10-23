@@ -157,7 +157,7 @@ function bcbDate(date: Date) {
   return `${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}-${date.getUTCFullYear()}`;
 }
 
-async function getUsdBrlRate(supabaseAdmin: any, storeId: string): Promise<BrlExchangeRate> {
+export async function getUsdBrlRate(supabaseAdmin: any, storeId: string): Promise<BrlExchangeRate> {
   const end = new Date();
   const start = new Date(end.getTime() - 10 * 24 * 60 * 60_000);
   const params = new URLSearchParams({
