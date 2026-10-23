@@ -26,8 +26,7 @@ export function mapCjDetails(product: Record<string, unknown>) {
   const fields: Record<string, string> = {
     productMaterial: "Material", productMaterialEn: "Material", materialNameEn: "Material",
     productWeight: "Peso informado pela CJ (g)", productUnit: "Unidade",
-    packingWeight: "Peso com embalagem (g)", productType: "Tipo",
-    productKeyEn: "Características", packingNameEn: "Embalagem",
+    packingWeight: "Peso com embalagem (g)",    productKeyEn: "Características", packingNameEn: "Embalagem",
     productLength: "Comprimento informado pela CJ", productWidth: "Largura informada pela CJ",
     productHeight: "Altura informada pela CJ",
   };

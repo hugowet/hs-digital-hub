@@ -1,5 +1,5 @@
 import { mapCjDetails } from "@/lib/cj-content";
-import { cjRequest, getCjAccessToken, translateCjProductBatch } from "@/lib/suppliers.server";
+import { cjRequest, getCjAccessToken, translateCjProductBatch, translateProductDetails } from "@/lib/suppliers.server";
 
 export async function processCjContentJob(db: any, storeId: string, operation: "titles" | "details") {
   const now = new Date();
@@ -28,25 +28,32 @@ export async function processCjContentJob(db: any, storeId: string, operation: "
     if (error) throw error;
     if (products?.length) {
       const token = await getCjAccessToken(db, storeId);
+      const fetched: { id: string; details: Record<string, unknown>; mapped: ReturnType<typeof mapCjDetails> }[] = [];
       for (const product of products) {
         if (!product.supplier_product_id) throw new Error("Produto CJ sem identificador oficial; revisão necessária.");
         const details = await cjRequest<Record<string, unknown>>(`/product/query?pid=${encodeURIComponent(product.supplier_product_id)}`, token);
-        const mapped = mapCjDetails(details);
+        fetched.push({ id: product.id, details, mapped: mapCjDetails(details) });
+      }
+      // Shoppers are in Brazil: official CJ content is stored translated, original JSON kept for audit.
+      const translated = await translateProductDetails(fetched.map((f) => ({ description: f.mapped.description, specifications: f.mapped.specifications })));
+      for (let i = 0; i < fetched.length; i += 1) {
+        const f = fetched[i]!;
+        const t = translated[i]!;
         const values: Record<string, unknown> = {
-          supplier_details_original: details,
+          supplier_details_original: f.details,
           supplier_details_synced_at: new Date().toISOString(),
         };
         // Empty supplier fields must not destroy previously saved content.
-        if (mapped.description_long) {
-          values.description = mapped.description;
-          values.description_long = mapped.description_long;
+        if (t.description) {
+          values.description = t.description;
+          values.description_long = t.description;
         }
-        if (Object.keys(mapped.specifications).length) values.specifications = mapped.specifications;
-        const { error: updateError } = await db.from("products").update(values).eq("id", product.id).eq("store_id", storeId);
+        if (Object.keys(t.specifications).length) values.specifications = t.specifications;
+        const { error: updateError } = await db.from("products").update(values).eq("id", f.id).eq("store_id", storeId);
         if (updateError) throw updateError;
         processed += 1;
-        await save({ processed: job.processed + processed });
       }
+      await save({ processed: job.processed + processed });
     }
     const { count, error: countError } = await db.from("products").select("id", { count: "exact", head: true })
       .eq("supplier", "cj").eq("store_id", storeId).is("supplier_details_synced_at", null);
