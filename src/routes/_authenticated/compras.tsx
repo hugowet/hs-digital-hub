@@ -35,6 +35,10 @@ export const Route = createFileRoute("/_authenticated/compras")({
     meta: [
       { title: "Minhas Compras · HS Digital" },
       { name: "description", content: "Acompanhe seus pedidos, entregas, avaliações e missões de frete grátis." },
+      { property: "og:title", content: "Minhas Compras · HS Digital" },
+      { property: "og:description", content: "Acompanhe seus pedidos, entregas, avaliações e missões de frete grátis." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: PurchasesPage,

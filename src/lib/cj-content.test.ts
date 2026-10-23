@@ -13,4 +13,10 @@ describe("Dados oficiais CJ", () => {
   test("não cria descrição fictícia quando a CJ não fornece dados", () => {
     assert.deepEqual(mapCjDetails({}), { description: null, description_long: null, specifications: {} });
   });
+  test("extrai linhas técnicas e listas reais da CJ", () => {
+    const details = mapCjDetails({ description: "<p>Processor: RK3036<br/>Interface: HDMI</p>", packingNameEn: '["Plastic bags"]' });
+    assert.equal(details.specifications.Processor, "RK3036");
+    assert.equal(details.specifications.Interface, "HDMI");
+    assert.equal(details.specifications.Embalagem, "Plastic bags");
+  });
 });

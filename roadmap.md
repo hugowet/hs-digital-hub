@@ -1,10 +1,11 @@
 # HS Digital — MVP
 
 ## Ajustes atuais do catálogo CJ
-- [ ] Mostrar total real de produtos CJ na aba Fornecedores.
-- [ ] Melhorar busca por palavras, acentos e nomes de produtos.
-- [ ] Atualizar descrições e especificações oficiais de todos os produtos CJ cadastrados em lotes retomáveis.
-- [ ] Concluir títulos em português, mostrando progresso e impedimentos reais.
+- [x] Mostrar total real de produtos CJ na aba Fornecedores (10.754, validado na loja JJ Kuster).
+- [x] Melhorar busca por palavras, acentos e nomes de produtos (testes e busca real por relógio).
+- [x] Implementar atualização de descrições e especificações oficiais em lotes retomáveis; 20 fichas consultadas e persistidas no teste.
+- [x] Implementar tradução persistente com progresso e pausas; 7.026 títulos PT-BR, incluindo 50 traduzidos no teste.
+- [ ] Concluir processamento do catálogo: 3.728 títulos e 10.734 fichas restantes; depende da publicação da nova rotina agendada e dos limites/créditos externos.
 
 - [x] Exibir o Lupi empurrando um carrinho cheio e, depois, revelar “HS Digital Marketplace” e “Evoluindo com tecnologia” antes de entrar no site.
 
