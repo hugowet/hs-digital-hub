@@ -1,5 +1,8 @@
 # HS Digital — MVP
 
+## Oferta do Clube HS
+- [ ] Tornar a oferta mais convincente com benefícios reais, mostrar frete grátis e seu valor mínimo sem expor a composição interna do preço e remover Disney/streaming e prioridade indisponíveis.
+
 ## Abertura e segurança das avaliações
 - [x] Acrescentar destaques de Clube HS, afiliados, jogos/cupons e Rádio HS após Lupi: sequência, botão entrar e uma vez por sessão validados no celular; jogos validados na conta compradora.
 - [x] Restringir acesso direto às fotos de avaliações ao proprietário; removida política pública e assinatura limitada a caminhos de avaliações lidas publicamente no servidor.
