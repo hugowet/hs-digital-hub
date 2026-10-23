@@ -27,7 +27,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 function createSupabaseAdminClient() {
   const SUPABASE_URL = "https://zxzaehggrybqtxphogmi.supabase.co";
   // Cole aqui a sua service_role copiada do painel do Supabase:
-  const SUPABASE_SERVICE_ROLE_KEY = process.env["SUPABASE_SERVICE_ROLE_KEY"] || "COLE_AQUI_A_SUA_SERVICE_ROLE_KEY";
+  const SUPABASE_SERVICE_ROLE_KEY = process.env["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4emFlaGdncnlicXR4cGhvZ21pIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjM0MjgyOCwiZXhwIjoyMTA3OTE4ODI4fQ.G_Gsat7Hyy2A-8HqTBP9jzfHxC7z87fy-GpDnuJEM3o"] || "COLE_AQUI_A_SUA_SERVICE_ROLE_KEY";
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     global: {
