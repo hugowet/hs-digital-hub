@@ -260,6 +260,12 @@ html {
   animation: intro-tagline-reveal 3s ease-out forwards;
 }
 
+@keyframes intro-highlight-reveal {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.intro-highlight { animation: intro-highlight-reveal 350ms ease-out both; }
+
 @media (max-width: 640px) {
   .intro-lupi {
     width: min(135vw, 680px);
@@ -267,6 +273,7 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .intro-highlight { animation: none; }
   .intro-lupi {
     display: none;
   }
