@@ -169,6 +169,13 @@
       "when": 1792792238115,
       "tag": "0023_hs_social_messages_stories",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792792273427,
+      "tag": "0024_hs_social_private_story_media",
+      "breakpoints": true
     }
   ]
 }
