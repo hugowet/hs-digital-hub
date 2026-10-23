@@ -628,10 +628,23 @@ function CartPage() {
 
                 <div className="flex justify-between text-muted-foreground">
                   <span>Frete</span>
-                  <span className={valorFreteCobrado === 0 ? "font-bold text-[#00a650]" : ""}>
-                    {quotes.length === 0 ? "A calcular" : valorFreteCobrado === 0 ? "Grátis" : brl(valorFreteCobrado)}
-                  </span>
+                  {firstPurchaseEligible && valorFreteCobrado > 0 ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="line-through opacity-60">{brl(valorFreteCobrado)}</span>
+                      <span className="font-bold text-[#00a650]">Grátis 🎉</span>
+                    </span>
+                  ) : (
+                    <span className={valorFreteCobrado === 0 ? "font-bold text-[#00a650]" : ""}>
+                      {quotes.length === 0 ? "A calcular" : valorFreteCobrado === 0 ? "Grátis" : brl(valorFreteCobrado)}
+                    </span>
+                  )}
                 </div>
+
+                {firstPurchaseEligible && valorFreteCobrado > 0 && (
+                  <p className="text-[10px] font-semibold text-[#00a650]">
+                    Frete grátis na sua primeira compra — já incluso no preço do produto.
+                  </p>
+                )}
 
                 {valorSeguro > 0 && (
                   <div className="flex justify-between text-muted-foreground">
