@@ -106,6 +106,13 @@
       "when": 1792784266311,
       "tag": "0014_repasse_liberado_no_evento_de_entrega",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792784884585,
+      "tag": "0015_primeira_compra_frete_embutido_mais_dez",
+      "breakpoints": true
     }
   ]
 }
