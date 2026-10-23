@@ -523,7 +523,7 @@ export function SiteHeader({
               </Link>
             )}
 
-            <Link
+               <Link
               to="/vendedor"
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
@@ -531,6 +531,18 @@ export function SiteHeader({
               <Store className="h-4 w-4" />
               Venda na HS Digital
             </Link>
+
+            {/* ADICIONE ESTE BLOCO AQUI */}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-primary hover:bg-primary-foreground/10 font-medium"
+              >
+                <User className="h-4 w-4" />
+                Painel Admin
+              </Link>
+            )}
 
             {signedIn ? (
               <button
