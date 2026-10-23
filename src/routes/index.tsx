@@ -41,6 +41,7 @@ import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { storefrontDay } from "@/lib/storefront-selection";
 import { supabase } from "@/integrations/supabase/client";
 import { useRadio } from "@/lib/radio-context";
+import lupiBannerSquare from "@/assets/lupi-banner-square.jpg";
 
 type HomeSearch = {
   q?: string | undefined;
@@ -250,6 +251,13 @@ export function Home() {
   );
   const products = data.pages.flatMap((page) => page.products);
 
+  const [showLupiBanner, setShowLupiBanner] = useState(false);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setShowLupiBanner((value) => !value), 5000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const { data: activeCategories = [] } = useQuery({
     queryKey: ["active-store-categories"],
     queryFn: async () => {
@@ -374,11 +382,19 @@ export function Home() {
 {/* BANNER DE FRETE GRÁTIS ANTES DAS CATEGORIAS */}
 <section className="relative mb-8 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-emerald-700 to-emerald-950 p-3 shadow-xl motion-safe:animate-pulse sm:p-5">
   <div className="flex flex-col items-center gap-5 rounded-xl bg-black/70 p-4 sm:p-6 md:flex-row">
-    <img
-      src="/images/banner-frete-gratis.jpg"
-      alt="HS Digital: frete grátis na sua primeira compra"
-      className="w-full max-w-[350px] rounded-xl border-2 border-emerald-400 object-cover shadow-lg"
-    />
+    <div className="relative aspect-square w-full max-w-[350px] overflow-hidden rounded-xl border-2 border-emerald-400 bg-black/70 shadow-lg">
+      <img
+        src="/images/banner-frete-gratis.jpg"
+        alt="HS Digital: frete grátis na sua primeira compra"
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${showLupiBanner ? "opacity-0" : "opacity-100"}`}
+      />
+      <img
+        src={lupiBannerSquare}
+        alt="Lupi, o lobo da HS Digital, com um carrinho cheio de compras"
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${showLupiBanner ? "opacity-100" : "opacity-0"}`}
+        loading="eager"
+      />
+    </div>
 
     <div className="text-center text-white md:text-left">
       <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
