@@ -162,6 +162,13 @@
       "when": 1792791606814,
       "tag": "0022_cj_first_purchase_margin_already_in_price",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792792238115,
+      "tag": "0023_hs_social_messages_stories",
+      "breakpoints": true
     }
   ]
 }
