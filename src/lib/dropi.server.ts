@@ -171,7 +171,7 @@ export async function syncDropiCatalog(supabaseAdmin: any, configuration: DropiC
       continue;
     }
     seen.add(product.variantId);
-    const salePrice = Math.round(product.price * (1 + configuration.marginPercent / 100) * 100) / 100;
+    const salePrice = calculateFinalPrice(product.price);
     const productData = {
       store_id: configuration.storeId,
       title: product.title.slice(0, 160),
