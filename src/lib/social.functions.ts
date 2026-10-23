@@ -13,7 +13,8 @@ export const getSocialHome = createServerFn({ method: "GET" }).middleware([requi
       db.from("social_messages").select("*").order("created_at", { ascending: false }).limit(200),
     ]);
     for (const result of [rooms, people, me, stories, messages]) if (result.error) throw new Error(result.error.message);
-    const storyRows = await Promise.all((stories.data ?? []).map(async (story) => {
+    const storyRows = [];
+    for (const story of stories.data ?? []) {
       let mediaUrl: string | null = null;
       if (story.media_path) {
         const seconds = Math.max(1, Math.min(300, Math.floor((Date.parse(story.expires_at) - Date.now()) / 1000)));
@@ -21,8 +22,8 @@ export const getSocialHome = createServerFn({ method: "GET" }).middleware([requi
         if (error) throw new Error("Não foi possível abrir a foto do story.");
         mediaUrl = data.signedUrl;
       }
-      return { ...story, mediaUrl };
-    }));
+      storyRows.push({ ...story, mediaUrl });
+    }
     return { me: me.data, people: people.data ?? [], rooms: rooms.data ?? [], stories: storyRows, recentMessages: messages.data ?? [] };
   });
 
