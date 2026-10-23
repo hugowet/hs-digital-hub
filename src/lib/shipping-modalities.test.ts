@@ -5,7 +5,7 @@ import { cjShippingModalities, includeFirstPurchaseMargin } from "./shipping-mod
 const option = (code: string, freight: number, price: number, days: number) => ({
   serviceCode: code, serviceName: code, amount: 0, deliveryDaysMax: days,
   providerPayload: { supplier_freight_brl: freight, embedded_free_shipping: true,
-    priced_items: [{ product_id: "a", quantity: 1, unit_price: price }] },
+    priced_items: [{ product_id: "a", quantity: 1, unit_price: price }], first_purchase_margin_included: 0 },
 });
 test("o carrinho oferece apenas duas modalidades, não oito serviços", () => {
   const result = cjShippingModalities(Array.from({ length: 8 }, (_, index) => option(`${index}`, 20 + index, 100 + index, 50 - index)));
