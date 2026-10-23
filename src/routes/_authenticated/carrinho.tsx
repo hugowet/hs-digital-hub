@@ -390,7 +390,7 @@ function CartPage() {
                           {item.title}
                         </Link>
                         <div className="mt-1 flex items-baseline gap-2">
-                          <span className="text-sm md:text-base font-bold">{brl(item.price)}</span>
+                          <span className="text-sm md:text-base font-bold">{brl(pricedItems.find((entry) => entry.product_id === item.productId && entry.quantity === item.quantity)?.unit_price ?? item.price)}</span>
                           <span className="text-[11px] text-muted-foreground">cada</span>
                         </div>
                       </div>
@@ -593,7 +593,7 @@ function CartPage() {
                   )}
                 </div>
 
-                {subtotalProdutos >= 89.9 && valorFreteCobrado > 0 && (
+                {(embeddedShipping || (subtotalProdutos >= 89.9 && valorFreteCobrado > 0)) && (
                   <p className="text-[10px] font-semibold text-[#00a650]">
                     {firstPurchaseEligible
                       ? "Frete grátis na sua primeira compra — já incluso no preço do produto."

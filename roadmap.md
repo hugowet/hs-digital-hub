@@ -1,8 +1,8 @@
 # HS Digital — MVP
 
 ## Preço CJ com envio
-- [ ] Conferir custo real do produto e envio escolhido antes da margem por faixas; não duplicar frete.
-- [ ] Atualizar preços automaticamente quando custos CJ mudarem; definir destino e serviço para cotação real.
+- [x] Confirmar custo CJ atual + envio oficial pelo CEP antes da margem por faixas; snapshots usados no carrinho e pedido sem duplicar frete. Pedido real sem cobrança conferido e cancelado; 14 testes passaram.
+- [x] Atualizar custos base por fila agendada e preço com envio a cada nova cotação pelo CEP/serviço; lote real de 10 variantes validado. Atualização do catálogo completo ocorre gradualmente, sujeita aos limites CJ; rotina nova depende de publicação.
 
 ## Vitrine diária
 - [x] Renovar diariamente a seleção de Todos, equilibrando categorias e priorizando vendas reais.
