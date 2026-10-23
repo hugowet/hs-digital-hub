@@ -1,3 +1,4 @@
+import { calculateFinalPrice } from "@/lib/pricing";
 import { decryptSecret, encryptSecret } from "@/lib/mercado-pago.server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText, Output } from "ai";
@@ -618,18 +619,10 @@ async function importCjProduct(
     product.productImage,
     ...(product.productImageSet ?? []),
   ].filter((value): value is string => Boolean(value?.startsWith("https://")));
-  // Regra de precificação estrita:
-  // Custo base em BRL da CJ Dropshipping (custo USD * taxa de câmbio USD/BRL)
-  // Exemplo da regra: um produto de R$ 147,55 na CJ com 35% de lucro sai por R$ 199,19.
-  // 1. Se o custo base for até R$ 87,90: o preço na loja é exatamente o custo base da CJ (sem os 35% de lucro embutido).
-  //    O lucro da loja virá na cobrança do frete de R$ 19,90 (com descontos dinâmicos) no carrinho.
-  // 2. Se o custo base for maior que R$ 87,90: aplica a margem de 35% de lucro no preço do produto, e no carrinho o frete será grátis.
+  // Mesma regra da Amazon: custo em BRL (USD × cotação) + margem dinâmica por faixa, final ,90/,97.
+  void marginPercent;
   const costBrl = Math.round(cost * exchange.rate * 100) / 100;
-  const targetMargin = marginPercent > 0 ? marginPercent : 35;
-  const price =
-    costBrl > 87.9
-      ? Math.round(costBrl * (1 + targetMargin / 100) * 100) / 100
-      : costBrl;
+  const price = calculateFinalPrice(costBrl);
   const productData = {
     store_id: storeId,
     title: title.slice(0, 160),

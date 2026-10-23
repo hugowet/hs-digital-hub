@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { calculateFinalPrice, getMarginRate } from "@/lib/pricing";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -40,43 +41,8 @@ const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
  * 7. R$ 5.000,01 até R$ 10.000,00 -> 7%
  * 8. R$ 10.000,01 até R$ 30.000,00 -> 5%
  */
-export function getAmazonMarginRate(cost: number): number {
-  if (cost <= 30) return 1.20;
-  if (cost <= 100) return 0.60;
-  if (cost <= 300) return 0.40;
-  if (cost <= 1000) return 0.20;
-  if (cost <= 2000) return 0.14;
-  if (cost <= 5000) return 0.09;
-  if (cost <= 10000) return 0.07;
-  return 0.05;
-}
-
-/**
- * Regra de Arredondamento obrigatório em ,90 ou ,97:
- * - Se centavos >= 0.94 -> ,97
- * - Se centavos exatos 0.00 -> (inteiro - 1) + 0.90 (ex: 44.00 -> 43.90)
- * - Demais casos -> ,90
- */
-export function calculateAmazonFinalPrice(cost: number): number {
-  if (cost <= 0) return 0;
-  const margin = getAmazonMarginRate(cost);
-  const raw = cost * (1 + margin);
-  const baseInt = Math.floor(raw);
-  const cents = Math.round((raw - baseInt) * 100);
-
-  let finalPrice: number;
-  if (cents >= 94) {
-    finalPrice = baseInt + 0.97;
-  } else if (cents >= 90) {
-    finalPrice = baseInt + 0.90;
-  } else if (cents === 0) {
-    finalPrice = (baseInt - 1) + 0.90;
-  } else {
-    finalPrice = baseInt + 0.90;
-  }
-
-  return Number(finalPrice.toFixed(2));
-}
+export const getAmazonMarginRate = getMarginRate;
+export const calculateAmazonFinalPrice = calculateFinalPrice;
 
 interface SpecItem {
   id: string;
