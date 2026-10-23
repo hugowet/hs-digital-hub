@@ -2,6 +2,7 @@ import { cjRequest, getCjAccessToken, getUsdBrlRate } from "@/lib/suppliers.serv
 import { decryptSecret } from "@/lib/mercado-pago.server";
 
 import { priceCjShipment, cjFreightUsd } from "@/lib/cj-landed-pricing";
+import { cjShippingModalities, includeFirstPurchaseMargin } from "@/lib/shipping-modalities";
 
 const MELHOR_ENVIO_API = "https://melhorenvio.com.br/api/v2";
 
@@ -40,7 +41,7 @@ async function cjQuotes(supabaseAdmin: any, storeId: string, postalCode: string,
       products: products.map((product) => ({ vid: product.supplier_variant_id, quantity: product.quantity })) }),
   });
   if (!Array.isArray(response)) throw new Error("A CJ não retornou opções de envio para este CEP.");
-  return response.flatMap<QuoteOption>((entry) => {
+  return cjShippingModalities(response.flatMap<QuoteOption>((entry) => {
     const name = typeof entry.logisticName === "string" ? entry.logisticName.trim() : "";
     if (!name) return [];
     const priced = priceCjShipment(currentItems, cjFreightUsd(entry), exchange.rate);
@@ -51,11 +52,7 @@ async function cjQuotes(supabaseAdmin: any, storeId: string, postalCode: string,
       providerPayload: { pricing_version: 1, cj: entry, exchangeRate: exchange.rate,
         supplier_freight_brl: priced.freightBrl, embedded_free_shipping: priced.embedded,
         priced_items: priced.items, quoted_at: new Date().toISOString() } }];
-  }).sort((a, b) => {
-    const preferredA = /yunexpress/i.test(a.serviceCode) ? 0 : 1;
-    const preferredB = /yunexpress/i.test(b.serviceCode) ? 0 : 1;
-    return preferredA - preferredB || Number(a.providerPayload.supplier_freight_brl) - Number(b.providerPayload.supplier_freight_brl);
-  });
+  }));
 }
 
 async function melhorEnvioQuotes(supabaseAdmin: any, store: any, postalCode: string, products: any[]) {
@@ -150,17 +147,56 @@ export async function quoteCartShipping(
   }
 
   const result: any[] = [];
+  let firstPurchase = false;
+  if (buyerId) {
+    const { count, error: historyError } = await supabaseAdmin.from("orders")
+      .select("id", { count: "exact", head: true }).eq("buyer_id", buyerId)
+      .not("status", "in", '("cancelled","payment_failed")');
+    if (historyError) throw historyError;
+    firstPurchase = count === 0;
+  }
+  let marginAllocated = false;
 
   for (const [storeId, products] of stores) {
     const store = products[0]?.stores;
+    const canonicalItems = products.map((product) => ({ product_id: product.id, quantity: product.quantity }))
+      .sort((a, b) => a.product_id.localeCompare(b.product_id));
     const suppliers = new Set(products.map((product) => product.supplier ?? "own"));
     if (suppliers.has("cj") && suppliers.size > 1) {
       throw new Error("Finalize produtos CJ e produtos de estoque próprio em pedidos separados.");
     }
-    const rawOptions = suppliers.has("cj")
+    // Reuse the product's buyer-bound quote in the cart: same destination, items and price.
+    if (buyerId && suppliers.has("cj")) {
+      const { data: cached, error: cacheError } = await supabaseAdmin.from("shipping_quotes").select("*")
+        .eq("buyer_id", buyerId).eq("store_id", storeId).eq("destination_postal_code", postalCode)
+        .eq("provider", "cj").eq("items", JSON.stringify(canonicalItems)).is("consumed_order_id", null)
+        .gt("expires_at", new Date(Date.now() + 60_000).toISOString())
+        .order("created_at", { ascending: false }).limit(10);
+      if (cacheError) throw cacheError;
+      const current = (cached ?? []).filter((row: any) => row.provider_payload?.modality
+        && Boolean(row.provider_payload.first_purchase_margin_included) === (firstPurchase && !marginAllocated && Boolean(row.provider_payload.embedded_free_shipping)));
+      const express = current.find((row: any) => row.provider_payload.modality === "express");
+      const premium = current.find((row: any) => row.provider_payload.modality === "premium" && row.expires_at === express?.expires_at);
+      if (express) {
+        const rows = premium ? [express, premium] : [express];
+        marginAllocated ||= Boolean(express.provider_payload.first_purchase_margin_included);
+        result.push({ storeId, storeName: store?.name ?? "HS Digital", options: rows.map((row: any) => ({
+          id: row.id, provider: row.provider, serviceName: row.service_name, carrierName: row.carrier_name,
+          amount: Number(row.amount), itemPrices: row.provider_payload.priced_items,
+          supplierFreight: Number(row.provider_payload.supplier_freight_brl),
+          deliveryDaysMin: row.delivery_days_min, deliveryDaysMax: row.delivery_days_max, expiresAt: row.expires_at,
+        })) });
+        continue;
+      }
+    }
+    let rawOptions = suppliers.has("cj")
       ? await cjQuotes(supabaseAdmin, storeId, postalCode, products)
       : await melhorEnvioQuotes(supabaseAdmin, store, postalCode, products);
     if (!rawOptions.length) throw new Error("Nenhum envio foi confirmado para este CEP. Não será cobrado frete estimado.");
+    if (suppliers.has("cj")) {
+      rawOptions = includeFirstPurchaseMargin(rawOptions, firstPurchase && !marginAllocated);
+      marginAllocated ||= Boolean(rawOptions[0]?.providerPayload.first_purchase_margin_included);
+    }
 
     const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
 
@@ -184,10 +220,6 @@ export async function quoteCartShipping(
       });
       continue;
     }
-
-    const canonicalItems = products
-      .map((product) => ({ product_id: product.id, quantity: product.quantity }))
-      .sort((a, b) => a.product_id.localeCompare(b.product_id));
 
     const rows = rawOptions.map((option) => ({
       buyer_id: buyerId,
@@ -214,7 +246,9 @@ export async function quoteCartShipping(
     result.push({
       storeId,
       storeName: store?.name ?? "HS Digital",
-      options: (saved ?? []).map((quote: any) => ({
+      options: (saved ?? []).sort((a: any, b: any) =>
+        Number(a.provider_payload?.modality === "premium") - Number(b.provider_payload?.modality === "premium")
+      ).map((quote: any) => ({
         id: quote.id,
         provider: quote.provider,
         serviceName: quote.service_name,
