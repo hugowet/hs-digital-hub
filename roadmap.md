@@ -1,9 +1,11 @@
 # HS Digital — MVP
 
 ## Avaliações, rádio e Clube HS
-- [ ] Corrigir persistência de avaliações com fotos e validar após recarregar.
-- [ ] Corrigir interrupções da rádio e verificar estação brasileira adicional.
+- [x] Corrigir persistência de avaliações com fotos: envio na conta de Hugo, recarga e leitura pública com foto decodificada validados; avaliação temporária removida.
+- [x] Corrigir reinícios por buffer e unificar players; transmissão MP3 avançou continuamente por 34 segundos com eventos de espera sem trocar conexão. 14 testes passaram incluindo preços/frete preservados.
+- [ ] Validar áudio contínuo da emissora sertaneja e nova estação brasileira: transmissão AAC responde com áudio, mas não decodificou no navegador de teste; nova fonte autorizada não confirmada. Não há integração Spotify.
 - [ ] Streaming, rádio de terceiros sem anúncios e entrega prioritária: dependem de parceria/licenciamento e serviço logístico confirmado; não prometer benefícios indisponíveis.
+- [x] Clube HS suprime chamadas promocionais próprias para membros ativos e apresenta limites dos benefícios; frete embutido segue regra atual, sem alteração de cobrança ou promessa de Disney+.
 
 ## HS Social e Aura
 - [x] Conversas privadas persistentes por número exato cadastrado no perfil; envio, resposta ao vivo e reabertura validados entre duas contas. Conta temporária removida.
