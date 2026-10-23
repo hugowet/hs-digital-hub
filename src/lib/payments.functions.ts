@@ -411,7 +411,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
       body["issuer_id"] = data.card.issuerId;
       body["installments"] = data.card.installments;
       body["payer"] = {
-        email: data.card.email,
+        email,
         identification:
           data.card.identificationType && data.card.identificationNumber
             ? { type: data.card.identificationType, number: data.card.identificationNumber }
