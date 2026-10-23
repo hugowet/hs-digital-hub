@@ -148,6 +148,13 @@
       "when": 1792789250937,
       "tag": "0020_validated_cj_landed_checkout",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792789349274,
+      "tag": "0021_cj_price_refresh_leases",
+      "breakpoints": true
     }
   ]
 }
