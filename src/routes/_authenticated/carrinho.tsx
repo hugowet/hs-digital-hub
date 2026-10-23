@@ -128,6 +128,8 @@ function CartPage() {
         serviceName: string;
         carrierName: string;
         amount: number;
+        itemPrices?: Array<{ product_id: string; unit_price: number; quantity: number }>;
+        supplierFreight?: number;
         deliveryDaysMin: number | null;
         deliveryDaysMax: number | null;
       }>;
@@ -191,8 +193,15 @@ function CartPage() {
   const valorSeguro = selectedWarranty ? selectedWarranty.amount : 0;
 
   // Total travado
-  const subtotalProdutos = subtotal;
-  const totalPedido = Math.round((subtotalProdutos + valorFreteCobrado + valorSeguro) * 100) / 100;
+  const selectedOptions = quotes.map((group) => group.options.find((option) => option.id === selectedQuotes[group.storeId]) ?? group.options[0]).filter(Boolean);
+  const pricedItems = selectedOptions.flatMap((option) => option.itemPrices ?? []);
+  const subtotalProdutos = items.reduce((sum, item) => {
+    const quoted = pricedItems.find((entry) => entry.product_id === item.productId && entry.quantity === item.quantity);
+    return sum + (quoted ? Number(quoted.unit_price) : item.price) * item.quantity;
+  }, 0);
+  const embeddedShipping = selectedOptions.some((option) => option.amount === 0 && Number(option.supplierFreight) > 0);
+  const firstPurchaseMargin = firstPurchaseEligible && (embeddedShipping || (subtotalProdutos >= 89.9 && valorFreteCobrado > 0)) ? 10 : 0;
+  const totalPedido = Math.round((subtotalProdutos + valorFreteCobrado + valorSeguro + firstPurchaseMargin) * 100) / 100;
 
   useEffect(() => {
     if (items.length > 0) void trackCheckoutAbandonment(items);
@@ -232,6 +241,8 @@ function CartPage() {
     if (physicalItems.length === 0) return;
 
     setQuoting(true);
+    setQuotes([]);
+    setSelectedQuotes({});
     try {
       const quotesRes = await quoteShipping({
         data: {
@@ -248,7 +259,7 @@ function CartPage() {
           defaults[group.storeId] = group.options[0].id;
         }
       }
-      setSelectedQuotes((prev) => ({ ...defaults, ...prev }));
+      setSelectedQuotes(defaults);
       toast.success("Opções de envio calculadas com sucesso!");
     } catch (err: any) {
       toast.error(err?.message || "Não foi possível calcular o frete para este CEP.");
@@ -296,7 +307,7 @@ function CartPage() {
               }
             : undefined,
           shippingQuoteIds,
-          couponId: applyGameCoupon && bestGameCoupon ? bestGameCoupon.id : undefined,
+          couponId: applyGameCoupon && bestGameCoupon && valorFreteCobrado > 0 && subtotalProdutos < 89.9 ? bestGameCoupon.id : undefined,
           warranty:
             selectedWarranty && selectedWarranty.amount > 0
               ? { id: selectedWarranty.id, title: selectedWarranty.title, amount: selectedWarranty.amount }
@@ -493,78 +504,20 @@ function CartPage() {
 
                 {quotes.map((group) => {
                   const currentSelectedId = selectedQuotes[group.storeId] || group.options[0]?.id;
-                  const expressOption = group.options[0];
-                  const premiumOption = group.options[1];
-
                   return (
                     <div key={group.storeId} className="space-y-2">
-                      {/* Opção 1: Envio Prioritário Express */}
-                      {expressOption && (
-                        <label
-                          className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 text-xs transition ${
-                            currentSelectedId === expressOption.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:bg-muted/30"
-                          }`}
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <input
-                              type="radio"
-                              name={`shipping-${group.storeId}`}
-                              checked={currentSelectedId === expressOption.id}
-                              onChange={() =>
-                                setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: expressOption.id }))
-                              }
-                              className="mt-0.5"
-                            />
-                            <div>
-                              <strong className="block text-foreground font-semibold">
-                                {expressOption.serviceName}
-                              </strong>
-                              <span className="text-[11px] text-muted-foreground block mt-0.5">
-                                {expressEstimate.text}
-                              </span>
+                      <p className="text-xs text-muted-foreground">{group.storeName}</p>
+                      {group.options.map((option) => (
+                        <label key={option.id} className={`flex cursor-pointer items-start justify-between gap-3 rounded-lg border p-3 text-xs ${currentSelectedId === option.id ? "border-primary bg-primary/5" : "border-border"}`}>
+                          <div className="flex min-w-0 gap-2">
+                            <input type="radio" name={`shipping-${group.storeId}`} checked={currentSelectedId === option.id} onChange={() => setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: option.id }))} />
+                            <div><strong className="block">{option.serviceName}</strong>
+                              <span className="text-muted-foreground">{option.deliveryDaysMin !== null && option.deliveryDaysMax !== null ? `${option.deliveryDaysMin}–${option.deliveryDaysMax} dias` : "Prazo a confirmar"}</span>
                             </div>
                           </div>
-                          <strong className={`text-xs font-bold uppercase tracking-wide ${expressOption.amount === 0 ? "text-[#00a650]" : "text-foreground"}`}>
-                            {expressOption.amount === 0 ? "Grátis" : brl(expressOption.amount)}
-                          </strong>
+                          <strong className="shrink-0">{option.amount === 0 ? "Frete incluso" : brl(option.amount)}</strong>
                         </label>
-                      )}
-
-                      {/* Opção 2: Envio Prioritário Premium */}
-                      {premiumOption && (
-                        <label
-                          className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 text-xs transition ${
-                            currentSelectedId === premiumOption.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:bg-muted/30"
-                          }`}
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <input
-                              type="radio"
-                              name={`shipping-${group.storeId}`}
-                              checked={currentSelectedId === premiumOption.id}
-                              onChange={() =>
-                                setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: premiumOption.id }))
-                              }
-                              className="mt-0.5"
-                            />
-                            <div>
-                              <strong className="block text-foreground font-semibold">
-                                {premiumOption.serviceName}
-                              </strong>
-                              <span className="text-[11px] text-muted-foreground block mt-0.5">
-                                {premiumEstimate.text}
-                              </span>
-                            </div>
-                          </div>
-                          <strong className="text-xs font-bold text-primary">
-                            {brl(premiumOption.amount)}
-                          </strong>
-                        </label>
-                      )}
+                      ))}
                     </div>
                   );
                 })}
@@ -654,6 +607,8 @@ function CartPage() {
                   </p>
                 )}
 
+                {firstPurchaseMargin > 0 && <div className="flex justify-between text-muted-foreground"><span>Ajuste da primeira compra</span><span>{brl(firstPurchaseMargin)}</span></div>}
+
                 {valorSeguro > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Garantia estendida</span>
@@ -671,7 +626,7 @@ function CartPage() {
                 size="lg"
                 className="w-full font-bold mt-4 shadow-md"
                 onClick={handleCheckout}
-                disabled={submitting}
+                disabled={submitting || quoting}
               >
                 {submitting ? (
                   <>

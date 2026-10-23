@@ -3,6 +3,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Package, ShoppingCart, Star, Zap } from "lucide-react";
 import { toast } from "sonner";
 
+import { Input } from "@/components/ui/input";
+import { useCjPrice } from "@/lib/use-cj-price";
 import { Button } from "@/components/ui/button";
 import { brl, compact } from "@/lib/format";
 import { useCart } from "@/lib/cart";
@@ -146,7 +148,9 @@ export function ProductCard({
     product.category?.includes("digital") ||
     product.category?.includes("cursos");
 
-  const price = Number(product.price || 0);
+  const cj = useCjPrice(product.id);
+  const isCj = product.supplier === "cj";
+  const price = isCj && cj.price !== null ? cj.price : Number(product.price || 0);
 
   // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
   const discountPercent = getProductDiscountPercent(product.id);
@@ -161,8 +165,8 @@ export function ProductCard({
   const soldCount =
     product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
 
-  // Regra de Frete: acima de 87,90 tem frete grátis, abaixo de 87,90 frete a partir de R$ 5,77
-  const isFreeShipping = price > 87.90 || isDigital;
+  // Regra de Frete: acima de 87,90 tem frete grátis, abaixo de 87,90 frete {isCj && cj.shipping !== null ? brl(cj.shipping) : "A calcular"}
+  const isFreeShipping = (isCj ? cj.shipping === 0 : price >= 89.90) || isDigital;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
@@ -216,6 +220,15 @@ export function ProductCard({
           {product.stores?.name ?? "HS Digital"}
         </p>
 
+        {isCj && <div className="mt-2 space-y-1.5">
+          <label className="text-xs text-muted-foreground" htmlFor={`cep-${product.id}`}>Entrega no CEP</label>
+          <div className="flex gap-1">
+            <Input id={`cep-${product.id}`} aria-label="CEP de entrega" inputMode="numeric" maxLength={9} value={cj.postalCode} onChange={(e) => cj.setPostalCode(e.target.value)} placeholder="00000-000" className="min-w-0" />
+            <Button size="sm" variant="outline" disabled={cj.loading} onClick={() => cj.calculate()}>{cj.loading ? "…" : "Calcular"}</Button>
+          </div>
+          {cj.error && <p role="alert" className="text-xs text-destructive">{cj.error}</p>}
+          {cj.service && <p className="text-xs text-muted-foreground">{cj.service}</p>}
+        </div>}
         {/* Bloco de Preços no Estilo Mercado Livre */}
         <div className="mt-auto pt-3">
           {/* Linha 1: [XX% OFF] + Preço Riscado */}
@@ -228,6 +241,7 @@ export function ProductCard({
             </span>
           </div>
 
+          {isCj && cj.price === null && <span className="text-xs text-muted-foreground">A partir de · envio a calcular</span>}
           {/* Linha 2: Preço em destaque com centavos sobrescritos */}
           <div className="mt-1 flex items-start leading-none text-foreground">
             <span className="text-xl md:text-2xl font-normal tracking-tight">
@@ -255,8 +269,8 @@ export function ProductCard({
                 </>
               ) : (
                 <>
-                  <span className="font-semibold text-[#3483fa]">Frete com desconto</span>
-                  <span className="text-[11px] text-muted-foreground">a partir de R$ 5,77</span>
+                  <span className="font-semibold text-[#3483fa]">Envio pelo CEP</span>
+                  <span className="text-[11px] text-muted-foreground">{isCj && cj.shipping !== null ? brl(cj.shipping) : "A calcular"}</span>
                 </>
               )}
             </div>
