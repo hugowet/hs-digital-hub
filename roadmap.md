@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Avaliações, rádio e Clube HS
+- [ ] Corrigir persistência de avaliações com fotos e validar após recarregar.
+- [ ] Corrigir interrupções da rádio e verificar estação brasileira adicional.
+- [ ] Streaming, rádio de terceiros sem anúncios e entrega prioritária: dependem de parceria/licenciamento e serviço logístico confirmado; não prometer benefícios indisponíveis.
+
 ## HS Social e Aura
 - [x] Conversas privadas persistentes por número exato cadastrado no perfil; envio, resposta ao vivo e reabertura validados entre duas contas. Conta temporária removida.
 - [x] Stories de texto e foto com expiração de 24 horas; publicação, reabertura e exclusão validadas.
