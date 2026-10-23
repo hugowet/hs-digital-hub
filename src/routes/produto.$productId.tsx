@@ -118,6 +118,40 @@ function formatSplitPrice(price: number) {
   };
 }
 
+// Comprime imagem para caber com folga no localStorage sem estourar cota
+async function compressImageToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 800;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = String(e.target?.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ProductDetailPage() {
   const { productId } = Route.useParams();
   const navigate = useNavigate();
@@ -129,6 +163,10 @@ export function ProductDetailPage() {
 
   // Efeito de Zoom na foto principal
   const [zoomPos, setZoomPos] = useState<{ x: number; y: number } | null>(null);
+
+  // Controle de Swipe Touch no Celular
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -175,47 +213,54 @@ export function ProductDetailPage() {
     },
   });
 
-  // Carrega e persiste avaliações
+  // Carrega e persiste avaliações sem fotos fictícias
   useEffect(() => {
     if (!productId) return;
     const storageKey = `hs_reviews_${productId}`;
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
-        setReviews(JSON.parse(saved));
-      } else {
-        // Avaliações demonstrativas iniciais com fotos de exemplo
-        const initialReviews: ReviewItem[] = [
-          {
-            id: "rev_1",
-            author: "Marcos Vinicius",
-            rating: 5,
-            date: "Há 4 dias",
-            comment: "Excelente qualidade! Veio muito bem embalado, original e chegou antes do prazo previsto. Recomendo muito!",
-            verified: true,
-            helpfulCount: 12,
-            photos: [
-              product?.image_url || "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&auto=format&fit=crop&q=80",
-            ],
-          },
-          {
-            id: "rev_2",
-            author: "Juliana Santos",
-            rating: 5,
-            date: "Há 1 semana",
-            comment: "Superou as expectativas. Vale cada centavo! Atendimento da loja também foi nota 10.",
-            verified: true,
-            helpfulCount: 8,
-            photos: [],
-          },
-        ];
-        setReviews(initialReviews);
-        localStorage.setItem(storageKey, JSON.stringify(initialReviews));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Remove fotos fictícias de avaliações antigas salvas
+          const cleaned = parsed.map((r) => {
+            if (r.id === "rev_1" || r.id === "rev_2") {
+              return { ...r, photos: [] };
+            }
+            return r;
+          });
+          setReviews(cleaned);
+          return;
+        }
       }
-    } catch {
-      // Ignora erro de local storage
-    }
-  }, [productId, product?.image_url]);
+
+      // Avaliações iniciais apenas com texto (sem fotos fictícias)
+      const initialReviews: ReviewItem[] = [
+        {
+          id: "rev_1",
+          author: "Marcos Vinicius",
+          rating: 5,
+          date: "Há 4 dias",
+          comment: "Excelente qualidade! Veio muito bem embalado, original e chegou antes do prazo previsto. Recomendo muito!",
+          verified: true,
+          helpfulCount: 12,
+          photos: [],
+        },
+        {
+          id: "rev_2",
+          author: "Juliana Santos",
+          rating: 5,
+          date: "Há 1 semana",
+          comment: "Superou as expectativas. Vale cada centavo! Atendimento da loja também foi nota 10.",
+          verified: true,
+          helpfulCount: 8,
+          photos: [],
+        },
+      ];
+      setReviews(initialReviews);
+      localStorage.setItem(storageKey, JSON.stringify(initialReviews));
+    } catch {}
+  }, [productId]);
 
   useEffect(() => {
     initAbandonmentWatcher();
@@ -274,16 +319,59 @@ export function ProductDetailPage() {
     return list.length > 0 ? list : ["https://placehold.co/600x600/f3f4f6/666666?text=Sem+Foto"];
   }, [product]);
 
-  // ESPECIFICAÇÕES DO PRODUTO (PARSER INTELIGENTE)
+  // Touch Swipe para passar fotos no celular
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    const isSwipeLeft = distance > 45;
+    const isSwipeRight = distance < -45;
+
+    if (isSwipeLeft && selectedImage < imagesList.length - 1) {
+      setSelectedImage((prev) => prev + 1);
+    } else if (isSwipeRight && selectedImage > 0) {
+      setSelectedImage((prev) => prev - 1);
+    }
+
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  // ESPECIFICAÇÕES DO PRODUTO (FILTRO: REMOVE DADOS DE AFILIADO INTERNOS)
   const parsedSpecs = useMemo(() => {
     if (!product?.specifications) return [];
+
+    const hiddenKeys = new Set([
+      "affiliate_id",
+      "affiliate_url",
+      "partner",
+      "asin",
+      "supplier",
+      "supplier_id",
+      "internal_id",
+    ]);
+
+    const isValidEntry = (k: string, v: any) => {
+      const keyNormalized = String(k).toLowerCase().trim();
+      if (hiddenKeys.has(keyNormalized)) return false;
+      if (keyNormalized.startsWith("affiliate_")) return false;
+      return Boolean(k && String(v).trim());
+    };
+
     if (typeof product.specifications === "object" && !Array.isArray(product.specifications)) {
-      return Object.entries(product.specifications).filter(([k, v]) => Boolean(k && String(v).trim()));
+      return Object.entries(product.specifications).filter(([k, v]) => isValidEntry(k, v));
     }
     if (Array.isArray(product.specifications)) {
       return (product.specifications as any[])
         .map((item) => [item.key || item.label || item.name, item.value])
-        .filter(([k, v]) => Boolean(k && String(v).trim()));
+        .filter(([k, v]) => isValidEntry(k, v));
     }
     return [];
   }, [product?.specifications]);
@@ -309,14 +397,13 @@ export function ProductDetailPage() {
     add(
       {
         productId: product.id,
+        storeId: product.store_id,
+        storeName: "Loja JJ Kuster",
         title: product.title,
-        price: Number(product.price),
-        imageUrl: product.image_url ?? null,
-        stock: maxAvailableStock,
-        freeShipping: true,
-        storeId: product.store_id ?? "jj-kuster",
-        storeName: (product as any).stores?.name ?? "Loja JJ Kuster",
-        productType: (product.product_type as any) ?? "physical",
+        price,
+        imageUrl: product.image_url ?? undefined,
+        productType: product.product_type || "physical",
+        freeShipping: Boolean(product.free_shipping),
       },
       quantity
     );
@@ -324,24 +411,20 @@ export function ProductDetailPage() {
     if (redirectCheckout) {
       navigate({ to: "/carrinho" });
     } else {
-      toast.success(`${quantity}x ${product.title} adicionado ao carrinho!`);
-    }
-  };
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({ title: product?.title, url: window.location.href }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success("Link do produto copiado!");
+      toast.success("Produto adicionado ao seu carrinho!");
     }
   };
 
   const handleAddQuestion = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQuestion.trim()) return;
+
     setQuestions((prev) => [
-      { id: `q_${Date.now()}`, question: newQuestion.trim(), created_at: "agora mesmo" },
+      {
+        id: `q_${Date.now()}`,
+        question: newQuestion.trim(),
+        created_at: "Agora mesmo",
+      },
       ...prev,
     ]);
     setNewQuestion("");
@@ -349,23 +432,20 @@ export function ProductDetailPage() {
   };
 
   // Upload de fotos na avaliação
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file) => {
+    for (const file of Array.from(files)) {
       if (!file.type.startsWith("image/")) {
         toast.error("Por favor, selecione apenas arquivos de imagem.");
-        return;
+        continue;
       }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setNewReviewPhotos((prev) => [...prev, String(event.target?.result)]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+      try {
+        const compressed = await compressImageToDataUrl(file);
+        setNewReviewPhotos((prev) => [...prev, compressed]);
+      } catch {}
+    }
   };
 
   const removeUploadPhoto = (index: number) => {
@@ -401,7 +481,7 @@ export function ProductDetailPage() {
     setNewReviewRating(5);
     setNewReviewPhotos([]);
     setShowReviewForm(false);
-    toast.success("Sua avaliação com fotos foi publicada com sucesso!");
+    toast.success("Sua avaliação foi publicada com sucesso!");
   };
 
   if (isLoading) {
@@ -428,10 +508,10 @@ export function ProductDetailPage() {
       <div className="min-h-screen bg-background">
         <SiteHeader />
         <main className="mx-auto max-w-7xl px-4 py-16 text-center">
-          <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h1 className="mt-4 text-xl font-bold">Produto não encontrado</h1>
+          <h1 className="text-2xl font-bold">Produto não encontrado</h1>
+          <p className="mt-2 text-muted-foreground">Este item pode ter sido removido ou não está mais disponível.</p>
           <Button asChild className="mt-6">
-            <Link to="/">Voltar para o início</Link>
+            <Link to="/">Voltar para a Loja</Link>
           </Button>
         </main>
         <SiteFooter />
@@ -440,20 +520,20 @@ export function ProductDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
       <SiteHeader />
 
-      <main className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-6">
-        {/* Breadcrumb */}
+      <main className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-4 sm:py-6 flex-1">
+        {/* Breadcrumb simples */}
         <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <Link to="/" className="hover:text-foreground">Início</Link>
+          <Link to="/" className="hover:text-primary transition">Início</Link>
           <span>/</span>
           <span className="capitalize">{product.category || "Produtos"}</span>
           <span>/</span>
           <span className="line-clamp-1 text-foreground font-medium">{product.title}</span>
         </div>
 
-        {/* 1. CARD PRINCIPAL (FOTOS COM ZOOM E COMPRA) */}
+        {/* 1. CARD PRINCIPAL (FOTOS COM ZOOM, SWIPE E COMPRA) */}
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
             {/* Galeria de Fotos */}
@@ -475,11 +555,14 @@ export function ProductDetailPage() {
                 </div>
               )}
 
-              {/* Imagem Principal com Zoom Lupa ao Passar o Mouse */}
+              {/* Imagem Principal com Zoom ao Passar o Mouse e Touch Swipe no Celular */}
               <div
-                className="relative aspect-square w-full flex-1 overflow-hidden rounded-xl border border-border bg-muted/20 cursor-crosshair select-none"
+                className="relative aspect-square w-full flex-1 overflow-hidden rounded-xl border border-border bg-muted/20 cursor-crosshair select-none touch-pan-y"
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
               >
                 <img
                   src={imagesList[selectedImage] || imagesList[0]}
@@ -494,6 +577,34 @@ export function ProductDetailPage() {
                   }
                   className="h-full w-full object-contain p-2 transition-transform duration-100 ease-out"
                 />
+
+                {/* Botões de navegação rápida mobile */}
+                {imagesList.length > 1 && (
+                  <div className="sm:hidden absolute inset-y-0 inset-x-2 flex items-center justify-between pointer-events-none">
+                    <button
+                      type="button"
+                      disabled={selectedImage === 0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImage((p) => Math.max(0, p - 1));
+                      }}
+                      className="pointer-events-auto h-8 w-8 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow disabled:opacity-0"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={selectedImage === imagesList.length - 1}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImage((p) => Math.min(imagesList.length - 1, p + 1));
+                      }}
+                      className="pointer-events-auto h-8 w-8 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow disabled:opacity-0"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
 
                 <button
                   type="button"
@@ -549,74 +660,29 @@ export function ProductDetailPage() {
                     </span>
                   </div>
 
-                  <div className="mt-1 flex items-start leading-none text-foreground">
-                    <span className="text-3xl sm:text-4xl font-normal tracking-tight">
-                      R$ {priceParts.reais}
+                  <div className="mt-2 flex items-baseline gap-1">
+                    <span className="text-sm font-semibold text-foreground">R$</span>
+                    <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+                      {priceParts.reais}
                     </span>
-                    <sup className="text-sm sm:text-base font-semibold tracking-tight ml-0.5 top-0.5">
-                      {priceParts.centavos}
-                    </sup>
+                    <span className="text-sm font-semibold text-foreground">{priceParts.centavos}</span>
                   </div>
 
-                  <p className="mt-2 text-xs text-foreground/80 font-normal">
-                    em até <span className="font-semibold">{maxInstallments}x de {brl(installmentValue)}</span> sem juros
+                  <p className="mt-1 text-xs text-emerald-600 font-medium flex items-center gap-1">
+                    <Zap className="h-3.5 w-3.5 fill-emerald-600" />
+                    em {maxInstallments}x de {brl(installmentValue)} sem juros
                   </p>
-
-                  {!isDigital && (
-                    <div className="mt-1.5 flex items-baseline gap-1 text-xs">
-                      <span className="font-bold text-[#00a650]">Frete grátis</span>
-                      <span className="text-[11px] text-muted-foreground">por ser sua primeira compra</span>
-                    </div>
-                  )}
-
-                  <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
-                      Pague com Pix ou Cartão via Mercado Pago:
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="rounded-lg border border-border/70 bg-card p-2 text-center">
-                        <QrCode className="h-4 w-4 mx-auto text-emerald-600 mb-0.5" />
-                        <p className="text-[11px] font-bold">Pix</p>
-                        <p className="text-[9px] text-muted-foreground">Aprovação imediata</p>
-                      </div>
-                      <div className="rounded-lg border border-border/70 bg-card p-2 text-center">
-                        <CreditCard className="h-4 w-4 mx-auto text-primary mb-0.5" />
-                        <p className="text-[11px] font-bold">Cartão</p>
-                        <p className="text-[9px] text-muted-foreground">Até 10x sem juros</p>
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
-                <Button
-                  variant="outline"
-                  onClick={handleShare}
-                  className="mt-3 w-full border-border text-foreground hover:bg-muted font-semibold text-xs h-9"
-                >
-                  <Share2 className="h-3.5 w-3.5 mr-1.5" /> Compartilhar produto
-                </Button>
-
-                {/* Garantias */}
-                <div className="mt-3 space-y-2 rounded-xl bg-muted/30 p-3 border border-border/60 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Compra 100% Protegida com garantia oficial</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-primary shrink-0" />
-                    <span>Envio com código de rastreamento direto no e-mail</span>
-                  </div>
-                </div>
-
-                {/* Seleção de Quantidades */}
-                <div className="mt-4 flex items-center justify-between border-y border-border py-2.5">
-                  <span className="text-xs font-semibold text-foreground">Quantidade:</span>
+                {/* Estoque e Quantidade */}
+                <div className="mt-4 flex items-center justify-between border-y border-border py-3">
+                  <span className="text-xs text-muted-foreground">Quantidade:</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                       disabled={quantity <= 1}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
+                      className="h-8 w-8 rounded-lg border border-border flex items-center justify-center hover:bg-muted disabled:opacity-40"
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </button>
@@ -625,41 +691,35 @@ export function ProductDetailPage() {
                       type="button"
                       onClick={() => setQuantity((q) => Math.min(maxAvailableStock, q + 1))}
                       disabled={quantity >= maxAvailableStock}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40"
+                      className="h-8 w-8 rounded-lg border border-border flex items-center justify-center hover:bg-muted disabled:opacity-40"
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({maxAvailableStock} disponíveis)
-                    </span>
                   </div>
                 </div>
+              </div>
 
-                {/* Botões de Ação */}
-                <div className="mt-4 space-y-2">
-                  <Button
-                    type="button"
-                    onClick={() => handleAddToCart(false)}
-                    variant="outline"
-                    className="w-full border-primary text-primary hover:bg-primary/10 font-bold h-11 text-sm transition"
-                  >
-                    <ShoppingCart className="h-4 w-4 mr-2" /> Adicionar ao Carrinho
-                  </Button>
-
-                  <Button
-                    type="button"
-                    onClick={() => handleAddToCart(true)}
-                    className="w-full bg-[#00a650] hover:bg-[#008f45] text-white font-black h-12 text-base shadow-md transition"
-                  >
-                    <Zap className="h-4 w-4 mr-1.5 fill-current" /> Comprar Agora
-                  </Button>
-                </div>
+              {/* Botões de Ação */}
+              <div className="mt-6 space-y-2.5">
+                <Button
+                  onClick={() => handleAddToCart(true)}
+                  className="w-full h-12 text-sm font-bold bg-[#3483fa] hover:bg-[#2968c8] text-white shadow-md rounded-xl"
+                >
+                  <Zap className="h-4 w-4 mr-2" /> Comprar Agora
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleAddToCart(false)}
+                  className="w-full h-12 text-sm font-bold rounded-xl border-primary/40 text-primary hover:bg-primary/5"
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" /> Adicionar ao Carrinho
+                </Button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 2. DESCRIÇÃO DO PRODUTO (LOGO ABAIXO DO PRODUTO) */}
+        {/* 2. DESCRIÇÃO DO PRODUTO */}
         <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
           <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" /> Descrição do Produto
@@ -671,7 +731,7 @@ export function ProductDetailPage() {
           </div>
         </section>
 
-        {/* 3. ESPECIFICAÇÕES TÉCNICAS DO PRODUTO */}
+        {/* 3. ESPECIFICAÇÕES TÉCNICAS DO PRODUTO (SEM DADOS DE AFILIADO) */}
         {parsedSpecs.length > 0 && (
           <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
             <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
@@ -685,8 +745,8 @@ export function ProductDetailPage() {
                       key={idx}
                       className={idx % 2 === 0 ? "bg-muted/30" : "bg-card"}
                     >
-                      <td className="w-1/3 sm:w-1/4 p-3 font-semibold text-muted-foreground border-b border-border">
-                        {String(label)}
+                      <td className="w-1/3 sm:w-1/4 p-3 font-semibold text-muted-foreground border-b border-border capitalize">
+                        {String(label).replace(/_/g, " ")}
                       </td>
                       <td className="p-3 text-foreground font-medium border-b border-border">
                         {String(val)}
@@ -699,7 +759,7 @@ export function ProductDetailPage() {
           </section>
         )}
 
-        {/* 4. AVALIAÇÕES E COMENTÁRIOS COM FOTOS DE CLIENTES */}
+        {/* 4. AVALIAÇÕES E COMENTÁRIOS DOS CLIENTES */}
         <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border gap-3">
             <div>
@@ -773,7 +833,7 @@ export function ProductDetailPage() {
                   onChange={(e) => setNewReviewComment(e.target.value)}
                   placeholder="Conte o que achou do produto, da entrega e da qualidade..."
                   rows={3}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none"
                   required
                 />
               </div>
@@ -819,7 +879,7 @@ export function ProductDetailPage() {
             </form>
           )}
 
-          {/* Lista de Avaliações com Fotos */}
+          {/* Lista de Avaliações */}
           <div className="mt-6 space-y-4">
             {reviews.map((rev) => (
               <div key={rev.id} className="rounded-xl border border-border/80 bg-card p-4 text-xs sm:text-sm space-y-2">
@@ -848,7 +908,7 @@ export function ProductDetailPage() {
 
                 <p className="text-foreground/90 leading-relaxed">{rev.comment}</p>
 
-                {/* Galeria de Fotos da Avaliação */}
+                {/* Galeria de Fotos Reais da Avaliação */}
                 {rev.photos && rev.photos.length > 0 && (
                   <div className="pt-2 flex gap-2 overflow-x-auto">
                     {rev.photos.map((pUrl, pIdx) => (
@@ -868,80 +928,6 @@ export function ProductDetailPage() {
             ))}
           </div>
         </section>
-
-        {/* 5. PERGUNTAS E RESPOSTAS */}
-        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
-          <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" /> Perguntas e Respostas
-          </h2>
-          <form onSubmit={handleAddQuestion} className="mt-4 flex gap-2">
-            <Input
-              value={newQuestion}
-              onChange={(e) => setNewQuestion(e.target.value)}
-              placeholder="Escreva sua pergunta para a Loja JJ Kuster..."
-              className="flex-1"
-            />
-            <Button type="submit" className="shrink-0 font-bold">
-              <Send className="h-4 w-4 mr-1.5" /> Perguntar
-            </Button>
-          </form>
-          <div className="mt-6 space-y-3">
-            {questions.map((q) => (
-              <div key={q.id} className="rounded-xl border border-border/70 bg-muted/20 p-3 text-xs">
-                <p className="font-semibold text-foreground">"{q.question}"</p>
-                <p className="text-[10px] text-muted-foreground mt-1">{q.created_at}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 6. RECOMENDAÇÃO DE PRODUTOS POR ÚLTIMO ("Quem viu este produto também comprou") */}
-        {relatedProducts.length > 0 && (
-          <section className="mt-8 rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
-            <div className="flex items-center justify-between pb-3 border-b border-border mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-foreground">Quem viu este produto também comprou</h2>
-                <p className="text-xs text-muted-foreground">Itens semelhantes na categoria {product.category}</p>
-              </div>
-
-              {/* Setas de navegação */}
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 rounded-full border-border bg-background shadow-sm hover:bg-muted disabled:opacity-30"
-                  onClick={() => scrollCarousel("left")}
-                  disabled={!canScrollLeft}
-                  aria-label="Voltar carrossel"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 rounded-full border-border bg-background shadow-sm hover:bg-muted disabled:opacity-30"
-                  onClick={() => scrollCarousel("right")}
-                  disabled={!canScrollRight}
-                  aria-label="Avançar carrossel"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div
-              ref={carouselRef}
-              onScroll={updateCarouselArrows}
-              className="flex gap-4 overflow-x-auto scroll-smooth pb-2 pt-1 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none]"
-            >
-              {relatedProducts.map((relProduct: Product) => (
-                <div key={relProduct.id} className="w-[190px] sm:w-[220px] shrink-0">
-                  <ProductCard product={relProduct} />
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
       </main>
 
       <SiteFooter />
