@@ -1,8 +1,8 @@
 # HS Digital — MVP
 
 ## Correção do carrinho solicitada por Hugo
-- [ ] Restaurar somente duas modalidades de envio, preservando custos e prazos reais.
-- [ ] Garantir preço com frete grátis embutido já no produto, sem acréscimo surpresa no carrinho; validar produto → carrinho → pedido.
+- [x] Restaurar somente duas modalidades de envio, preservando custos e prazos reais.
+- [x] Garantir preço com frete grátis embutido já no produto, sem acréscimo surpresa no carrinho; validado produto → carrinho → pedido.
 
 ## Preço CJ com envio
 - [x] Remover campos de cálculo dos produtos; consultar automaticamente o CEP do endereço salvo após login, priorizando o padrão. Cotação real automática validada na conta de Hugo; três testes de endereço passaram.
