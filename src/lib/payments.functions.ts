@@ -116,15 +116,17 @@ const checkoutSchema = z.object({
     .array(z.object({ productId: z.string().uuid(), quantity: z.number().int().min(1).max(99) }))
     .min(1)
     .max(50),
-  shippingAddress: z.object({
-    name: z.string().trim().min(2).max(100),
-    phone: z.string().trim().max(20),
-    address: z.string().trim().min(5).max(200),
-    city: z.string().trim().min(2).max(100),
-    state: z.string().trim().length(2),
-    postalCode: z.string().transform((value) => value.replace(/\D/g, "")).pipe(z.string().length(8)),
-    note: z.string().trim().max(200),
-  }),
+  shippingAddress: z
+    .object({
+      name: z.string().trim().min(2).max(100),
+      phone: z.string().trim().max(20),
+      address: z.string().trim().min(5).max(200),
+      city: z.string().trim().min(2).max(100),
+      state: z.string().trim().length(2),
+      postalCode: z.string().transform((value) => value.replace(/\D/g, "")).pipe(z.string().length(8)),
+      note: z.string().trim().max(200),
+    })
+    .optional(),
   shippingQuoteIds: z.record(z.string(), z.string().uuid()),
   couponId: z.string().uuid().optional(),
   warranty: z
@@ -142,7 +144,9 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const rpcArguments = {
       _items: data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
-      _shipping_address: { ...data.shippingAddress, postal_code: data.shippingAddress.postalCode },
+      _shipping_address: data.shippingAddress
+        ? { ...data.shippingAddress, postal_code: data.shippingAddress.postalCode }
+        : null,
       _shipping_quote_ids: data.shippingQuoteIds,
       ...(data.couponId ? { _coupon_id: data.couponId } : {}),
     };

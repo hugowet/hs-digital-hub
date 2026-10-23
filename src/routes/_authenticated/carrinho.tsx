@@ -284,15 +284,17 @@ function CartPage() {
             productId: i.productId,
             quantity: i.quantity,
           })),
-          shippingAddress: {
-            name,
-            phone,
-            address,
-            city,
-            state,
-            postalCode: postalCode.replace(/\D/g, ""),
-            note: note || "",
-          },
+          shippingAddress: hasPhysical
+            ? {
+                name,
+                phone,
+                address,
+                city,
+                state,
+                postalCode: postalCode.replace(/\D/g, ""),
+                note: note || "",
+              }
+            : undefined,
           shippingQuoteIds,
           couponId: applyGameCoupon && bestGameCoupon ? bestGameCoupon.id : undefined,
           warranty:
