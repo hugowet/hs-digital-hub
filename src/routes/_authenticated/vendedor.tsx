@@ -8,7 +8,7 @@ import {
   Clock,
   DollarSign,
   ExternalLink,
-  Image,
+  Image as ImageIcon,
   Mail,
   MessageCircle,
   Package,
@@ -23,6 +23,9 @@ import {
   XCircle,
   RefreshCw,
   Boxes,
+  Upload,
+  X,
+  Star,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -45,7 +48,6 @@ import { CATEGORIES } from "@/lib/catalog";
 import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
-import { createSellerProduct } from "@/lib/products.functions";
 import { processSupplierFulfillment, syncCjProducts } from "@/lib/suppliers.functions";
 import { getSellerShippingConfiguration, saveSellerOriginPostalCode, startMelhorEnvioConnection } from "@/lib/shipping.functions";
 
@@ -88,6 +90,8 @@ function SellerCenterPage() {
   const [editImageUrl, setEditImageUrl] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+
+  const [activeTab, setActiveTab] = useState("products");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -137,52 +141,39 @@ function SellerCenterPage() {
     },
   });
 
-  const { data: supplierIntegrations = [] } = useQuery({
-    enabled: !!store?.id,
-    queryKey: ["supplier-integrations", store?.id],
-    queryFn: async () => {
-      if (!store?.id) return [];
-      const { data, error } = await supabase
-        .from("supplier_integrations")
-        .select("provider,status,margin_percent,last_catalog_sync_at,last_stock_sync_at,last_error")
-        .eq("store_id", store.id)
-        .order("provider");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const [activeTab, setActiveTab] = useState("orders");
-
   const handleOpenEdit = (p: any) => {
     setEditingProduct(p);
     setEditTitle(p.title || "");
-    setEditPrice(p.price ? String(p.price) : "");
+    setEditPrice(String(p.price || ""));
     setEditCompareAt(p.compare_at_price ? String(p.compare_at_price) : "");
     setEditSupplierCost(p.supplier_cost ? String(p.supplier_cost) : "");
-    setEditStock(p.stock !== undefined ? String(p.stock) : "999");
+    setEditStock(String(p.stock ?? ""));
     setEditImageUrl(p.image_url || "");
     setEditDescription(p.description || "");
   };
 
   const handleSaveEdit = async () => {
     if (!editingProduct) return;
-    if (!editTitle.trim()) return toast.error("O título do produto é obrigatório.");
-    if (!editPrice || Number(editPrice) <= 0) return toast.error("Informe um preço de venda válido.");
-
     setSavingEdit(true);
     try {
+      const parsedPrice = parseFloat(editPrice.replace(",", "."));
+      const parsedStock = parseInt(editStock, 10);
+      const parsedCompareAt = editCompareAt ? parseFloat(editCompareAt.replace(",", ".")) : null;
+
+      if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        toast.error("Preço inválido.");
+        return;
+      }
+
       const { error } = await supabase
         .from("products")
         .update({
           title: editTitle.trim(),
-          price: Number(editPrice),
-          compare_at_price: editCompareAt ? Number(editCompareAt) : null,
-          supplier_cost: editSupplierCost ? Number(editSupplierCost) : null,
-          stock: Number(editStock) || 0,
-          image_url: editImageUrl.trim(),
-          description: editDescription.trim(),
-          description_long: editDescription.trim(),
+          price: parsedPrice,
+          compare_at_price: parsedCompareAt,
+          stock: isNaN(parsedStock) ? 0 : parsedStock,
+          image_url: editImageUrl.trim() || null,
+          description: editDescription.trim() || null,
         })
         .eq("id", editingProduct.id);
 
@@ -192,7 +183,7 @@ function SellerCenterPage() {
       setEditingProduct(null);
       qc.invalidateQueries({ queryKey: ["store-products"] });
     } catch (err: any) {
-      toast.error(err.message || "Erro ao salvar alterações do produto.");
+      toast.error(err.message || "Erro ao salvar alterações.");
     } finally {
       setSavingEdit(false);
     }
@@ -300,12 +291,15 @@ function SellerCenterPage() {
             <div className="mb-4 rounded-md border border-border bg-muted/40 p-4">
               <h2 className="font-semibold">Venda com estoque próprio</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Cadastre normalmente seus produtos, defina preço e estoque e cuide do envio após a venda.
+                Cadastre seus produtos com até 10 fotos da galeria, defina preço, estoque e categoria.
               </p>
             </div>
             <ProductForm
               storeId={store.id}
-              onCreated={() => qc.invalidateQueries({ queryKey: ["store-products"] })}
+              onCreated={() => {
+                qc.invalidateQueries({ queryKey: ["store-products"] });
+                setActiveTab("products");
+              }}
             />
           </div>
         </TabsContent>
@@ -317,39 +311,31 @@ function SellerCenterPage() {
 
         {/* Aba Mercado Pago da Loja */}
         <TabsContent value="mercadopago" className="pt-4">
-          <SellerMercadoPagoTab
-            store={store}
-            onRefresh={() => qc.invalidateQueries({ queryKey: ["seller-store"] })}
-          />
+          <SellerMercadoPagoTab storeId={store.id} currentStatus={store.mercado_pago_status} />
         </TabsContent>
 
-        {/* Aba Fornecedores */}
+        {/* Aba de Fornecedores */}
         <TabsContent value="suppliers" className="pt-4">
-          <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-            <section className="surface-card p-5">
-              <Package className="h-6 w-6 text-primary" />
-              <h2 className="mt-3 font-semibold">Venda seus produtos</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Use seu próprio estoque, suas fotos e seu envio.
-              </p>
-              <Button className="mt-4 w-full" onClick={() => setActiveTab("create")}>
-                <Plus className="h-4 w-4" />
-                Cadastrar produto próprio
-              </Button>
-            </section>
-            <section className="surface-card p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
-                <div>
-                  <h2 className="flex items-center gap-2 font-semibold">
-                    <Boxes className="h-5 w-5 text-primary" />
-                    Dropshipping opcional
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Conecte um fornecedor somente se quiser vender sem manter estoque próprio.
-                  </p>
-                </div>
-              </div>
-            </section>
+          <div className="surface-card p-5 space-y-4">
+            <h3 className="font-semibold text-base">Integrações de Fornecedores</h3>
+            <p className="text-sm text-muted-foreground">
+              Sincronize produtos e acompanhe pedidos de fulfillment automático.
+            </p>
+            <Button
+              onClick={async () => {
+                try {
+                  toast.info("Iniciando sincronização com CJ Dropshipping...");
+                  await syncCj();
+                  toast.success("Sincronização concluída!");
+                } catch (err: any) {
+                  toast.error(err.message || "Erro na sincronização.");
+                }
+              }}
+              variant="outline"
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" /> Sincronizar Catálogo CJ
+            </Button>
           </div>
         </TabsContent>
 
@@ -359,110 +345,46 @@ function SellerCenterPage() {
         </TabsContent>
       </Tabs>
 
-      {/* MODAL DE EDIÇÃO DE PRODUTO */}
+      {/* Modal de Edição */}
       <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar Produto</DialogTitle>
-            <DialogDescription>
-              Altere o título, preços de venda e custo, estoque ou descrição.
-            </DialogDescription>
+            <DialogDescription>Altere as informações do seu produto abaixo.</DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-4 py-2 text-sm">
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-title">Título do Produto</Label>
-              <Input
-                id="edit-title"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-              />
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-xs">Título</Label>
+              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-price">Preço de Venda (R$)</Label>
-                <Input
-                  id="edit-price"
-                  type="number"
-                  step="0.01"
-                  value={editPrice}
-                  onChange={(e) => setEditPrice(e.target.value)}
-                />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Preço de Venda (R$)</Label>
+                <Input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
               </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-compare">Preço Riscado / De (R$)</Label>
-                <Input
-                  id="edit-compare"
-                  type="number"
-                  step="0.01"
-                  placeholder="Opcional"
-                  value={editCompareAt}
-                  onChange={(e) => setEditCompareAt(e.target.value)}
-                />
+              <div>
+                <Label className="text-xs">Estoque</Label>
+                <Input value={editStock} onChange={(e) => setEditStock(e.target.value)} />
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-cost">Preço de Custo (R$)</Label>
-                <Input
-                  id="edit-cost"
-                  type="number"
-                  step="0.01"
-                  placeholder="Opcional"
-                  value={editSupplierCost}
-                  onChange={(e) => setEditSupplierCost(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-stock">Estoque Disponível</Label>
-                <Input
-                  id="edit-stock"
-                  type="number"
-                  value={editStock}
-                  onChange={(e) => setEditStock(e.target.value)}
-                />
-              </div>
+            <div>
+              <Label className="text-xs">URL da Imagem Principal</Label>
+              <Input value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
             </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-img">URL da Imagem Principal</Label>
-              <Input
-                id="edit-img"
-                value={editImageUrl}
-                onChange={(e) => setEditImageUrl(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-desc">Descrição</Label>
+            <div>
+              <Label className="text-xs">Descrição</Label>
               <Textarea
-                id="edit-desc"
-                rows={4}
+                rows={3}
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
               />
             </div>
           </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setEditingProduct(null)}
-              disabled={savingEdit}
-            >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingProduct(null)}>
               Cancelar
             </Button>
-            <Button
-              type="button"
-              onClick={handleSaveEdit}
-              disabled={savingEdit}
-              className="bg-primary text-primary-foreground font-semibold"
-            >
+            <Button onClick={handleSaveEdit} disabled={savingEdit}>
               {savingEdit ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </DialogFooter>
@@ -472,41 +394,41 @@ function SellerCenterPage() {
   );
 }
 
-function SellerMercadoPagoTab({ store, onRefresh }: { store: any; onRefresh: () => void }) {
-  const startConnection = useServerFn(startMercadoPagoConnection);
+function SellerMercadoPagoTab({
+  storeId,
+  currentStatus,
+}: {
+  storeId: string;
+  currentStatus: string | null;
+}) {
   const [connecting, setConnecting] = useState(false);
-
-  const isConnected = store.mercado_pago_status === "connected";
+  const connectServerFn = useServerFn(startMercadoPagoConnection);
+  const isConnected = currentStatus === "connected";
 
   const handleConnect = async () => {
+    setConnecting(true);
     try {
-      setConnecting(true);
-      // Aqui passamos dentro da propriedade data para o validador do TanStack Start
-      const res = await startConnection({
-        data: {
-          storeId: store.id,
-          origin: window.location.origin,
-        },
-      });
-      if (res?.url) {
-        window.location.href = res.url;
+      const origin = window.location.origin;
+      const res = await connectServerFn({ data: { storeId, origin } });
+      if (res?.authUrl) {
+        window.location.href = res.authUrl;
+      } else {
+        toast.error("Não foi possível gerar o link de autorização.");
       }
     } catch (err: any) {
-      toast.error(err.message || "Erro ao conectar conta Mercado Pago.");
+      toast.error(err.message || "Erro ao conectar com Mercado Pago.");
+    } finally {
       setConnecting(false);
     }
   };
 
   return (
-    <div className="surface-card p-6 max-w-2xl space-y-4">
-      <div className="flex items-center gap-3">
-        <WalletCards className="h-7 w-7 text-primary" />
-        <div>
-          <h2 className="text-lg font-bold">Carteira Mercado Pago</h2>
-          <p className="text-sm text-muted-foreground">
-            Conecte sua conta do Mercado Pago para receber pagamentos e repasses das suas vendas.
-          </p>
-        </div>
+    <div className="surface-card space-y-4 p-5 max-w-xl">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">Conexão Mercado Pago</h2>
+        <p className="text-sm text-muted-foreground">
+          Conecte sua conta do Mercado Pago para receber pagamentos de vendas diretamente em sua carteira.
+        </p>
       </div>
 
       <div className="rounded-lg border border-border p-4 bg-muted/30">
@@ -546,6 +468,7 @@ function SellerMercadoPagoTab({ store, onRefresh }: { store: any; onRefresh: () 
   );
 }
 
+// Formulário de Cadastro com Anexo de Fotos da Galeria (Máximo 10)
 function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () => void }) {
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
@@ -554,45 +477,137 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
   const [stock, setStock] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]?.slug ?? "geral");
   const [description, setDescription] = useState("");
-  const [imageUrls, setImageUrls] = useState("");
+
+  // Fotos selecionadas da galeria (até 10 fotos)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [filePreviews, setFilePreviews] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (newFiles.length === 0) {
+      toast.error("Por favor, selecione apenas arquivos de imagem.");
+      return;
+    }
+
+    const totalAllowed = 10 - selectedFiles.length;
+    if (totalAllowed <= 0) {
+      toast.error("Você já atingiu o limite máximo de 10 fotos.");
+      return;
+    }
+
+    const filesToAdd = newFiles.slice(0, totalAllowed);
+    if (newFiles.length > totalAllowed) {
+      toast.info(`Limite de 10 fotos atingido. Foram adicionadas apenas ${totalAllowed} fotos.`);
+    }
+
+    const newPreviews = filesToAdd.map((file) => URL.createObjectURL(file));
+
+    setSelectedFiles((prev) => [...prev, ...filesToAdd]);
+    setFilePreviews((prev) => [...prev, ...newPreviews]);
+
+    // Reseta o input para permitir selecionar mais fotos se quiser
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setFilePreviews((prev) => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const makeCover = (index: number) => {
+    if (index === 0) return;
+    setSelectedFiles((prev) => {
+      const copy = [...prev];
+      const item = copy.splice(index, 1)[0];
+      copy.unshift(item);
+      return copy;
+    });
+    setFilePreviews((prev) => {
+      const copy = [...prev];
+      const item = copy.splice(index, 1)[0];
+      copy.unshift(item);
+      return copy;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedFiles.length === 0) {
+      toast.error("Anexe pelo menos 1 foto do produto.");
+      return;
+    }
+
     setLoading(true);
     try {
       const parsedPrice = parseFloat(price.replace(",", "."));
-      const parsedCostPrice = costPrice ? parseFloat(costPrice.replace(",", ".")) : undefined;
+      const parsedCostPrice = costPrice ? parseFloat(costPrice.replace(",", ".")) : null;
       const parsedStock = parseInt(stock, 10);
-      const media = imageUrls
-        .split("\n")
-        .map((u) => u.trim())
-        .filter(Boolean)
-        .map((url, i) => ({
-          media_type: "image" as const,
-          url,
-          is_primary: i === 0,
-        }));
 
-      await createSellerProduct({
-        data: {
-          storeId,
-          title: title.trim(),
-          price: parsedPrice,
-          costPrice: parsedCostPrice,
-          stock: parsedStock,
-          category,
-          description: description.trim(),
-          media,
-        },
+      if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        toast.error("Preço de venda inválido.");
+        setLoading(false);
+        return;
+      }
+
+      // 1. Upload de cada foto para o Supabase Storage bucket 'product-images'
+      const uploadedUrls: string[] = [];
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const ext = file.name.split(".").pop() || "jpg";
+        const path = `${storeId}/${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("product-images")
+          .upload(path, file, { cacheControl: "3600", upsert: true });
+
+        if (!uploadError) {
+          const { data: publicData } = supabase.storage.from("product-images").getPublicUrl(path);
+          uploadedUrls.push(publicData.publicUrl);
+        } else {
+          // Se o bucket não estiver público ou der erro, cria uma data URL comprimida como fallback
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => resolve(String(ev.target?.result));
+            reader.readAsDataURL(file);
+          });
+          uploadedUrls.push(dataUrl);
+        }
+      }
+
+      // 2. Insere diretamente na tabela products
+      const { error: insertError } = await supabase.from("products").insert({
+        store_id: storeId,
+        title: title.trim(),
+        price: parsedPrice,
+        compare_at_price: parsedCostPrice,
+        stock: isNaN(parsedStock) ? 0 : parsedStock,
+        category,
+        description: description.trim() || null,
+        image_url: uploadedUrls[0] || null,
+        gallery_urls: uploadedUrls,
+        is_active: true,
       });
 
-      toast.success("Produto cadastrado com sucesso!");
+      if (insertError) throw insertError;
+
+      toast.success("Produto cadastrado com sucesso com as fotos anexadas!");
       setTitle("");
       setPrice("");
       setCostPrice("");
       setStock("");
       setDescription("");
-      setImageUrls("");
+      setSelectedFiles([]);
+      setFilePreviews([]);
       onCreated();
     } catch (err: any) {
       toast.error(err.message || "Erro ao cadastrar produto.");
@@ -681,19 +696,77 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="form-img">URLs das imagens (uma por linha)</Label>
-        <Textarea
-          id="form-img"
-          rows={2}
-          value={imageUrls}
-          onChange={(e) => setImageUrls(e.target.value)}
-          placeholder="https://exemplo.com/foto1.jpg"
+      {/* Seção de Anexo de Fotos da Galeria (Limite 10) */}
+      <div className="space-y-2 pt-1">
+        <div className="flex items-center justify-between">
+          <Label className="font-semibold text-sm">
+            Fotos do Produto ({selectedFiles.length}/10)
+          </Label>
+          <span className="text-xs text-muted-foreground">A 1ª foto será a capa principal</span>
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleFileChange}
+          className="hidden"
+          id="product-gallery-input"
         />
+
+        {/* Grade de fotos anexadas */}
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 pt-1">
+          {filePreviews.map((preview, idx) => (
+            <div
+              key={idx}
+              className="relative aspect-square rounded-lg border border-border overflow-hidden bg-muted group shadow-sm"
+            >
+              <img src={preview} alt="" className="h-full w-full object-cover" />
+              {idx === 0 && (
+                <span className="absolute top-1 left-1 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shadow">
+                  Capa
+                </span>
+              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                {idx !== 0 && (
+                  <button
+                    type="button"
+                    title="Definir como capa"
+                    onClick={() => makeCover(idx)}
+                    className="h-7 w-7 rounded-full bg-white/90 text-primary flex items-center justify-center hover:bg-white"
+                  >
+                    <Star className="h-3.5 w-3.5 fill-primary" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  title="Remover foto"
+                  onClick={() => removePhoto(idx)}
+                  className="h-7 w-7 rounded-full bg-red-600 text-white flex items-center justify-center hover:bg-red-700"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {/* Botão de abrir galeria */}
+          {selectedFiles.length < 10 && (
+            <label
+              htmlFor="product-gallery-input"
+              className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary/80 bg-muted/20 text-muted-foreground hover:text-foreground transition p-2 text-center"
+            >
+              <Upload className="h-6 w-6 mb-1 text-primary" />
+              <span className="text-xs font-semibold">Abrir Galeria</span>
+              <span className="text-[10px] text-muted-foreground">Máx. 10 fotos</span>
+            </label>
+          )}
+        </div>
       </div>
 
-      <Button type="submit" disabled={loading} className="w-full">
-        {loading ? "Cadastrando..." : "Publicar produto"}
+      <Button type="submit" disabled={loading} className="w-full mt-4">
+        {loading ? "Cadastrando produto..." : "Publicar produto"}
       </Button>
     </form>
   );
