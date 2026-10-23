@@ -74,7 +74,6 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 function SellerCenterPage() {
   const qc = useQueryClient();
-  const startConnection = useServerFn(startMercadoPagoConnection);
   const syncCj = useServerFn(syncCjProducts);
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
   const cjBatchRunning = useRef(false);
@@ -482,9 +481,12 @@ function SellerMercadoPagoTab({ store, onRefresh }: { store: any; onRefresh: () 
   const handleConnect = async () => {
     try {
       setConnecting(true);
+      // Aqui passamos dentro da propriedade data para o validador do TanStack Start
       const res = await startConnection({
-        storeId: store.id,
-        origin: window.location.origin,
+        data: {
+          storeId: store.id,
+          origin: window.location.origin,
+        },
       });
       if (res?.url) {
         window.location.href = res.url;
