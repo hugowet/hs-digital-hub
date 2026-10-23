@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS review_photo_public_read ON storage.objects;
+ALTER POLICY review_photo_owner_read ON storage.objects TO authenticated USING (bucket_id = 'review-photos' AND owner_id = (SELECT auth.uid()::text));
