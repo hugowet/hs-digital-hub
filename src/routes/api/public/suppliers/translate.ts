@@ -9,21 +9,13 @@ export const Route = createFileRoute("/api/public/suppliers/translate")({
         if (!expected || !provided || provided !== expected)
           return new Response("Unauthorized", { status: 401 });
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { translateCjProductBatch } = await import("@/lib/suppliers.server");
+        const { processCjContentJob } = await import("@/lib/cj-content.server");
         try {
-          const body = (await request.json().catch(() => ({}))) as {
-            start?: unknown;
-            end?: unknown;
-          };
-          const isUuidBoundary = (value: unknown) =>
-            typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value);
-          const range = isUuidBoundary(body.start)
-            ? {
-                start: body.start as string,
-                ...(isUuidBoundary(body.end) ? { end: body.end as string } : {}),
-              }
-            : undefined;
-          return Response.json(await translateCjProductBatch(supabaseAdmin, 50, range));
+          const { data: jobs, error } = await supabaseAdmin.from("supplier_content_jobs")
+            .select("store_id").eq("operation", "titles").in("status", ["pending", "running"]).order("updated_at").limit(1);
+          if (error) throw error;
+          const job = jobs?.[0];
+          return Response.json(job ? await processCjContentJob(supabaseAdmin, job.store_id, "titles") : { idle: true });
         } catch (error) {
           const message = error instanceof Error ? error.message : "Falha na tradução do catálogo.";
           return Response.json({ error: message }, { status: 502 });

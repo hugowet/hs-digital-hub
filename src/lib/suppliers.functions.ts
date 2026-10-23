@@ -14,6 +14,41 @@ async function ownedStore(context: { supabase: any; userId: string }, storeId: s
 
 const storeSchema = z.object({ storeId: z.string().uuid() });
 
+export const getCjSupplierStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => storeSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await ownedStore(context, data.storeId);
+    const db = context.supabase;
+    const base = () => db.from("products").select("id", { count: "exact", head: true }).eq("store_id", data.storeId).eq("supplier", "cj");
+    const [total, active, translated, details, jobs, catalog] = await Promise.all([
+      base(), base().eq("is_active", true), base().eq("supplier_locale", "pt-BR"),
+      base().not("supplier_details_synced_at", "is", null),
+      db.from("supplier_content_jobs").select("operation,status,processed,pause_reason,updated_at").eq("store_id", data.storeId),
+      db.from("supplier_import_jobs").select("status,completed_categories,total_categories,imported_products,pause_reason").eq("store_id", data.storeId).eq("provider", "cj").maybeSingle(),
+    ]);
+    for (const result of [total, active, translated, details, jobs, catalog]) if (result.error) throw result.error;
+    return { total: total.count ?? 0, active: active.count ?? 0, translated: translated.count ?? 0,
+      details: details.count ?? 0, jobs: jobs.data ?? [], catalog: catalog.data };
+  });
+
+export const updateCjContent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ storeId: z.string().uuid(), operation: z.enum(["titles", "details"]) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await ownedStore(context, data.storeId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("supplier_content_jobs").upsert({ store_id: data.storeId, operation: data.operation }, { onConflict: "store_id,operation", ignoreDuplicates: true });
+    if (error) throw error;
+    // A fresh, explicit owner action is the only way to resume a blocked job.
+    const { error: resumeError } = await supabaseAdmin.from("supplier_content_jobs")
+      .update({ status: "pending", pause_reason: null }).eq("store_id", data.storeId)
+      .eq("operation", data.operation).in("status", ["paused", "completed"]);
+    if (resumeError) throw resumeError;
+    const { processCjContentJob } = await import("@/lib/cj-content.server");
+    return processCjContentJob(supabaseAdmin, data.storeId, data.operation);
+  });
+
 export const syncCjProducts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => storeSchema.parse(input))

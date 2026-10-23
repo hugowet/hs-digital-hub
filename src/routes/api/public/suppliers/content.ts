@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { verifyCronAuth } from "@/integrations/supabase/cron-auth";
+import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 
 export const Route = createFileRoute("/api/public/suppliers/content")({
   server: { handlers: { POST: async ({ request }) => {
-    const denied = await verifyCronAuth(request);
+    const denied = await authenticateCronRequest(request);
     if (denied) return denied;
     const body = await request.json().catch(() => ({}));
     const operation = body.operation === "titles" ? "titles" : "details";
