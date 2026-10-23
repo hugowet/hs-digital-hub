@@ -396,6 +396,10 @@ export function ProductDetailPage() {
 
   const handleAddToCart = (redirectCheckout: boolean) => {
     if (!product) return;
+    if (isCj && (cj.loading || cj.price === null)) {
+      toast.info("Aguarde a confirmação do preço para seu endereço salvo.");
+      return;
+    }
     markAsPurchasedOrInCart(product.id);
 
     add(
@@ -407,7 +411,8 @@ export function ProductDetailPage() {
         price,
         imageUrl: product.image_url ?? undefined,
         productType: product.product_type || "physical",
-        freeShipping: Boolean(product.free_shipping),
+        freeShipping: isCj ? cj.shipping === 0 : Boolean(product.free_shipping),
+        stock: maxAvailableStock,
       },
       quantity
     );
@@ -728,6 +733,7 @@ export function ProductDetailPage() {
               <div className="mt-6 space-y-2.5">
                 <Button
                   onClick={() => handleAddToCart(true)}
+                  disabled={isCj && (cj.loading || cj.price === null)}
                   className="w-full h-12 text-sm font-bold bg-[#3483fa] hover:bg-[#2968c8] text-white shadow-md rounded-xl"
                 >
                   <Zap className="h-4 w-4 mr-2" /> Comprar Agora
@@ -735,6 +741,7 @@ export function ProductDetailPage() {
                 <Button
                   variant="outline"
                   onClick={() => handleAddToCart(false)}
+                  disabled={isCj && (cj.loading || cj.price === null)}
                   className="w-full h-12 text-sm font-bold rounded-xl border-primary/40 text-primary hover:bg-primary/5"
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" /> Adicionar ao Carrinho

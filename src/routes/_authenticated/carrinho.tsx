@@ -130,6 +130,7 @@ function CartPage() {
         amount: number;
         itemPrices?: Array<{ product_id: string; unit_price: number; quantity: number }>;
         supplierFreight?: number;
+        embeddedFreeShipping?: boolean;
         deliveryDaysMin: number | null;
         deliveryDaysMax: number | null;
       }>;
@@ -144,7 +145,7 @@ function CartPage() {
   const [applyGameCoupon, setApplyGameCoupon] = useState(true);
 
   // Garantia Premium
-  const [selectedWarrantyId, setSelectedWarrantyId] = useState<string | null>("2_years");
+  const [selectedWarrantyId, setSelectedWarrantyId] = useState<string | null>(null);
 
   // Primeira Compra
   const [firstPurchaseEligible, setFirstPurchaseEligible] = useState(false);
@@ -199,8 +200,8 @@ function CartPage() {
     const quoted = pricedItems.find((entry) => entry.product_id === item.productId && entry.quantity === item.quantity);
     return sum + (quoted ? Number(quoted.unit_price) : item.price) * item.quantity;
   }, 0);
-  const embeddedShipping = selectedOptions.some((option) => option.amount === 0 && Number(option.supplierFreight) > 0);
-  const firstPurchaseMargin = firstPurchaseEligible && (embeddedShipping || (subtotalProdutos >= 89.9 && valorFreteCobrado > 0)) ? 10 : 0;
+  const embeddedShipping = selectedOptions.some((option) => option.embeddedFreeShipping);
+  const firstPurchaseMargin = firstPurchaseEligible && !embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? 10 : 0;
   const totalPedido = Math.round((subtotalProdutos + valorFreteCobrado + valorSeguro + firstPurchaseMargin) * 100) / 100;
 
   useEffect(() => {
@@ -512,10 +513,11 @@ function CartPage() {
                           <div className="flex min-w-0 gap-2">
                             <input type="radio" name={`shipping-${group.storeId}`} checked={currentSelectedId === option.id} onChange={() => setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: option.id }))} />
                             <div><strong className="block">{option.serviceName}</strong>
+                              <span className="block text-muted-foreground">{option.carrierName}</span>
                               <span className="text-muted-foreground">{option.deliveryDaysMin !== null && option.deliveryDaysMax !== null ? `${option.deliveryDaysMin}–${option.deliveryDaysMax} dias` : "Prazo a confirmar"}</span>
                             </div>
                           </div>
-                          <strong className="shrink-0">{option.amount === 0 ? "Frete incluso" : brl(option.amount)}</strong>
+                          <strong className="shrink-0">{option.amount === 0 ? "Frete incluso" : `+${brl(option.amount)}`}</strong>
                         </label>
                       ))}
                     </div>
@@ -580,8 +582,8 @@ function CartPage() {
                 </div>
 
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Frete</span>
-                  {subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? (
+                  <span>{embeddedShipping && valorFreteCobrado > 0 ? "Adicional Premium" : "Frete"}</span>
+                  {!embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? (
                     <span className="flex items-center gap-1.5">
                       <span className="line-through opacity-60">{brl(valorFreteCobrado)}</span>
                       <span className="font-bold text-[#00a650]">Grátis 🎉</span>

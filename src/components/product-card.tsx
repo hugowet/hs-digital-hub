@@ -279,6 +279,7 @@ export function ProductCard({
           <Button
             size="sm"
             className="mt-3 w-full font-bold"
+            disabled={isCj && (cj.loading || cj.price === null)}
             onClick={async () => {
               const { data, error } = await supabase.auth.getUser();
               if (error || !data.user) {
@@ -292,7 +293,7 @@ export function ProductCard({
                   title: displayTitle,
                   price: price,
                   imageUrl: product.image_url ?? undefined,
-                  maxStock: product.stock ?? 99,
+                  stock: product.stock ?? 99,
                   freeShipping: isFreeShipping,
                   storeId: product.store_id,
                   storeName: product.stores?.name ?? "HS Digital",
