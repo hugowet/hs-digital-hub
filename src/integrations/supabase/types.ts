@@ -874,6 +874,7 @@ export type Database = {
       }
       products: {
         Row: {
+          catalog_search_text: string
           category: string
           compare_at_price: number | null
           created_at: string
@@ -897,6 +898,8 @@ export type Database = {
           supplier: string | null
           supplier_cost: number | null
           supplier_cost_currency: string | null
+          supplier_details_original: Json | null
+          supplier_details_synced_at: string | null
           supplier_exchange_rate: number | null
           supplier_exchange_rate_at: string | null
           supplier_last_synced_at: string | null
@@ -911,6 +914,7 @@ export type Database = {
           width_cm: number | null
         }
         Insert: {
+          catalog_search_text?: string
           category?: string
           compare_at_price?: number | null
           created_at?: string
@@ -934,6 +938,8 @@ export type Database = {
           supplier?: string | null
           supplier_cost?: number | null
           supplier_cost_currency?: string | null
+          supplier_details_original?: Json | null
+          supplier_details_synced_at?: string | null
           supplier_exchange_rate?: number | null
           supplier_exchange_rate_at?: string | null
           supplier_last_synced_at?: string | null
@@ -948,6 +954,7 @@ export type Database = {
           width_cm?: number | null
         }
         Update: {
+          catalog_search_text?: string
           category?: string
           compare_at_price?: number | null
           created_at?: string
@@ -971,6 +978,8 @@ export type Database = {
           supplier?: string | null
           supplier_cost?: number | null
           supplier_cost_currency?: string | null
+          supplier_details_original?: Json | null
+          supplier_details_synced_at?: string | null
           supplier_exchange_rate?: number | null
           supplier_exchange_rate_at?: string | null
           supplier_last_synced_at?: string | null
@@ -1267,6 +1276,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "supplier_catalog_categories_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_content_jobs: {
+        Row: {
+          id: string
+          lock_expires_at: string | null
+          lock_token: string | null
+          operation: string
+          pause_reason: string | null
+          processed: number
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          lock_expires_at?: string | null
+          lock_token?: string | null
+          operation: string
+          pause_reason?: string | null
+          processed?: number
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          lock_expires_at?: string | null
+          lock_token?: string | null
+          operation?: string
+          pause_reason?: string | null
+          processed?: number
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_content_jobs_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -1807,6 +1860,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      normalize_catalog_text: { Args: { value: string }; Returns: string }
       play_daily_game: {
         Args: { _game_type: string }
         Returns: {
