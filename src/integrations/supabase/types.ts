@@ -595,6 +595,8 @@ export type Database = {
           payment_provider: string | null
           payment_reference: string | null
           payment_status: string
+          payout_released_at: string | null
+          payout_status: string
           platform_fee: number
           seller_amount: number
           shipping_address: Json | null
@@ -611,6 +613,8 @@ export type Database = {
           payment_provider?: string | null
           payment_reference?: string | null
           payment_status?: string
+          payout_released_at?: string | null
+          payout_status?: string
           platform_fee?: number
           seller_amount?: number
           shipping_address?: Json | null
@@ -627,6 +631,8 @@ export type Database = {
           payment_provider?: string | null
           payment_reference?: string | null
           payment_status?: string
+          payout_released_at?: string | null
+          payout_status?: string
           platform_fee?: number
           seller_amount?: number
           shipping_address?: Json | null
@@ -1777,6 +1783,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      approve_seller_store: { Args: { _store_id: string }; Returns: undefined }
       cancel_unpaid_marketplace_order: {
         Args: { _order_id: string }
         Returns: undefined

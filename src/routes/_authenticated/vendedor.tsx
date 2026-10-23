@@ -207,11 +207,38 @@ function SellerCenterPage() {
   if (!store) {
     return (
       <Shell>
+        <SellerRequestForm
+          userId={userId}
+          onCreated={() => qc.invalidateQueries({ queryKey: ["seller-store", userId] })}
+        />
+      </Shell>
+    );
+  }
+
+  if (store.status === "pending") {
+    return (
+      <Shell>
         <div className="mx-auto max-w-md py-12 text-center">
-          <Package className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h1 className="mt-4 text-xl font-bold">Nenhuma loja encontrada</h1>
+          <Clock className="mx-auto h-12 w-12 text-primary" />
+          <h1 className="mt-4 text-xl font-bold">Solicitação em análise</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Você ainda não tem uma loja cadastrada como vendedor.
+            Sua loja <strong>{store.name}</strong> foi enviada para aprovação. Assim que o administrador aprovar,
+            você já pode cadastrar produtos e vender com a mesma conta.
+          </p>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (store.status === "rejected") {
+    return (
+      <Shell>
+        <div className="mx-auto max-w-md py-12 text-center">
+          <XCircle className="mx-auto h-12 w-12 text-destructive" />
+          <h1 className="mt-4 text-xl font-bold">Solicitação não aprovada</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            A solicitação da loja <strong>{store.name}</strong> não foi aprovada desta vez. Fale com o suporte da HS
+            Digital para mais detalhes.
           </p>
         </div>
       </Shell>
@@ -807,18 +834,268 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
   );
 }
 
-function SellerOrdersTab({ storeId }: { storeId: string }) {
+function SellerRequestForm({ userId, onCreated }: { userId: string | null; onCreated: () => void }) {
+  const [storeName, setStoreName] = useState("");
+  const [storeDescription, setStoreDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId) return;
+    const name = storeName.trim();
+    if (name.length < 2) {
+      toast.error("Informe o nome da sua loja.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const slug = `${name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${Date.now().toString(36)}`;
+      const { error } = await supabase.from("stores").insert({
+        owner_id: userId,
+        name,
+        slug,
+        description: storeDescription.trim() || null,
+        status: "pending",
+      });
+      if (error) throw error;
+      toast.success("Solicitação enviada! Aguarde a aprovação do administrador.");
+      onCreated();
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível enviar a solicitação.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <div className="surface-card p-5 text-sm text-muted-foreground">
-      Nenhum pedido recente registrado.
+    <div className="mx-auto max-w-md py-12">
+      <div className="text-center">
+        <ShoppingBag className="mx-auto h-12 w-12 text-primary" />
+        <h1 className="mt-4 text-xl font-bold">Venda na HS Digital</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Você não precisa de outra conta: com o mesmo e-mail você compra e vende. Envie sua solicitação e, após a
+          aprovação do administrador, seu painel de vendedor é liberado.
+        </p>
+      </div>
+      <form onSubmit={handleSubmit} className="surface-card mt-6 space-y-4 p-6">
+        <div>
+          <Label htmlFor="store-name">Nome da loja</Label>
+          <Input
+            id="store-name"
+            required
+            minLength={2}
+            maxLength={80}
+            value={storeName}
+            onChange={(e) => setStoreName(e.target.value)}
+            className="mt-1"
+            placeholder="Ex.: Loja do Hugo"
+          />
+        </div>
+        <div>
+          <Label htmlFor="store-description">O que você vai vender? (opcional)</Label>
+          <Textarea
+            id="store-description"
+            maxLength={300}
+            value={storeDescription}
+            onChange={(e) => setStoreDescription(e.target.value)}
+            className="mt-1"
+            placeholder="Ex.: eletrônicos, acessórios, produtos digitais..."
+          />
+        </div>
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? "Enviando..." : "Solicitar aprovação para vender"}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+const DELIVERY_STEPS = [
+  ["confirmed", "Pedido confirmado"],
+  ["preparing", "Em separação"],
+  ["shipped", "Enviado"],
+  ["out_for_delivery", "Saiu para entrega"],
+  ["delivered", "Entregue"],
+] as const;
+
+function SellerOrdersTab({ storeId }: { storeId: string }) {
+  const qc = useQueryClient();
+  const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+
+  const { data: orders = [], isLoading } = useQuery({
+    queryKey: ["store-orders", storeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id,status,payment_status,payout_status,total,created_at,order_items!inner(store_id,title,quantity,unit_price,seller_amount)")
+        .eq("order_items.store_id", storeId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: trackingEvents = [] } = useQuery({
+    enabled: orders.length > 0,
+    queryKey: ["store-orders-tracking", storeId, orders.map((o: any) => o.id).join(",")],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_tracking_events")
+        .select("order_id,status,created_at")
+        .in("order_id", orders.map((o: any) => o.id))
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const currentStep = (orderId: string) => {
+    const evt = trackingEvents.find((e: any) => e.order_id === orderId);
+    return evt?.status ?? "confirmed";
+  };
+
+  const handleStepChange = async (orderId: string, step: string) => {
+    setUpdatingOrder(orderId);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const label = DELIVERY_STEPS.find(([value]) => value === step)?.[1] ?? step;
+      const { error } = await supabase.from("order_tracking_events").insert({
+        order_id: orderId,
+        status: step,
+        note: `Status atualizado pelo vendedor: ${label}`,
+        created_by: userData.user?.id,
+      });
+      if (error) throw error;
+      toast.success(
+        step === "delivered"
+          ? "Pedido marcado como entregue. O valor da venda foi liberado para você."
+          : "Status de entrega atualizado.",
+      );
+      await qc.invalidateQueries({ queryKey: ["store-orders-tracking", storeId] });
+      await qc.invalidateQueries({ queryKey: ["store-orders", storeId] });
+      await qc.invalidateQueries({ queryKey: ["store-payouts", storeId] });
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível atualizar o status.");
+    } finally {
+      setUpdatingOrder(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-32 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className="surface-card p-5 text-sm text-muted-foreground">
+        Nenhum pedido recente registrado.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {orders.map((order: any) => {
+        const step = currentStep(order.id);
+        const storeItems = order.order_items.filter((i: any) => i.store_id === storeId);
+        const storeTotal = storeItems.reduce((s: number, i: any) => s + Number(i.seller_amount), 0);
+        return (
+          <div key={order.id} className="surface-card p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold">Pedido {order.id.slice(0, 8).toUpperCase()}</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(order.created_at).toLocaleDateString("pt-BR")} ·{" "}
+                  {order.payment_status === "paid" ? "Pago" : "Aguardando pagamento"} ·{" "}
+                  {order.payout_status === "released" ? (
+                    <span className="font-medium text-success">Repasse liberado</span>
+                  ) : (
+                    <span className="font-medium text-amber-600">Repasse bloqueado até a entrega</span>
+                  )}
+                </p>
+              </div>
+              <p className="text-lg font-bold">{brl(storeTotal)}</p>
+            </div>
+            <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
+              {storeItems.map((item: any, idx: number) => (
+                <li key={idx}>
+                  {item.quantity}x {item.title} — {brl(Number(item.unit_price))}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Label className="text-sm">Etapa da entrega:</Label>
+              <select
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={step}
+                disabled={updatingOrder === order.id || order.payment_status !== "paid"}
+                onChange={(e) => handleStepChange(order.id, e.target.value)}
+              >
+                {DELIVERY_STEPS.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              {order.payment_status !== "paid" && (
+                <span className="text-xs text-muted-foreground">Disponível após o pagamento.</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 function SellerSalesManager({ storeId, transactions }: { storeId: string; transactions: any[] }) {
+  const { data: payoutOrders = [] } = useQuery({
+    queryKey: ["store-payouts", storeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id,status,payment_status,payout_status,payout_released_at,order_items!inner(store_id,seller_amount)")
+        .eq("order_items.store_id", storeId)
+        .eq("payment_status", "paid");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const held = payoutOrders
+    .filter((o: any) => o.payout_status === "held")
+    .reduce((sum: number, o: any) => sum + o.order_items.reduce((s: number, i: any) => s + Number(i.seller_amount), 0), 0);
+  const released = payoutOrders
+    .filter((o: any) => o.payout_status === "released")
+    .reduce((sum: number, o: any) => sum + o.order_items.reduce((s: number, i: any) => s + Number(i.seller_amount), 0), 0);
+
   return (
-    <div className="surface-card p-5 text-sm text-muted-foreground">
-      Total de transações registradas: {transactions.length}
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="surface-card p-5">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Clock className="h-4 w-4" /> A liberar (aguardando entrega)
+          </div>
+          <p className="mt-2 text-2xl font-bold text-foreground">{brl(held)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            O valor de cada venda é liberado quando o pedido chega ao cliente sem reclamação.
+          </p>
+        </div>
+        <div className="surface-card p-5">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <CheckCircle2 className="h-4 w-4 text-success" /> Liberado para você
+          </div>
+          <p className="mt-2 text-2xl font-bold text-foreground">{brl(released)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Vendas entregues e confirmadas.</p>
+        </div>
+      </div>
+      <div className="surface-card p-5 text-sm text-muted-foreground">
+        Total de transações registradas: {transactions.length}
+      </div>
     </div>
   );
 }

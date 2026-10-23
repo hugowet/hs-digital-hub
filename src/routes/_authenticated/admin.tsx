@@ -494,15 +494,12 @@ function AdminPage() {
                           <Button
                             size="sm"
                             onClick={async () => {
-                              const { error } = await supabase
-                                .from("stores")
-                                .update({ status: "approved" })
-                                .eq("id", s.id);
+                              const { error } = await supabase.rpc("approve_seller_store", { _store_id: s.id });
                               if (error) {
                                 toast.error(error.message);
                                 return;
                               }
-                              toast.success("Loja aprovada");
+                              toast.success("Loja aprovada e acesso de vendedor liberado");
                               qc.invalidateQueries({ queryKey: ["all-stores"] });
                             }}
                           >

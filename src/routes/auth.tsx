@@ -36,7 +36,6 @@ function AuthPage() {
   const { reason, redirect: redirectUrl } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [fullName, setFullName] = useState("");
-  const [accountType, setAccountType] = useState<"buyer" | "seller">("buyer");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,7 +57,7 @@ function AuthPage() {
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { full_name: fullName.trim(), account_type: accountType },
+            data: { full_name: fullName.trim(), account_type: "buyer" },
           },
         });
         if (error) throw error;
@@ -68,7 +67,7 @@ function AuthPage() {
           return;
         }
         toast.success("Conta criada com sucesso!");
-        navigate({ to: (redirectUrl as any) || (accountType === "seller" ? "/vendedor" : "/") });
+        navigate({ to: (redirectUrl as any) || "/" });
         return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -137,32 +136,6 @@ function AuthPage() {
                       className="mt-1"
                     />
                   </div>
-                  <fieldset>
-                    <legend className="text-sm font-medium">Quero usar a HS Digital como</legend>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      {(
-                        [
-                          ["buyer", "Comprador"],
-                          ["seller", "Vendedor"],
-                        ] as const
-                      ).map(([value, label]) => (
-                        <label
-                          key={value}
-                          className={`cursor-pointer rounded-md border p-3 text-center text-sm font-medium ${accountType === value ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
-                        >
-                          <input
-                            type="radio"
-                            name="account-type"
-                            value={value}
-                            checked={accountType === value}
-                            onChange={() => setAccountType(value)}
-                            className="sr-only"
-                          />
-                          {label}
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
                 </>
               )}
               <div>
