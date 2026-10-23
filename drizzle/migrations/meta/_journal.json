@@ -113,6 +113,13 @@
       "when": 1792784884585,
       "tag": "0015_primeira_compra_frete_embutido_mais_dez",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792785206093,
+      "tag": "0016_frete_gratis_embutido_todas_as_compras",
+      "breakpoints": true
     }
   ]
 }
