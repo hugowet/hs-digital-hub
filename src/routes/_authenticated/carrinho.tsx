@@ -628,23 +628,29 @@ function CartPage() {
 
                 <div className="flex justify-between text-muted-foreground">
                   <span>Frete</span>
-                  {valorFreteCobrado > 0 ? (
+                  {subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? (
                     <span className="flex items-center gap-1.5">
                       <span className="line-through opacity-60">{brl(valorFreteCobrado)}</span>
                       <span className="font-bold text-[#00a650]">Grátis 🎉</span>
                     </span>
                   ) : (
-                    <span className="font-bold text-[#00a650]">
-                      {quotes.length === 0 ? "A calcular" : "Grátis"}
+                    <span className={valorFreteCobrado === 0 && quotes.length > 0 ? "font-bold text-[#00a650]" : ""}>
+                      {quotes.length === 0 ? "A calcular" : valorFreteCobrado === 0 ? "Grátis" : brl(valorFreteCobrado)}
                     </span>
                   )}
                 </div>
 
-                {valorFreteCobrado > 0 && (
+                {subtotalProdutos >= 89.9 && valorFreteCobrado > 0 && (
                   <p className="text-[10px] font-semibold text-[#00a650]">
                     {firstPurchaseEligible
                       ? "Frete grátis na sua primeira compra — já incluso no preço do produto."
                       : "Frete grátis — já incluso no preço do produto."}
+                  </p>
+                )}
+
+                {subtotalProdutos < 89.9 && subtotalProdutos > 0 && (
+                  <p className="text-[10px] font-semibold text-muted-foreground">
+                    Faltam {brl(Math.round((89.9 - subtotalProdutos) * 100) / 100)} para você ganhar frete grátis 🚚
                   </p>
                 )}
 
