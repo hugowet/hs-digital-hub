@@ -33,18 +33,15 @@ export function IntroAnimation() {
 
     window.sessionStorage.setItem(INTRO_SESSION_KEY, "true");
     setVisible(true);
-    const timer = window.setTimeout(() => setStep(0), 3_000);
-
-    return () => window.clearTimeout(timer);
   }, []);
 
   const highlights = HIGHLIGHTS.filter((item) => !item.buyerOnly || isBuyer);
   useEffect(() => {
-    if (!visible || step < 0) return;
+    if (!visible) return;
     const timer = window.setTimeout(() => {
       if (step >= highlights.length - 1) setVisible(false);
       else setStep((previous) => previous + 1);
-    }, 2_600);
+    }, step < 0 ? 3_000 : 2_600);
     return () => window.clearTimeout(timer);
   }, [visible, step, highlights.length]);
 
