@@ -7,11 +7,24 @@ export function cjPlainText(value: unknown): string {
     .replace(/\n[ \t]+/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+function listText(value: unknown): string {
+  if (Array.isArray(value)) return value.map(String).join(", ");
+  if (typeof value === "string" && value.trim().startsWith("[")) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.map(String).join(", ");
+    } catch {
+      /* keep original text */
+    }
+  }
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
 export function mapCjDetails(product: Record<string, unknown>) {
   const description = cjPlainText(product.description ?? product.productDescription);
   const specifications: Record<string, string> = {};
   const fields: Record<string, string> = {
-    productMaterial: "Material", productMaterialEn: "Material",
+    productMaterial: "Material", productMaterialEn: "Material", materialNameEn: "Material",
     productWeight: "Peso informado pela CJ (g)", productUnit: "Unidade",
     packingWeight: "Peso com embalagem (g)", productType: "Tipo",
     productKeyEn: "Características", packingNameEn: "Embalagem",
@@ -21,7 +34,12 @@ export function mapCjDetails(product: Record<string, unknown>) {
   for (const [field, label] of Object.entries(fields)) {
     const value = product[field];
     if (value !== null && value !== undefined && value !== "")
-      specifications[label] = cjPlainText(typeof value === "string" ? value : JSON.stringify(value));
+      specifications[label] = cjPlainText(listText(value));
+  }
+  // Official CJ descriptions usually list technical data as "Label: value" lines.
+  for (const line of description.split("\n")) {
+    const match = line.match(/^\s*([^:]{2,40}):\s*(.{1,200})$/);
+    if (match?.[1] && match[2]?.trim()) specifications[match[1].trim()] = match[2].trim();
   }
   const extra = product.specifications ?? product.productSpecifications;
   if (extra && typeof extra === "object" && !Array.isArray(extra)) {
