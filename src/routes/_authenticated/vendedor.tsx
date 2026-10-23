@@ -155,7 +155,6 @@ function SellerCenterPage() {
 
   const [activeTab, setActiveTab] = useState("orders");
 
-  // Abre o modal de edição carregando os dados do produto selecionado
   const handleOpenEdit = (p: any) => {
     setEditingProduct(p);
     setEditTitle(p.title || "");
@@ -167,7 +166,6 @@ function SellerCenterPage() {
     setEditDescription(p.description || "");
   };
 
-  // Salva a edição do produto
   const handleSaveEdit = async () => {
     if (!editingProduct) return;
     if (!editTitle.trim()) return toast.error("O título do produto é obrigatório.");
@@ -240,6 +238,7 @@ function SellerCenterPage() {
           <TabsTrigger value="products">Meus produtos</TabsTrigger>
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e extrato</TabsTrigger>
+          <TabsTrigger value="mercadopago">Mercado Pago</TabsTrigger>
           <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
           <TabsTrigger value="amazon-affiliate">Importador Amazon</TabsTrigger>
         </TabsList>
@@ -259,41 +258,34 @@ function SellerCenterPage() {
                   key={p.id}
                   className="border border-border p-3 rounded-lg flex justify-between items-center bg-card shadow-sm"
                 >
-                  <div className="pr-2 min-w-0 flex-1">
-                    <p className="font-medium text-sm line-clamp-1">{p.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      <span className="font-semibold text-foreground">{brl(Number(p.price))}</span>
-                      {p.supplier_cost ? ` (Custo: ${brl(Number(p.supplier_cost))})` : ""} · Estoque: {p.stock}
-                    </p>
-                    <span className="mt-1 inline-flex rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                      {p.supplier === "amazon" ? "Amazon Oficial" : p.supplier ? "Dropshipping" : "Produto próprio"}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    {p.image_url ? (
+                      <img
+                        src={p.image_url}
+                        alt={p.title}
+                        className="w-12 h-12 object-cover rounded border"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
+                        <Package className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-sm line-clamp-1">{p.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {brl(p.price)} · Estoque: {p.stock ?? 0}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleOpenEdit(p)}
-                      title="Editar produto"
-                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      title="Excluir produto"
-                      onClick={async () => {
-                        if (!confirm("Remover este produto permanentemente?")) return;
-                        await supabase.from("products").delete().eq("id", p.id);
-                        toast.success("Produto removido.");
-                        qc.invalidateQueries({ queryKey: ["store-products"] });
-                      }}
-                      className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 h-8 text-xs font-semibold"
+                    onClick={() => handleOpenEdit(p)}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    Editar
+                  </Button>
                 </div>
               ))}
               {products.length === 0 && (
@@ -322,6 +314,14 @@ function SellerCenterPage() {
         {/* Aba de Vendas e Extrato */}
         <TabsContent value="sales" className="pt-4">
           <SellerSalesManager storeId={store.id} transactions={transactions} />
+        </TabsContent>
+
+        {/* Aba Mercado Pago da Loja */}
+        <TabsContent value="mercadopago" className="pt-4">
+          <SellerMercadoPagoTab
+            store={store}
+            onRefresh={() => qc.invalidateQueries({ queryKey: ["seller-store"] })}
+          />
         </TabsContent>
 
         {/* Aba Fornecedores */}
@@ -473,6 +473,77 @@ function SellerCenterPage() {
   );
 }
 
+function SellerMercadoPagoTab({ store, onRefresh }: { store: any; onRefresh: () => void }) {
+  const startConnection = useServerFn(startMercadoPagoConnection);
+  const [connecting, setConnecting] = useState(false);
+
+  const isConnected = store.mercado_pago_status === "connected";
+
+  const handleConnect = async () => {
+    try {
+      setConnecting(true);
+      const res = await startConnection({
+        storeId: store.id,
+        origin: window.location.origin,
+      });
+      if (res?.url) {
+        window.location.href = res.url;
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao conectar conta Mercado Pago.");
+      setConnecting(false);
+    }
+  };
+
+  return (
+    <div className="surface-card p-6 max-w-2xl space-y-4">
+      <div className="flex items-center gap-3">
+        <WalletCards className="h-7 w-7 text-primary" />
+        <div>
+          <h2 className="text-lg font-bold">Carteira Mercado Pago</h2>
+          <p className="text-sm text-muted-foreground">
+            Conecte sua conta do Mercado Pago para receber pagamentos e repasses das suas vendas.
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border p-4 bg-muted/30">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Status da Conexão:</span>
+          {isConnected ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-500">
+              <CheckCircle2 className="h-4 w-4" />
+              Conta Conectada
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-500">
+              <AlertCircle className="h-4 w-4" />
+              Não Conectada
+            </span>
+          )}
+        </div>
+
+        {!isConnected && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Atenção: Enquanto sua carteira não estiver conectada, compradores não conseguirão finalizar pedidos de itens da sua loja.
+          </p>
+        )}
+      </div>
+
+      <div className="pt-2">
+        <Button onClick={handleConnect} disabled={connecting} className="gap-2">
+          <ExternalLink className="h-4 w-4" />
+          {connecting
+            ? "Redirecionando..."
+            : isConnected
+              ? "Reconectar conta Mercado Pago"
+              : "Conectar minha conta Mercado Pago"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () => void }) {
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
@@ -498,18 +569,17 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           media_type: "image" as const,
           url,
           is_primary: i === 0,
-          sort_order: i,
         }));
 
       await createSellerProduct({
         data: {
-          store_id: storeId,
-          title,
-          description: description || undefined,
+          storeId,
+          title: title.trim(),
           price: parsedPrice,
-          supplier_cost: parsedCostPrice,
+          costPrice: parsedCostPrice,
           stock: parsedStock,
           category,
+          description: description.trim(),
           media,
         },
       });
@@ -523,7 +593,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       setImageUrls("");
       onCreated();
     } catch (err: any) {
-      toast.error(err.message || "Erro ao cadastrar produto");
+      toast.error(err.message || "Erro ao cadastrar produto.");
     } finally {
       setLoading(false);
     }
@@ -538,7 +608,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Ex: Camiseta Básica Algodão"
+          placeholder="Ex: Tênis Esportivo Casual"
         />
       </div>
 
