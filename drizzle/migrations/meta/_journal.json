@@ -134,6 +134,13 @@
       "when": 1792788530029,
       "tag": "0018_daily_balanced_storefront",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792788586631,
+      "tag": "0019_verified_storefront_sales_window",
+      "breakpoints": true
     }
   ]
 }
