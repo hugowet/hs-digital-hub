@@ -842,15 +842,8 @@ export async function processCjCatalogBatch(
 
 export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginPercent: number) {
   const exchange = await getUsdBrlRate(supabaseAdmin, storeId);
-  const { data: repriced, error: repriceError } = await supabaseAdmin.rpc(
-    "reprice_cj_products_brl",
-    {
-      _store_id: storeId,
-      _usd_brl_rate: exchange.rate,
-      _margin_percent: marginPercent,
-    },
-  );
-  if (repriceError) throw repriceError;
+  const { refreshCjPrices } = await import("./cj-price-refresh.server");
+  const refreshed = await refreshCjPrices(supabaseAdmin, storeId);
   const { data: job } = await supabaseAdmin
     .from("supplier_import_jobs")
     .select("id,status")
@@ -866,7 +859,7 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
       .eq("id", job.id);
   }
   const batch = await processCjCatalogBatch(supabaseAdmin, storeId, marginPercent, exchange);
-  return { ...batch, repriced: Number(repriced ?? 0), usdBrlRate: exchange.rate };
+  return { ...batch, repriced: "processed" in refreshed ? refreshed.processed : 0, usdBrlRate: exchange.rate };
 }
 
 export async function syncCjStock(supabaseAdmin: any, storeId: string) {
