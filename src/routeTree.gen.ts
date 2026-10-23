@@ -31,6 +31,7 @@ import { Route as AuthenticatedPedidoOrderIdRouteImport } from './routes/_authen
 import { Route as ApiPublicMelhorEnvioOauthCallbackRouteImport } from './routes/api/public/melhor-envio/oauth-callback'
 import { Route as ApiPublicMercadoPagoOauthCallbackRouteImport } from './routes/api/public/mercado-pago/oauth-callback'
 import { Route as ApiPublicMercadoPagoWebhookRouteImport } from './routes/api/public/mercado-pago/webhook'
+import { Route as ApiPublicSuppliersContentRouteImport } from './routes/api/public/suppliers/content'
 import { Route as ApiPublicSuppliersProcessRouteImport } from './routes/api/public/suppliers/process'
 import { Route as ApiPublicSuppliersTranslateRouteImport } from './routes/api/public/suppliers/translate'
 
@@ -148,6 +149,12 @@ const ApiPublicMercadoPagoWebhookRoute =
     path: '/api/public/mercado-pago/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicSuppliersContentRoute =
+  ApiPublicSuppliersContentRouteImport.update({
+    id: '/api/public/suppliers/content',
+    path: '/api/public/suppliers/content',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicSuppliersProcessRoute =
   ApiPublicSuppliersProcessRouteImport.update({
     id: '/api/public/suppliers/process',
@@ -183,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
+  '/api/public/suppliers/content': typeof ApiPublicSuppliersContentRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
   '/api/public/suppliers/translate': typeof ApiPublicSuppliersTranslateRoute
 }
@@ -208,6 +216,7 @@ export interface FileRoutesByTo {
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
+  '/api/public/suppliers/content': typeof ApiPublicSuppliersContentRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
   '/api/public/suppliers/translate': typeof ApiPublicSuppliersTranslateRoute
 }
@@ -235,6 +244,7 @@ export interface FileRoutesById {
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
+  '/api/public/suppliers/content': typeof ApiPublicSuppliersContentRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
   '/api/public/suppliers/translate': typeof ApiPublicSuppliersTranslateRoute
 }
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
+    | '/api/public/suppliers/content'
     | '/api/public/suppliers/process'
     | '/api/public/suppliers/translate'
   fileRoutesByTo: FileRoutesByTo
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
+    | '/api/public/suppliers/content'
     | '/api/public/suppliers/process'
     | '/api/public/suppliers/translate'
   id:
@@ -313,6 +325,7 @@ export interface FileRouteTypes {
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
+    | '/api/public/suppliers/content'
     | '/api/public/suppliers/process'
     | '/api/public/suppliers/translate'
   fileRoutesById: FileRoutesById
@@ -331,6 +344,7 @@ export interface RootRouteChildren {
   ApiPublicMelhorEnvioOauthCallbackRoute: typeof ApiPublicMelhorEnvioOauthCallbackRoute
   ApiPublicMercadoPagoOauthCallbackRoute: typeof ApiPublicMercadoPagoOauthCallbackRoute
   ApiPublicMercadoPagoWebhookRoute: typeof ApiPublicMercadoPagoWebhookRoute
+  ApiPublicSuppliersContentRoute: typeof ApiPublicSuppliersContentRoute
   ApiPublicSuppliersProcessRoute: typeof ApiPublicSuppliersProcessRoute
   ApiPublicSuppliersTranslateRoute: typeof ApiPublicSuppliersTranslateRoute
 }
@@ -491,6 +505,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMercadoPagoWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/suppliers/content': {
+      id: '/api/public/suppliers/content'
+      path: '/api/public/suppliers/content'
+      fullPath: '/api/public/suppliers/content'
+      preLoaderRoute: typeof ApiPublicSuppliersContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/suppliers/process': {
       id: '/api/public/suppliers/process'
       path: '/api/public/suppliers/process'
@@ -551,6 +572,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMercadoPagoOauthCallbackRoute:
     ApiPublicMercadoPagoOauthCallbackRoute,
   ApiPublicMercadoPagoWebhookRoute: ApiPublicMercadoPagoWebhookRoute,
+  ApiPublicSuppliersContentRoute: ApiPublicSuppliersContentRoute,
   ApiPublicSuppliersProcessRoute: ApiPublicSuppliersProcessRoute,
   ApiPublicSuppliersTranslateRoute: ApiPublicSuppliersTranslateRoute,
 }
