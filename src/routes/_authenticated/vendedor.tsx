@@ -207,11 +207,38 @@ function SellerCenterPage() {
   if (!store) {
     return (
       <Shell>
+        <SellerRequestForm
+          userId={userId}
+          onCreated={() => qc.invalidateQueries({ queryKey: ["seller-store", userId] })}
+        />
+      </Shell>
+    );
+  }
+
+  if (store.status === "pending") {
+    return (
+      <Shell>
         <div className="mx-auto max-w-md py-12 text-center">
-          <Package className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h1 className="mt-4 text-xl font-bold">Nenhuma loja encontrada</h1>
+          <Clock className="mx-auto h-12 w-12 text-primary" />
+          <h1 className="mt-4 text-xl font-bold">Solicitação em análise</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Você ainda não tem uma loja cadastrada como vendedor.
+            Sua loja <strong>{store.name}</strong> foi enviada para aprovação. Assim que o administrador aprovar,
+            você já pode cadastrar produtos e vender com a mesma conta.
+          </p>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (store.status === "rejected") {
+    return (
+      <Shell>
+        <div className="mx-auto max-w-md py-12 text-center">
+          <XCircle className="mx-auto h-12 w-12 text-destructive" />
+          <h1 className="mt-4 text-xl font-bold">Solicitação não aprovada</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            A solicitação da loja <strong>{store.name}</strong> não foi aprovada desta vez. Fale com o suporte da HS
+            Digital para mais detalhes.
           </p>
         </div>
       </Shell>
