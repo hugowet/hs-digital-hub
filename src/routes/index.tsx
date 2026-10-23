@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
+import { storefrontDay } from "@/lib/storefront-selection";
 import { supabase } from "@/integrations/supabase/client";
 import { useRadio } from "@/lib/radio-context";
 
@@ -77,7 +78,7 @@ const resolveSearch = (search: HomeSearch) => ({
 
 const catalogQueryOptions = (search: HomeSearch) =>
   infiniteQueryOptions({
-    queryKey: ["catalog", search],
+    queryKey: ["catalog", search, storefrontDay()],
     queryFn: ({ pageParam }) => {
       const resolved = resolveSearch(search);
       return fetchCatalogPage({
@@ -95,6 +96,7 @@ const catalogQueryOptions = (search: HomeSearch) =>
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
     staleTime: 5 * 60_000,
+    refetchInterval: 5 * 60_000,
     gcTime: 10 * 60_000,
   });
 
@@ -455,7 +457,7 @@ export function Home() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">
-                {activeCategory ? activeCategory.label : "Todas as ofertas"}
+                {activeCategory ? activeCategory.label : search.q ? "Resultados da busca" : "Seleção do dia"}
               </h2>
               <p className="text-xs text-gray-500">
                 {filtered.length} produto{filtered.length === 1 ? "" : "s"} encontrado{filtered.length === 1 ? "" : "s"}

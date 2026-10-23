@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import type { Product, ProductMedia } from "@/lib/catalog";
 import { catalogSearchGroups } from "@/lib/catalog-search";
+import { usesDailySelection } from "@/lib/storefront-selection";
 
 const MEDIA_BUCKET = "product-images";
 
@@ -99,6 +100,26 @@ async function createPublicClient() {
 async function queryCatalog(input: CatalogInput) {
   const supabasePublic = await createPublicClient();
 
+  if (usesDailySelection(input)) {
+    const from = input.page * input.pageSize;
+    const { data: selection, error: selectionError } = await supabasePublic.rpc("daily_storefront_selection", {
+      p_offset: from,
+      p_limit: input.pageSize,
+    });
+    if (selectionError) throw selectionError;
+    const daily = z.object({ ids: z.array(z.string().uuid()), total: z.number(), day: z.string() }).parse(selection);
+    if (daily.ids.length === 0) return { products: [] as Product[], total: daily.total, nextPage: null };
+    const { data, error } = await supabasePublic.from("products").select(projection).eq("is_active", true).in("id", daily.ids);
+    if (error) throw error;
+    const byId = new Map(((data ?? []) as unknown as Product[]).map((product) => [product.id, product]));
+    const ordered = daily.ids.flatMap((id) => {
+      const product = byId.get(id);
+      return product ? [product] : [];
+    });
+    const products = await signProductBatch(ordered);
+    return { products, total: daily.total, nextPage: from + daily.ids.length < daily.total ? input.page + 1 : null };
+  }
+
   let query = supabasePublic.from("products").select(projection, { count: "exact" }).eq("is_active", true);
 
   for (const terms of catalogSearchGroups(input.query)) {
@@ -123,35 +144,7 @@ async function queryCatalog(input: CatalogInput) {
   const { data, error, count } = await query.range(from, from + input.pageSize - 1);
   if (error) throw error;
 
-  let rawProducts = (data ?? []) as unknown as Product[];
-
-  if (!input.category && input.sort === "popular" && rawProducts.length > 0) {
-    const buckets = new Map<string, Product[]>();
-    for (const p of rawProducts) {
-      const cat = p.category || "geral";
-      if (!buckets.has(cat)) buckets.set(cat, []);
-      const bucket = buckets.get(cat);
-      if (bucket) bucket.push(p);
-    }
-
-    const diversified: Product[] = [];
-    const bucketArrays = Array.from(buckets.values());
-    let depth = 0;
-    let hasMore = true;
-
-    while (hasMore) {
-      hasMore = false;
-      for (const bucket of bucketArrays) {
-        if (depth < bucket.length) {
-          diversified.push(bucket[depth]);
-          hasMore = true;
-        }
-      }
-      depth++;
-    }
-    rawProducts = diversified;
-  }
-
+  const rawProducts = (data ?? []) as unknown as Product[];
   const products = await signProductBatch(rawProducts);
   const total = count ?? products.length;
   return { products, total, nextPage: from + products.length < total ? input.page + 1 : null };

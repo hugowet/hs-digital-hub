@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Vitrine diária
+- [x] Renovar diariamente a seleção de Todos, equilibrando categorias e priorizando vendas reais.
+- [x] Validar seleção, paginação e preservação da busca e dos filtros: 12 categorias, mudança diária e páginas sem repetição; cinco testes passaram.
+
 ## Ajustes atuais do catálogo CJ
 - [x] Mostrar total real de produtos CJ na aba Fornecedores (10.754, validado na loja JJ Kuster).
 - [x] Melhorar busca por palavras, acentos e nomes de produtos (testes e busca real por relógio).

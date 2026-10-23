@@ -1855,6 +1855,10 @@ export type Database = {
         }
         Returns: string
       }
+      daily_storefront_selection: {
+        Args: { p_day?: string; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
       finish_arcade_game: {
         Args: { _coins: number; _session_id: string }
         Returns: {
