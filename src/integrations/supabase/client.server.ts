@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
-const SUPABASE_URL = "https://zxzaehggrybqtxphogmi.supabase.co";
+const SUPABASE_URL = "https://vrsmsssmzxuwktrztgex.supabase.co";
 
 function createSupabaseAdminClient() {
   // Coloque a chave copiada diretamente entre as aspas abaixo:
