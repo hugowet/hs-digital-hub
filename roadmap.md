@@ -1,7 +1,7 @@
 # HS Digital — MVP
 
 ## Oferta do Clube HS
-- [ ] Tornar a oferta mais convincente com benefícios reais, mostrar frete grátis e seu valor mínimo sem expor a composição interna do preço e remover Disney/streaming e prioridade indisponíveis.
+- [x] Oferta mais convincente com benefícios reais; frete grátis com valor mínimo sem composição interna do preço; Disney/streaming e prioridade indisponíveis removidos. Página validada em computador e celular, sem alterar preços ou cobrança.
 
 ## Abertura e segurança das avaliações
 - [x] Acrescentar destaques de Clube HS, afiliados, jogos/cupons e Rádio HS após Lupi: sequência, botão entrar e uma vez por sessão validados no celular; jogos validados na conta compradora.
