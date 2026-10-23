@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { radioRecoveryDelay, shouldRestartRadio } from "./radio-recovery";
 
 export interface RadioTrack {
   title: string;
@@ -46,7 +47,7 @@ export const HS_MARKETING_SCRIPTS: RadioAnnouncement[] = [
     tag: "Clube VIP",
     title: "Clube HS por R$ 19,90",
     script:
-      "Atenção clientes da HS Digital! Você já conhece o Clube HS? Por apenas dezenove e noventa ao mês, você garante frete grátis na sua região, ouve nossa rádio sem anúncios e tem descontos VIP exclusivos em milhares de produtos. Acesse o menu Clube HS e assine agora mesmo!",
+      "Atenção clientes da HS Digital! Você já conhece o Clube HS? Por apenas dezenove e noventa ao mês, você garante frete grátis na sua região, ouve nossa rádio sem chamadas promocionais da HS Digital e tem descontos VIP exclusivos em milhares de produtos. Acesse o menu Clube HS e assine agora mesmo!",
   },
   {
     id: "jogos-premios",
@@ -166,6 +167,8 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const [currentAnnouncement, setCurrentAnnouncement] = useState<RadioAnnouncement | null>(null);
 
   const currentTrack = RADIO_BACKGROUND_TRACKS[currentTrackIndex];
+  const trackRef = useRef(currentTrack);
+  trackRef.current = currentTrack;
 
   // Validação Clube HS VIP
   const { data: userProfile } = useQuery({
@@ -186,6 +189,10 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   });
 
   const isVipClube = Boolean(userProfile?.is_clube_hs);
+
+  useEffect(() => {
+    if (isVipClube) { window.speechSynthesis?.cancel(); setIsLocutorSpeaking(false); }
+  }, [isVipClube]);
 
   // MediaSession para controle na tela de bloqueio e segundo plano
   const updateMediaSession = useCallback((track: RadioTrack) => {
@@ -213,48 +220,36 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Reconexão resiliente (auto-retry)
-  const reconnectStream = useCallback(() => {
-    if (!shouldBePlayingRef.current || !audioRef.current) return;
+  const clearRecovery = useCallback(() => {
+    if (reconnectTimeoutRef.current !== null) window.clearTimeout(reconnectTimeoutRef.current);
+    reconnectTimeoutRef.current = null;
+  }, []);
 
-    if (reconnectTimeoutRef.current) {
-      window.clearTimeout(reconnectTimeoutRef.current);
-    }
-
+  const reconnectStream = useCallback((buffering = false) => {
+    if (!shouldBePlayingRef.current || !audioRef.current || reconnectTimeoutRef.current !== null) return;
     setIsReconnecting(true);
-    retryCountRef.current += 1;
-
-    // Backoff leve entre 1s e 4s
-    const delay = Math.min(1000 * retryCountRef.current, 4000);
-
+    if (retryCountRef.current >= 8) { setIsPlaying(false); setIsReconnecting(false); shouldBePlayingRef.current = false; return; }
     reconnectTimeoutRef.current = window.setTimeout(() => {
-      if (!audioRef.current || !shouldBePlayingRef.current) return;
+      reconnectTimeoutRef.current = null;
+      const audio = audioRef.current;
+      if (!audio || !shouldBePlayingRef.current) return;
+      if (!shouldRestartRadio(audio, buffering)) { setIsReconnecting(false); return; }
+      retryCountRef.current += 1;
+      audio.src = trackRef.current.src;
+      audio.load();
+      audio.play().catch((err) => {
+        if (err.name === "NotAllowedError") { shouldBePlayingRef.current = false; setIsPlaying(false); setIsReconnecting(false); return; }
+        reconnectStream(false);
+      });
+    }, radioRecoveryDelay(retryCountRef.current, buffering));
+  }, []);
 
-      const streamBase = currentTrack.src;
-      const cacheBuster = streamBase.includes("?")
-        ? `${streamBase}&_hs_ts=${Date.now()}`
-        : `${streamBase}?_hs_ts=${Date.now()}`;
-
-      audioRef.current.src = cacheBuster;
-      audioRef.current.load();
-
-      audioRef.current
-        .play()
-        .then(() => {
-          setIsPlaying(true);
-          setIsReconnecting(false);
-          retryCountRef.current = 0;
-        })
-        .catch((err) => {
-          console.warn("Reconexão em andamento:", err);
-          if (retryCountRef.current < 8) {
-            reconnectStream();
-          } else {
-            setIsReconnecting(false);
-          }
-        });
-    }, delay);
-  }, [currentTrack]);
+  useEffect(() => () => {
+    clearRecovery();
+    shouldBePlayingRef.current = false;
+    audioRef.current?.pause();
+    window.speechSynthesis?.cancel();
+  }, [clearRecovery]);
 
   // Locutor Virtual com Audio Ducking
   const speakAnnouncement = useCallback(
@@ -303,12 +298,12 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     const targetIdx =
       typeof index === "number" ? index : (announcementIndex + 1) % HS_MARKETING_SCRIPTS.length;
     setAnnouncementIndex(targetIdx);
-    speakAnnouncement(HS_MARKETING_SCRIPTS[targetIdx]);
+    if (!isVipClube) speakAnnouncement(HS_MARKETING_SCRIPTS[targetIdx]);
   };
 
   // Locução periódica a cada 75s
   useEffect(() => {
-    if (!isPlaying || !locutorEnabled) return;
+    if (!isPlaying || !locutorEnabled || isVipClube) return;
 
     const interval = setInterval(() => {
       if (!isLocutorSpeaking && shouldBePlayingRef.current) {
@@ -321,19 +316,22 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     }, 75000);
 
     return () => clearInterval(interval);
-  }, [isPlaying, locutorEnabled, isLocutorSpeaking, speakAnnouncement]);
+  }, [isPlaying, locutorEnabled, isLocutorSpeaking, speakAnnouncement, isVipClube]);
 
   // Troca de faixa
   useEffect(() => {
     if (!audioRef.current) return;
 
+    clearRecovery();
+    retryCountRef.current = 0;
     audioRef.current.src = currentTrack.src;
+    audioRef.current.load();
     updateMediaSession(currentTrack);
 
     if (shouldBePlayingRef.current) {
-      audioRef.current.play().catch(() => reconnectStream());
+      audioRef.current.play().catch(() => reconnectStream(false));
     }
-  }, [currentTrackIndex, currentTrack, updateMediaSession, reconnectStream]);
+  }, [currentTrackIndex, currentTrack, updateMediaSession, reconnectStream, clearRecovery]);
 
   // Ajuste de volume contínuo
   useEffect(() => {
@@ -345,6 +343,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const play = () => {
     if (!audioRef.current) return;
     shouldBePlayingRef.current = true;
+    clearRecovery();
     retryCountRef.current = 0;
 
     audioRef.current
@@ -359,15 +358,14 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       })
       .catch((err) => {
         console.warn("Tentando iniciar stream com auto-retry:", err);
-        reconnectStream();
+        if (err.name === "NotAllowedError") { shouldBePlayingRef.current = false; setIsPlaying(false); return; }
+        reconnectStream(false);
       });
   };
 
   const pause = () => {
     shouldBePlayingRef.current = false;
-    if (reconnectTimeoutRef.current) {
-      window.clearTimeout(reconnectTimeoutRef.current);
-    }
+    clearRecovery();
     if (!audioRef.current) return;
     audioRef.current.pause();
     setIsPlaying(false);
@@ -403,8 +401,11 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   };
 
   const selectTrack = (index: number) => {
+    if (!RADIO_BACKGROUND_TRACKS[index]) return;
+    if (index === currentTrackIndex) { play(); return; }
+    shouldBePlayingRef.current = true;
+    clearRecovery();
     setCurrentTrackIndex(index);
-    play();
   };
 
   return (
@@ -448,14 +449,15 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
             setIsPlaying(false);
           }
         }}
+        onPlaying={() => { clearRecovery(); retryCountRef.current = 0; setIsPlaying(true); setIsReconnecting(false); }}
         onWaiting={() => {
-          if (shouldBePlayingRef.current) reconnectStream();
+          if (shouldBePlayingRef.current) reconnectStream(true);
         }}
         onStalled={() => {
-          if (shouldBePlayingRef.current) reconnectStream();
+          if (shouldBePlayingRef.current) reconnectStream(true);
         }}
         onError={() => {
-          if (shouldBePlayingRef.current) reconnectStream();
+          if (shouldBePlayingRef.current) { clearRecovery(); reconnectStream(false); }
         }}
         onEnded={handleNextTrack}
       />
