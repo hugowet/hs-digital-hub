@@ -2551,6 +2551,16 @@ export type Database = {
         }
       }
       club_has_access: { Args: { _user_id: string }; Returns: boolean }
+      create_marketplace_checkout: {
+        Args: {
+          _coupon_id?: string
+          _items: Json
+          _shipping_address: Json
+          _shipping_quote_ids: Json
+          _warranty_id?: string
+        }
+        Returns: string
+      }
       create_marketplace_order: {
         Args: { _items: Json; _shipping_address: Json }
         Returns: string
@@ -2618,6 +2628,7 @@ export type Database = {
         Args: { p_day?: string; p_limit?: number; p_offset?: number }
         Returns: Json
       }
+      expire_club_pix_memberships: { Args: never; Returns: undefined }
       finish_arcade_game: {
         Args: { _coins: number; _session_id: string }
         Returns: {
