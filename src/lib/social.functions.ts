@@ -90,3 +90,143 @@ export const deleteSocialStory = createServerFn({ method: "POST" }).middleware([
     }
     return { ok: true };
   });
+
+export const editSocialMessage = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ messageId: z.string().uuid(), content: z.string().trim().min(1).max(4000) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.from("social_messages")
+      .update({ content: data.content, edited_at: new Date().toISOString() })
+      .eq("id", data.messageId).eq("sender_id", context.userId).eq("kind", "text").select().single();
+    if (result.error) throw new Error("Não foi possível editar a mensagem.");
+    return result.data;
+  });
+
+export const deleteSocialMessage = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ messageId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: msg, error } = await context.supabase.from("social_messages").select("id, media_path")
+      .eq("id", data.messageId).eq("sender_id", context.userId).single();
+    if (error || !msg) throw new Error("Mensagem não disponível.");
+    const deleted = await context.supabase.from("social_messages").delete().eq("id", msg.id);
+    if (deleted.error) throw new Error(deleted.error.message);
+    if (msg.media_path) await context.supabase.storage.from("social-stories").remove([msg.media_path]);
+    return { ok: true };
+  });
+
+export const deleteSocialConversation = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ conversationId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const msgs = await context.supabase.from("social_messages").select("media_path")
+      .eq("conversation_id", data.conversationId).not("media_path", "is", null);
+    const deleted = await context.supabase.from("social_conversations").delete().eq("id", data.conversationId);
+    if (deleted.error) throw new Error("Não foi possível apagar a conversa.");
+    const paths = (msgs.data ?? []).map((m) => m.media_path).filter(Boolean) as string[];
+    if (paths.length) await context.supabase.storage.from("social-stories").remove(paths);
+    return { ok: true };
+  });
+
+export const sendSocialMediaMessage = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({
+    conversationId: z.string().uuid(),
+    kind: z.enum(["audio", "image"]),
+    mediaPath: z.string().min(1).max(300),
+    content: z.string().trim().max(4000).default(""),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const label = data.kind === "audio" ? "🎤 Áudio" : "📷 Foto";
+    const result = await context.supabase.from("social_messages").insert({
+      conversation_id: data.conversationId,
+      sender_id: context.userId,
+      content: data.content || label,
+      kind: data.kind,
+      media_path: data.mediaPath,
+    }).select().single();
+    if (result.error) throw new Error(result.error.message);
+    return result.data;
+  });
+
+// Mensagens com mídia precisam de URL temporária para tocar/exibir
+export const getSocialMediaUrl = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ mediaPath: z.string().min(1).max(300) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: url, error } = await context.supabase.storage.from("social-stories").createSignedUrl(data.mediaPath, 3600);
+    if (error || !url) throw new Error("Não foi possível abrir a mídia.");
+    return url.signedUrl;
+  });
+
+// ===== Grupos (somente administrador cria e gerencia) =====
+async function requireAdmin(context: { supabase: any; userId: string }) {
+  const { data: isAdmin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+  if (!isAdmin) throw new Error("Somente o administrador pode gerenciar grupos.");
+}
+
+export const createSocialGroup = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ name: z.string().trim().min(2).max(80), memberIds: z.array(z.string().uuid()).max(200).default([]) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const group = await context.supabase.from("social_groups").insert({ name: data.name, created_by: context.userId }).select().single();
+    if (group.error) throw new Error(group.error.message);
+    const members = [...new Set([context.userId, ...data.memberIds])].map((user_id) => ({ group_id: group.data.id, user_id }));
+    const inserted = await context.supabase.from("social_group_members").insert(members);
+    if (inserted.error) throw new Error(inserted.error.message);
+    return group.data;
+  });
+
+export const listSocialGroups = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const groups = await context.supabase.from("social_groups").select("*").order("created_at", { ascending: false });
+    if (groups.error) throw new Error(groups.error.message);
+    const members = await context.supabase.from("social_group_members").select("*");
+    if (members.error) throw new Error(members.error.message);
+    return { groups: groups.data ?? [], members: members.data ?? [] };
+  });
+
+export const setSocialGroupMembers = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ groupId: z.string().uuid(), memberIds: z.array(z.string().uuid()).max(200) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const wanted = [...new Set([context.userId, ...data.memberIds])];
+    const removed = await context.supabase.from("social_group_members").delete().eq("group_id", data.groupId);
+    if (removed.error) throw new Error(removed.error.message);
+    const inserted = await context.supabase.from("social_group_members").insert(wanted.map((user_id) => ({ group_id: data.groupId, user_id })));
+    if (inserted.error) throw new Error(inserted.error.message);
+    return { ok: true };
+  });
+
+export const deleteSocialGroup = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ groupId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const deleted = await context.supabase.from("social_groups").delete().eq("id", data.groupId);
+    if (deleted.error) throw new Error(deleted.error.message);
+    return { ok: true };
+  });
+
+export const getSocialGroupMessages = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ groupId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.from("social_group_messages").select("*")
+      .eq("group_id", data.groupId).order("created_at", { ascending: false }).limit(200);
+    if (result.error) throw new Error(result.error.message);
+    return (result.data ?? []).reverse();
+  });
+
+export const sendSocialGroupMessage = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({
+    groupId: z.string().uuid(),
+    content: z.string().trim().max(4000).default(""),
+    kind: z.enum(["text", "audio", "image"]).default("text"),
+    mediaPath: z.string().max(300).nullable().default(null),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    if (data.kind === "text" && !data.content) throw new Error("Mensagem vazia.");
+    const result = await context.supabase.from("social_group_messages").insert({
+      group_id: data.groupId,
+      sender_id: context.userId,
+      content: data.content || (data.kind === "audio" ? "🎤 Áudio" : "📷 Foto"),
+      kind: data.kind,
+      media_path: data.mediaPath,
+    }).select().single();
+    if (result.error) throw new Error(result.error.message);
+    return result.data;
+  });
