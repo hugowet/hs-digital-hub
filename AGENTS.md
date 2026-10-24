@@ -12,7 +12,7 @@
 <!-- LOVABLE:END -->
 
 - The storefront intro is a home-only, once-per-browser-session presentation so internal navigation remains immediate.
-- First-purchase shipping is waived atomically during checkout based on server-side order history; the browser never decides eligibility.
+- Checkout eligibility comes from server-side order history, never browser state.
 
 - O checkout registra o pedido atomicamente, reserva estoque e cobra cada loja separadamente pelo Mercado Pago; a comissão usa `application_fee` e toda confirmação depende de webhook assinado mais consulta à API.
 - Credenciais da plataforma e tokens OAuth dos vendedores ficam criptografados no banco e são lidos apenas no servidor; produtos digitais são liberados pela confirmação idempotente do pagamento.
@@ -25,9 +25,9 @@
 - Pedidos só podem ser cancelados antes de iniciar uma cobrança; o cancelamento é feito no servidor, devolve estoque e preserva o histórico financeiro.
 - Pagamentos iniciados são reconciliados com o Mercado Pago pela página do pedido, além do webhook assinado, para recuperar avisos atrasados.
 - Supplier products use stable provider variant IDs; CJ USD costs are converted with the latest validated BCB USD/BRL selling rate before applying margin; CJ full-catalog imports use a persistent bounded queue; Dropi catalog contracts use admin-configured server-only mappings with SSRF-safe URLs; paid orders enter an idempotent fulfillment queue; all supplier credentials stay server-only.
-- The public catalog is server-prefetched and paginated; supplier synchronization writes durable rows and never runs during a shopper page load, so large catalogs do not block the storefront.
+- Catalog lists use cover-only paginated SSR DTOs; details share a prefetched Query cache. Supplier synchronization never runs on storefront load.
 - Unfiltered Todos uses a public ID-only SQL selection over available products from approved stores, balancing categories before pagination and rotating daily in Boa Vista time while prioritizing approved-order sales; no supplier calls or invented trend counts are needed.
-- CJ customer-facing titles are translated server-side in bounded batches and persisted with the original supplier text, so translation never delays storefront reads.
+- CJ translations are persisted in server batches with original text; never translate on storefront reads.
 - CJ content updates use separate durable per-store title/detail jobs with expiring database leases and persisted pauses; all import paths preserve Portuguese titles and share official-detail mapping, without changing pricing.
 - Catalog search uses a trigger-maintained accent-normalized text column and intersects per-word synonym groups; supplier totals use exact database counts rather than the seller product page size.
 - Physical checkout uses short-lived, buyer-bound server quotes per store; CJ quotes are converted from USD and own-stock products use each seller's Melhor Envio OAuth account, while platform commission never applies to shipping.
@@ -41,4 +41,6 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Games and game coupons are buyer-only on both UI and server. Arcade sessions are single-use, coin awards are server-capped, 10% shipping coupons are issued atomically every 1,000 coins, and free shipping is limited to once per user per month.
 - HS Social uses the authenticated account, exact normalized phone lookup through a restricted RPC, participant-scoped conversations/messages, and server-expiring stories visible only to contacts; private story media uses short-lived signed URLs. Browser caches never define identity or message delivery.
 - Reviews persist via authenticated RPC with paid-order verification; owner-only storage reads and server signing of public-review paths preserve private photos.
-- Radio routes share one audio provider with bounded, delayed buffer recovery and cancellation on pause/change; Club suppresses HS announcements only, not station ads.
+- Radio shares one provider with delayed recovery and cancellation; Club suppresses HS announcements only.
+- Sitemap follows explicit route decisions and paginated public reads; private subtrees are excluded and failures never emit partial XML.
+- Search schema omits destination-unconfirmed CJ offers and invented review statistics.

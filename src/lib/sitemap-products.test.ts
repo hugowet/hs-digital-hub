@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { allPublicProductIds } from "./sitemap-products";
 
 describe("public sitemap pagination", () => {
@@ -8,13 +9,13 @@ describe("public sitemap pagination", () => {
       calls.push(offset);
       return offset === 0 ? ["one", "two"] : offset === 2 ? ["three"] : [];
     }, 2);
-    expect(ids).toEqual(["one", "two", "three"]);
-    expect(calls).toEqual([0, 2, 3]);
+    assert.deepEqual(ids, ["one", "two", "three"]);
+    assert.deepEqual(calls, [0, 2, 3]);
   });
   it("rejects a later page failure rather than returning an incomplete sitemap", async () => {
-    await expect(allPublicProductIds(async (offset) => {
+    await assert.rejects(allPublicProductIds(async (offset) => {
       if (offset > 0) throw new Error("public query failed");
       return ["first"];
-    }, 1)).rejects.toThrow("public query failed");
+    }, 1), /public query failed/);
   });
 });
