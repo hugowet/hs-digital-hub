@@ -352,10 +352,7 @@ function ProductDetailPage() {
 
   const handleAddToCart = (redirectCheckout: boolean) => {
     if (!product) return;
-    if (isCj && (cj.loading || cj.price === null)) {
-      toast.info("Aguarde a confirmação do preço para seu endereço salvo.");
-      return;
-    }
+    // Botão nunca fica travado: usa o preço da vitrine e o frete é confirmado no checkout.
     markAsPurchasedOrInCart(product.id);
 
     add(
@@ -517,33 +514,7 @@ function ProductDetailPage() {
                   className="h-full w-full object-contain p-2 transition-transform duration-100 ease-out"
                 />
 
-                {/* Botões de navegação rápida mobile */}
-                {imagesList.length > 1 && (
-                  <div className="sm:hidden absolute inset-y-0 inset-x-2 flex items-center justify-between pointer-events-none">
-                    <button
-                      type="button"
-                      disabled={selectedImage === 0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedImage((p) => Math.max(0, p - 1));
-                      }}
-                      className="pointer-events-auto h-8 w-8 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow disabled:opacity-0"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={selectedImage === imagesList.length - 1}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedImage((p) => Math.min(imagesList.length - 1, p + 1));
-                      }}
-                      className="pointer-events-auto h-8 w-8 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow disabled:opacity-0"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
+                {/* No celular a troca de fotos é por deslize (swipe), sem setas */}
 
                 <button
                   type="button"
@@ -663,7 +634,6 @@ function ProductDetailPage() {
               <div className="mt-6 space-y-2.5">
                 <Button
                   onClick={() => handleAddToCart(true)}
-                  disabled={isCj && (cj.loading || cj.price === null)}
                   className="w-full h-12 text-sm font-bold bg-[#3483fa] hover:bg-[#2968c8] text-white shadow-md rounded-xl"
                 >
                   <Zap className="h-4 w-4 mr-2" /> Comprar Agora
@@ -671,7 +641,6 @@ function ProductDetailPage() {
                 <Button
                   variant="outline"
                   onClick={() => handleAddToCart(false)}
-                  disabled={isCj && (cj.loading || cj.price === null)}
                   className="w-full h-12 text-sm font-bold rounded-xl border-primary/40 text-primary hover:bg-primary/5"
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" /> Adicionar ao Carrinho
