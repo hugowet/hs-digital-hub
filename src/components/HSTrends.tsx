@@ -481,12 +481,22 @@ export function HSTrends() {
     }
     setIsSubmittingVideo(true);
     try {
-      const ext = uploadFile.name.split(".").pop() || "mp4";
+      const ext = uploadFile.name.split(".").pop() || (uploadKind === "photo" ? "jpg" : "mp4");
       const path = `${authUser.id}/${crypto.randomUUID()}.${ext}`;
       const { error: upError } = await supabase.storage.from("trend-videos").upload(path, uploadFile, {
         contentType: uploadFile.type,
       });
-      if (upError) throw new Error("Não foi possível enviar o vídeo. Tente novamente.");
+      if (upError) throw new Error("Não foi possível enviar a mídia. Tente novamente.");
+
+      let audioPath: string | null = null;
+      if (musicFile) {
+        const audioExt = musicFile.name.split(".").pop() || "mp3";
+        audioPath = `${authUser.id}/music-${crypto.randomUUID()}.${audioExt}`;
+        const { error: musicError } = await supabase.storage.from("trend-videos").upload(audioPath, musicFile, {
+          contentType: musicFile.type,
+        });
+        if (musicError) throw new Error("Não foi possível enviar a música. Tente novamente.");
+      }
 
       const { error } = await supabase.from("trend_videos").insert({
         user_id: authUser.id,
@@ -495,18 +505,23 @@ export function HSTrends() {
         title: uploadTitle.trim(),
         description: uploadDesc.trim(),
         video_url: path,
+        audio_path: audioPath,
         duration_seconds: uploadDuration,
-        post_type: "organic",
-        music_title: "Som Original · " + (userProfile?.full_name || "Criador HS"),
+        post_type: uploadKind === "photo" ? "photo" : "organic",
+        music_title: musicFile
+          ? `🎵 ${musicFile.name.replace(/\.[^.]+$/, "")}`
+          : "Som Original · " + (userProfile?.full_name || "Criador HS"),
       });
-      if (error) throw new Error("Não foi possível publicar o vídeo.");
+      if (error) throw new Error("Não foi possível publicar o post.");
 
       setUploadModalOpen(false);
       setUploadFile(null);
+      setUploadKind("video");
       setUploadTitle("");
       setUploadDesc("");
+      setMusicFile(null);
       queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
-      toast.success("Seu vídeo foi publicado no HSTrends!");
+      toast.success("Seu post foi publicado no HSTrends!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao publicar vídeo.");
     } finally {
