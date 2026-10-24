@@ -3,6 +3,7 @@ import { decryptSecret } from "@/lib/mercado-pago.server";
 
 import { priceCjShipment, cjFreightUsd } from "@/lib/cj-landed-pricing";
 import { cjShippingModalities, includeFirstPurchaseMargin } from "@/lib/shipping-modalities";
+import { cjVariantStock } from "@/lib/cj-variants";
 
 const MELHOR_ENVIO_API = "https://melhorenvio.com.br/api/v2";
 
@@ -28,7 +29,11 @@ async function cjQuotes(supabaseAdmin: any, storeId: string, postalCode: string,
     if (variant?.vid !== product.supplier_variant_id || !Number.isFinite(cost) || cost <= 0) {
       throw new Error("Não foi possível confirmar o custo atual do produto na CJ.");
     }
+    const stockData = await cjRequest<unknown>(`/product/stock/queryByVid?vid=${encodeURIComponent(product.supplier_variant_id)}`, token);
+    const stock = cjVariantStock(stockData);
+    if (stock < product.quantity) throw new Error(`A opção de “${product.title}” está sem estoque na CJ.`);
     const { error } = await supabaseAdmin.from("products").update({
+      stock,
       supplier_cost: cost, supplier_exchange_rate: exchange.rate,
       supplier_exchange_rate_at: exchange.quotedAt, supplier_last_synced_at: new Date().toISOString(),
     }).eq("id", product.id);
@@ -140,7 +145,7 @@ export async function quoteCartShipping(
     const product = dbProducts?.find((p: any) => p.id === item.productId);
     if (!product || !product.is_active || product.stores?.status !== "approved") throw new Error("Produto indisponível.");
     if (product.product_type === "digital") continue;
-    if (Number(product.stock) < item.quantity) throw new Error("Quantidade indisponível.");
+    if (product.supplier !== "cj" && Number(product.stock) < item.quantity) throw new Error("Quantidade indisponível.");
     const storeProducts = stores.get(product.store_id) ?? [];
     storeProducts.push({ ...product, quantity: item.quantity });
     stores.set(product.store_id, storeProducts);

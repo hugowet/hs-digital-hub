@@ -20,10 +20,10 @@ export const getCjSupplierStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     await ownedStore(context, data.storeId);
     const db = context.supabase;
-    const base = () => db.from("products").select("id", { count: "exact", head: true }).eq("store_id", data.storeId).eq("supplier", "cj");
+    const base = () => db.from("products").select("id", { count: "exact", head: true }).eq("store_id", data.storeId).eq("supplier", "cj").is("supplier_variant_parent_id", null);
     const [total, active, translated, details, jobs, catalog] = await Promise.all([
       base(), base().eq("is_active", true), base().eq("supplier_locale", "pt-BR"),
-      base().not("supplier_details_synced_at", "is", null),
+      base().gte("supplier_content_version", 1),
       db.from("supplier_content_jobs").select("operation,status,processed,pause_reason,updated_at").eq("store_id", data.storeId),
       db.from("supplier_import_jobs").select("status,completed_categories,total_categories,imported_products,pause_reason").eq("store_id", data.storeId).eq("provider", "cj").maybeSingle(),
     ]);
@@ -160,7 +160,7 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
     }
 
     const product = cjJson.data;
-    const { mapCjDetails } = await import("@/lib/cj-content");
+    const { mapCjEconomicalDetails } = await import("@/lib/cj-content");
     const variant = product.variants?.[0];
     const vid = variant?.vid;
     if (!vid) throw new Error("A CJ não retornou uma variante válida.");
@@ -188,13 +188,13 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
       title: title.slice(0, 160),
       supplier_title_original: title.slice(0, 160),
       supplier_locale: "en",
-      ...mapCjDetails(product),
+      ...mapCjEconomicalDetails(product),
       supplier_details_original: product,
       supplier_details_synced_at: new Date().toISOString(),
       price: finalPrice,
       compare_at_price: compareAtPrice,
       free_shipping: false,
-      stock: Number(variant?.variantKey || product.warehouseInventoryNum || 50),
+      stock: 0,
       category: categoryFor(`${product.categoryName || ""} ${title}`),
       image_url: uniqueImages[0] ?? null,
       gallery_urls: uniqueImages.slice(0, 10),
@@ -216,7 +216,7 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
       .select("id,title,supplier_locale")
       .eq("store_id", data.storeId)
       .eq("supplier", "cj")
-      .eq("supplier_product_id", product.pid)
+      .eq("supplier_variant_id", vid)
       .maybeSingle();
 
     if (existing?.id) {
@@ -224,7 +224,10 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
         productPayload.title = existing.title;
         productPayload.supplier_locale = "pt-BR";
       }
-      await supabaseAdmin.from("products").update(productPayload).eq("id", existing.id);
+      const { error: updateError } = await supabaseAdmin.from("products").update(productPayload).eq("id", existing.id);
+      if (updateError) throw updateError;
+      const { persistCjVariantProducts } = await import("./cj-variant-products.server");
+      await persistCjVariantProducts(supabaseAdmin, existing.id, product);
       return { success: true, updated: true, productId: existing.id, title, price: finalPrice };
     }
 
@@ -235,6 +238,8 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
       .single();
 
     if (insertErr) throw insertErr;
+    const { persistCjVariantProducts } = await import("./cj-variant-products.server");
+    await persistCjVariantProducts(supabaseAdmin, inserted.id, product);
 
     return { success: true, updated: false, productId: inserted.id, title, price: finalPrice };
   });

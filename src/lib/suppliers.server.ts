@@ -3,7 +3,7 @@ import { decryptSecret, encryptSecret } from "@/lib/mercado-pago.server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText, Output } from "ai";
 import { z } from "zod";
-import { mapCjDetails } from "@/lib/cj-content";
+import { mapCjEconomicalDetails } from "@/lib/cj-content";
 import { createLovableAiGatewayRunIdFetch } from "@/lib/ai-run-id.server";
 
 const CJ_API = "https://developers.cjdropshipping.com/api2.0/v1";
@@ -628,7 +628,7 @@ async function importCjProduct(
     title: title.slice(0, 160),
     supplier_title_original: title.slice(0, 160),
     supplier_locale: "en",
-    ...mapCjDetails(product),
+    ...mapCjEconomicalDetails(product),
     supplier_details_original: product,
     supplier_details_synced_at: new Date().toISOString(),
     price,
@@ -665,6 +665,11 @@ async function importCjProduct(
     ? await supabaseAdmin.from("products").update(productData).eq("id", existingProduct.id)
     : await supabaseAdmin.from("products").insert(productData);
   if (error) throw error;
+  const { data: savedProduct, error: savedError } = await supabaseAdmin.from("products").select("id")
+    .eq("store_id", storeId).eq("supplier", "cj").eq("supplier_variant_id", vid).single();
+  if (savedError) throw savedError;
+  const { persistCjVariantProducts } = await import("./cj-variant-products.server");
+  await persistCjVariantProducts(supabaseAdmin, savedProduct.id, product);
   return true;
 }
 
@@ -928,7 +933,7 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
     supabaseAdmin.from("orders").select("shipping_address").eq("id", fulfillment.order_id).single(),
     supabaseAdmin
       .from("order_items")
-      .select("quantity,products!inner(supplier_variant_id)")
+      .select("quantity,supplier_variant_id_snapshot,products!inner(supplier_variant_id)")
       .eq("order_id", fulfillment.order_id)
       .eq("store_id", fulfillment.store_id)
       .eq("products.supplier", "cj"),
@@ -942,7 +947,7 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
   const address = (order?.shipping_address ?? {}) as Record<string, unknown>;
   const products = (items ?? [])
     .map((item: any) => ({
-      vid: item.products?.supplier_variant_id,
+      vid: item.supplier_variant_id_snapshot ?? item.products?.supplier_variant_id,
       quantity: item.quantity,
     }))
     .filter((item: any) => item.vid);

@@ -29,9 +29,8 @@ export async function persistCjVariantProducts(db: any, parentId: string, detail
     };
     const result = existing
       ? await db.from("products").update(values).eq("id", existing.id)
-      : await db.from("products").upsert({ ...values, is_active: true, stock: 0, free_shipping: false,
-          price: calculateFinalPrice(variant.costUsd * Number(parent.supplier_exchange_rate)) },
-        { onConflict: "store_id,supplier,supplier_variant_id", ignoreDuplicates: true });
+      : await db.from("products").insert({ ...values, is_active: true, stock: 0, free_shipping: false,
+          price: calculateFinalPrice(variant.costUsd * Number(parent.supplier_exchange_rate)) });
     if (result.error) throw result.error;
   }
 }
