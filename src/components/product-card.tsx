@@ -147,7 +147,6 @@ export function ProductCard({
     product.category?.includes("cursos");
 
   const price = Number(product.price || 0);
-  const price = Number(product.price || 0);
 
   // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
   const discountPercent = getProductDiscountPercent(product.id);
