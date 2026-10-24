@@ -119,6 +119,7 @@ function HSSocialPage() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const chatImageRef = useRef<HTMLInputElement | null>(null);
+  const chatCameraRef = useRef<HTMLInputElement | null>(null);
   const storyCameraRef = useRef<HTMLInputElement | null>(null);
   const [groupDialog, setGroupDialog] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -273,6 +274,7 @@ function HSSocialPage() {
   }
 
   async function uploadChatMedia(mediaFile: File, kind: "audio" | "image") {
+    if (kind === "audio" && !home.data?.me.is_clube_hs) throw new Error("Envio de áudio exclusivo para assinantes do Clube HS.");
     const ext = kind === "audio" ? "webm" : (mediaFile.type === "image/png" ? "png" : "jpg");
     const path = `${user.id}/chat-${crypto.randomUUID()}.${ext}`;
     const upload = await supabase.storage.from("social-stories").upload(path, mediaFile, { contentType: mediaFile.type });
@@ -296,6 +298,10 @@ function HSSocialPage() {
   }
 
   async function toggleRecording() {
+    if (!home.data?.me.is_clube_hs) {
+      toast.info("Assine o Clube HS para enviar áudios.", { action: { label: "Ver plano", onClick: () => { window.location.href = "/clube-hs"; } } });
+      return;
+    }
     if (recording) {
       recorderRef.current?.stop();
       return;
