@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ClubeHsRouteImport } from './routes/clube-hs'
 import { Route as RadioRouteImport } from './routes/radio'
 import { Route as RadioHsRouteImport } from './routes/radio-hs'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedCarrinhoRouteImport } from './routes/_authenticated/carrinho'
@@ -68,6 +69,11 @@ const RadioRoute = RadioRouteImport.update({
 const RadioHsRoute = RadioHsRouteImport.update({
   id: '/radio-hs',
   path: '/radio-hs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrendsRoute = TrendsRouteImport.update({
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/clube-hs': typeof ClubeHsRoute
   '/radio': typeof RadioRoute
   '/radio-hs': typeof RadioHsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trends': typeof TrendsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/carrinho': typeof AuthenticatedCarrinhoRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/clube-hs': typeof ClubeHsRoute
   '/radio': typeof RadioRoute
   '/radio-hs': typeof RadioHsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trends': typeof TrendsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/carrinho': typeof AuthenticatedCarrinhoRoute
@@ -238,6 +246,7 @@ export interface FileRoutesById {
   '/clube-hs': typeof ClubeHsRoute
   '/radio': typeof RadioRoute
   '/radio-hs': typeof RadioHsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trends': typeof TrendsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/carrinho': typeof AuthenticatedCarrinhoRoute
@@ -267,6 +276,7 @@ export interface FileRouteTypes {
     | '/clube-hs'
     | '/radio'
     | '/radio-hs'
+    | '/sitemap.xml'
     | '/trends'
     | '/admin'
     | '/carrinho'
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
     | '/clube-hs'
     | '/radio'
     | '/radio-hs'
+    | '/sitemap.xml'
     | '/trends'
     | '/admin'
     | '/carrinho'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/clube-hs'
     | '/radio'
     | '/radio-hs'
+    | '/sitemap.xml'
     | '/trends'
     | '/_authenticated/admin'
     | '/_authenticated/carrinho'
@@ -351,6 +363,7 @@ export interface RootRouteChildren {
   ClubeHsRoute: typeof ClubeHsRoute
   RadioRoute: typeof RadioRoute
   RadioHsRoute: typeof RadioHsRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TrendsRoute: typeof TrendsRoute
   ProdutoProductIdRoute: typeof ProdutoProductIdRoute
   ApiPublicMelhorEnvioOauthCallbackRoute: typeof ApiPublicMelhorEnvioOauthCallbackRoute
@@ -411,6 +424,13 @@ declare module '@tanstack/react-router' {
       path: '/radio-hs'
       fullPath: '/radio-hs'
       preLoaderRoute: typeof RadioHsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trends': {
@@ -586,6 +606,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClubeHsRoute: ClubeHsRoute,
   RadioRoute: RadioRoute,
   RadioHsRoute: RadioHsRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TrendsRoute: TrendsRoute,
   ProdutoProductIdRoute: ProdutoProductIdRoute,
   ApiPublicMelhorEnvioOauthCallbackRoute:
