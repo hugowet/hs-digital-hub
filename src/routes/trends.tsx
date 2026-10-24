@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { HSTrends } from "@/components/HSTrends";
 
 export const Route = createFileRoute("/trends")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "HSTrends 🎬 · Vídeos e Ofertas Verticais" },

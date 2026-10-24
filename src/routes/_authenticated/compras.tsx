@@ -31,8 +31,10 @@ import { brl } from "@/lib/format";
 import { cancelUnpaidMarketplaceOrder } from "@/lib/payments.functions";
 
 export const Route = createFileRoute("/_authenticated/compras")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, follow" },
       { title: "Minhas Compras · HS Digital" },
       { name: "description", content: "Acompanhe seus pedidos, entregas, avaliações e missões de frete grátis." },
       { property: "og:title", content: "Minhas Compras · HS Digital" },

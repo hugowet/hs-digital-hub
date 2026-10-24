@@ -61,9 +61,11 @@ const setAllProductsShippingAdmin = createServerFn({ method: "POST" })
   });
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  staticData: { sitemap: false },
   ssr: false,
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, follow" },
       { title: "Painel Admin · HS Digital" },
       {
         name: "description",

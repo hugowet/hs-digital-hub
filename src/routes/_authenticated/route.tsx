@@ -3,8 +3,10 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
+  staticData: { sitemap: "exclude-subtree" },
   ssr: false,
   head: () => ({ meta: [
+      { name: "robots", content: "noindex, follow" },
     { title: "Minha conta · HS Digital" },
     { name: "description", content: "Compras e serviços da sua conta HS Digital." },
     { property: "og:title", content: "Minha conta · HS Digital" },

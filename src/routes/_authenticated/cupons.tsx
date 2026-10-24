@@ -11,7 +11,9 @@ import { getMyCoupons } from "@/lib/games.functions";
 type Coupon = Awaited<ReturnType<typeof getMyCoupons>>[number];
 
 export const Route = createFileRoute("/_authenticated/cupons")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [
+      { name: "robots", content: "noindex, follow" },
     { title: "Meus cupons · HS Digital" },
     { name: "description", content: "Consulte seus cupons de frete da HS Digital." },
     { property: "og:title", content: "Meus cupons · HS Digital" },

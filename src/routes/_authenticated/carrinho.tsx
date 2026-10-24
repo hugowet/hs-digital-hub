@@ -34,8 +34,10 @@ import { getFirstPurchaseShippingEligibility } from "@/lib/checkout.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/carrinho")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, follow" },
       { title: "Carrinho · HS Digital" },
       {
         name: "description",

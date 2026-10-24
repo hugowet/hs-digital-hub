@@ -53,9 +53,11 @@ import { processSupplierFulfillment, syncCjProducts, getCjSupplierStatus, update
 import { getSellerShippingConfiguration, saveSellerOriginPostalCode, startMelhorEnvioConnection } from "@/lib/shipping.functions";
 
 export const Route = createFileRoute("/_authenticated/vendedor")({
+  staticData: { sitemap: false },
   ssr: false,
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, follow" },
       { title: "Seller Center · HS Digital" },
       {
         name: "description",

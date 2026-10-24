@@ -20,6 +20,7 @@ import { Slider } from "@/components/ui/slider";
 import { useRadio } from "@/lib/radio-context";
 
 export const Route = createFileRoute("/radio")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Rádio HS Digital 🎵 · Ao Vivo com Músicas Virais" },

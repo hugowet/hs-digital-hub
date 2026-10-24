@@ -7,6 +7,7 @@ function authorized(request: Request) {
 }
 
 export const Route = createFileRoute("/api/public/suppliers/process")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

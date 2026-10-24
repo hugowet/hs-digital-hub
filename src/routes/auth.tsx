@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 
 export const Route = createFileRoute("/auth")({
+  staticData: { sitemap: false },
   ssr: false,
   validateSearch: (search: Record<string, unknown>): { reason?: "login-required"; redirect?: string } => ({
     ...(search["reason"] === "login-required" ? { reason: "login-required" } : {}),
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/auth")({
   }),
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, follow" },
       { title: "Entrar · HS Digital" },
       { name: "description", content: "Acesse sua conta HS Digital para comprar ou vender." },
       { property: "og:title", content: "Entrar · HS Digital" },

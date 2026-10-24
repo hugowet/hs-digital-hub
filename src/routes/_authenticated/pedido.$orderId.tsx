@@ -17,8 +17,10 @@ import { brl } from "@/lib/format";
 import { createMercadoPagoPayment, getMercadoPagoPublicConfig, reconcileMercadoPagoPayment } from "@/lib/payments.functions";
 
 export const Route = createFileRoute("/_authenticated/pedido/$orderId")({
+  staticData: { sitemap: false },
   ssr: false,
   head: () => ({ meta: [
+      { name: "robots", content: "noindex, follow" },
     { title: "Pagamento do pedido · HS Digital" },
     { name: "description", content: "Pague seu pedido com Pix ou cartão e acompanhe a confirmação." },
     { property: "og:title", content: "Pagamento do pedido · HS Digital" },

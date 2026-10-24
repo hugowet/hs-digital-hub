@@ -13,7 +13,9 @@ import { getSocialHome, getSocialMessages, openSocialConversation, sendSocialMes
 import { isActiveStory } from "@/lib/social";
 
 export const Route = createFileRoute("/_authenticated/social")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [
+      { name: "robots", content: "noindex, follow" },
     { title: "HS Social · Mensagens e Stories" },
     { name: "description", content: "Converse com seus contatos da HS Digital e compartilhe stories de 24 horas." },
     { property: "og:title", content: "HS Social · Mensagens e Stories" },

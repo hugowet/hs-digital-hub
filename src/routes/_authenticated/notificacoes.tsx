@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/notificacoes")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [
+      { name: "robots", content: "noindex, follow" },
     { title: "Notificações · HS Digital" },
     { name: "description", content: "Atualizações reais dos seus pedidos e pagamentos na HS Digital." },
     { property: "og:title", content: "Notificações · HS Digital" },

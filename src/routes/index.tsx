@@ -105,6 +105,7 @@ const catalogQueryOptions = (search: HomeSearch) =>
   });
 
 export const Route = createFileRoute("/")({
+  staticData: { sitemap: true },
   validateSearch: normalizeSearch,
   loaderDeps: ({ search }) => search,
   loader: ({ context, deps }) => context.queryClient.ensureInfiniteQueryData(catalogQueryOptions(deps)),

@@ -48,6 +48,7 @@ import { ProductCard } from "@/components/product-card";
 import { trackProductView, markAsPurchasedOrInCart, initAbandonmentWatcher } from "@/lib/abandonment-tracker";
 
 export const Route = createFileRoute("/produto/$productId")({
+  staticData: { sitemap: true },
   loader: ({ params, context }) => context.queryClient.ensureQueryData(productQueryOptions(params.productId)),
   head: ({ loaderData, params }) => {
     const p = loaderData;
