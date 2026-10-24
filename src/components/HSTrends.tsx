@@ -826,12 +826,32 @@ export function HSTrends() {
                     </>
                   )}
 
+                  {!isAd && (
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white">
+                        <Eye className="w-6 h-6" />
+                      </div>
+                      <span className="text-[11px] font-bold drop-shadow">{post.views_count}</span>
+                    </div>
+                  )}
+
                   <button onClick={() => handleShare(post)} className="flex flex-col items-center gap-1 active:scale-110 transition-transform">
                     <div className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white">
                       <Share2 className="w-6 h-6" />
                     </div>
                     <span className="text-[11px] font-bold drop-shadow">Share</span>
                   </button>
+
+                  {!isAd && canManagePost(post) && (
+                    <>
+                      <button onClick={() => openEditPost(post)} title="Editar post" className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white active:scale-110 transition-transform">
+                        <Pencil className="w-5 h-5 text-cyan-300" />
+                      </button>
+                      <button onClick={() => handleDeletePost(post)} title="Apagar post" className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white active:scale-110 transition-transform">
+                        <Trash2 className="w-5 h-5 text-rose-400" />
+                      </button>
+                    </>
+                  )}
 
                   {!isAd && (
                     <button onClick={() => setIsMuted((prev) => !prev)} className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white mt-1 active:scale-110 transition-transform">
@@ -920,27 +940,83 @@ export function HSTrends() {
               {comments.length === 0 ? (
                 <div className="text-center py-12 text-slate-500 text-xs">Seja o primeiro a comentar neste vídeo!</div>
               ) : (
-                comments.map((comm) => (
-                  <div key={comm.id} className="flex items-start gap-3">
-                    <img src={comm.user_avatar || FALLBACK_AVATAR} alt={comm.user_name} className="w-8 h-8 rounded-full object-cover shrink-0" />
-                    <div className="flex-1 bg-slate-800/60 rounded-2xl p-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-slate-200">{comm.user_name}</span>
-                        <span className="text-[10px] text-slate-500">
-                          {new Date(comm.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </span>
+                comments
+                  .filter((c) => !c.parent_id)
+                  .map((comm) => {
+                    const replies = comments.filter((r) => r.parent_id === comm.id);
+                    const renderComment = (c: TrendComment, isReply: boolean) => (
+                      <div key={c.id} className={`flex items-start gap-3 ${isReply ? "ml-10 mt-2" : ""}`}>
+                        <img src={c.user_avatar || FALLBACK_AVATAR} alt={c.user_name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                        <div className="flex-1 bg-slate-800/60 rounded-2xl p-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-xs text-slate-200">{c.user_name}</span>
+                            <span className="text-[10px] text-slate-500 shrink-0">
+                              {new Date(c.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              {c.edited_at ? " · editado" : ""}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-300 mt-1 leading-relaxed">{c.content}</p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            {authUser && !isReply && (
+                              <button
+                                onClick={() => { setReplyToComment(c); setEditingComment(null); setNewCommentText(""); }}
+                                className="text-[10px] font-bold text-slate-400 hover:text-amber-400 flex items-center gap-1"
+                              >
+                                <CornerDownRight className="w-3 h-3" /> Responder
+                              </button>
+                            )}
+                            {authUser?.id === c.user_id && (
+                              <>
+                                <button
+                                  onClick={() => { setEditingComment(c); setReplyToComment(null); setNewCommentText(c.content); }}
+                                  className="text-[10px] font-bold text-slate-400 hover:text-cyan-300 flex items-center gap-1"
+                                >
+                                  <Pencil className="w-3 h-3" /> Editar
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteComment(c.id)}
+                                  className="text-[10px] font-bold text-slate-400 hover:text-rose-400 flex items-center gap-1"
+                                >
+                                  <Trash2 className="w-3 h-3" /> Apagar
+                                </button>
+                              </>
+                            )}
+                            {isAdmin && authUser?.id !== c.user_id && (
+                              <button
+                                onClick={() => handleDeleteComment(c.id)}
+                                className="text-[10px] font-bold text-slate-400 hover:text-rose-400 flex items-center gap-1"
+                              >
+                                <Trash2 className="w-3 h-3" /> Apagar
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-300 mt-1 leading-relaxed">{comm.content}</p>
-                    </div>
-                  </div>
-                ))
+                    );
+                    return (
+                      <div key={comm.id}>
+                        {renderComment(comm, false)}
+                        {replies.map((r) => renderComment(r, true))}
+                      </div>
+                    );
+                  })
               )}
             </div>
 
-            <form onSubmit={handleSendComment} className="pt-2 border-t border-slate-800 flex gap-2">
+            {(replyToComment || editingComment) && (
+              <div className="flex items-center justify-between px-2 py-1.5 mb-1 rounded-lg bg-slate-800 text-[11px] text-slate-300">
+                <span className="truncate">
+                  {replyToComment ? `Respondendo a ${replyToComment.user_name}` : `Editando seu comentário`}
+                </span>
+                <button onClick={() => { setReplyToComment(null); setEditingComment(null); setNewCommentText(""); }} className="text-slate-400 hover:text-white">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+            <form onSubmit={editingComment ? handleSaveEditedComment : handleSendComment} className="pt-2 border-t border-slate-800 flex gap-2">
               <Input
                 type="text"
-                placeholder={authUser ? "Deixe um comentário legal..." : "Faça login para comentar"}
+                placeholder={authUser ? (replyToComment ? "Escreva sua resposta..." : "Deixe um comentário legal...") : "Faça login para comentar"}
                 value={newCommentText}
                 onChange={(e) => setNewCommentText(e.target.value)}
                 disabled={!authUser}
