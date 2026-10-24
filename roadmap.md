@@ -1,9 +1,11 @@
 # HS Digital — MVP
 
 ## Vitrine rápida e descoberta nas buscas
-- [ ] Reduzir dados e trabalho desnecessários no carregamento do catálogo, preservando preços e cotações.
-- [ ] Melhorar páginas de produtos, metadados e sitemap público com produtos reais.
-- [ ] Validar vitrine, navegação e leitura dos produtos por buscadores; Google sem propriedade verificada, posição não garantida.
+- [x] Reduzir dados do carregamento inicial de 546 KB para 280 KB, eliminar galerias/fichas na lista e leitura geral de categorias; preços e cotações preservados.
+- [x] Compartilhar produto prefetched com renderização completa, canonical próprio e schema sem preços CJ não confirmados ou avaliações inventadas; sitemap validado com 10.757 produtos e quatro páginas públicas.
+- [x] Validar fotos, paginação 24→48, navegação, busca, HTML de produto e áreas privadas fora do sitemap; 14 testes e build OK.
+- [ ] Publicar para levar as melhorias ao site público; não solicitado nesta etapa.
+- [ ] Verificar indexação e desempenho no Google após verificar a propriedade Search Console; acesso atual não cobre o site e nenhuma posição pode ser garantida.
 
 ## Oferta do Clube HS
 - [x] Oferta mais convincente com benefícios reais; frete grátis com valor mínimo sem composição interna do preço; Disney/streaming e prioridade indisponíveis removidos. Página validada em computador e celular, sem alterar preços ou cobrança.
