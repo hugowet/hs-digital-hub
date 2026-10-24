@@ -87,12 +87,49 @@ function HSSocialPage() {
   const room = rooms.find((entry) => entry.id === roomId);
   const otherId = room ? (room.member_a === user.id ? room.member_b : room.member_a) : "";
   const activeStories = (data?.stories ?? []).filter((entry) => isActiveStory(entry.expires_at, now));
-  const story = activeStories.find((entry) => entry.id === storyId);
+  // Uma bolinha por pessoa; o círculo é fatiado conforme a quantidade de stories
+  const storyGroups = activeStories.reduce<Array<{ userId: string; stories: typeof activeStories }>>((groups, entry) => {
+    const group = groups.find((g) => g.userId === entry.user_id);
+    if (group) group.stories.push(entry);
+    else groups.push({ userId: entry.user_id, stories: [entry] });
+    return groups;
+  }, []);
+  const viewGroup = storyView ? storyGroups.find((g) => g.userId === storyView.userId) : null;
+  const story = viewGroup ? viewGroup.stories[Math.min(storyView!.index, viewGroup.stories.length - 1)] : null;
   useEffect(() => {
-    if (!storyId) return;
-    const timer = setTimeout(() => setStoryId(null), 10000);
+    if (!storyView || !viewGroup) return;
+    const timer = setTimeout(() => {
+      if (storyView.index + 1 < viewGroup.stories.length) setStoryView({ userId: storyView.userId, index: storyView.index + 1 });
+      else setStoryView(null);
+    }, 10000);
     return () => clearTimeout(timer);
-  }, [storyId]);
+  }, [storyView, viewGroup]);
+
+  async function replyToStory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!story || !storyReply.trim()) return;
+    setBusy(true);
+    try {
+      const room = await openSocialConversationByUser({ data: { userId: story.user_id } });
+      await sendFn({ data: { conversationId: room.conversation_id, content: `💬 Resposta ao seu story: ${storyReply.trim()}` } });
+      setStoryReply("");
+      await refresh();
+      toast.success("Resposta enviada para a conversa!");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível responder."); }
+    finally { setBusy(false); }
+  }
+
+  // Anel fatiado estilo WhatsApp: um segmento por story
+  function storyRing(count: number): React.CSSProperties {
+    if (count <= 1) return { background: "conic-gradient(var(--success) 0deg 360deg)" };
+    const gap = 6;
+    const size = 360 / count;
+    const parts = Array.from({ length: count }, (_, i) => {
+      const start = i * size;
+      return `var(--success) ${start}deg ${start + size - gap}deg, transparent ${start + size - gap}deg ${start + size}deg`;
+    });
+    return { background: `conic-gradient(${parts.join(", ")})` };
+  }
 
   async function findContact(e: React.FormEvent) {
     e.preventDefault(); setBusy(true);
