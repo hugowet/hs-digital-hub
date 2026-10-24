@@ -10,6 +10,7 @@ import {
   MapPin,
   Menu,
   MessageCircle,
+  Play,
   Radio,
   Search,
   Share2,
@@ -247,6 +248,16 @@ export function SiteHeader({
               <span>HS Social</span>
             </Link>
 
+            {/* 🎬 Botão HSTrends (Desktop Topo) */}
+            <Link
+              to="/trends"
+              className="relative hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-fuchsia-400/20 text-fuchsia-200 border border-fuchsia-400/35 hover:bg-fuchsia-400/30 transition shadow-sm"
+              title="HSTrends - Vídeos e Ofertas"
+            >
+              <Play className="h-3.5 w-3.5 text-fuchsia-300" />
+              <span>HSTrends</span>
+            </Link>
+
             {/* Carrinho */}
             {signedIn && (
               <Link
@@ -409,6 +420,15 @@ export function SiteHeader({
               HS Social
             </Link>
 
+            {/* 🎬 Botão HSTrends no Submenu */}
+            <Link
+              to="/trends"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-fuchsia-400/20 text-fuchsia-200 hover:bg-fuchsia-400/30 border border-fuchsia-400/30 transition-colors"
+            >
+              <Play className="w-3.5 h-3.5 text-fuchsia-300" />
+              HSTrends
+            </Link>
+
             <Link to="/compras" className="hover:text-white">
               Minhas compras
             </Link>
@@ -454,6 +474,16 @@ export function SiteHeader({
             >
               <MessageCircle className="h-4 w-4 text-emerald-400" />
               HS Social (Mensagens & Grupos)
+            </Link>
+
+            {/* Botão HSTrends no Mobile */}
+            <Link
+              to="/trends"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-fuchsia-300 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 font-bold"
+            >
+              <Play className="h-4 w-4 text-fuchsia-400" />
+              HSTrends (Vídeos & Ofertas)
             </Link>
 
             {signedIn && (
