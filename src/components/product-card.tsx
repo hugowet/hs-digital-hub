@@ -148,8 +148,7 @@ export function ProductCard({
     product.category?.includes("cursos");
 
   const isCj = product.supplier === "cj";
-  // A vitrine usa o preço já salvo; a entrega é confirmada no checkout (sem consultas por card).
-  const cj = { ref: undefined, price: null as number | null, shipping: null as number | null, loading: false };
+  const price = Number(product.price || 0);
   const price = Number(product.price || 0);
 
   // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
@@ -165,11 +164,10 @@ export function ProductCard({
   const soldCount =
     product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
 
-  // Regra de Frete: acima de 87,90 tem frete grátis, abaixo de 87,90 frete {isCj && cj.shipping !== null ? brl(cj.shipping) : "A calcular"}
   const isFreeShipping = (isCj ? cj.shipping === 0 : price >= 89.90) || isDigital;
 
   return (
-    <article ref={cj.ref} className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
+    <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
       {/* Imagem do Produto */}
       <div className="relative aspect-square max-h-56 w-full overflow-hidden bg-muted/20">
         {product.image_url ? (
@@ -265,7 +263,7 @@ export function ProductCard({
                     {Math.max(5, discountPercent - 2)}% no frete
                   </span>
                   <span className="text-[11px] text-muted-foreground">
-                    {isCj && cj.shipping !== null ? brl(cj.shipping) : "Calculado no seu CEP"}
+                    Calculado no seu CEP
                   </span>
                 </>
               )}
