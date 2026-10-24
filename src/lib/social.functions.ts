@@ -8,7 +8,7 @@ export const getSocialHome = createServerFn({ method: "GET" }).middleware([requi
     const [rooms, people, me, stories, messages] = await Promise.all([
       db.from("social_conversations").select("*").order("created_at", { ascending: false }),
       db.rpc("social_contact_profiles"),
-      db.from("profiles").select("id,full_name,phone").eq("id", context.userId).single(),
+      db.from("profiles").select("id,full_name,phone,avatar_url").eq("id", context.userId).single(),
       db.from("social_stories").select("*").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }).limit(100),
       db.from("social_messages").select("*").order("created_at", { ascending: false }).limit(200),
     ]);
