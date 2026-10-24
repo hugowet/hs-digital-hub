@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Vitrine rápida e descoberta nas buscas
+- [ ] Reduzir dados e trabalho desnecessários no carregamento do catálogo, preservando preços e cotações.
+- [ ] Melhorar páginas de produtos, metadados e sitemap público com produtos reais.
+- [ ] Validar vitrine, navegação e leitura dos produtos por buscadores; Google sem propriedade verificada, posição não garantida.
+
 ## Oferta do Clube HS
 - [x] Oferta mais convincente com benefícios reais; frete grátis com valor mínimo sem composição interna do preço; Disney/streaming e prioridade indisponíveis removidos. Página validada em computador e celular, sem alterar preços ou cobrança.
 
