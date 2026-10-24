@@ -26,7 +26,13 @@ import {
   Tag,
   Camera,
   BadgeCheck,
+  Eye,
+  Pencil,
+  Trash2,
+  CornerDownRight,
+  Library,
 } from "lucide-react";
+import { TREND_MUSIC_LIBRARY, type TrendMusicTrack } from "@/lib/trends-music";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +58,8 @@ export type TrendPost = {
   music_title: string;
   likes_count: number;
   comments_count: number;
+  views_count: number;
+  title?: string;
   ad_badge?: string;
   ad_icon?: "radio" | "clube" | "jogos" | "social" | "promo";
   cta_label?: string;
@@ -66,6 +74,8 @@ export type TrendComment = {
   user_avatar: string | null;
   content: string;
   created_at: string;
+  parent_id?: string | null;
+  edited_at?: string | null;
 };
 
 // Anúncios internos da plataforma (aparecem só para quem não é Clube HS)
