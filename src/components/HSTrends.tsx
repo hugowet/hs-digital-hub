@@ -174,6 +174,17 @@ export function HSTrends() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
 
+  // Navegadores bloqueiam autoplay com som: liga o áudio no primeiro toque/clique do usuário
+  useEffect(() => {
+    const unlock = () => setIsMuted(false);
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
   const [commentModalPost, setCommentModalPost] = useState<TrendPost | null>(null);
   const [profileModalUser, setProfileModalUser] = useState<TrendPost | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -181,13 +192,16 @@ export function HSTrends() {
 
   const [newCommentText, setNewCommentText] = useState("");
 
-  // Upload de vídeo
+  // Upload de vídeo ou foto
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadKind, setUploadKind] = useState<"video" | "photo">("video");
   const [uploadDuration, setUploadDuration] = useState(0);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadDesc, setUploadDesc] = useState("");
+  const [musicFile, setMusicFile] = useState<File | null>(null);
   const [isSubmittingVideo, setIsSubmittingVideo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const musicInputRef = useRef<HTMLInputElement | null>(null);
 
   // Edição de perfil
   const [editName, setEditName] = useState("");
