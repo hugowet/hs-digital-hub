@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { getSocialHome, getSocialMessages, openSocialConversation, sendSocialMessage, publishSocialStory, deleteSocialStory } from "@/lib/social.functions";
+import { getSocialHome, getSocialMessages, openSocialConversation, openSocialConversationByUser, sendSocialMessage, publishSocialStory, deleteSocialStory } from "@/lib/social.functions";
 import { isActiveStory } from "@/lib/social";
 
 export const Route = createFileRoute("/_authenticated/social")({
@@ -49,7 +49,8 @@ function HSSocialPage() {
   const [caption, setCaption] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
-  const [storyId, setStoryId] = useState<string | null>(null);
+  const [storyView, setStoryView] = useState<{ userId: string; index: number } | null>(null);
+  const [storyReply, setStoryReply] = useState("");
   const [now, setNow] = useState(Date.now());
   const end = useRef<HTMLDivElement | null>(null);
   const home = useQuery({ queryKey: ["social-home", user.id], queryFn: () => homeFn(), refetchInterval: 60000 });
