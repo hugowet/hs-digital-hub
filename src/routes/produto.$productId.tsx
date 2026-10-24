@@ -351,6 +351,7 @@ function ProductDetailPage() {
 
   const handleAddToCart = async (redirectCheckout: boolean) => {
     if (!product) return;
+    if (maxAvailableStock < quantity) { toast.error("Esta opção está sem estoque."); return; }
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
       toast.info("Faça login para adicionar produtos ao carrinho.");

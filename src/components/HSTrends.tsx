@@ -244,7 +244,9 @@ export function HSTrends() {
         .select("is_clube_hs, full_name, avatar_url, bio, status_text")
         .eq("id", authUser.id)
         .maybeSingle();
-      return data;
+      const access = await supabase.rpc("club_has_access", { _user_id: authUser.id });
+      if (access.error) throw access.error;
+      return { ...data, is_clube_hs: access.data };
     },
     enabled: Boolean(authUser?.id),
   });

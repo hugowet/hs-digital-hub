@@ -177,13 +177,9 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       const { data: authData } = await supabase.auth.getUser();
       if (!authData?.user) return null;
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_clube_hs")
-        .eq("id", authData.user.id)
-        .maybeSingle();
-
-      return profile;
+      const { data, error } = await supabase.rpc("club_has_access", { _user_id: authData.user.id });
+      if (error) throw error;
+      return { is_clube_hs: data };
     },
     staleTime: 1000 * 60 * 5,
   });
