@@ -367,7 +367,7 @@ function HSSocialPage() {
         const signed = await supabase.storage.from("social-stories").createSignedUrl(path, 60 * 60 * 24 * 365);
         avatarUrl = signed.data?.signedUrl;
       }
-      const update: Record<string, unknown> = { full_name: profileName.trim() || null };
+      const update: any = { full_name: profileName.trim() || null };
       if (avatarUrl) update.avatar_url = avatarUrl;
       const { error } = await supabase.from("profiles").update(update).eq("id", user.id);
       if (error) throw new Error("Não foi possível salvar o perfil.");
