@@ -391,6 +391,7 @@ export type Database = {
           quantity: number
           seller_amount: number
           store_id: string
+          supplier_variant_id_snapshot: string | null
           title: string
           unit_price: number
         }
@@ -404,6 +405,7 @@ export type Database = {
           quantity?: number
           seller_amount?: number
           store_id: string
+          supplier_variant_id_snapshot?: string | null
           title: string
           unit_price: number
         }
@@ -417,6 +419,7 @@ export type Database = {
           quantity?: number
           seller_amount?: number
           store_id?: string
+          supplier_variant_id_snapshot?: string | null
           title?: string
           unit_price?: number
         }
@@ -953,6 +956,7 @@ export type Database = {
           stock: number
           store_id: string
           supplier: string | null
+          supplier_content_version: number
           supplier_cost: number | null
           supplier_cost_currency: string | null
           supplier_details_original: Json | null
@@ -965,6 +969,8 @@ export type Database = {
           supplier_sku: string | null
           supplier_title_original: string | null
           supplier_variant_id: string | null
+          supplier_variant_label: string | null
+          supplier_variant_parent_id: string | null
           title: string
           variations: Json
           weight_kg: number | null
@@ -993,6 +999,7 @@ export type Database = {
           stock?: number
           store_id: string
           supplier?: string | null
+          supplier_content_version?: number
           supplier_cost?: number | null
           supplier_cost_currency?: string | null
           supplier_details_original?: Json | null
@@ -1005,6 +1012,8 @@ export type Database = {
           supplier_sku?: string | null
           supplier_title_original?: string | null
           supplier_variant_id?: string | null
+          supplier_variant_label?: string | null
+          supplier_variant_parent_id?: string | null
           title: string
           variations?: Json
           weight_kg?: number | null
@@ -1033,6 +1042,7 @@ export type Database = {
           stock?: number
           store_id?: string
           supplier?: string | null
+          supplier_content_version?: number
           supplier_cost?: number | null
           supplier_cost_currency?: string | null
           supplier_details_original?: Json | null
@@ -1045,6 +1055,8 @@ export type Database = {
           supplier_sku?: string | null
           supplier_title_original?: string | null
           supplier_variant_id?: string | null
+          supplier_variant_label?: string | null
+          supplier_variant_parent_id?: string | null
           title?: string
           variations?: Json
           weight_kg?: number | null
@@ -1056,6 +1068,13 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_supplier_variant_parent_id_fkey"
+            columns: ["supplier_variant_parent_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
