@@ -278,7 +278,7 @@ function BuyerGamesPromoLink() {
   );
 }
 
-export function Home() {
+function Home() {
   const routeSearch = Route.useSearch();
   const search = resolveSearch(routeSearch);
   const navigate = Route.useNavigate();

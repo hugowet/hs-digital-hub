@@ -154,7 +154,7 @@ async function compressImageToDataUrl(file: File): Promise<string> {
   });
 }
 
-export function ProductDetailPage() {
+function ProductDetailPage() {
   const { productId } = Route.useParams();
   const navigate = useNavigate();
   const { add } = useCart();
@@ -441,25 +441,6 @@ export function ProductDetailPage() {
       toast.error(err instanceof Error ? err.message : "Não foi possível salvar a avaliação.");
     } finally { setSavingReview(false); }
   };
-
-  if (false) {
-    return (
-      <div className="min-h-screen bg-background">
-        <SiteHeader />
-        <main className="mx-auto max-w-7xl px-4 py-8">
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            <div className="aspect-square animate-pulse rounded-2xl bg-muted/40" />
-            <div className="space-y-4">
-              <div className="h-6 w-3/4 animate-pulse rounded bg-muted/40" />
-              <div className="h-8 w-1/3 animate-pulse rounded bg-muted/40" />
-              <div className="h-32 animate-pulse rounded-xl bg-muted/40" />
-            </div>
-          </div>
-        </main>
-        <SiteFooter />
-      </div>
-    );
-  }
 
   if (!product) {
     return (
