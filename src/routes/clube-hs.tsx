@@ -16,12 +16,13 @@ import {
   PackageCheck,
   Headset,
   BadgeCheck,
+  QrCode,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { createClubeHsSubscription } from "@/lib/clube-hs.functions";
+import { createClubeHsSubscription, createClubeHsPix } from "@/lib/clube-hs.functions";
 
 export const Route = createFileRoute("/clube-hs")({
   staticData: { sitemap: true },
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/clube-hs")({
 export function ClubeHsPage() {
   const [loading, setLoading] = useState(false);
   const subscribeFn = useServerFn(createClubeHsSubscription);
+  const pixFn = useServerFn(createClubeHsPix);
 
   // Busca dados do usuário autenticado para checar status
   const { data: sessionData } = useQuery({
@@ -59,18 +61,15 @@ export function ClubeHsPage() {
     enabled: !!sessionData?.id,
     queryFn: async () => {
       if (!sessionData) return null;
-      const { data } = await supabase
-        .from("profiles")
-        .select("is_clube_hs")
-        .eq("id", sessionData.id)
-        .maybeSingle();
-      return data;
+      const { data, error } = await supabase.rpc("club_has_access", { _user_id: sessionData.id });
+      if (error) throw error;
+      return { is_clube_hs: data };
     },
   });
 
   const isMember = Boolean(profile?.is_clube_hs);
 
-  async function handleSubscribe() {
+  async function handleSubscribe(pix = false) {
     if (!sessionData) {
       toast.info("Faça login na sua conta para assinar o Clube HS.");
       window.location.href = `/auth?redirect=${encodeURIComponent("/clube-hs")}`;
@@ -79,7 +78,7 @@ export function ClubeHsPage() {
 
     try {
       setLoading(true);
-      const res = await subscribeFn({ data: { origin: window.location.origin } });
+      const res = await (pix ? pixFn : subscribeFn)({ data: { origin: window.location.origin } });
       if (res.initPoint) {
         window.location.href = res.initPoint;
       }
@@ -201,8 +200,9 @@ export function ClubeHsPage() {
                 Você já é membro ativo do Clube HS!
               </div>
             ) : (
+              <div className="flex w-full flex-col items-center gap-3">
               <Button
-                onClick={handleSubscribe}
+                onClick={() => handleSubscribe()}
                 disabled={loading}
                 className="w-full sm:w-auto min-w-[280px] h-14 text-base font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 transition-all"
               >
@@ -218,6 +218,11 @@ export function ClubeHsPage() {
                   </>
                 )}
               </Button>
+              <Button variant="outline" className="w-full sm:w-auto min-w-[280px] h-12" disabled={loading} onClick={() => handleSubscribe(true)}>
+                <QrCode className="mr-2 h-5 w-5" /> Pagar 1 mês com Pix · R$ 19,90
+              </Button>
+              <p className="text-xs text-muted-foreground">Pix sem renovação automática. Acesso liberado após confirmação do pagamento.</p>
+              </div>
             )}
             <p className="text-xs text-slate-400 mt-3 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-slate-400" />

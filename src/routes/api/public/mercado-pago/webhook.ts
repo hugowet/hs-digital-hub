@@ -118,6 +118,19 @@ export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
         // =========================================================================
         // 🛒 ESTEIRA TRADICIONAL: FLUXO DE COMPRAS DO MARKETPLACE (SEU CÓDIGO INTACTO)
         // =========================================================================
+        const platformPayment = await mercadoPagoRequest<any>(`/v1/payments/${encodeURIComponent(dataId)}`, await decryptSecret(settings.access_token_encrypted)).catch(() => null);
+        if (platformPayment?.external_reference?.startsWith("club-pix:")) {
+          const intentId = platformPayment.external_reference.slice("club-pix:".length);
+          if (!/^[0-9a-f-]{36}$/i.test(intentId) || platformPayment.payment_method_id !== "pix" || String(platformPayment.id) !== dataId) return new Response("Payment mismatch", { status: 409 });
+          const { error: clubError } = await supabaseAdmin.rpc("apply_club_pix_payment", {
+            _id: intentId, _payment_id: dataId, _status: platformPayment.status,
+            _amount: platformPayment.transaction_amount, _currency: platformPayment.currency_id,
+          });
+          if (clubError) throw clubError;
+          await supabaseAdmin.from("payment_events").update({ processed_at: new Date().toISOString() })
+            .eq("provider", "mercadopago").eq("provider_event_id", providerEventId);
+          return new Response("ok");
+        }
         const { data: transaction } = await supabaseAdmin
           .from("payment_transactions")
           .select("id,store_id,order_id")
