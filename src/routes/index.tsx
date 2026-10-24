@@ -23,11 +23,13 @@ import {
   Store,
   Truck,
   Tv,
+  Users,
   Watch,
   X,
   Zap,
   Crown,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/product-card";
@@ -189,6 +191,20 @@ function RadioNavButton() {
   );
 }
 
+type BannerSlide =
+  | { kind: "rapaz"; buyerOnly?: boolean }
+  | { kind: "lupi"; buyerOnly?: boolean }
+  | { kind: "highlight"; title: string; text: string; icon: LucideIcon; buyerOnly?: boolean };
+
+const BANNER_SLIDES: BannerSlide[] = [
+  { kind: "rapaz" },
+  { kind: "lupi" },
+  { kind: "highlight", title: "Clube HS", text: "Sua experiência HS vai além das compras.", icon: Crown },
+  { kind: "highlight", title: "Afiliados HS", text: "Compartilhe a HS Digital. Conheça nosso programa de afiliados.", icon: Users },
+  { kind: "highlight", title: "Jogos & Prêmios", text: "Junte moedas e conquiste cupons de desconto no frete!", icon: Gamepad2, buyerOnly: true },
+  { kind: "highlight", title: "Rádio HS", text: "Dê play na sua música. Continue curtindo enquanto compra.", icon: Radio },
+];
+
 function BuyerGamesPromoLink() {
   const [isBuyer, setIsBuyer] = useState(false);
 
@@ -251,12 +267,27 @@ export function Home() {
   );
   const products = data.pages.flatMap((page) => page.products);
 
-  const [showLupiBanner, setShowLupiBanner] = useState(false);
+  const [bannerSlide, setBannerSlide] = useState(0);
+  const [isBuyer, setIsBuyer] = useState(false);
 
   useEffect(() => {
-    const id = window.setInterval(() => setShowLupiBanner((value) => !value), 5000);
-    return () => window.clearInterval(id);
+    let active = true;
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user || !active) return;
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+      const seller = roles?.some((item) => item.role === "seller") ?? false;
+      if (active) setIsBuyer((roles?.some((item) => item.role === "buyer") ?? false) && !seller);
+    });
+    return () => { active = false; };
   }, []);
+
+  const bannerSlides = useMemo(() => BANNER_SLIDES.filter((slide) => !slide.buyerOnly || isBuyer), [isBuyer]);
+  const currentSlide = bannerSlides[bannerSlide % bannerSlides.length];
+
+  useEffect(() => {
+    const id = window.setInterval(() => setBannerSlide((value) => (value + 1) % bannerSlides.length), 5000);
+    return () => window.clearInterval(id);
+  }, [bannerSlides.length]);
 
   const { data: activeCategories = [] } = useQuery({
     queryKey: ["active-store-categories"],
