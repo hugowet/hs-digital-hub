@@ -225,8 +225,7 @@ function ProductDetailPage() {
     if (product) {
       trackProductView({
         id: product.id,
-        title: product.supplierOptions?.find((option) => option.productId === productId)?.label
-          ? `${product.title} — ${product.supplierOptions.find((option) => option.productId === productId)?.label}` : product.title,
+        title: product.title,
         price: Number(product.price),
         imageUrl: product.image_url ?? undefined,
       });
@@ -366,7 +365,8 @@ function ProductDetailPage() {
         productId: product.id,
         storeId: product.store_id,
         storeName: "Loja JJ Kuster",
-        title: product.title,
+        title: product.supplierOptions?.find((option) => option.productId === productId)?.label
+          ? `${product.title} — ${product.supplierOptions.find((option) => option.productId === productId)?.label}` : product.title,
         price,
         imageUrl: product.image_url ?? undefined,
         productType: product.product_type || "physical",
