@@ -216,6 +216,9 @@ export function HSTrends() {
   });
 
   const isVipClube = Boolean(userProfile?.is_clube_hs);
+  // Administrador tem HSTrends ilimitado (pode postar sem assinatura)
+  const isAdmin = authUser?.email === "hugoet373@gmail.com";
+  const canPostVideos = isVipClube || isAdmin;
 
   // Vídeos reais do banco + URLs assinadas
   const { data: customVideos = [] } = useQuery({
@@ -419,7 +422,7 @@ export function HSTrends() {
 
   const handleOpenUpload = () => {
     if (!authUser) return requireLogin("postar vídeos");
-    if (!isVipClube) {
+    if (!canPostVideos) {
       toast.info("Postar no HSTrends é exclusivo do Clube HS.");
       navigate({ to: "/clube-hs" });
       return;
