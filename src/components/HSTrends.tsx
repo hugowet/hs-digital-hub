@@ -40,8 +40,9 @@ const SIGNED_URL_TTL = 3600;
 
 export type TrendPost = {
   id: string;
-  post_type: "organic" | "ad";
+  post_type: "organic" | "ad" | "photo";
   video_url: string;
+  audio_url?: string;
   author_id?: string;
   author_name: string;
   author_avatar: string;
@@ -232,9 +233,11 @@ export function HSTrends() {
       if (error || !data) return [];
 
       const paths = data.map((v: any) => v.video_url).filter((p: string) => p && !p.startsWith("http"));
+      const audioPaths = data.map((v: any) => v.audio_path).filter((p: string) => p && !p.startsWith("http"));
       const signed: Record<string, string> = {};
-      if (paths.length) {
-        const { data: urls } = await supabase.storage.from("trend-videos").createSignedUrls(paths, SIGNED_URL_TTL);
+      const allPaths = [...paths, ...audioPaths];
+      if (allPaths.length) {
+        const { data: urls } = await supabase.storage.from("trend-videos").createSignedUrls(allPaths, SIGNED_URL_TTL);
         for (const entry of urls ?? []) {
           if (entry.path && entry.signedUrl) signed[entry.path] = entry.signedUrl;
         }
@@ -242,8 +245,9 @@ export function HSTrends() {
 
       return data.map((v: any) => ({
         id: v.id,
-        post_type: "organic",
+        post_type: v.post_type === "photo" ? "photo" : "organic",
         video_url: v.video_url.startsWith("http") ? v.video_url : signed[v.video_url] ?? "",
+        audio_url: v.audio_path ? (v.audio_path.startsWith("http") ? v.audio_path : signed[v.audio_path] ?? "") : "",
         author_id: v.user_id,
         author_name: v.author_name,
         author_avatar: v.author_avatar || FALLBACK_AVATAR,
