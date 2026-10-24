@@ -12,6 +12,7 @@ import {
   Keyboard,
   LampDesk,
   MessageCircle,
+  Play,
   Radio,
   Search,
   ShieldCheck,
