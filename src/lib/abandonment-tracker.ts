@@ -1,4 +1,5 @@
 // Rastreador blindado de abandono e retenção com lembrete de 30 min
+import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 export interface ViewedProductEvent {
   productId: string;
   title: string;
@@ -83,8 +84,8 @@ export function initAbandonmentWatcher() {
           if ("Notification" in window && Notification.permission === "granted") {
             const notif = new Notification("Você ainda tem interesse neste item?", {
               body: `${item.title.slice(0, 50)}... por apenas R$ ${item.price.toFixed(2)} com Frete Grátis garantido!`,
-              icon: item.imageUrl || "/hs-digital-logo.png",
-              badge: "/hs-digital-logo.png",
+              icon: item.imageUrl || logoAsset.url,
+              badge: logoAsset.url,
               tag: `reminder-${item.productId}`,
             });
 
