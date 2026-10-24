@@ -26,7 +26,13 @@ import {
   Tag,
   Camera,
   BadgeCheck,
+  Eye,
+  Pencil,
+  Trash2,
+  CornerDownRight,
+  Library,
 } from "lucide-react";
+import { TREND_MUSIC_LIBRARY, type TrendMusicTrack } from "@/lib/trends-music";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +58,8 @@ export type TrendPost = {
   music_title: string;
   likes_count: number;
   comments_count: number;
+  views_count: number;
+  title?: string;
   ad_badge?: string;
   ad_icon?: "radio" | "clube" | "jogos" | "social" | "promo";
   cta_label?: string;
@@ -66,6 +74,8 @@ export type TrendComment = {
   user_avatar: string | null;
   content: string;
   created_at: string;
+  parent_id?: string | null;
+  edited_at?: string | null;
 };
 
 // Anúncios internos da plataforma (aparecem só para quem não é Clube HS)
@@ -199,6 +209,14 @@ export function HSTrends() {
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadDesc, setUploadDesc] = useState("");
   const [musicFile, setMusicFile] = useState<File | null>(null);
+  const [libraryTrack, setLibraryTrack] = useState<TrendMusicTrack | null>(null);
+  const [musicTab, setMusicTab] = useState<"library" | "device">("library");
+  const [replyToComment, setReplyToComment] = useState<TrendComment | null>(null);
+  const [editingComment, setEditingComment] = useState<TrendComment | null>(null);
+  const [editPostTarget, setEditPostTarget] = useState<TrendPost | null>(null);
+  const [editPostTitle, setEditPostTitle] = useState("");
+  const [editPostDesc, setEditPostDesc] = useState("");
+  const viewedPostsRef = useRef<Set<string>>(new Set());
   const [isSubmittingVideo, setIsSubmittingVideo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const musicInputRef = useRef<HTMLInputElement | null>(null);
@@ -269,6 +287,8 @@ export function HSTrends() {
         music_title: v.music_title || "Som Original",
         likes_count: v.likes_count || 0,
         comments_count: 0,
+        views_count: v.views_count || 0,
+        title: v.title,
       })) as TrendPost[];
     },
     refetchInterval: 60_000,
@@ -363,6 +383,78 @@ export function HSTrends() {
     navigate({ to: "/auth", search: { reason: "login-required" } });
   };
 
+  // Visualização real: registra 1 view por usuário quando o post fica visível
+  const activePost = processedFeed[currentIndex];
+  useEffect(() => {
+    if (!activePost || activePost.post_type === "ad" || !authUser?.id) return;
+    if (viewedPostsRef.current.has(activePost.id)) return;
+    viewedPostsRef.current.add(activePost.id);
+    void supabase.rpc("trend_register_view", { _video_id: activePost.id }).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
+    });
+  }, [activePost?.id, authUser?.id, queryClient]);
+
+  const canManagePost = (post: TrendPost) =>
+    Boolean(authUser && post.author_id && (post.author_id === authUser.id || isAdmin));
+
+  const handleDeletePost = async (post: TrendPost) => {
+    if (!authUser || !canManagePost(post)) return;
+    if (!window.confirm("Apagar este post do HSTrends? Essa ação não pode ser desfeita.")) return;
+    const { data: row } = await supabase.from("trend_videos").select("video_url, audio_path").eq("id", post.id).single();
+    const { error } = await supabase.from("trend_videos").delete().eq("id", post.id);
+    if (error) {
+      toast.error("Não foi possível apagar o post.");
+      return;
+    }
+    const paths = [row?.video_url, row?.audio_path].filter((p): p is string => Boolean(p) && !p!.startsWith("http"));
+    if (paths.length) await supabase.storage.from("trend-videos").remove(paths);
+    queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
+    toast.success("Post apagado.");
+  };
+
+  const openEditPost = (post: TrendPost) => {
+    setEditPostTitle(post.title || "");
+    setEditPostDesc(post.description || "");
+    setEditPostTarget(post);
+  };
+
+  const handleSaveEditedPost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editPostTarget || !authUser) return;
+    const { error } = await supabase
+      .from("trend_videos")
+      .update({ title: editPostTitle.trim(), description: editPostDesc.trim() })
+      .eq("id", editPostTarget.id);
+    if (error) {
+      toast.error("Não foi possível salvar as alterações.");
+      return;
+    }
+    setEditPostTarget(null);
+    queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
+    toast.success("Post atualizado!");
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    const { error } = await supabase.from("trend_comments").delete().eq("id", commentId);
+    if (error) toast.error("Não foi possível apagar o comentário.");
+    else refetchComments();
+  };
+
+  const handleSaveEditedComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingComment || !newCommentText.trim()) return;
+    const { error } = await supabase
+      .from("trend_comments")
+      .update({ content: newCommentText.trim(), edited_at: new Date().toISOString() })
+      .eq("id", editingComment.id);
+    if (error) toast.error("Não foi possível editar o comentário.");
+    else {
+      setEditingComment(null);
+      setNewCommentText("");
+      refetchComments();
+    }
+  };
+
   const handleSendComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCommentText.trim() || !commentModalPost) return;
@@ -374,10 +466,12 @@ export function HSTrends() {
       user_name: userProfile?.full_name || authUser.email?.split("@")[0] || "Cliente HS",
       user_avatar: userProfile?.avatar_url || FALLBACK_AVATAR,
       content: newCommentText.trim(),
+      parent_id: replyToComment?.id ?? null,
     });
     if (error) toast.error("Não foi possível enviar o comentário.");
     else {
       setNewCommentText("");
+      setReplyToComment(null);
       refetchComments();
     }
   };
@@ -489,7 +583,10 @@ export function HSTrends() {
       if (upError) throw new Error("Não foi possível enviar a mídia. Tente novamente.");
 
       let audioPath: string | null = null;
-      if (musicFile) {
+      if (libraryTrack) {
+        // Música da biblioteca HS: usa a URL pública diretamente
+        audioPath = libraryTrack.url;
+      } else if (musicFile) {
         const audioExt = musicFile.name.split(".").pop() || "mp3";
         audioPath = `${authUser.id}/music-${crypto.randomUUID()}.${audioExt}`;
         const { error: musicError } = await supabase.storage.from("trend-videos").upload(audioPath, musicFile, {
@@ -508,9 +605,11 @@ export function HSTrends() {
         audio_path: audioPath,
         duration_seconds: uploadDuration,
         post_type: uploadKind === "photo" ? "photo" : "organic",
-        music_title: musicFile
-          ? `🎵 ${musicFile.name.replace(/\.[^.]+$/, "")}`
-          : "Som Original · " + (userProfile?.full_name || "Criador HS"),
+        music_title: libraryTrack
+          ? `🎵 ${libraryTrack.title} · ${libraryTrack.artist}`
+          : musicFile
+            ? `🎵 ${musicFile.name.replace(/\.[^.]+$/, "")}`
+            : "Som Original · " + (userProfile?.full_name || "Criador HS"),
       });
       if (error) throw new Error("Não foi possível publicar o post.");
 
@@ -520,6 +619,7 @@ export function HSTrends() {
       setUploadTitle("");
       setUploadDesc("");
       setMusicFile(null);
+      setLibraryTrack(null);
       queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
       toast.success("Seu post foi publicado no HSTrends!");
     } catch (err) {
@@ -726,12 +826,32 @@ export function HSTrends() {
                     </>
                   )}
 
+                  {!isAd && (
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white">
+                        <Eye className="w-6 h-6" />
+                      </div>
+                      <span className="text-[11px] font-bold drop-shadow">{post.views_count}</span>
+                    </div>
+                  )}
+
                   <button onClick={() => handleShare(post)} className="flex flex-col items-center gap-1 active:scale-110 transition-transform">
                     <div className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white">
                       <Share2 className="w-6 h-6" />
                     </div>
                     <span className="text-[11px] font-bold drop-shadow">Share</span>
                   </button>
+
+                  {!isAd && canManagePost(post) && (
+                    <>
+                      <button onClick={() => openEditPost(post)} title="Editar post" className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white active:scale-110 transition-transform">
+                        <Pencil className="w-5 h-5 text-cyan-300" />
+                      </button>
+                      <button onClick={() => handleDeletePost(post)} title="Apagar post" className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white active:scale-110 transition-transform">
+                        <Trash2 className="w-5 h-5 text-rose-400" />
+                      </button>
+                    </>
+                  )}
 
                   {!isAd && (
                     <button onClick={() => setIsMuted((prev) => !prev)} className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white mt-1 active:scale-110 transition-transform">
@@ -820,27 +940,83 @@ export function HSTrends() {
               {comments.length === 0 ? (
                 <div className="text-center py-12 text-slate-500 text-xs">Seja o primeiro a comentar neste vídeo!</div>
               ) : (
-                comments.map((comm) => (
-                  <div key={comm.id} className="flex items-start gap-3">
-                    <img src={comm.user_avatar || FALLBACK_AVATAR} alt={comm.user_name} className="w-8 h-8 rounded-full object-cover shrink-0" />
-                    <div className="flex-1 bg-slate-800/60 rounded-2xl p-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-slate-200">{comm.user_name}</span>
-                        <span className="text-[10px] text-slate-500">
-                          {new Date(comm.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </span>
+                comments
+                  .filter((c) => !c.parent_id)
+                  .map((comm) => {
+                    const replies = comments.filter((r) => r.parent_id === comm.id);
+                    const renderComment = (c: TrendComment, isReply: boolean) => (
+                      <div key={c.id} className={`flex items-start gap-3 ${isReply ? "ml-10 mt-2" : ""}`}>
+                        <img src={c.user_avatar || FALLBACK_AVATAR} alt={c.user_name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                        <div className="flex-1 bg-slate-800/60 rounded-2xl p-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-xs text-slate-200">{c.user_name}</span>
+                            <span className="text-[10px] text-slate-500 shrink-0">
+                              {new Date(c.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              {c.edited_at ? " · editado" : ""}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-300 mt-1 leading-relaxed">{c.content}</p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            {authUser && !isReply && (
+                              <button
+                                onClick={() => { setReplyToComment(c); setEditingComment(null); setNewCommentText(""); }}
+                                className="text-[10px] font-bold text-slate-400 hover:text-amber-400 flex items-center gap-1"
+                              >
+                                <CornerDownRight className="w-3 h-3" /> Responder
+                              </button>
+                            )}
+                            {authUser?.id === c.user_id && (
+                              <>
+                                <button
+                                  onClick={() => { setEditingComment(c); setReplyToComment(null); setNewCommentText(c.content); }}
+                                  className="text-[10px] font-bold text-slate-400 hover:text-cyan-300 flex items-center gap-1"
+                                >
+                                  <Pencil className="w-3 h-3" /> Editar
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteComment(c.id)}
+                                  className="text-[10px] font-bold text-slate-400 hover:text-rose-400 flex items-center gap-1"
+                                >
+                                  <Trash2 className="w-3 h-3" /> Apagar
+                                </button>
+                              </>
+                            )}
+                            {isAdmin && authUser?.id !== c.user_id && (
+                              <button
+                                onClick={() => handleDeleteComment(c.id)}
+                                className="text-[10px] font-bold text-slate-400 hover:text-rose-400 flex items-center gap-1"
+                              >
+                                <Trash2 className="w-3 h-3" /> Apagar
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-300 mt-1 leading-relaxed">{comm.content}</p>
-                    </div>
-                  </div>
-                ))
+                    );
+                    return (
+                      <div key={comm.id}>
+                        {renderComment(comm, false)}
+                        {replies.map((r) => renderComment(r, true))}
+                      </div>
+                    );
+                  })
               )}
             </div>
 
-            <form onSubmit={handleSendComment} className="pt-2 border-t border-slate-800 flex gap-2">
+            {(replyToComment || editingComment) && (
+              <div className="flex items-center justify-between px-2 py-1.5 mb-1 rounded-lg bg-slate-800 text-[11px] text-slate-300">
+                <span className="truncate">
+                  {replyToComment ? `Respondendo a ${replyToComment.user_name}` : `Editando seu comentário`}
+                </span>
+                <button onClick={() => { setReplyToComment(null); setEditingComment(null); setNewCommentText(""); }} className="text-slate-400 hover:text-white">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+            <form onSubmit={editingComment ? handleSaveEditedComment : handleSendComment} className="pt-2 border-t border-slate-800 flex gap-2">
               <Input
                 type="text"
-                placeholder={authUser ? "Deixe um comentário legal..." : "Faça login para comentar"}
+                placeholder={authUser ? (replyToComment ? "Escreva sua resposta..." : "Deixe um comentário legal...") : "Faça login para comentar"}
                 value={newCommentText}
                 onChange={(e) => setNewCommentText(e.target.value)}
                 disabled={!authUser}
@@ -976,21 +1152,66 @@ export function HSTrends() {
 
             <div>
               <label className="text-xs font-semibold text-slate-300">Música (opcional)</label>
-              <input
-                ref={musicInputRef}
-                type="file"
-                accept="audio/*"
-                className="hidden"
-                onChange={(e) => handlePickMusic(e.target.files?.[0] ?? null)}
-              />
-              <button
-                type="button"
-                onClick={() => musicInputRef.current?.click()}
-                className="mt-1 w-full py-3 rounded-xl border border-slate-700 bg-slate-950 text-slate-400 text-xs font-bold flex items-center justify-center gap-2 hover:border-amber-500/60 hover:text-amber-300 transition-colors"
-              >
-                <Music2 className="w-4 h-4" />
-                {musicFile ? `🎵 ${musicFile.name}` : "Escolher música do aparelho"}
-              </button>
+              <div className="mt-1 grid grid-cols-2 gap-1 rounded-xl bg-slate-950 p-1 border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setMusicTab("library")}
+                  className={`py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 ${musicTab === "library" ? "bg-amber-500 text-slate-950" : "text-slate-400"}`}
+                >
+                  <Library className="w-3.5 h-3.5" /> Biblioteca HS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMusicTab("device")}
+                  className={`py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 ${musicTab === "device" ? "bg-amber-500 text-slate-950" : "text-slate-400"}`}
+                >
+                  <Music2 className="w-3.5 h-3.5" /> Do aparelho
+                </button>
+              </div>
+
+              {musicTab === "library" ? (
+                <div className="mt-2 max-h-44 overflow-y-auto space-y-1 rounded-xl border border-slate-800 bg-slate-950 p-2 scrollbar-none">
+                  <button
+                    type="button"
+                    onClick={() => setLibraryTrack(null)}
+                    className={`w-full text-left px-2.5 py-2 rounded-lg text-[11px] font-bold ${!libraryTrack ? "bg-slate-800 text-white" : "text-slate-400 hover:bg-slate-800/50"}`}
+                  >
+                    Sem música (som original)
+                  </button>
+                  {TREND_MUSIC_LIBRARY.map((track) => (
+                    <button
+                      key={track.id}
+                      type="button"
+                      onClick={() => { setLibraryTrack(track); setMusicFile(null); }}
+                      className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between gap-2 ${libraryTrack?.id === track.id ? "bg-amber-500/20 border border-amber-500/50" : "hover:bg-slate-800/50"}`}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-[11px] font-bold text-white">{track.title}</span>
+                        <span className="block text-[10px] text-slate-400">{track.artist}</span>
+                      </span>
+                      <span className="text-[9px] font-bold text-amber-400 shrink-0">{track.tag}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <input
+                    ref={musicInputRef}
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={(e) => { handlePickMusic(e.target.files?.[0] ?? null); setLibraryTrack(null); }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => musicInputRef.current?.click()}
+                    className="mt-2 w-full py-3 rounded-xl border border-slate-700 bg-slate-950 text-slate-400 text-xs font-bold flex items-center justify-center gap-2 hover:border-amber-500/60 hover:text-amber-300 transition-colors"
+                  >
+                    <Music2 className="w-4 h-4" />
+                    {musicFile ? `🎵 ${musicFile.name}` : "Escolher música do aparelho"}
+                  </button>
+                </>
+              )}
             </div>
 
             <div>
@@ -1022,6 +1243,41 @@ export function HSTrends() {
               className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-lg shadow-amber-500/20"
             >
               {isSubmittingVideo ? "Publicando..." : "Publicar Vídeo Agora"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* EDITAR POST */}
+      <Dialog open={Boolean(editPostTarget)} onOpenChange={(open) => { if (!open) setEditPostTarget(null); }}>
+        <DialogContent className="max-w-md bg-slate-900 border-slate-800 text-white rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-cyan-300" />
+              Editar Post
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveEditedPost} className="space-y-4 mt-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-300">Título</label>
+              <Input
+                value={editPostTitle}
+                onChange={(e) => setEditPostTitle(e.target.value)}
+                required
+                className="mt-1 bg-slate-950 border-slate-800 text-white text-xs rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-300">Legenda / Descrição</label>
+              <Textarea
+                value={editPostDesc}
+                onChange={(e) => setEditPostDesc(e.target.value)}
+                rows={4}
+                className="mt-1 bg-slate-950 border-slate-800 text-white text-xs rounded-xl resize-none"
+              />
+            </div>
+            <Button type="submit" className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs">
+              Salvar Alterações
             </Button>
           </form>
         </DialogContent>

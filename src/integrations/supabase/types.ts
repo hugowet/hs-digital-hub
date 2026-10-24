@@ -1263,12 +1263,122 @@ export type Database = {
           },
         ]
       }
+      social_group_members: {
+        Row: {
+          added_at: string
+          group_id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          group_id: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          group_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "social_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_group_messages: {
+        Row: {
+          content: string
+          created_at: string
+          group_id: string
+          id: string
+          kind: string
+          media_path: string | null
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          group_id: string
+          id?: string
+          kind?: string
+          media_path?: string | null
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          kind?: string
+          media_path?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_group_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "social_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_group_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_messages: {
         Row: {
           content: string
           conversation_id: string
           created_at: string
+          edited_at: string | null
           id: string
+          kind: string
+          media_path: string | null
           read_at: string | null
           sender_id: string
         }
@@ -1276,7 +1386,10 @@ export type Database = {
           content: string
           conversation_id: string
           created_at?: string
+          edited_at?: string | null
           id?: string
+          kind?: string
+          media_path?: string | null
           read_at?: string | null
           sender_id: string
         }
@@ -1284,7 +1397,10 @@ export type Database = {
           content?: string
           conversation_id?: string
           created_at?: string
+          edited_at?: string | null
           id?: string
+          kind?: string
+          media_path?: string | null
           read_at?: string | null
           sender_id?: string
         }
@@ -1768,7 +1884,9 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          edited_at: string | null
           id: string
+          parent_id: string | null
           user_avatar: string | null
           user_id: string
           user_name: string
@@ -1777,7 +1895,9 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          edited_at?: string | null
           id?: string
+          parent_id?: string | null
           user_avatar?: string | null
           user_id: string
           user_name: string
@@ -1786,13 +1906,22 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          edited_at?: string | null
           id?: string
+          parent_id?: string | null
           user_avatar?: string | null
           user_id?: string
           user_name?: string
           video_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "trend_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "trend_comments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trend_comments_user_id_fkey"
             columns: ["user_id"]
@@ -1890,6 +2019,7 @@ export type Database = {
           title: string
           user_id: string
           video_url: string
+          views_count: number
         }
         Insert: {
           audio_path?: string | null
@@ -1905,6 +2035,7 @@ export type Database = {
           title: string
           user_id: string
           video_url: string
+          views_count?: number
         }
         Update: {
           audio_path?: string | null
@@ -1920,6 +2051,7 @@ export type Database = {
           title?: string
           user_id?: string
           video_url?: string
+          views_count?: number
         }
         Relationships: [
           {
@@ -1927,6 +2059,39 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trend_views: {
+        Row: {
+          created_at: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trend_views_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "trend_videos"
             referencedColumns: ["id"]
           },
         ]
@@ -2312,6 +2477,7 @@ export type Database = {
       social_contact_profiles: {
         Args: never
         Returns: {
+          avatar_url: string
           full_name: string
           id: string
         }[]
@@ -2349,6 +2515,7 @@ export type Database = {
           total_coins: number
         }[]
       }
+      trend_register_view: { Args: { _video_id: string }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "seller" | "buyer"
