@@ -1,6 +1,6 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { getProductReviews, publishProductReview } from "@/lib/reviews.functions";
@@ -39,53 +39,46 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCjPrice } from "@/lib/use-cj-price";
 import { useCart } from "@/lib/cart";
-import { fetchProduct, fetchProducts } from "@/lib/catalog.functions";
+import { fetchCatalogPage } from "@/lib/catalog.functions";
+import { productQueryOptions } from "@/lib/product-query";
+import { SITE_ORIGIN, plainDescription, productSearchSchema } from "@/lib/seo";
 import { brl } from "@/lib/format";
 import type { Product } from "@/lib/catalog";
 import { ProductCard } from "@/components/product-card";
 import { trackProductView, markAsPurchasedOrInCart, initAbandonmentWatcher } from "@/lib/abandonment-tracker";
 
 export const Route = createFileRoute("/produto/$productId")({
-  loader: async ({ params }) => {
-    try {
-      const product = await fetchProduct({ data: { productId: params.productId } });
-      return { product };
-    } catch {
-      return { product: null };
-    }
-  },
+  loader: ({ params, context }) => context.queryClient.ensureQueryData(productQueryOptions(params.productId)),
   head: ({ loaderData, params }) => {
-    const p = loaderData?.product;
-    const title = p?.title ? `${p.title} · Loja JJ Kuster` : "Produto · HS Digital Marketplace";
-    const desc =
-      p?.description ||
-      "Confira todos os detalhes deste produto na Loja JJ Kuster com entrega garantida e compra protegida.";
-    const imageUrl =
-      p?.image_url ||
-      "https://hs-digital-marck.lovable.app/__l5e/assets-v1/39fcaa1a-9680-41a5-9293-4e05e8dc7c2b/hs-digital-logo.png";
-    const pageUrl = `https://hs-digital-marck.lovable.app/produto/${params.productId}`;
+    const p = loaderData;
+    const title = p?.title ? `${p.title} · HS Digital` : "Produto não encontrado · HS Digital";
+    const desc = plainDescription(p?.description_long || p?.description, p ? `Confira ${p.title} na HS Digital. Veja detalhes e opções de entrega.` : "Este produto não está disponível.");
+    const pageUrl = `${SITE_ORIGIN}/produto/${params.productId}`;
 
     return {
       meta: [
         { title },
         { name: "description", content: desc },
-        { property: "og:site_name", content: "HS Digital · Loja JJ Kuster" },
+        { property: "og:site_name", content: "HS Digital Marketplace" },
         { property: "og:title", content: title },
         { property: "og:description", content: desc },
         { property: "og:type", content: "product" },
         { property: "og:url", content: pageUrl },
-        { property: "og:image", content: imageUrl },
-        { property: "og:image:secure_url", content: imageUrl },
-        { property: "og:image:type", content: "image/jpeg" },
-        { property: "og:image:width", content: "800" },
-        { property: "og:image:height", content: "800" },
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: desc },
-        { name: "twitter:image", content: imageUrl },
+        ...(!p ? [{ name: "robots", content: "noindex, follow" }] : []),
+        ...(p?.image_url?.startsWith("https://") ? [
+          { property: "og:image", content: p.image_url },
+          { name: "twitter:image", content: p.image_url },
+        ] : []),
       ],
+      links: [{ rel: "canonical", href: pageUrl }],
+      scripts: p ? [{ type: "application/ld+json", children: JSON.stringify(productSearchSchema(p)) }] : [],
     };
   },
+  errorComponent: () => <div role="alert" className="p-8">Não foi possível carregar o produto. <Link to="/">Voltar à loja</Link></div>,
+  notFoundComponent: () => <div className="p-8">Produto não encontrado. <Link to="/">Voltar à loja</Link></div>,
   component: ProductDetailPage,
 });
 
@@ -211,18 +204,15 @@ export function ProductDetailPage() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  const { data: product, isLoading } = useQuery({
-    queryKey: ["product", productId],
-    queryFn: () => fetchProduct({ data: { productId } }),
-  });
+  const { data: product } = useSuspenseQuery(productQueryOptions(productId));
 
   const { data: relatedProducts = [] } = useQuery({
     queryKey: ["related-products", product?.category],
     enabled: !!product?.category,
     queryFn: async () => {
       try {
-        const res = await fetchProducts({ data: { category: product?.category, limit: 12 } });
-        return (res ?? []).filter((p: Product) => p.id !== productId);
+        const res = await fetchCatalogPage({ data: { category: product?.category, pageSize: 12 } });
+        return res.products.filter((p: Product) => p.id !== productId);
       } catch {
         return [];
       }
@@ -451,7 +441,7 @@ export function ProductDetailPage() {
     } finally { setSavingReview(false); }
   };
 
-  if (isLoading) {
+  if (false) {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />

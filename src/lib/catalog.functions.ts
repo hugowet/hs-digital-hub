@@ -67,6 +67,23 @@ async function signProductBatch(products: Product[]) {
 
 const projection =
   "id,title,supplier_title_original,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier";
+const cardProjection =
+  "id,title,price,compare_at_price,stock,category,image_url,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier";
+
+async function prepareCards(rows: unknown[]): Promise<Product[]> {
+  const products = rows.map((row) => ({
+    ...(row as Product), description: null, description_long: null,
+    gallery_urls: [], specifications: {}, variations: [], stores: null, media: [],
+  }));
+  const paths = [...new Set(products.flatMap((p) => p.image_url && isStoredMediaPath(p.image_url) ? [p.image_url] : []))];
+  if (!paths.length) return products;
+  // Only sign the public rows' cover paths; galleries are loaded on the product page.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.storage.from(MEDIA_BUCKET).createSignedUrls(paths, 3600);
+  if (error) throw error;
+  const urls = new Map(paths.map((path, i) => [path, data?.[i]?.signedUrl]));
+  return products.map((p) => ({ ...p, image_url: p.image_url ? urls.get(p.image_url) ?? p.image_url : null }));
+}
 
 const catalogInput = z.object({
   page: z.number().int().min(0).max(1_000).default(0),
@@ -109,18 +126,18 @@ async function queryCatalog(input: CatalogInput) {
     if (selectionError) throw selectionError;
     const daily = z.object({ ids: z.array(z.string().uuid()), total: z.number(), day: z.string() }).parse(selection);
     if (daily.ids.length === 0) return { products: [] as Product[], total: daily.total, nextPage: null };
-    const { data, error } = await supabasePublic.from("products").select(projection).eq("is_active", true).in("id", daily.ids);
+    const { data, error } = await supabasePublic.from("products").select(cardProjection).eq("is_active", true).in("id", daily.ids);
     if (error) throw error;
     const byId = new Map(((data ?? []) as unknown as Product[]).map((product) => [product.id, product]));
     const ordered = daily.ids.flatMap((id) => {
       const product = byId.get(id);
       return product ? [product] : [];
     });
-    const products = await signProductBatch(ordered);
+    const products = await prepareCards(ordered);
     return { products, total: daily.total, nextPage: from + daily.ids.length < daily.total ? input.page + 1 : null };
   }
 
-  let query = supabasePublic.from("products").select(projection, { count: "exact" }).eq("is_active", true);
+  let query = supabasePublic.from("products").select(cardProjection, { count: "exact" }).eq("is_active", true);
 
   for (const terms of catalogSearchGroups(input.query)) {
     query = query.or(terms.map((term) => `catalog_search_text.ilike.%${term}%`).join(","));
@@ -145,7 +162,7 @@ async function queryCatalog(input: CatalogInput) {
   if (error) throw error;
 
   const rawProducts = (data ?? []) as unknown as Product[];
-  const products = await signProductBatch(rawProducts);
+  const products = await prepareCards(rawProducts);
   const total = count ?? products.length;
   return { products, total, nextPage: from + products.length < total ? input.page + 1 : null };
 }
