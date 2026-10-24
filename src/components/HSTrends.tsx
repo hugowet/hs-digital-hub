@@ -1,7 +1,7 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Link } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Heart,
   MessageCircle,
@@ -9,8 +9,6 @@ import {
   Volume2,
   VolumeX,
   Play,
-  ShoppingBag,
-  ExternalLink,
   Crown,
   Sparkles,
   ArrowLeft,
@@ -18,45 +16,45 @@ import {
   Music2,
   Plus,
   Send,
-  Trash2,
   X,
   UserCheck,
   UserPlus,
-  Upload,
   Video as VideoIcon,
+  Radio,
+  Gamepad2,
+  MessagesSquare,
+  Tag,
+  Camera,
+  BadgeCheck,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+
+const MAX_VIDEO_SECONDS = 120;
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
+const SIGNED_URL_TTL = 3600;
 
 export type TrendPost = {
   id: string;
-  post_type: "organic" | "product" | "ad";
+  post_type: "organic" | "ad";
   video_url: string;
-  is_tiktok_embed?: boolean;
   author_id?: string;
   author_name: string;
   author_avatar: string;
   author_bio?: string;
-  author_followers?: number;
+  author_status?: string;
   description: string;
   music_title: string;
   likes_count: number;
   comments_count: number;
-  product_id?: string;
-  product_title?: string;
-  product_price?: number;
   ad_badge?: string;
+  ad_icon?: "radio" | "clube" | "jogos" | "social" | "promo";
   cta_label?: string;
   cta_url?: string;
-  is_external?: boolean;
 };
 
 export type TrendComment = {
@@ -64,153 +62,152 @@ export type TrendComment = {
   video_id: string;
   user_id: string;
   user_name: string;
-  user_avatar: string;
+  user_avatar: string | null;
   content: string;
   created_at: string;
 };
 
-// Base com vídeos oficiais do canal TikTok da loja (@hs.digital23) + Novelinhas
-const INITIAL_FEED: TrendPost[] = [
-  {
-    id: "tt-7689854727529549076",
-    post_type: "organic",
-    video_url: "https://www.tiktok.com/player/v1/7689854727529549076?autoplay=1&loop=1&music_info=1&description=1",
-    is_tiktok_embed: true,
-    author_id: "hs-oficial",
-    author_name: "HS Digital Oficial 🛒",
-    author_avatar: "https://p16-common-sign.tiktokcdn.com/tos-alisg-avt-0068/66b8a74727a52cf05a38a0ad621bb5aa~tplv-tiktokx-cropcenter:168:168.jpeg?dr=14577",
-    author_bio: "A nova marketplace que une tecnologia e preço justo para você e sua família.",
-    author_followers: 12400,
-    description: "Venha conferir ofertas na nova marketplace 🫴 HS Digital 🛒 - evoluindo com tecnologia 👩‍💻",
-    music_title: "Som Original · @hs.digital23",
-    likes_count: 5320,
-    comments_count: 142,
-  },
-  {
-    id: "novelinha-1",
-    post_type: "organic",
-    video_url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-    author_id: "novelas-frutas",
-    author_name: "Novelinhas da Feira 🍊",
-    author_avatar: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150&q=80",
-    author_bio: "O drama mais divertido das frutas do mercadão de Perdizes! 🍎🥑",
-    author_followers: 8750,
-    description: "Capítulo 14: O Maracujá surtou ao saber que o Frete Grátis é só na HS Digital! 😱🍈",
-    music_title: "Trilha Dramática · Novelas BR",
-    likes_count: 2430,
-    comments_count: 98,
-  },
-  {
-    id: "prod-1",
-    post_type: "product",
-    video_url: "https://vjs.zencdn.net/v/oceans.mp4",
-    author_id: "mari-reviews",
-    author_name: "Mari Reviews 📦",
-    author_avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&q=80",
-    author_bio: "Testando eletrônicos e produtos achadinhos entregues em até 2 dias.",
-    author_followers: 34100,
-    description: "Chegou em 2 dias aqui em Perdizes! Testando a caixinha de som à prova d'água da HS. Graves absurdos!",
-    music_title: "Tech Beats · Review Eletrônicos",
-    likes_count: 6180,
-    comments_count: 421,
-    product_id: "prod-caixa-som",
-    product_title: "Caixa de Som Bluetooth Pro",
-    product_price: 129.9,
-  },
-  {
-    id: "novelinha-2",
-    post_type: "organic",
-    video_url: "https://www.w3schools.com/html/mov_bbb.mp4",
-    author_id: "frutas-foco",
-    author_name: "Frutas em Foco 🥑",
-    author_avatar: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=150&q=80",
-    author_bio: "Humor, receitas e comédia da feira livre.",
-    author_followers: 15900,
-    description: "O Abacate tentou assinar o Clube HS mas não achou o CPF dele 😂🥑 #Comedia #Hortifruti",
-    music_title: "Risadas · Humor Trends",
-    likes_count: 3190,
-    comments_count: 114,
-  },
-];
-
-// Anúncios Nativos Comerciais
+// Anúncios internos da plataforma (aparecem só para quem não é Clube HS)
 const NATIVE_ADS: TrendPost[] = [
   {
     id: "ad-clube-hs",
     post_type: "ad",
-    video_url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/friday.mp4",
-    author_id: "hs-oficial",
+    video_url: "",
     author_name: "HS Digital Oficial 🌟",
-    author_avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&q=80",
-    author_bio: "Conta oficial do marketplace de Perdizes.",
-    author_followers: 50000,
-    description: "Assine o Clube HS por R$ 19,90/mês e ganhe Frete Grátis na região de Perdizes + Feed 100% sem anúncios!",
-    music_title: "Comercial Oficial · Clube HS Fidelidade",
-    likes_count: 1120,
-    comments_count: 45,
-    ad_badge: "Institucional HS Digital",
-    cta_label: "Assinar Clube HS por R$ 19,90",
+    author_avatar: "",
+    description: "Assine o Clube HS: poste vídeos no HSTrends, frete grátis e vantagens exclusivas por R$ 19,90/mês!",
+    music_title: "Comercial Oficial · Clube HS",
+    likes_count: 0,
+    comments_count: 0,
+    ad_badge: "Clube HS",
+    ad_icon: "clube",
+    cta_label: "Assinar Clube HS",
     cta_url: "/clube-hs",
-    is_external: false,
   },
   {
-    id: "ad-padaria-perdizes",
+    id: "ad-radio-hs",
     post_type: "ad",
-    video_url: "https://www.w3schools.com/html/movie.mp4",
-    author_id: "padaria-real",
-    author_name: "Padaria Real de Perdizes 🥖",
-    author_avatar: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=150&q=80",
-    author_bio: "Tradição em pães de fermentação natural e confeitaria fina.",
-    author_followers: 6800,
-    description: "Pão artesanal quentinho saindo a toda hora. Peça delivery no bairro pelo nosso WhatsApp parceiro!",
-    music_title: "Anúncio Comercial · Comércio Local",
-    likes_count: 850,
-    comments_count: 22,
-    ad_badge: "Lojista Parceiro do Bairro",
-    cta_label: "Fazer Pedido no WhatsApp",
-    cta_url: "https://wa.me/5511999999999?text=Vi+o+anuncio+no+HSTrends",
-    is_external: true,
+    video_url: "",
+    author_name: "Rádio HS 🎧",
+    author_avatar: "",
+    description: "A trilha sonora das suas compras! Ouça a Rádio HS com as mais tocadas, direto na vitrine.",
+    music_title: "Comercial · Rádio HS",
+    likes_count: 0,
+    comments_count: 0,
+    ad_badge: "Rádio HS",
+    ad_icon: "radio",
+    cta_label: "Ouvir Rádio HS",
+    cta_url: "/radio",
+  },
+  {
+    id: "ad-jogos",
+    post_type: "ad",
+    video_url: "",
+    author_name: "Jogos & Prêmios 🎮",
+    author_avatar: "",
+    description: "Roleta, raspadinha, cobrinha e arcade! Junte moedas e troque por cupons de desconto e frete.",
+    music_title: "Comercial · Jogos & Prêmios",
+    likes_count: 0,
+    comments_count: 0,
+    ad_badge: "Jogos & Prêmios",
+    ad_icon: "jogos",
+    cta_label: "Jogar Agora",
+    cta_url: "/jogos",
+  },
+  {
+    id: "ad-social",
+    post_type: "ad",
+    video_url: "",
+    author_name: "HS Social 💬",
+    author_avatar: "",
+    description: "Converse com quem você conhece pelo número cadastrado e publique stories de 24 horas.",
+    music_title: "Comercial · HS Social",
+    likes_count: 0,
+    comments_count: 0,
+    ad_badge: "HS Social",
+    ad_icon: "social",
+    cta_label: "Abrir HS Social",
+    cta_url: "/social",
+  },
+  {
+    id: "ad-promo",
+    post_type: "ad",
+    video_url: "",
+    author_name: "HS Digital 🛒",
+    author_avatar: "",
+    description: "Ofertas com até 71% OFF e frete grátis a partir de R$ 89,90. Corre pra vitrine!",
+    music_title: "Comercial · Ofertas da Vitrine",
+    likes_count: 0,
+    comments_count: 0,
+    ad_badge: "Promoções",
+    ad_icon: "promo",
+    cta_label: "Ver Ofertas",
+    cta_url: "/",
   },
 ];
 
+const AD_ICONS = {
+  radio: Radio,
+  clube: Crown,
+  jogos: Gamepad2,
+  social: MessagesSquare,
+  promo: Tag,
+} as const;
+
+type Badge = { label: string; className: string } | null;
+
+export function getCreatorBadge(followers: number): Badge {
+  if (followers >= 10000) return { label: "Lenda HS", className: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-400/50" };
+  if (followers >= 5000) return { label: "Diamante", className: "bg-cyan-500/20 text-cyan-300 border-cyan-400/50" };
+  if (followers >= 2000) return { label: "Ouro", className: "bg-amber-500/20 text-amber-300 border-amber-400/50" };
+  if (followers >= 1000) return { label: "Prata", className: "bg-slate-400/20 text-slate-200 border-slate-300/50" };
+  if (followers >= 500) return { label: "Bronze", className: "bg-orange-700/20 text-orange-300 border-orange-500/50" };
+  return null;
+}
+
+const FALLBACK_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80";
+
 export function HSTrends() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
-  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
-  const [followedUsers, setFollowedUsers] = useState<Record<string, boolean>>({});
 
-  // Modais de Ação
   const [commentModalPost, setCommentModalPost] = useState<TrendPost | null>(null);
   const [profileModalUser, setProfileModalUser] = useState<TrendPost | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
 
-  // Formulário de Comentário
   const [newCommentText, setNewCommentText] = useState("");
 
-  // Formulário de Upload de Vídeo (+)
+  // Upload de vídeo
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadDuration, setUploadDuration] = useState(0);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadDesc, setUploadDesc] = useState("");
-  const [uploadUrl, setUploadUrl] = useState("");
-  const [uploadType, setUploadType] = useState<"organic" | "product">("organic");
   const [isSubmittingVideo, setIsSubmittingVideo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // 1. Consulta usuário autenticado e status VIP
+  // Edição de perfil
+  const [editName, setEditName] = useState("");
+  const [editBio, setEditBio] = useState("");
+  const [editStatus, setEditStatus] = useState("");
+  const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
   const { data: authUser } = useQuery({
     queryKey: ["trend-current-auth-user"],
-    queryFn: async () => {
-      const { data } = await supabase.auth.getUser();
-      return data.user;
-    },
+    queryFn: async () => (await supabase.auth.getUser()).data.user,
   });
 
-  const { data: userProfile } = useQuery({
+  const { data: userProfile, refetch: refetchProfile } = useQuery({
     queryKey: ["hstrends-user-clube-status", authUser?.id],
     queryFn: async () => {
       if (!authUser?.id) return null;
       const { data } = await supabase
         .from("profiles")
-        .select("is_clube_hs, full_name, avatar_url")
+        .select("is_clube_hs, full_name, avatar_url, bio, status_text")
         .eq("id", authUser.id)
         .maybeSingle();
       return data;
@@ -220,35 +217,94 @@ export function HSTrends() {
 
   const isVipClube = Boolean(userProfile?.is_clube_hs);
 
-  // 2. Consulta vídeos do banco Supabase combinados com o feed base
+  // Vídeos reais do banco + URLs assinadas
   const { data: customVideos = [] } = useQuery({
     queryKey: ["trend-supabase-videos"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("trend_videos")
         .select("*")
-        .order("created_at", { ascending: false });
-
+        .order("created_at", { ascending: false })
+        .limit(100);
       if (error || !data) return [];
+
+      const paths = data.map((v: any) => v.video_url).filter((p: string) => p && !p.startsWith("http"));
+      const signed: Record<string, string> = {};
+      if (paths.length) {
+        const { data: urls } = await supabase.storage.from("trend-videos").createSignedUrls(paths, SIGNED_URL_TTL);
+        for (const entry of urls ?? []) {
+          if (entry.path && entry.signedUrl) signed[entry.path] = entry.signedUrl;
+        }
+      }
+
       return data.map((v: any) => ({
         id: v.id,
-        post_type: v.post_type || "organic",
-        video_url: v.video_url,
+        post_type: "organic",
+        video_url: v.video_url.startsWith("http") ? v.video_url : signed[v.video_url] ?? "",
         author_id: v.user_id,
         author_name: v.author_name,
-        author_avatar: v.author_avatar,
+        author_avatar: v.author_avatar || FALLBACK_AVATAR,
         description: v.description || v.title,
         music_title: v.music_title || "Som Original",
         likes_count: v.likes_count || 0,
         comments_count: 0,
-        ad_badge: v.ad_badge,
-        cta_label: v.cta_label,
-        cta_url: v.cta_url,
       })) as TrendPost[];
     },
+    refetchInterval: 60_000,
   });
 
-  // 3. Consulta comentários reais do vídeo ativo no modal
+  // Curtidas do usuário logado
+  const { data: myLikes = [] } = useQuery({
+    queryKey: ["trend-my-likes", authUser?.id],
+    queryFn: async () => {
+      if (!authUser?.id) return [];
+      const { data } = await supabase.from("trend_likes").select("video_id").eq("user_id", authUser.id);
+      return (data ?? []).map((r: any) => r.video_id as string);
+    },
+    enabled: Boolean(authUser?.id),
+  });
+
+  // Quem o usuário segue
+  const { data: myFollows = [] } = useQuery({
+    queryKey: ["trend-my-follows", authUser?.id],
+    queryFn: async () => {
+      if (!authUser?.id) return [];
+      const { data } = await supabase.from("trend_follows").select("followed_id").eq("follower_id", authUser.id);
+      return (data ?? []).map((r: any) => r.followed_id as string);
+    },
+    enabled: Boolean(authUser?.id),
+  });
+
+  // Seguidores por autor (para selos e contadores)
+  const authorIds = useMemo(
+    () => [...new Set(customVideos.map((v) => v.author_id).filter(Boolean))] as string[],
+    [customVideos],
+  );
+  const { data: followerCounts = {} } = useQuery({
+    queryKey: ["trend-follower-counts", authorIds.join(",")],
+    queryFn: async () => {
+      if (!authorIds.length) return {};
+      const { data } = await supabase.from("trend_follows").select("followed_id").in("followed_id", authorIds);
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) counts[row.followed_id] = (counts[row.followed_id] ?? 0) + 1;
+      return counts;
+    },
+    enabled: authorIds.length > 0,
+  });
+
+  // Perfis dos autores (bio/status)
+  const { data: authorProfiles = {} } = useQuery({
+    queryKey: ["trend-author-profiles", authorIds.join(",")],
+    queryFn: async () => {
+      if (!authorIds.length) return {};
+      const { data } = await supabase.from("profiles").select("id, full_name, avatar_url, bio, status_text").in("id", authorIds);
+      const map: Record<string, any> = {};
+      for (const p of data ?? []) map[p.id] = p;
+      return map;
+    },
+    enabled: authorIds.length > 0,
+  });
+
   const { data: comments = [], refetch: refetchComments } = useQuery({
     queryKey: ["trend-comments", commentModalPost?.id],
     queryFn: async () => {
@@ -257,193 +313,298 @@ export function HSTrends() {
         .from("trend_comments")
         .select("*")
         .eq("video_id", commentModalPost.id)
-        .order("created_at", { ascending: false });
-
+        .order("created_at", { ascending: false })
+        .limit(100);
       if (error || !data) return [];
       return data as TrendComment[];
     },
     enabled: Boolean(commentModalPost?.id),
   });
 
-  // 4. ALGORITMO DE INJEÇÃO NATIVA (1 Anúncio a cada 4 vídeos)
-  // Membros VIP do Clube HS pulam 100% dos anúncios comerciais!
+  // 1 anúncio a cada 4 vídeos; assinantes Clube HS não veem anúncios
   const processedFeed = useMemo(() => {
-    const rawFeed = [...customVideos, ...INITIAL_FEED];
-
-    if (isVipClube) {
-      return rawFeed;
-    }
-
+    if (isVipClube) return customVideos;
     const result: TrendPost[] = [];
     let adPointer = 0;
-
-    for (let i = 0; i < rawFeed.length; i++) {
-      result.push(rawFeed[i]);
-
+    for (let i = 0; i < customVideos.length; i++) {
+      result.push(customVideos[i]);
       if ((i + 1) % 4 === 0) {
-        const adToInject = NATIVE_ADS[adPointer % NATIVE_ADS.length];
-        result.push(adToInject);
+        result.push(NATIVE_ADS[adPointer % NATIVE_ADS.length]);
         adPointer++;
       }
     }
-
+    if (customVideos.length === 0) result.push(NATIVE_ADS[0]);
     return result;
   }, [customVideos, isVipClube]);
 
-  // Enviar comentário real
+  const requireLogin = (action: string) => {
+    toast.info(`Faça login para ${action}.`);
+    navigate({ to: "/auth", search: { reason: "login-required" } });
+  };
+
   const handleSendComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCommentText.trim() || !commentModalPost) return;
+    if (!authUser) return requireLogin("comentar");
 
-    if (!authUser) {
-      alert("Por favor, faça login para comentar!");
-      return;
-    }
-
-    const commentData = {
+    const { error } = await supabase.from("trend_comments").insert({
       video_id: commentModalPost.id,
       user_id: authUser.id,
       user_name: userProfile?.full_name || authUser.email?.split("@")[0] || "Cliente HS",
-      user_avatar: userProfile?.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
+      user_avatar: userProfile?.avatar_url || FALLBACK_AVATAR,
       content: newCommentText.trim(),
-    };
-
-    const { error } = await supabase.from("trend_comments").insert(commentData);
-    if (!error) {
+    });
+    if (error) toast.error("Não foi possível enviar o comentário.");
+    else {
       setNewCommentText("");
       refetchComments();
     }
   };
 
-  // Enviar novo vídeo (+)
+  const toggleLike = async (post: TrendPost) => {
+    if (post.post_type === "ad") return;
+    if (!authUser) return requireLogin("curtir");
+    const liked = myLikes.includes(post.id);
+    if (liked) {
+      await supabase.from("trend_likes").delete().eq("video_id", post.id).eq("user_id", authUser.id);
+    } else {
+      await supabase.from("trend_likes").insert({ video_id: post.id, user_id: authUser.id });
+    }
+    queryClient.invalidateQueries({ queryKey: ["trend-my-likes", authUser.id] });
+    queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
+  };
+
+  const toggleFollow = async (authorId: string) => {
+    if (!authUser) return requireLogin("seguir criadores");
+    if (authorId === authUser.id) return;
+    const following = myFollows.includes(authorId);
+    if (following) {
+      await supabase.from("trend_follows").delete().eq("follower_id", authUser.id).eq("followed_id", authorId);
+    } else {
+      await supabase.from("trend_follows").insert({ follower_id: authUser.id, followed_id: authorId });
+    }
+    queryClient.invalidateQueries({ queryKey: ["trend-my-follows", authUser.id] });
+    queryClient.invalidateQueries({ queryKey: ["trend-follower-counts"] });
+  };
+
+  // Seleção de vídeo da galeria com validação de duração (máx. 2 minutos)
+  const handlePickVideo = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("video/")) {
+      toast.error("Selecione um arquivo de vídeo.");
+      return;
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      toast.error("O vídeo deve ter no máximo 200 MB.");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const probe = document.createElement("video");
+    probe.preload = "metadata";
+    probe.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      if (probe.duration > MAX_VIDEO_SECONDS) {
+        toast.error("O vídeo deve ter no máximo 2 minutos.");
+        return;
+      }
+      setUploadDuration(Math.round(probe.duration));
+      setUploadFile(file);
+    };
+    probe.onerror = () => {
+      URL.revokeObjectURL(url);
+      toast.error("Não foi possível ler este vídeo.");
+    };
+    probe.src = url;
+  };
+
+  const handleOpenUpload = () => {
+    if (!authUser) return requireLogin("postar vídeos");
+    if (!isVipClube) {
+      toast.info("Postar no HSTrends é exclusivo do Clube HS.");
+      navigate({ to: "/clube-hs" });
+      return;
+    }
+    setUploadModalOpen(true);
+  };
+
   const handleUploadVideo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadUrl.trim() || !uploadTitle.trim()) {
-      alert("Preencha o link do vídeo e o título!");
+    if (!authUser || !isVipClube) return;
+    if (!uploadFile || !uploadTitle.trim()) {
+      toast.error("Escolha um vídeo da galeria e escreva um título.");
       return;
     }
-
-    if (!authUser) {
-      alert("Faça login para postar vídeos no HSTrends!");
-      return;
-    }
-
     setIsSubmittingVideo(true);
+    try {
+      const ext = uploadFile.name.split(".").pop() || "mp4";
+      const path = `${authUser.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upError } = await supabase.storage.from("trend-videos").upload(path, uploadFile, {
+        contentType: uploadFile.type,
+      });
+      if (upError) throw new Error("Não foi possível enviar o vídeo. Tente novamente.");
 
-    const newVideo = {
-      user_id: authUser.id,
-      author_name: userProfile?.full_name || authUser.email?.split("@")[0] || "Criador HS",
-      author_avatar: userProfile?.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
-      title: uploadTitle.trim(),
-      description: uploadDesc.trim(),
-      video_url: uploadUrl.trim(),
-      post_type: uploadType,
-      music_title: "Som Original · " + (userProfile?.full_name || "Criador HS"),
-    };
+      const { error } = await supabase.from("trend_videos").insert({
+        user_id: authUser.id,
+        author_name: userProfile?.full_name || authUser.email?.split("@")[0] || "Criador HS",
+        author_avatar: userProfile?.avatar_url || FALLBACK_AVATAR,
+        title: uploadTitle.trim(),
+        description: uploadDesc.trim(),
+        video_url: path,
+        duration_seconds: uploadDuration,
+        post_type: "organic",
+        music_title: "Som Original · " + (userProfile?.full_name || "Criador HS"),
+      });
+      if (error) throw new Error("Não foi possível publicar o vídeo.");
 
-    const { error } = await supabase.from("trend_videos").insert(newVideo);
-    setIsSubmittingVideo(false);
-
-    if (error) {
-      alert("Erro ao publicar vídeo. Tente novamente.");
-    } else {
       setUploadModalOpen(false);
+      setUploadFile(null);
       setUploadTitle("");
       setUploadDesc("");
-      setUploadUrl("");
       queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
-      alert("Seu vídeo foi publicado com sucesso no HSTrends!");
+      toast.success("Seu vídeo foi publicado no HSTrends!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao publicar vídeo.");
+    } finally {
+      setIsSubmittingVideo(false);
     }
   };
 
-  const toggleLike = (postId: string) => {
-    setLikedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }));
+  const openEditProfile = () => {
+    setEditName(userProfile?.full_name || "");
+    setEditBio(userProfile?.bio || "");
+    setEditStatus(userProfile?.status_text || "");
+    setEditAvatarFile(null);
+    setEditProfileOpen(true);
   };
 
-  const toggleFollow = (authorId: string) => {
-    setFollowedUsers((prev) => ({ ...prev, [authorId]: !prev[authorId] }));
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authUser) return;
+    setIsSavingProfile(true);
+    try {
+      let avatarUrl = userProfile?.avatar_url || null;
+      if (editAvatarFile) {
+        if (!editAvatarFile.type.startsWith("image/") || editAvatarFile.size > 5 * 1024 * 1024) {
+          throw new Error("A foto de perfil deve ser uma imagem de até 5 MB.");
+        }
+        const ext = editAvatarFile.name.split(".").pop() || "jpg";
+        const path = `${authUser.id}/avatar-${Date.now()}.${ext}`;
+        const { error: upError } = await supabase.storage.from("trend-videos").upload(path, editAvatarFile);
+        if (upError) throw new Error("Não foi possível enviar a foto.");
+        const { data: signed } = await supabase.storage.from("trend-videos").createSignedUrl(path, 60 * 60 * 24 * 365);
+        avatarUrl = signed?.signedUrl ?? null;
+      }
+      const { error } = await supabase
+        .from("profiles")
+        .update({ full_name: editName.trim() || null, bio: editBio.trim(), status_text: editStatus.trim(), avatar_url: avatarUrl })
+        .eq("id", authUser.id);
+      if (error) throw new Error("Não foi possível salvar o perfil.");
+      setEditProfileOpen(false);
+      refetchProfile();
+      toast.success("Perfil atualizado!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar perfil.");
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleShare = (post: TrendPost) => {
     if (navigator.share) {
-      navigator.share({
-        title: post.author_name,
-        text: post.description,
-        url: window.location.href,
-      }).catch(() => {});
+      navigator.share({ title: post.author_name, text: post.description, url: window.location.href }).catch(() => {});
     } else {
       navigator.clipboard.writeText(window.location.href);
-      alert("Link copiado para compartilhar!");
+      toast.success("Link copiado para compartilhar!");
     }
   };
+
+  const myFollowersCount = authUser ? (followerCounts[authUser.id] ?? 0) : 0;
+  const myBadge = getCreatorBadge(myFollowersCount);
 
   return (
     <div className="relative h-screen w-full bg-black text-white flex justify-center overflow-hidden font-sans select-none">
       <div className="relative h-full w-full max-w-md bg-black shadow-2xl flex flex-col justify-between">
-        
         {/* BARRA SUPERIOR */}
         <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 via-black/30 to-transparent">
-          <Link
-            to="/"
-            className="p-2 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors"
-          >
+          <Link to="/" className="p-2 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </Link>
 
-          <div className="flex items-center gap-4 text-sm font-bold tracking-wide drop-shadow-md">
-            <span className="text-white/60 cursor-pointer">Seguindo</span>
-            <span className="text-white border-b-2 border-white pb-0.5 cursor-pointer">
-              Para Você
-            </span>
+          <div className="flex items-center gap-2 text-sm font-bold tracking-wide drop-shadow-md">
+            <span className="text-white border-b-2 border-white pb-0.5">Para Você</span>
+            {myBadge && (
+              <span className={`px-2 py-0.5 rounded-full border text-[10px] font-extrabold ${myBadge.className}`}>
+                {myBadge.label}
+              </span>
+            )}
           </div>
 
-          {isVipClube ? (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 text-[11px] font-extrabold shadow-lg shadow-amber-400/30">
-              <Crown className="w-3.5 h-3.5 fill-slate-950" />
-              VIP Sem Ads
-            </div>
-          ) : (
-            <Link
-              to="/clube-hs"
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[11px] font-bold backdrop-blur-md"
-            >
-              <Sparkles className="w-3 h-3 text-amber-400" />
-              Tirar Ads
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            {authUser && (
+              <button
+                onClick={openEditProfile}
+                className="p-2 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60"
+                title="Editar meu perfil"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            )}
+            {isVipClube ? (
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 text-[11px] font-extrabold shadow-lg shadow-amber-400/30">
+                <Crown className="w-3.5 h-3.5 fill-slate-950" />
+                VIP Sem Ads
+              </div>
+            ) : (
+              <Link
+                to="/clube-hs"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[11px] font-bold backdrop-blur-md"
+              >
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                Tirar Ads
+              </Link>
+            )}
+          </div>
         </header>
 
-        {/* FEED DE ROLAGEM VERTICAL MAGNÉTICA */}
+        {/* FEED VERTICAL */}
         <div
           className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-none"
           onScroll={(e) => {
             const container = e.currentTarget;
             const index = Math.round(container.scrollTop / container.clientHeight);
-            if (index !== currentIndex && index >= 0 && index < processedFeed.length) {
-              setCurrentIndex(index);
-            }
+            if (index !== currentIndex && index >= 0 && index < processedFeed.length) setCurrentIndex(index);
           }}
         >
+          {processedFeed.length === 0 && (
+            <div className="h-full w-full flex flex-col items-center justify-center gap-3 text-center px-8">
+              <VideoIcon className="w-12 h-12 text-slate-600" />
+              <p className="text-sm text-slate-400">Nenhum vídeo publicado ainda. Assine o Clube HS e seja o primeiro a postar!</p>
+              <Link to="/clube-hs" className="text-amber-400 font-bold text-sm underline">Conhecer o Clube HS</Link>
+            </div>
+          )}
+
           {processedFeed.map((post, idx) => {
             const isActive = idx === currentIndex;
-            const isLiked = Boolean(likedPosts[post.id]);
-            const isFollowing = Boolean(post.author_id && followedUsers[post.author_id]);
+            const isLiked = myLikes.includes(post.id);
+            const isFollowing = Boolean(post.author_id && myFollows.includes(post.author_id));
             const isAd = post.post_type === "ad";
+            const followers = post.author_id ? (followerCounts[post.author_id] ?? 0) : 0;
+            const badge = getCreatorBadge(followers);
+            const AdIcon = post.ad_icon ? AD_ICONS[post.ad_icon] : Tag;
 
             return (
               <div
                 key={`${post.id}-${idx}`}
                 className="relative h-full w-full snap-start snap-always shrink-0 flex items-center justify-center bg-zinc-950 overflow-hidden"
               >
-                {/* Reprodutor Híbrido: Suporta TikTok Embed ou MP4 HTML5 */}
-                {post.is_tiktok_embed ? (
-                  <iframe
-                    title={post.description}
-                    src={post.video_url}
-                    className="w-full h-full border-0 pointer-events-auto"
-                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+                {isAd ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-slate-950 via-slate-900 to-black px-8 text-center">
+                    <div className="w-20 h-20 rounded-3xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center">
+                      <AdIcon className="w-10 h-10 text-amber-400" />
+                    </div>
+                    <p className="text-lg font-extrabold text-white">{post.ad_badge}</p>
+                    <p className="text-sm text-slate-300 leading-relaxed max-w-xs">{post.description}</p>
+                  </div>
                 ) : (
                   <HTML5VideoPlayer
                     src={post.video_url}
@@ -455,95 +616,76 @@ export function HSTrends() {
 
                 <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/20 via-transparent to-black/90 z-10" />
 
-                {/* BARRA LATERAL ESTILO TIKTOK */}
+                {/* BARRA LATERAL */}
                 <div className="absolute right-3 bottom-24 z-20 flex flex-col items-center gap-5 text-white">
-                  {/* Avatar do Criador + Abrir Perfil */}
-                  <div className="relative mb-2">
-                    <button
-                      onClick={() => setProfileModalUser(post)}
-                      className="relative block rounded-full focus:outline-none"
-                    >
-                      <img
-                        src={post.author_avatar}
-                        alt={post.author_name}
-                        className="w-11 h-11 rounded-full border-2 border-white object-cover shadow-lg"
-                      />
-                    </button>
-                    {/* Botão Seguir rápido */}
-                    {post.author_id && (
-                      <button
-                        onClick={() => toggleFollow(post.author_id!)}
-                        className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full flex items-center justify-center transition-all ${
-                          isFollowing ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
-                        }`}
-                      >
-                        {isFollowing ? <CheckCircle2 className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                  {!isAd && post.author_id && (
+                    <div className="relative mb-2">
+                      <button onClick={() => setProfileModalUser(post)} className="relative block rounded-full focus:outline-none">
+                        <img
+                          src={post.author_avatar || FALLBACK_AVATAR}
+                          alt={post.author_name}
+                          className="w-11 h-11 rounded-full border-2 border-white object-cover shadow-lg"
+                        />
                       </button>
-                    )}
-                  </div>
-
-                  {/* Curtir */}
-                  <button
-                    onClick={() => toggleLike(post.id)}
-                    className="flex flex-col items-center gap-1 group active:scale-125 transition-transform"
-                  >
-                    <div
-                      className={`p-2.5 rounded-full backdrop-blur-md transition-colors ${
-                        isLiked ? "bg-rose-600/30 text-rose-500" : "bg-black/40 text-white"
-                      }`}
-                    >
-                      <Heart className={`w-6 h-6 ${isLiked ? "fill-rose-500" : ""}`} />
+                      {post.author_id !== authUser?.id && (
+                        <button
+                          onClick={() => toggleFollow(post.author_id!)}
+                          className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full flex items-center justify-center transition-all ${
+                            isFollowing ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+                          }`}
+                        >
+                          {isFollowing ? <CheckCircle2 className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                        </button>
+                      )}
                     </div>
-                    <span className="text-[11px] font-bold drop-shadow">
-                      {isLiked ? post.likes_count + 1 : post.likes_count}
-                    </span>
-                  </button>
+                  )}
 
-                  {/* Comentários Reais */}
-                  <button
-                    onClick={() => setCommentModalPost(post)}
-                    className="flex flex-col items-center gap-1 active:scale-110 transition-transform"
-                  >
-                    <div className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white">
-                      <MessageCircle className="w-6 h-6" />
-                    </div>
-                    <span className="text-[11px] font-bold drop-shadow">
-                      {post.comments_count || comments.length || 0}
-                    </span>
-                  </button>
+                  {!isAd && (
+                    <>
+                      <button onClick={() => toggleLike(post)} className="flex flex-col items-center gap-1 group active:scale-125 transition-transform">
+                        <div className={`p-2.5 rounded-full backdrop-blur-md transition-colors ${isLiked ? "bg-rose-600/30 text-rose-500" : "bg-black/40 text-white"}`}>
+                          <Heart className={`w-6 h-6 ${isLiked ? "fill-rose-500" : ""}`} />
+                        </div>
+                        <span className="text-[11px] font-bold drop-shadow">{post.likes_count}</span>
+                      </button>
 
-                  {/* Compartilhar */}
-                  <button
-                    onClick={() => handleShare(post)}
-                    className="flex flex-col items-center gap-1 active:scale-110 transition-transform"
-                  >
+                      <button onClick={() => setCommentModalPost(post)} className="flex flex-col items-center gap-1 active:scale-110 transition-transform">
+                        <div className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white">
+                          <MessageCircle className="w-6 h-6" />
+                        </div>
+                        <span className="text-[11px] font-bold drop-shadow">{comments.length || ""}</span>
+                      </button>
+                    </>
+                  )}
+
+                  <button onClick={() => handleShare(post)} className="flex flex-col items-center gap-1 active:scale-110 transition-transform">
                     <div className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white">
                       <Share2 className="w-6 h-6" />
                     </div>
                     <span className="text-[11px] font-bold drop-shadow">Share</span>
                   </button>
 
-                  {/* Mudo / Som */}
-                  {!post.is_tiktok_embed && (
-                    <button
-                      onClick={() => setIsMuted((prev) => !prev)}
-                      className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white mt-1 active:scale-110 transition-transform"
-                    >
+                  {!isAd && (
+                    <button onClick={() => setIsMuted((prev) => !prev)} className="p-2.5 rounded-full bg-black/40 backdrop-blur-md text-white mt-1 active:scale-110 transition-transform">
                       {isMuted ? <VolumeX className="w-5 h-5 text-rose-400" /> : <Volume2 className="w-5 h-5 text-emerald-400" />}
                     </button>
                   )}
                 </div>
 
-                {/* LEGENDA E CTAs NO RODAPÉ */}
+                {/* LEGENDA E CTA */}
                 <div className="absolute left-4 right-16 bottom-6 z-20 space-y-2.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
-                      onClick={() => setProfileModalUser(post)}
+                      onClick={() => !isAd && setProfileModalUser(post)}
                       className="font-extrabold text-sm text-white drop-shadow hover:underline text-left"
                     >
                       {post.author_name}
                     </button>
-
+                    {badge && !isAd && (
+                      <span className={`px-2 py-0.5 rounded-full border text-[10px] font-extrabold ${badge.className}`}>
+                        {badge.label}
+                      </span>
+                    )}
                     {isAd && (
                       <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 font-black text-[10px] uppercase tracking-wider shadow-md">
                         {post.ad_badge || "Patrocinado"}
@@ -551,60 +693,25 @@ export function HSTrends() {
                     )}
                   </div>
 
-                  <p className="text-xs text-white/95 leading-relaxed line-clamp-3 drop-shadow">
-                    {post.description}
-                  </p>
-
-                  <div className="flex items-center gap-2 text-[11px] text-white/80 font-medium">
-                    <Music2 className="w-3.5 h-3.5 animate-spin" />
-                    <span className="truncate max-w-[200px]">{post.music_title}</span>
-                  </div>
-
-                  {/* CTA DE ANÚNCIO (post_type: 'ad') -> SEM SACOLA, COM CTA */}
-                  {isAd && post.cta_label && (
-                    <div className="pt-2">
-                      {post.is_external ? (
-                        <a
-                          href={post.cta_url || "#"}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-amber-500/30"
-                        >
-                          {post.cta_label}
-                          <ExternalLink className="w-4 h-4 stroke-[2.5]" />
-                        </a>
-                      ) : (
-                        <Link
-                          to={post.cta_url || "/clube-hs"}
-                          className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-amber-500/30"
-                        >
-                          <Crown className="w-4 h-4 fill-slate-950" />
-                          {post.cta_label}
-                        </Link>
-                      )}
-                    </div>
+                  {!isAd && (
+                    <>
+                      <p className="text-xs text-white/95 leading-relaxed line-clamp-3 drop-shadow">{post.description}</p>
+                      <div className="flex items-center gap-2 text-[11px] text-white/80 font-medium">
+                        <Music2 className="w-3.5 h-3.5 animate-spin" />
+                        <span className="truncate max-w-[200px]">{post.music_title}</span>
+                      </div>
+                    </>
                   )}
 
-                  {/* PRODUTO (post_type: 'product') -> COM SACOLA */}
-                  {!isAd && post.product_id && (
-                    <div className="pt-1">
-                      <Button
-                        asChild
-                        size="sm"
-                        className="w-full bg-white/90 hover:bg-white text-slate-950 font-bold text-xs rounded-xl shadow-lg flex items-center justify-between px-3 h-10 border border-white/40 backdrop-blur-md"
+                  {isAd && post.cta_label && (
+                    <div className="pt-2">
+                      <Link
+                        to={post.cta_url || "/"}
+                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-amber-500/30"
                       >
-                        <Link to={`/produto/${post.product_id}`}>
-                          <div className="flex items-center gap-2 truncate">
-                            <ShoppingBag className="w-4 h-4 text-emerald-600 shrink-0" />
-                            <span className="truncate">{post.product_title}</span>
-                          </div>
-                          {post.product_price && (
-                            <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg shrink-0">
-                              R$ {post.product_price.toFixed(2).replace(".", ",")}
-                            </span>
-                          )}
-                        </Link>
-                      </Button>
+                        <Crown className="w-4 h-4 fill-slate-950" />
+                        {post.cta_label}
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -613,10 +720,10 @@ export function HSTrends() {
           })}
         </div>
 
-        {/* BOTÃO FLUTUANTE DE GRAVAR / ENVIAR VÍDEO (+) */}
+        {/* BOTÃO DE PUBLICAR (+) */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
           <button
-            onClick={() => setUploadModalOpen(true)}
+            onClick={handleOpenUpload}
             className="flex items-center justify-center w-12 h-10 rounded-xl bg-gradient-to-r from-cyan-400 via-white to-rose-500 text-slate-950 font-black shadow-2xl active:scale-95 transition-transform"
             title="Publicar Vídeo"
           >
@@ -627,38 +734,27 @@ export function HSTrends() {
         </div>
       </div>
 
-      {/* 1. GAVETA DE COMENTÁRIOS DE VERDADE */}
+      {/* COMENTÁRIOS */}
       {commentModalPost && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-slate-900 border-t border-slate-800 rounded-t-3xl h-[65vh] flex flex-col justify-between p-4 shadow-2xl">
-            {/* Header Comentários */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <h3 className="font-bold text-sm text-white flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-amber-400" />
                 Comentários ({comments.length})
               </h3>
-              <button
-                onClick={() => setCommentModalPost(null)}
-                className="p-1 rounded-full text-slate-400 hover:text-white"
-              >
+              <button onClick={() => setCommentModalPost(null)} className="p-1 rounded-full text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Lista de Comentários */}
             <div className="flex-1 overflow-y-auto py-3 space-y-3 scrollbar-none">
               {comments.length === 0 ? (
-                <div className="text-center py-12 text-slate-500 text-xs">
-                  Seja o primeiro a comentar neste vídeo!
-                </div>
+                <div className="text-center py-12 text-slate-500 text-xs">Seja o primeiro a comentar neste vídeo!</div>
               ) : (
                 comments.map((comm) => (
                   <div key={comm.id} className="flex items-start gap-3">
-                    <img
-                      src={comm.user_avatar}
-                      alt={comm.user_name}
-                      className="w-8 h-8 rounded-full object-cover shrink-0"
-                    />
+                    <img src={comm.user_avatar || FALLBACK_AVATAR} alt={comm.user_name} className="w-8 h-8 rounded-full object-cover shrink-0" />
                     <div className="flex-1 bg-slate-800/60 rounded-2xl p-2.5">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-xs text-slate-200">{comm.user_name}</span>
@@ -673,7 +769,6 @@ export function HSTrends() {
               )}
             </div>
 
-            {/* Input de Envio de Comentário */}
             <form onSubmit={handleSendComment} className="pt-2 border-t border-slate-800 flex gap-2">
               <Input
                 type="text"
@@ -683,11 +778,7 @@ export function HSTrends() {
                 disabled={!authUser}
                 className="bg-slate-950 border-slate-800 text-white placeholder:text-slate-500 rounded-xl text-xs h-10"
               />
-              <Button
-                type="submit"
-                disabled={!newCommentText.trim() || !authUser}
-                className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold"
-              >
+              <Button type="submit" disabled={!newCommentText.trim() || !authUser} className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold">
                 <Send className="w-4 h-4" />
               </Button>
             </form>
@@ -695,73 +786,93 @@ export function HSTrends() {
         </div>
       )}
 
-      {/* 2. MODAL DE PERFIL DO CRIADOR */}
+      {/* PERFIL DO CRIADOR */}
       {profileModalUser && (
         <Dialog open={Boolean(profileModalUser)} onOpenChange={() => setProfileModalUser(null)}>
           <DialogContent className="max-w-sm bg-slate-900 border-slate-800 text-white rounded-3xl p-6 text-center">
-            <div className="relative w-20 h-20 mx-auto mb-3">
-              <img
-                src={profileModalUser.author_avatar}
-                alt={profileModalUser.author_name}
-                className="w-20 h-20 rounded-full border-4 border-amber-500 object-cover shadow-xl"
-              />
-            </div>
-
-            <h3 className="font-extrabold text-base text-white">{profileModalUser.author_name}</h3>
-            <p className="text-xs text-amber-400 font-medium mt-0.5">@criador_hs</p>
-
-            <p className="text-xs text-slate-300 mt-3 leading-relaxed">
-              {profileModalUser.author_bio || "Criador oficial de conteúdos e ofertas no HSTrends."}
-            </p>
-
-            {/* Métricas */}
-            <div className="grid grid-cols-3 gap-2 my-5 py-3 rounded-2xl bg-slate-950/80 border border-slate-800">
-              <div>
-                <p className="text-sm font-extrabold text-white">
-                  {profileModalUser.author_followers?.toLocaleString() || "1.2k"}
-                </p>
-                <p className="text-[10px] text-slate-400">Seguidores</p>
-              </div>
-              <div>
-                <p className="text-sm font-extrabold text-white">
-                  {profileModalUser.likes_count.toLocaleString()}
-                </p>
-                <p className="text-[10px] text-slate-400">Curtidas</p>
-              </div>
-              <div>
-                <p className="text-sm font-extrabold text-white">12</p>
-                <p className="text-[10px] text-slate-400">Vídeos</p>
-              </div>
-            </div>
-
-            {/* Botão Seguir */}
-            <Button
-              onClick={() => {
-                if (profileModalUser.author_id) {
-                  toggleFollow(profileModalUser.author_id);
-                }
-              }}
-              className={`w-full py-2.5 rounded-xl font-bold text-xs ${
-                profileModalUser.author_id && followedUsers[profileModalUser.author_id]
-                  ? "bg-slate-800 text-slate-200 border border-slate-700"
-                  : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-lg shadow-amber-500/20"
-              }`}
-            >
-              {profileModalUser.author_id && followedUsers[profileModalUser.author_id] ? (
+            {(() => {
+              const authorId = profileModalUser.author_id;
+              const profile = authorId ? authorProfiles[authorId] : null;
+              const followers = authorId ? (followerCounts[authorId] ?? 0) : 0;
+              const badge = getCreatorBadge(followers);
+              const videosCount = customVideos.filter((v) => v.author_id === authorId).length;
+              const totalLikes = customVideos
+                .filter((v) => v.author_id === authorId)
+                .reduce((sum, v) => sum + (v.likes_count || 0), 0);
+              return (
                 <>
-                  <UserCheck className="w-4 h-4 mr-2 text-emerald-400" /> Seguindo
+                  <div className="relative w-20 h-20 mx-auto mb-3">
+                    <img
+                      src={profile?.avatar_url || profileModalUser.author_avatar || FALLBACK_AVATAR}
+                      alt={profileModalUser.author_name}
+                      className="w-20 h-20 rounded-full border-4 border-amber-500 object-cover shadow-xl"
+                    />
+                  </div>
+
+                  <h3 className="font-extrabold text-base text-white flex items-center justify-center gap-1.5">
+                    {profile?.full_name || profileModalUser.author_name}
+                    {badge && <BadgeCheck className="w-4 h-4 text-amber-400" />}
+                  </h3>
+                  {badge && (
+                    <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full border text-[10px] font-extrabold ${badge.className}`}>
+                      Conta {badge.label}
+                    </span>
+                  )}
+                  {(profile?.status_text || "") && (
+                    <p className="text-xs text-amber-400 font-medium mt-1.5">{profile.status_text}</p>
+                  )}
+                  <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                    {profile?.bio || "Criador de conteúdo no HSTrends."}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2 my-5 py-3 rounded-2xl bg-slate-950/80 border border-slate-800">
+                    <div>
+                      <p className="text-sm font-extrabold text-white">{followers.toLocaleString("pt-BR")}</p>
+                      <p className="text-[10px] text-slate-400">Seguidores</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-extrabold text-white">{totalLikes.toLocaleString("pt-BR")}</p>
+                      <p className="text-[10px] text-slate-400">Curtidas</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-extrabold text-white">{videosCount}</p>
+                      <p className="text-[10px] text-slate-400">Vídeos</p>
+                    </div>
+                  </div>
+
+                  {authorId && authorId !== authUser?.id && (
+                    <Button
+                      onClick={() => toggleFollow(authorId)}
+                      className={`w-full py-2.5 rounded-xl font-bold text-xs ${
+                        myFollows.includes(authorId)
+                          ? "bg-slate-800 text-slate-200 border border-slate-700"
+                          : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-lg shadow-amber-500/20"
+                      }`}
+                    >
+                      {myFollows.includes(authorId) ? (
+                        <>
+                          <UserCheck className="w-4 h-4 mr-2 text-emerald-400" /> Seguindo
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-4 h-4 mr-2" /> Seguir Criador
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  {authorId && authorId === authUser?.id && (
+                    <Button onClick={openEditProfile} className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-800 text-slate-200 border border-slate-700">
+                      Editar Meu Perfil
+                    </Button>
+                  )}
                 </>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4 mr-2" /> Seguir Criador
-                </>
-              )}
-            </Button>
+              );
+            })()}
           </DialogContent>
         </Dialog>
       )}
 
-      {/* 3. MODAL DE GRAVAR / ENVIAR VÍDEO (+) */}
+      {/* PUBLICAR VÍDEO (só Clube HS) */}
       <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
         <DialogContent className="max-w-md bg-slate-900 border-slate-800 text-white rounded-3xl p-6">
           <DialogHeader>
@@ -773,25 +884,29 @@ export function HSTrends() {
 
           <form onSubmit={handleUploadVideo} className="space-y-4 mt-2">
             <div>
-              <label className="text-xs font-semibold text-slate-300">Link direto do Vídeo (.mp4 ou TikTok Embed)</label>
-              <Input
-                type="url"
-                placeholder="https://exemplo.com/meu-video.mp4"
-                value={uploadUrl}
-                onChange={(e) => setUploadUrl(e.target.value)}
-                required
-                className="mt-1 bg-slate-950 border-slate-800 text-white placeholder:text-slate-600 text-xs rounded-xl"
+              <label className="text-xs font-semibold text-slate-300">Vídeo da galeria (máx. 2 minutos)</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => handlePickVideo(e.target.files?.[0] ?? null)}
               />
-              <p className="text-[10px] text-slate-500 mt-1">
-                Cole a URL de um arquivo .mp4 público ou link de player do TikTok.
-              </p>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-1 w-full py-6 rounded-xl border-2 border-dashed border-slate-700 bg-slate-950 text-slate-400 text-xs font-bold flex flex-col items-center gap-2 hover:border-amber-500/60 hover:text-amber-300 transition-colors"
+              >
+                <VideoIcon className="w-6 h-6" />
+                {uploadFile ? `${uploadFile.name} · ${uploadDuration}s` : "Toque para abrir a galeria"}
+              </button>
             </div>
 
             <div>
               <label className="text-xs font-semibold text-slate-300">Título do Vídeo</label>
               <Input
                 type="text"
-                placeholder="Ex: Minha Novelinha de Frutas ep. 1"
+                placeholder="Ex: Unboxing do meu pedido HS"
                 value={uploadTitle}
                 onChange={(e) => setUploadTitle(e.target.value)}
                 required
@@ -810,40 +925,81 @@ export function HSTrends() {
               />
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-slate-300">Tipo de Conteúdo</label>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setUploadType("organic")}
-                  className={`py-2 px-3 rounded-xl text-xs font-bold border transition-colors ${
-                    uploadType === "organic"
-                      ? "bg-amber-500 text-slate-950 border-amber-400"
-                      : "bg-slate-950 text-slate-400 border-slate-800"
-                  }`}
-                >
-                  Novelinha / Viral
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUploadType("product")}
-                  className={`py-2 px-3 rounded-xl text-xs font-bold border transition-colors ${
-                    uploadType === "product"
-                      ? "bg-amber-500 text-slate-950 border-amber-400"
-                      : "bg-slate-950 text-slate-400 border-slate-800"
-                  }`}
-                >
-                  Feedback de Produto
-                </button>
-              </div>
-            </div>
-
             <Button
               type="submit"
-              disabled={isSubmittingVideo}
+              disabled={isSubmittingVideo || !uploadFile}
               className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-lg shadow-amber-500/20"
             >
               {isSubmittingVideo ? "Publicando..." : "Publicar Vídeo Agora"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* EDITAR PERFIL */}
+      <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
+        <DialogContent className="max-w-md bg-slate-900 border-slate-800 text-white rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Camera className="w-5 h-5 text-amber-400" />
+              Meu Perfil no HSTrends
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveProfile} className="space-y-4 mt-2">
+            <div className="flex items-center gap-4">
+              <img
+                src={editAvatarFile ? URL.createObjectURL(editAvatarFile) : userProfile?.avatar_url || FALLBACK_AVATAR}
+                alt="Foto de perfil"
+                className="w-16 h-16 rounded-full object-cover border-2 border-amber-500"
+              />
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => setEditAvatarFile(e.target.files?.[0] ?? null)}
+              />
+              <Button type="button" variant="outline" onClick={() => avatarInputRef.current?.click()} className="text-xs">
+                Trocar Foto
+              </Button>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-300">Nome de exibição</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="mt-1 bg-slate-950 border-slate-800 text-white text-xs rounded-xl" />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-300">Status</label>
+              <Input
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value)}
+                placeholder="Ex: 🛒 Caçando ofertas na HS"
+                maxLength={80}
+                className="mt-1 bg-slate-950 border-slate-800 text-white placeholder:text-slate-600 text-xs rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-300">Biografia</label>
+              <Textarea
+                value={editBio}
+                onChange={(e) => setEditBio(e.target.value)}
+                placeholder="Conte quem você é..."
+                rows={3}
+                maxLength={300}
+                className="mt-1 bg-slate-950 border-slate-800 text-white placeholder:text-slate-600 text-xs rounded-xl resize-none"
+              />
+            </div>
+
+            <div className="rounded-xl bg-slate-950/80 border border-slate-800 p-3 text-[11px] text-slate-400 leading-relaxed">
+              Selos por seguidores: 500 Bronze · 1.000 Prata · 2.000 Ouro · 5.000 Diamante · 10.000 Lenda HS.
+              Você tem <span className="text-amber-400 font-bold">{myFollowersCount}</span> seguidores.
+            </div>
+
+            <Button type="submit" disabled={isSavingProfile} className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs">
+              {isSavingProfile ? "Salvando..." : "Salvar Perfil"}
             </Button>
           </form>
         </DialogContent>
@@ -852,12 +1008,11 @@ export function HSTrends() {
   );
 }
 
-// Sub-componente de Vídeo HTML5 Seguro com Autoplay Mudo
+// Reprodutor HTML5 com autoplay mudo
 function HTML5VideoPlayer({
   src,
   isActive,
   isMuted,
-  onToggleMute,
 }: {
   src: string;
   isActive: boolean;
@@ -877,7 +1032,7 @@ function HTML5VideoPlayer({
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !src) return;
 
     if (isActive) {
       video.muted = isMuted;
@@ -920,7 +1075,7 @@ function HTML5VideoPlayer({
       video.pause();
       setIsPlaying(false);
     }
-  }, [isActive, isMuted]);
+  }, [isActive, isMuted, src]);
 
   const handleToggle = () => {
     const video = videoRef.current;
@@ -948,19 +1103,8 @@ function HTML5VideoPlayer({
   };
 
   return (
-    <div
-      onClick={handleToggle}
-      className="relative w-full h-full cursor-pointer flex items-center justify-center bg-black"
-    >
-      <video
-        ref={videoRef}
-        src={src}
-        loop
-        playsInline
-        muted={isMuted}
-        preload="auto"
-        className="w-full h-full object-cover"
-      />
+    <div onClick={handleToggle} className="relative w-full h-full cursor-pointer flex items-center justify-center bg-black">
+      <video ref={videoRef} src={src} loop playsInline muted={isMuted} preload="auto" className="w-full h-full object-cover" />
 
       {(!isPlaying || isWaitingGesture) && isActive && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-xs z-15">
