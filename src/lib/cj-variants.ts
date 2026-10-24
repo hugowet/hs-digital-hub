@@ -31,11 +31,17 @@ export function cjVariantOptions(details: Record<string, unknown> | null | undef
 }
 
 export function cjVariantStock(payload: unknown) {
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const nested = (payload as Record<string, unknown>).data;
+    if (nested && typeof nested === "object") return cjVariantStock(nested);
+  }
   const rows = Array.isArray(payload) ? payload : [payload];
   const total = rows.reduce((sum, row) => {
     if (!row || typeof row !== "object") return sum;
-    const value = Number(row.storageNum ?? row.totalInventory ?? 0);
+    const value = Number(row.storageNum ?? row.totalInventory ?? row.totalStock ?? 0);
     return sum + (Number.isFinite(value) && value > 0 ? Math.floor(value) : 0);
   }, 0);
   return total;
 }
+
+export function cjSellableStock(stock: number) { return Number.isFinite(stock) && stock > 0; }
