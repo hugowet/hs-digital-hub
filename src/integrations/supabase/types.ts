@@ -2477,6 +2477,7 @@ export type Database = {
       social_contact_profiles: {
         Args: never
         Returns: {
+          avatar_url: string
           full_name: string
           id: string
         }[]

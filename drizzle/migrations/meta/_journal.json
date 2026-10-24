@@ -253,6 +253,13 @@
       "when": 1792821859361,
       "tag": "0035_social_messages_audio_groups_management",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792821888233,
+      "tag": "0036_social_contact_profiles_avatar",
+      "breakpoints": true
     }
   ]
 }
