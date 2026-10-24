@@ -23,11 +23,13 @@ import {
   Store,
   Truck,
   Tv,
+  Users,
   Watch,
   X,
   Zap,
   Crown,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/product-card";
@@ -189,6 +191,20 @@ function RadioNavButton() {
   );
 }
 
+type BannerSlide =
+  | { kind: "rapaz"; buyerOnly?: boolean }
+  | { kind: "lupi"; buyerOnly?: boolean }
+  | { kind: "highlight"; title: string; text: string; icon: LucideIcon; buyerOnly?: boolean };
+
+const BANNER_SLIDES: BannerSlide[] = [
+  { kind: "rapaz" },
+  { kind: "lupi" },
+  { kind: "highlight", title: "Clube HS", text: "Sua experiência HS vai além das compras.", icon: Crown },
+  { kind: "highlight", title: "Afiliados HS", text: "Compartilhe a HS Digital. Conheça nosso programa de afiliados.", icon: Users },
+  { kind: "highlight", title: "Jogos & Prêmios", text: "Junte moedas e conquiste cupons de desconto no frete!", icon: Gamepad2, buyerOnly: true },
+  { kind: "highlight", title: "Rádio HS", text: "Dê play na sua música. Continue curtindo enquanto compra.", icon: Radio },
+];
+
 function BuyerGamesPromoLink() {
   const [isBuyer, setIsBuyer] = useState(false);
 
@@ -251,12 +267,27 @@ export function Home() {
   );
   const products = data.pages.flatMap((page) => page.products);
 
-  const [showLupiBanner, setShowLupiBanner] = useState(false);
+  const [bannerSlide, setBannerSlide] = useState(0);
+  const [isBuyer, setIsBuyer] = useState(false);
 
   useEffect(() => {
-    const id = window.setInterval(() => setShowLupiBanner((value) => !value), 5000);
-    return () => window.clearInterval(id);
+    let active = true;
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user || !active) return;
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+      const seller = roles?.some((item) => item.role === "seller") ?? false;
+      if (active) setIsBuyer((roles?.some((item) => item.role === "buyer") ?? false) && !seller);
+    });
+    return () => { active = false; };
   }, []);
+
+  const bannerSlides = useMemo(() => BANNER_SLIDES.filter((slide) => !slide.buyerOnly || isBuyer), [isBuyer]);
+  const currentSlide = bannerSlides[bannerSlide % bannerSlides.length];
+
+  useEffect(() => {
+    const id = window.setInterval(() => setBannerSlide((value) => (value + 1) % bannerSlides.length), 5000);
+    return () => window.clearInterval(id);
+  }, [bannerSlides.length]);
 
   const { data: activeCategories = [] } = useQuery({
     queryKey: ["active-store-categories"],
@@ -383,33 +414,52 @@ export function Home() {
 <section className="relative mb-8 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-emerald-700 to-emerald-950 p-3 shadow-xl motion-safe:animate-pulse sm:p-5">
   <div className="flex flex-col items-center gap-5 rounded-xl bg-black/70 p-4 sm:p-6 md:flex-row">
     <div className="relative aspect-square w-full max-w-[350px] overflow-hidden rounded-xl border-2 border-emerald-400 bg-black/70 shadow-lg">
-      <img
-        src="/images/banner-frete-gratis.jpg"
-        alt="HS Digital: frete grátis na sua primeira compra"
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${showLupiBanner ? "opacity-0" : "opacity-100"}`}
-      />
-      <img
-        src={lupiBannerSquare}
-        alt="Lupi, o lobo da HS Digital, com um carrinho cheio de compras"
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${showLupiBanner ? "opacity-100" : "opacity-0"}`}
-        loading="eager"
-      />
+      {bannerSlides.map((slide, index) => (
+        <div
+          key={slide.kind === "highlight" ? slide.title : slide.kind}
+          className={`absolute inset-0 transition-opacity duration-1000 ${index === bannerSlide % bannerSlides.length ? "opacity-100" : "opacity-0"}`}
+        >
+          {slide.kind === "rapaz" ? (
+            <img
+              src="/images/banner-frete-gratis.jpg"
+              alt="HS Digital: frete grátis na sua primeira compra"
+              className="h-full w-full object-cover"
+              loading="eager"
+            />
+          ) : slide.kind === "lupi" ? (
+            <img
+              src={lupiBannerSquare}
+              alt="Lupi, o lobo da HS Digital, com um carrinho cheio de compras"
+              className="h-full w-full object-cover"
+              loading="eager"
+            />
+          ) : (
+            <div className="grid h-full w-full place-items-center bg-gradient-to-br from-emerald-950 via-emerald-700 to-emerald-950">
+              <slide.icon className="size-24 text-amber-300" aria-hidden="true" />
+            </div>
+          )}
+        </div>
+      ))}
     </div>
 
     <div className="text-center text-white md:text-left">
-      <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
-        <Zap className="h-4 w-4" />
-        
-      </span>
-
-      <h2 className="mt-3 text-1xl font-black uppercase sm:text-2xl">
-        Venha para HS Digital{" "}
-        <span className="text-emerald-300">!</span>
-      </h2>
-
-      <p className="mt-2 text-sm text-white/85">
-     
-      </p>
+      {currentSlide.kind === "highlight" ? (
+        <>
+          <currentSlide.icon className="h-10 w-10 text-amber-300" aria-hidden="true" />
+          <h2 className="mt-3 text-1xl font-black uppercase sm:text-2xl">{currentSlide.title}</h2>
+          <p className="mt-2 text-sm text-white/85">{currentSlide.text}</p>
+        </>
+      ) : (
+        <>
+          <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
+            <Zap className="h-4 w-4" />
+          </span>
+          <h2 className="mt-3 text-1xl font-black uppercase sm:text-2xl">
+            Venha para HS Digital{" "}
+            <span className="text-emerald-300">!</span>
+          </h2>
+        </>
+      )}
 
       <button
         type="button"
