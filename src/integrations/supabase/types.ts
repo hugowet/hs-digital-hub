@@ -1877,6 +1877,7 @@ export type Database = {
       }
       trend_videos: {
         Row: {
+          audio_path: string | null
           author_avatar: string | null
           author_name: string
           created_at: string
@@ -1891,6 +1892,7 @@ export type Database = {
           video_url: string
         }
         Insert: {
+          audio_path?: string | null
           author_avatar?: string | null
           author_name: string
           created_at?: string
@@ -1905,6 +1907,7 @@ export type Database = {
           video_url: string
         }
         Update: {
+          audio_path?: string | null
           author_avatar?: string | null
           author_name?: string
           created_at?: string
@@ -2320,6 +2323,14 @@ export type Database = {
       social_normalize_phone: { Args: { _phone: string }; Returns: string }
       social_open_by_phone: {
         Args: { _phone: string }
+        Returns: {
+          conversation_id: string
+          full_name: string
+          profile_id: string
+        }[]
+      }
+      social_open_by_user: {
+        Args: { _user_id: string }
         Returns: {
           conversation_id: string
           full_name: string

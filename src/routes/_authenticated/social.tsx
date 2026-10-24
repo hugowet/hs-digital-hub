@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { getSocialHome, getSocialMessages, openSocialConversation, sendSocialMessage, publishSocialStory, deleteSocialStory } from "@/lib/social.functions";
+import { getSocialHome, getSocialMessages, openSocialConversation, openSocialConversationByUser, sendSocialMessage, publishSocialStory, deleteSocialStory } from "@/lib/social.functions";
 import { isActiveStory } from "@/lib/social";
 
 export const Route = createFileRoute("/_authenticated/social")({
@@ -49,7 +49,8 @@ function HSSocialPage() {
   const [caption, setCaption] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
-  const [storyId, setStoryId] = useState<string | null>(null);
+  const [storyView, setStoryView] = useState<{ userId: string; index: number } | null>(null);
+  const [storyReply, setStoryReply] = useState("");
   const [now, setNow] = useState(Date.now());
   const end = useRef<HTMLDivElement | null>(null);
   const home = useQuery({ queryKey: ["social-home", user.id], queryFn: () => homeFn(), refetchInterval: 60000 });
@@ -86,12 +87,49 @@ function HSSocialPage() {
   const room = rooms.find((entry) => entry.id === roomId);
   const otherId = room ? (room.member_a === user.id ? room.member_b : room.member_a) : "";
   const activeStories = (data?.stories ?? []).filter((entry) => isActiveStory(entry.expires_at, now));
-  const story = activeStories.find((entry) => entry.id === storyId);
+  // Uma bolinha por pessoa; o círculo é fatiado conforme a quantidade de stories
+  const storyGroups = activeStories.reduce<Array<{ userId: string; stories: typeof activeStories }>>((groups, entry) => {
+    const group = groups.find((g) => g.userId === entry.user_id);
+    if (group) group.stories.push(entry);
+    else groups.push({ userId: entry.user_id, stories: [entry] });
+    return groups;
+  }, []);
+  const viewGroup = storyView ? storyGroups.find((g) => g.userId === storyView.userId) : null;
+  const story = viewGroup ? viewGroup.stories[Math.min(storyView!.index, viewGroup.stories.length - 1)] : null;
   useEffect(() => {
-    if (!storyId) return;
-    const timer = setTimeout(() => setStoryId(null), 10000);
+    if (!storyView || !viewGroup) return;
+    const timer = setTimeout(() => {
+      if (storyView.index + 1 < viewGroup.stories.length) setStoryView({ userId: storyView.userId, index: storyView.index + 1 });
+      else setStoryView(null);
+    }, 10000);
     return () => clearTimeout(timer);
-  }, [storyId]);
+  }, [storyView, viewGroup]);
+
+  async function replyToStory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!story || !storyReply.trim()) return;
+    setBusy(true);
+    try {
+      const room = await openSocialConversationByUser({ data: { userId: story.user_id } });
+      await sendFn({ data: { conversationId: room.conversation_id, content: `💬 Resposta ao seu story: ${storyReply.trim()}` } });
+      setStoryReply("");
+      await refresh();
+      toast.success("Resposta enviada para a conversa!");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível responder."); }
+    finally { setBusy(false); }
+  }
+
+  // Anel fatiado estilo WhatsApp: um segmento por story
+  function storyRing(count: number): React.CSSProperties {
+    if (count <= 1) return { background: "conic-gradient(var(--success) 0deg 360deg)" };
+    const gap = 6;
+    const size = 360 / count;
+    const parts = Array.from({ length: count }, (_, i) => {
+      const start = i * size;
+      return `var(--success) ${start}deg ${start + size - gap}deg, transparent ${start + size - gap}deg ${start + size}deg`;
+    });
+    return { background: `conic-gradient(${parts.join(", ")})` };
+  }
 
   async function findContact(e: React.FormEvent) {
     e.preventDefault(); setBusy(true);
@@ -165,7 +203,7 @@ function HSSocialPage() {
         </> : <div className="flex-1 overflow-y-auto p-3">
           <Button className="mb-4 w-full" onClick={() => setPosting(true)}><Plus className="mr-2 h-4 w-4" />Publicar story</Button>
           {!activeStories.length && <p className="py-8 text-center text-sm text-muted-foreground">Nenhum story ativo</p>}
-          {activeStories.map((entry) => <Button variant="ghost" key={entry.id} onClick={() => setStoryId(entry.id)} className="mb-2 h-auto w-full justify-start gap-3 p-2"><span className="rounded-full border-2 border-success p-1"><Initials name={nameFor(entry.user_id)} /></span><span className="min-w-0 text-left"><span className="block truncate text-sm">{entry.user_id === user.id ? "Meu story" : nameFor(entry.user_id)}</span><span className="text-xs font-normal text-muted-foreground">{new Date(entry.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></span></Button>)}
+          {storyGroups.map((group) => <Button variant="ghost" key={group.userId} onClick={() => setStoryView({ userId: group.userId, index: 0 })} className="mb-2 h-auto w-full justify-start gap-3 p-2"><span className="rounded-full p-[3px]" style={storyRing(group.stories.length)}><span className="block rounded-full bg-card p-[2px]"><Initials name={nameFor(group.userId)} /></span></span><span className="min-w-0 text-left"><span className="block truncate text-sm">{group.userId === user.id ? "Meu story" : nameFor(group.userId)}</span><span className="text-xs font-normal text-muted-foreground">{group.stories.length > 1 ? `${group.stories.length} stories · ` : ""}{new Date(group.stories[0].created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></span></Button>)}
         </div>}
       </aside>
       <main className={`min-w-0 flex-1 flex-col bg-muted/30 ${roomId ? "flex" : "hidden md:flex"}`}>
@@ -182,6 +220,13 @@ function HSSocialPage() {
     </div>
     <Dialog open={newContact} onOpenChange={setNewContact}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Nova conversa</DialogTitle></DialogHeader><form onSubmit={findContact} className="space-y-4"><label htmlFor="contact-phone" className="text-sm">Número com DDD</label><Input id="contact-phone" type="tel" placeholder="(11) 99999-9999" value={phone} onChange={(e) => setPhone(e.target.value)} required /><Button type="submit" className="w-full" disabled={busy}>{busy ? "Buscando…" : "Encontrar perfil"}</Button><Button variant="link" asChild><Link to="/conta">Meu número cadastrado</Link></Button></form></DialogContent></Dialog>
     <Dialog open={posting} onOpenChange={setPosting}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Publicar story</DialogTitle></DialogHeader><form onSubmit={post} className="space-y-4">{preview && <img src={preview} alt="Prévia do story" className="max-h-64 w-full rounded-lg object-contain" />}<label className="flex cursor-pointer items-center gap-2 text-sm"><ImagePlus className="h-5 w-5 text-success" />Foto<input aria-label="Foto do story" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="min-w-0 max-w-52 text-xs" /></label><Textarea aria-label="Texto do story" placeholder="Escreva seu story…" value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={500} /><Button className="w-full" type="submit" disabled={busy || (!caption.trim() && !file)}>{busy ? "Publicando…" : "Publicar por 24 horas"}</Button></form></DialogContent></Dialog>
-    <Dialog open={Boolean(story)} onOpenChange={(open) => { if (!open) setStoryId(null); }}><DialogContent className="max-w-md overflow-hidden bg-ink text-ink-foreground"><DialogHeader><DialogTitle>{story ? nameFor(story.user_id) : "Story"}</DialogTitle></DialogHeader>{story && <div className="space-y-4"><div className="flex min-h-64 items-center justify-center">{story.mediaUrl ? <img src={story.mediaUrl} alt="Story" className="max-h-[60dvh] w-full object-contain" /> : <MessageCircle className="h-16 w-16 text-success" />}</div><p className="whitespace-pre-wrap break-words text-center text-lg [overflow-wrap:anywhere]">{story.caption}</p>{story.user_id === user.id && <Button variant="destructive" className="w-full" onClick={async () => { try { await deleteFn({ data: { storyId: story.id } }); setStoryId(null); await refresh(); } catch { toast.error("Não foi possível remover o story."); } }}><Trash2 className="mr-2 h-4 w-4" />Excluir story</Button>}</div>}</DialogContent></Dialog>
+    <Dialog open={Boolean(story)} onOpenChange={(open) => { if (!open) { setStoryView(null); setStoryReply(""); } }}><DialogContent className="max-w-md overflow-hidden bg-ink text-ink-foreground"><DialogHeader><DialogTitle>{story ? nameFor(story.user_id) : "Story"}</DialogTitle></DialogHeader>{story && viewGroup && storyView && <div className="space-y-4">
+      <div className="flex gap-1">{viewGroup.stories.map((s, i) => <span key={s.id} className={`h-1 flex-1 rounded-full ${i <= storyView.index ? "bg-success" : "bg-muted-foreground/30"}`} />)}</div>
+      <div className="flex min-h-64 items-center justify-center">{story.mediaUrl ? <img src={story.mediaUrl} alt="Story" className="max-h-[60dvh] w-full object-contain" /> : <MessageCircle className="h-16 w-16 text-success" />}</div>
+      <p className="whitespace-pre-wrap break-words text-center text-lg [overflow-wrap:anywhere]">{story.caption}</p>
+      {viewGroup.stories.length > 1 && <div className="flex justify-between"><Button variant="ghost" size="sm" disabled={storyView.index === 0} onClick={() => setStoryView({ userId: storyView.userId, index: storyView.index - 1 })}>Anterior</Button><Button variant="ghost" size="sm" onClick={() => storyView.index + 1 < viewGroup.stories.length ? setStoryView({ userId: storyView.userId, index: storyView.index + 1 }) : setStoryView(null)}>Próximo</Button></div>}
+      {story.user_id !== user.id && <form onSubmit={replyToStory} className="flex items-center gap-2"><Input aria-label="Responder story" placeholder="Responder esse story…" value={storyReply} maxLength={1000} onChange={(e) => setStoryReply(e.target.value)} className="bg-background/10" /><Button type="submit" size="icon" aria-label="Enviar resposta" disabled={busy || !storyReply.trim()}><Send className="h-4 w-4" /></Button></form>}
+      {story.user_id === user.id && <Button variant="destructive" className="w-full" onClick={async () => { try { await deleteFn({ data: { storyId: story.id } }); setStoryView(null); await refresh(); } catch { toast.error("Não foi possível remover o story."); } }}><Trash2 className="mr-2 h-4 w-4" />Excluir story</Button>}
+    </div>}</DialogContent></Dialog>
   </div>;
 }

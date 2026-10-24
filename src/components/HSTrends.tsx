@@ -40,8 +40,9 @@ const SIGNED_URL_TTL = 3600;
 
 export type TrendPost = {
   id: string;
-  post_type: "organic" | "ad";
+  post_type: "organic" | "ad" | "photo";
   video_url: string;
+  audio_url?: string;
   author_id?: string;
   author_name: string;
   author_avatar: string;
@@ -173,6 +174,17 @@ export function HSTrends() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
 
+  // Navegadores bloqueiam autoplay com som: liga o áudio no primeiro toque/clique do usuário
+  useEffect(() => {
+    const unlock = () => setIsMuted(false);
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
   const [commentModalPost, setCommentModalPost] = useState<TrendPost | null>(null);
   const [profileModalUser, setProfileModalUser] = useState<TrendPost | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -180,13 +192,16 @@ export function HSTrends() {
 
   const [newCommentText, setNewCommentText] = useState("");
 
-  // Upload de vídeo
+  // Upload de vídeo ou foto
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadKind, setUploadKind] = useState<"video" | "photo">("video");
   const [uploadDuration, setUploadDuration] = useState(0);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadDesc, setUploadDesc] = useState("");
+  const [musicFile, setMusicFile] = useState<File | null>(null);
   const [isSubmittingVideo, setIsSubmittingVideo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const musicInputRef = useRef<HTMLInputElement | null>(null);
 
   // Edição de perfil
   const [editName, setEditName] = useState("");
@@ -232,9 +247,11 @@ export function HSTrends() {
       if (error || !data) return [];
 
       const paths = data.map((v: any) => v.video_url).filter((p: string) => p && !p.startsWith("http"));
+      const audioPaths = data.map((v: any) => v.audio_path).filter((p: string) => p && !p.startsWith("http"));
       const signed: Record<string, string> = {};
-      if (paths.length) {
-        const { data: urls } = await supabase.storage.from("trend-videos").createSignedUrls(paths, SIGNED_URL_TTL);
+      const allPaths = [...paths, ...audioPaths];
+      if (allPaths.length) {
+        const { data: urls } = await supabase.storage.from("trend-videos").createSignedUrls(allPaths, SIGNED_URL_TTL);
         for (const entry of urls ?? []) {
           if (entry.path && entry.signedUrl) signed[entry.path] = entry.signedUrl;
         }
@@ -242,8 +259,9 @@ export function HSTrends() {
 
       return data.map((v: any) => ({
         id: v.id,
-        post_type: "organic",
+        post_type: v.post_type === "photo" ? "photo" : "organic",
         video_url: v.video_url.startsWith("http") ? v.video_url : signed[v.video_url] ?? "",
+        audio_url: v.audio_path ? (v.audio_path.startsWith("http") ? v.audio_path : signed[v.audio_path] ?? "") : "",
         author_id: v.user_id,
         author_name: v.author_name,
         author_avatar: v.author_avatar || FALLBACK_AVATAR,
@@ -390,11 +408,21 @@ export function HSTrends() {
     queryClient.invalidateQueries({ queryKey: ["trend-follower-counts"] });
   };
 
-  // Seleção de vídeo da galeria com validação de duração (máx. 2 minutos)
+  // Seleção de vídeo (máx. 2 min) ou foto da galeria
   const handlePickVideo = (file: File | null) => {
     if (!file) return;
+    if (file.type.startsWith("image/")) {
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error("A foto deve ter no máximo 20 MB.");
+        return;
+      }
+      setUploadKind("photo");
+      setUploadDuration(0);
+      setUploadFile(file);
+      return;
+    }
     if (!file.type.startsWith("video/")) {
-      toast.error("Selecione um arquivo de vídeo.");
+      toast.error("Selecione um vídeo ou uma foto.");
       return;
     }
     if (file.size > MAX_VIDEO_BYTES) {
@@ -410,6 +438,7 @@ export function HSTrends() {
         toast.error("O vídeo deve ter no máximo 2 minutos.");
         return;
       }
+      setUploadKind("video");
       setUploadDuration(Math.round(probe.duration));
       setUploadFile(file);
     };
@@ -418,6 +447,19 @@ export function HSTrends() {
       toast.error("Não foi possível ler este vídeo.");
     };
     probe.src = url;
+  };
+
+  const handlePickMusic = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("audio/")) {
+      toast.error("Selecione um arquivo de áudio (MP3, etc).");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("A música deve ter no máximo 20 MB.");
+      return;
+    }
+    setMusicFile(file);
   };
 
   const handleOpenUpload = () => {
@@ -439,12 +481,22 @@ export function HSTrends() {
     }
     setIsSubmittingVideo(true);
     try {
-      const ext = uploadFile.name.split(".").pop() || "mp4";
+      const ext = uploadFile.name.split(".").pop() || (uploadKind === "photo" ? "jpg" : "mp4");
       const path = `${authUser.id}/${crypto.randomUUID()}.${ext}`;
       const { error: upError } = await supabase.storage.from("trend-videos").upload(path, uploadFile, {
         contentType: uploadFile.type,
       });
-      if (upError) throw new Error("Não foi possível enviar o vídeo. Tente novamente.");
+      if (upError) throw new Error("Não foi possível enviar a mídia. Tente novamente.");
+
+      let audioPath: string | null = null;
+      if (musicFile) {
+        const audioExt = musicFile.name.split(".").pop() || "mp3";
+        audioPath = `${authUser.id}/music-${crypto.randomUUID()}.${audioExt}`;
+        const { error: musicError } = await supabase.storage.from("trend-videos").upload(audioPath, musicFile, {
+          contentType: musicFile.type,
+        });
+        if (musicError) throw new Error("Não foi possível enviar a música. Tente novamente.");
+      }
 
       const { error } = await supabase.from("trend_videos").insert({
         user_id: authUser.id,
@@ -453,18 +505,23 @@ export function HSTrends() {
         title: uploadTitle.trim(),
         description: uploadDesc.trim(),
         video_url: path,
+        audio_path: audioPath,
         duration_seconds: uploadDuration,
-        post_type: "organic",
-        music_title: "Som Original · " + (userProfile?.full_name || "Criador HS"),
+        post_type: uploadKind === "photo" ? "photo" : "organic",
+        music_title: musicFile
+          ? `🎵 ${musicFile.name.replace(/\.[^.]+$/, "")}`
+          : "Som Original · " + (userProfile?.full_name || "Criador HS"),
       });
-      if (error) throw new Error("Não foi possível publicar o vídeo.");
+      if (error) throw new Error("Não foi possível publicar o post.");
 
       setUploadModalOpen(false);
       setUploadFile(null);
+      setUploadKind("video");
       setUploadTitle("");
       setUploadDesc("");
+      setMusicFile(null);
       queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
-      toast.success("Seu vídeo foi publicado no HSTrends!");
+      toast.success("Seu post foi publicado no HSTrends!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao publicar vídeo.");
     } finally {
@@ -608,13 +665,21 @@ export function HSTrends() {
                     <p className="text-lg font-extrabold text-white">{post.ad_badge}</p>
                     <p className="text-sm text-slate-300 leading-relaxed max-w-xs">{post.description}</p>
                   </div>
+                ) : post.post_type === "photo" ? (
+                  <>
+                    <img src={post.video_url} alt={post.description} className="absolute inset-0 w-full h-full object-cover" />
+                    {isActive && post.audio_url && <audio src={post.audio_url} autoPlay loop />}
+                  </>
                 ) : (
-                  <HTML5VideoPlayer
-                    src={post.video_url}
-                    isActive={isActive}
-                    isMuted={isMuted}
-                    onToggleMute={() => setIsMuted((prev) => !prev)}
-                  />
+                  <>
+                    <HTML5VideoPlayer
+                      src={post.video_url}
+                      isActive={isActive}
+                      isMuted={isMuted || Boolean(post.audio_url)}
+                      onToggleMute={() => setIsMuted((prev) => !prev)}
+                    />
+                    {isActive && post.audio_url && <audio src={post.audio_url} autoPlay loop muted={isMuted} />}
+                  </>
                 )}
 
                 <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/20 via-transparent to-black/90 z-10" />
@@ -625,7 +690,7 @@ export function HSTrends() {
                     <div className="relative mb-2">
                       <button onClick={() => setProfileModalUser(post)} className="relative block rounded-full focus:outline-none">
                         <img
-                          src={post.author_avatar || FALLBACK_AVATAR}
+                          src={(post.author_id && authorProfiles[post.author_id]?.avatar_url) || post.author_avatar || FALLBACK_AVATAR}
                           alt={post.author_name}
                           className="w-11 h-11 rounded-full border-2 border-white object-cover shadow-lg"
                         />
@@ -887,11 +952,11 @@ export function HSTrends() {
 
           <form onSubmit={handleUploadVideo} className="space-y-4 mt-2">
             <div>
-              <label className="text-xs font-semibold text-slate-300">Vídeo da galeria (máx. 2 minutos)</label>
+              <label className="text-xs font-semibold text-slate-300">Vídeo (máx. 2 min) ou foto da galeria</label>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="video/*"
+                accept="video/*,image/*"
                 className="hidden"
                 onChange={(e) => handlePickVideo(e.target.files?.[0] ?? null)}
               />
@@ -901,7 +966,30 @@ export function HSTrends() {
                 className="mt-1 w-full py-6 rounded-xl border-2 border-dashed border-slate-700 bg-slate-950 text-slate-400 text-xs font-bold flex flex-col items-center gap-2 hover:border-amber-500/60 hover:text-amber-300 transition-colors"
               >
                 <VideoIcon className="w-6 h-6" />
-                {uploadFile ? `${uploadFile.name} · ${uploadDuration}s` : "Toque para abrir a galeria"}
+                {uploadFile
+                  ? uploadKind === "photo"
+                    ? `📷 ${uploadFile.name}`
+                    : `${uploadFile.name} · ${uploadDuration}s`
+                  : "Toque para abrir a galeria"}
+              </button>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-300">Música (opcional)</label>
+              <input
+                ref={musicInputRef}
+                type="file"
+                accept="audio/*"
+                className="hidden"
+                onChange={(e) => handlePickMusic(e.target.files?.[0] ?? null)}
+              />
+              <button
+                type="button"
+                onClick={() => musicInputRef.current?.click()}
+                className="mt-1 w-full py-3 rounded-xl border border-slate-700 bg-slate-950 text-slate-400 text-xs font-bold flex items-center justify-center gap-2 hover:border-amber-500/60 hover:text-amber-300 transition-colors"
+              >
+                <Music2 className="w-4 h-4" />
+                {musicFile ? `🎵 ${musicFile.name}` : "Escolher música do aparelho"}
               </button>
             </div>
 
