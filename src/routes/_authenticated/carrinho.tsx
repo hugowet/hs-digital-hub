@@ -601,8 +601,8 @@ function CartPage() {
                 {(embeddedShipping || (subtotalProdutos >= 89.9 && valorFreteCobrado > 0)) && (
                   <p className="text-[10px] font-semibold text-[#00a650]">
                     {firstPurchaseEligible
-                      ? "Frete grátis na sua primeira compra — já incluso no preço do produto."
-                      : "Frete grátis — já incluso no preço do produto."}
+                      ? "Frete grátis na sua primeira compra."
+                      : "Frete grátis."}
                   </p>
                 )}
 

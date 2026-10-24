@@ -1,5 +1,17 @@
 # HS Digital — MVP
 
+## Preços consistentes e importação de fornecedores
+- [x] Mesmo preço salvo na vitrine e detalhe; navegação real até carrinho validada em R$71,90. Checkout mantém cotação oficial e pode recalcular: não foi garantida igualdade do total final por CEP.
+- [x] Fichas em lotes de até 50, reutilizando JSON oficial, normalização técnica sem IA e progresso por produto; títulos deduplicados e compartilhados com variantes. Tradução integral sem IA não é garantida.
+- [x] Opções CJ como produtos-filhos oficiais; escolha de cor/tamanho validada no navegador, ID preservado no carrinho e snapshot do pedido, com confirmação de estoque na cotação.
+- [x] Pesquisar Amazon: importador atual é afiliado/manual; não ativar dropshipping sem contrato/API e operação compatíveis.
+- [x] 17 testes e navegação real aprovados; lote real persistiu fichas e variantes.
+- [ ] Homologar variante → cotação → pedido → envio CJ com estoque confirmado; teste não chegou à cobrança nem envio real.
+- [ ] Igualar oferta ao total confirmado por CEP sem absorver prejuízo: teste real mostrou R$71,90 na vitrine/detalhe e R$154,90 após cotação; precisa unificar a oferta personalizada antes de anunciar preço final, não ignorar o custo CJ.
+- [ ] Ativar sincronização CJ por eventos assinados: depende de publicação do callback e configuração/openId oficial; por enquanto há atualização agendada, sujeita às cotas.
+- [ ] Concluir fichas e títulos de todo o catálogo: cotas CJ e créditos de tradução de títulos continuam necessários; dicionário técnico não traduz todo texto livre.
+- [ ] Amazon automática: falta API autorizada e contrato de fornecimento; não implementada como dropshipping.
+
 ## Vitrine rápida e descoberta nas buscas
 - [x] Reduzir dados do carregamento inicial de 546 KB para 280 KB, eliminar galerias/fichas na lista e leitura geral de categorias; preços e cotações preservados.
 - [x] Compartilhar produto prefetched com renderização completa, canonical próprio e schema sem preços CJ não confirmados ou avaliações inventadas; sitemap validado com 10.757 produtos e quatro páginas públicas.

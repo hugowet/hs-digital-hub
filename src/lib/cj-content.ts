@@ -48,3 +48,37 @@ export function mapCjDetails(product: Record<string, unknown>) {
   }
   return { description: description || null, description_long: description || null, specifications };
 }
+
+const technicalTerms: Record<string, string> = {
+  "main fabric ingredient content": "Teor do componente principal do tecido",
+  "main fabric composition": "Composição principal do tecido", "fabric name": "Nome do tecido",
+  "plastic_bag": "Saco plástico", "unit(s)": "unidade(s)", "unit": "Unidade", "bust": "Busto",
+  "product information": "Informações do produto", "packing list": "Conteúdo da embalagem",
+  "package contents": "Conteúdo da embalagem", "product image": "Imagem do produto",
+  processor: "Processador", interface: "Interface", voltage: "Tensão", power: "Potência",
+  material: "Material", color: "Cor", size: "Tamanho", weight: "Peso", battery: "Bateria",
+  capacity: "Capacidade", dimensions: "Dimensões", length: "Comprimento", width: "Largura",
+  height: "Altura", model: "Modelo", style: "Estilo", fabric: "Tecido", pattern: "Estampa",
+  "plastic bags": "Sacos plásticos", plastic: "Plástico", cotton: "Algodão", leather: "Couro",
+  polyester: "Poliéster", "stainless steel": "Aço inoxidável", silicone: "Silicone",
+  black: "Preto", white: "Branco", pink: "Rosa", brown: "Marrom", red: "Vermelho",
+  blue: "Azul", yellow: "Amarelo", green: "Verde", grey: "Cinza", gray: "Cinza",
+};
+
+/** Exact technical dictionary only: never pretend to translate arbitrary supplier prose. */
+export function localizeCjTechnicalText(value: string) {
+  let text = cjPlainText(value);
+  for (const [source, target] of Object.entries(technicalTerms).sort((a, b) => b[0].length - a[0].length)) {
+    const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    text = text.replace(new RegExp(`(?<![a-zA-Z])${escaped}(?![a-zA-Z])`, "gi"), target);
+  }
+  return text;
+}
+
+export function mapCjEconomicalDetails(product: Record<string, unknown>) {
+  const original = mapCjDetails(product);
+  const specifications = Object.fromEntries(Object.entries(original.specifications)
+    .map(([label, value]) => [localizeCjTechnicalText(label), localizeCjTechnicalText(value)]));
+  const description = original.description ? localizeCjTechnicalText(original.description) : null;
+  return { description, description_long: description, specifications };
+}

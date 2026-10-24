@@ -8,6 +8,7 @@ import { brl, compact } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import type { Product } from "@/lib/catalog";
 import { supabase } from "@/integrations/supabase/client";
+import { catalogDisplayPrice } from "@/lib/product-price";
 
 // Faixas de desconto conforme solicitado: 5, 6, 7, 12, 22, 35, 50, 66, 71%
 export const DISCOUNT_TIERS = [5, 6, 7, 12, 22, 35, 50, 66, 71] as const;
@@ -146,7 +147,7 @@ export function ProductCard({
     product.category?.includes("digital") ||
     product.category?.includes("cursos");
 
-  const price = Number(product.price || 0);
+  const price = catalogDisplayPrice(product);
 
   // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
   const discountPercent = getProductDiscountPercent(product.id);
@@ -284,6 +285,10 @@ export function ProductCard({
               if (error || !data.user) {
                 toast.info("Faça login para adicionar produtos ao carrinho.");
                 navigate({ to: "/auth", search: { reason: "login-required" } });
+                return;
+              }
+              if (product.supplier === "cj") {
+                navigate({ to: "/produto/$productId", params: { productId: product.id } });
                 return;
               }
               add(

@@ -267,6 +267,13 @@
       "when": 1792883118116,
       "tag": "0037_trend_videos_storage_auth_read",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792884872338,
+      "tag": "0038_cj_official_variant_products",
+      "breakpoints": true
     }
   ]
 }

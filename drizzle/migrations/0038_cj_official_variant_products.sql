@@ -1,0 +1,10 @@
+ALTER TABLE public.products ADD COLUMN supplier_variant_parent_id uuid REFERENCES public.products(id), ADD COLUMN supplier_variant_label text, ADD COLUMN supplier_content_version integer NOT NULL DEFAULT 0;
+CREATE INDEX products_cj_content_version ON public.products(store_id,supplier_content_version,id) WHERE supplier='cj';
+CREATE INDEX products_cj_variant_family ON public.products(store_id,supplier_product_id) WHERE supplier='cj';
+ALTER TABLE public.order_items ADD COLUMN supplier_variant_id_snapshot text;
+UPDATE public.order_items oi SET supplier_variant_id_snapshot=p.supplier_variant_id FROM public.products p WHERE p.id=oi.product_id AND p.supplier='cj';
+CREATE OR REPLACE FUNCTION public.snapshot_order_supplier_variant() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN SELECT supplier_variant_id INTO NEW.supplier_variant_id_snapshot FROM public.products WHERE id=NEW.product_id AND supplier='cj'; RETURN NEW; END; $$;
+CREATE TRIGGER snapshot_order_supplier_variant BEFORE INSERT ON public.order_items FOR EACH ROW EXECUTE FUNCTION public.snapshot_order_supplier_variant();
+DO $$ DECLARE definition text; BEGIN SELECT pg_get_functiondef('public.daily_storefront_selection(integer,integer,date)'::regprocedure) INTO definition; IF position('p.supplier_variant_parent_id IS NULL' in definition)=0 THEN definition := replace(definition, 'WHERE p.is_active AND', 'WHERE p.supplier_variant_parent_id IS NULL AND p.is_active AND'); EXECUTE definition; END IF; END; $$;
+COMMENT ON COLUMN public.products.supplier_variant_parent_id IS 'Selectable official supplier variant product; hidden from catalog lists, bought by its own stable product ID.';
+COMMENT ON COLUMN public.order_items.supplier_variant_id_snapshot IS 'Immutable supplier choice captured by trigger at order creation; fulfillment never derives size from browser labels.';

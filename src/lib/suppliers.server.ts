@@ -3,7 +3,7 @@ import { decryptSecret, encryptSecret } from "@/lib/mercado-pago.server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText, Output } from "ai";
 import { z } from "zod";
-import { mapCjDetails } from "@/lib/cj-content";
+import { mapCjEconomicalDetails } from "@/lib/cj-content";
 import { createLovableAiGatewayRunIdFetch } from "@/lib/ai-run-id.server";
 
 const CJ_API = "https://developers.cjdropshipping.com/api2.0/v1";
@@ -184,6 +184,7 @@ export async function translateCjProductBatch(
     .from("products")
     .select("id,title,supplier_title_original")
     .eq("supplier", "cj")
+    .is("supplier_variant_parent_id", null)
     .or("supplier_locale.is.null,supplier_locale.neq.pt-BR")
     .order("id")
     .limit(safeBatchSize);
@@ -195,10 +196,13 @@ export async function translateCjProductBatch(
   const { data: products, error } = await query;
   if (error) throw error;
   if (!products?.length) return { translated: 0, remaining: 0 };
-  const originals = products.map((product: any) =>
+  const originals: string[] = products.map((product: any) =>
     String(product.supplier_title_original ?? product.title).trim(),
   );
-  const translated = await translateProductTitles(originals);
+  const uniqueOriginals = [...new Set(originals)];
+  const uniqueTranslated = await translateProductTitles(uniqueOriginals);
+  const translations = new Map(uniqueOriginals.map((original, index) => [original, uniqueTranslated[index]]));
+  const translated = originals.map((original) => translations.get(original));
   for (let index = 0; index < products.length; index += 1) {
     const product = products[index];
     const title = translated[index];
@@ -212,11 +216,15 @@ export async function translateCjProductBatch(
       })
       .eq("id", product.id);
     if (updateError) throw updateError;
+    const { error: childrenError } = await supabaseAdmin.from("products")
+      .update({ title, supplier_locale: "pt-BR" }).eq("supplier_variant_parent_id", product.id);
+    if (childrenError) throw childrenError;
   }
   let countQuery = supabaseAdmin
     .from("products")
     .select("id", { count: "exact", head: true })
     .eq("supplier", "cj")
+    .is("supplier_variant_parent_id", null)
     .or("supplier_locale.is.null,supplier_locale.neq.pt-BR");
   if (storeId) countQuery = countQuery.eq("store_id", storeId);
   if (idRange) {
@@ -628,7 +636,7 @@ async function importCjProduct(
     title: title.slice(0, 160),
     supplier_title_original: title.slice(0, 160),
     supplier_locale: "en",
-    ...mapCjDetails(product),
+    ...mapCjEconomicalDetails(product),
     supplier_details_original: product,
     supplier_details_synced_at: new Date().toISOString(),
     price,
@@ -665,6 +673,11 @@ async function importCjProduct(
     ? await supabaseAdmin.from("products").update(productData).eq("id", existingProduct.id)
     : await supabaseAdmin.from("products").insert(productData);
   if (error) throw error;
+  const { data: savedProduct, error: savedError } = await supabaseAdmin.from("products").select("id")
+    .eq("store_id", storeId).eq("supplier", "cj").eq("supplier_variant_id", vid).single();
+  if (savedError) throw savedError;
+  const { persistCjVariantProducts } = await import("./cj-variant-products.server");
+  await persistCjVariantProducts(supabaseAdmin, savedProduct.id, product);
   return true;
 }
 
@@ -928,7 +941,7 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
     supabaseAdmin.from("orders").select("shipping_address").eq("id", fulfillment.order_id).single(),
     supabaseAdmin
       .from("order_items")
-      .select("quantity,products!inner(supplier_variant_id)")
+      .select("quantity,supplier_variant_id_snapshot,products!inner(supplier_variant_id)")
       .eq("order_id", fulfillment.order_id)
       .eq("store_id", fulfillment.store_id)
       .eq("products.supplier", "cj"),
@@ -942,7 +955,7 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
   const address = (order?.shipping_address ?? {}) as Record<string, unknown>;
   const products = (items ?? [])
     .map((item: any) => ({
-      vid: item.products?.supplier_variant_id,
+      vid: item.supplier_variant_id_snapshot ?? item.products?.supplier_variant_id,
       quantity: item.quantity,
     }))
     .filter((item: any) => item.vid);
