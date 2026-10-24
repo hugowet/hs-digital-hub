@@ -1,5 +1,12 @@
 # HS Digital — MVP
 
+## Preços consistentes e importação de fornecedores
+- [ ] Manter o mesmo preço ao abrir um produto da vitrine, sem alteração automática por cotação.
+- [ ] Reduzir o gasto de IA na importação CJ, preservando conteúdo e variantes oficiais e progresso durável.
+- [ ] Permitir escolher variantes CJ reais e preservar a escolha na cotação, pedido e envio.
+- [ ] Verificar importação Amazon para dropshipping conforme regras oficiais; ativação depende de API autorizada e operação compatível.
+- [ ] Validar preços e variantes com testes e navegação real; sincronização sujeita às cotas do fornecedor.
+
 ## Vitrine rápida e descoberta nas buscas
 - [x] Reduzir dados do carregamento inicial de 546 KB para 280 KB, eliminar galerias/fichas na lista e leitura geral de categorias; preços e cotações preservados.
 - [x] Compartilhar produto prefetched com renderização completa, canonical próprio e schema sem preços CJ não confirmados ou avaliações inventadas; sitemap validado com 10.757 produtos e quatro páginas públicas.
