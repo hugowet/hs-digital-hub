@@ -184,6 +184,7 @@ export async function translateCjProductBatch(
     .from("products")
     .select("id,title,supplier_title_original")
     .eq("supplier", "cj")
+    .is("supplier_variant_parent_id", null)
     .or("supplier_locale.is.null,supplier_locale.neq.pt-BR")
     .order("id")
     .limit(safeBatchSize);
@@ -198,7 +199,10 @@ export async function translateCjProductBatch(
   const originals = products.map((product: any) =>
     String(product.supplier_title_original ?? product.title).trim(),
   );
-  const translated = await translateProductTitles(originals);
+  const uniqueOriginals = [...new Set(originals)];
+  const uniqueTranslated = await translateProductTitles(uniqueOriginals);
+  const translations = new Map(uniqueOriginals.map((original, index) => [original, uniqueTranslated[index]]));
+  const translated = originals.map((original) => translations.get(original));
   for (let index = 0; index < products.length; index += 1) {
     const product = products[index];
     const title = translated[index];
@@ -212,11 +216,15 @@ export async function translateCjProductBatch(
       })
       .eq("id", product.id);
     if (updateError) throw updateError;
+    const { error: childrenError } = await supabaseAdmin.from("products")
+      .update({ title, supplier_locale: "pt-BR" }).eq("supplier_variant_parent_id", product.id);
+    if (childrenError) throw childrenError;
   }
   let countQuery = supabaseAdmin
     .from("products")
     .select("id", { count: "exact", head: true })
     .eq("supplier", "cj")
+    .is("supplier_variant_parent_id", null)
     .or("supplier_locale.is.null,supplier_locale.neq.pt-BR");
   if (storeId) countQuery = countQuery.eq("store_id", storeId);
   if (idRange) {
