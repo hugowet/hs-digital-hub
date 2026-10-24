@@ -173,8 +173,8 @@ function HSSocialPage() {
     if (!missing.length) return;
     void (async () => {
       const next: Record<string, string> = {};
-      for (const m of missing) {
-        try { next[m.media_path] = await mediaUrlFn({ data: { mediaPath: m.media_path } }); } catch { /* ignora */ }
+      for (const m of missing as any[]) {
+        try { next[m.media_path as string] = await mediaUrlFn({ data: { mediaPath: m.media_path } }); } catch { /* ignora */ }
       }
       if (Object.keys(next).length) setMediaUrls((prev) => ({ ...prev, ...next }));
     })();
