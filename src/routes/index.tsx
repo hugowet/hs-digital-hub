@@ -414,33 +414,52 @@ export function Home() {
 <section className="relative mb-8 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-emerald-700 to-emerald-950 p-3 shadow-xl motion-safe:animate-pulse sm:p-5">
   <div className="flex flex-col items-center gap-5 rounded-xl bg-black/70 p-4 sm:p-6 md:flex-row">
     <div className="relative aspect-square w-full max-w-[350px] overflow-hidden rounded-xl border-2 border-emerald-400 bg-black/70 shadow-lg">
-      <img
-        src="/images/banner-frete-gratis.jpg"
-        alt="HS Digital: frete grátis na sua primeira compra"
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${showLupiBanner ? "opacity-0" : "opacity-100"}`}
-      />
-      <img
-        src={lupiBannerSquare}
-        alt="Lupi, o lobo da HS Digital, com um carrinho cheio de compras"
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${showLupiBanner ? "opacity-100" : "opacity-0"}`}
-        loading="eager"
-      />
+      {bannerSlides.map((slide, index) => (
+        <div
+          key={slide.kind === "highlight" ? slide.title : slide.kind}
+          className={`absolute inset-0 transition-opacity duration-1000 ${index === bannerSlide % bannerSlides.length ? "opacity-100" : "opacity-0"}`}
+        >
+          {slide.kind === "rapaz" ? (
+            <img
+              src="/images/banner-frete-gratis.jpg"
+              alt="HS Digital: frete grátis na sua primeira compra"
+              className="h-full w-full object-cover"
+              loading="eager"
+            />
+          ) : slide.kind === "lupi" ? (
+            <img
+              src={lupiBannerSquare}
+              alt="Lupi, o lobo da HS Digital, com um carrinho cheio de compras"
+              className="h-full w-full object-cover"
+              loading="eager"
+            />
+          ) : (
+            <div className="grid h-full w-full place-items-center bg-gradient-to-br from-emerald-950 via-emerald-700 to-emerald-950">
+              <slide.icon className="size-24 text-amber-300" aria-hidden="true" />
+            </div>
+          )}
+        </div>
+      ))}
     </div>
 
     <div className="text-center text-white md:text-left">
-      <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
-        <Zap className="h-4 w-4" />
-        
-      </span>
-
-      <h2 className="mt-3 text-1xl font-black uppercase sm:text-2xl">
-        Venha para HS Digital{" "}
-        <span className="text-emerald-300">!</span>
-      </h2>
-
-      <p className="mt-2 text-sm text-white/85">
-     
-      </p>
+      {currentSlide.kind === "highlight" ? (
+        <>
+          <currentSlide.icon className="h-10 w-10 text-amber-300" aria-hidden="true" />
+          <h2 className="mt-3 text-1xl font-black uppercase sm:text-2xl">{currentSlide.title}</h2>
+          <p className="mt-2 text-sm text-white/85">{currentSlide.text}</p>
+        </>
+      ) : (
+        <>
+          <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
+            <Zap className="h-4 w-4" />
+          </span>
+          <h2 className="mt-3 text-1xl font-black uppercase sm:text-2xl">
+            Venha para HS Digital{" "}
+            <span className="text-emerald-300">!</span>
+          </h2>
+        </>
+      )}
 
       <button
         type="button"
