@@ -3,15 +3,19 @@ import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { 
-  Zap, 
-  Truck, 
-  Crown, 
-  CheckCircle2, 
-  MapPin, 
-  ShieldCheck, 
-  ArrowRight, 
-  Loader2 
+import {
+  Truck,
+  Crown,
+  CheckCircle2,
+  ShieldCheck,
+  ArrowRight,
+  Loader2,
+  TicketPercent,
+  Radio,
+  Play,
+  PackageCheck,
+  Headset,
+  BadgeCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/site-header";
@@ -136,33 +140,54 @@ export function ClubeHsPage() {
               <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
                 <Truck className="w-6 h-6" />
               </div>
-              <h3 className="font-semibold text-slate-900 text-base">Frete grátis a partir de R$ 89,90</h3>
+              <h3 className="font-semibold text-slate-900 text-base">Frete grátis para assinantes</h3>
               <p className="text-xs text-slate-500 mt-2">
-                Aproveite suas compras com frete grátis a partir de R$ 89,90. Uma vantagem da HS Digital para todos os clientes, assinantes ou não. Abaixo desse valor, consulte o frete no pedido.
+                Assinante tem frete grátis nas compras, sem se preocupar com valor mínimo.
               </p>
             </div>
 
             <div className="flex flex-col items-center text-center p-5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
               <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-4">
-                <Zap className="w-6 h-6" />
+                <TicketPercent className="w-6 h-6" />
               </div>
-              <h3 className="font-semibold text-slate-900 text-base">Sua rádio, sem chamadas da loja</h3>
+              <h3 className="font-semibold text-slate-900 text-base">Cupons de frete sem pressa</h3>
               <p className="text-xs text-slate-500 mt-2">
-                Benefício do assinante: ouça sem as chamadas promocionais da HS Digital enquanto sua assinatura estiver ativa. Anúncios próprios das emissoras podem continuar.
+                Os cupons de frete ganhos nos jogos não somem em 24 horas. Vale um cupom por compra.
               </p>
             </div>
 
+            <div className="flex flex-col items-center text-center p-5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4">
+                <Radio className="w-6 h-6" />
+              </div>
+              <h3 className="font-semibold text-slate-900 text-base">Rádio HS sem anúncios</h3>
+              <p className="text-xs text-slate-500 mt-2">
+                Ouça a Rádio HS sem as chamadas promocionais da loja enquanto sua assinatura estiver ativa.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center text-center p-5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center mb-4">
+                <Play className="w-6 h-6" />
+              </div>
+              <h3 className="font-semibold text-slate-900 text-base">HSTrends ilimitado</h3>
+              <p className="text-xs text-slate-500 mt-2">
+                Acesso ilimitado na HSTrends: assista, curta, comente e publique seus próprios vídeos.
+              </p>
+            </div>
           </div>
 
           {/* Lista de destaques */}
           <div className="mt-8 pt-8 border-t border-slate-100 space-y-3">
             {[
-              "Assinatura recorrente mensal sem fidelidade ou carência",
-              "Cobrança segura e automatizada via Mercado Pago",
-              "Identificação e selo de Membro Ativo no seu perfil",
-            ].map((text, i) => (
+              { icon: PackageCheck, text: "Preferência no envio dos seus pedidos" },
+              { icon: Headset, text: "Suporte premium com atendimento prioritário" },
+              { icon: BadgeCheck, text: "Selo de verificado no seu perfil HS" },
+              { icon: CheckCircle2, text: "Assinatura mensal sem fidelidade, com cobrança segura via Mercado Pago" },
+              { icon: CheckCircle2, text: "E muito mais benefícios exclusivos chegando para os assinantes" },
+            ].map(({ icon: Icon, text }, i) => (
               <div key={i} className="flex items-center gap-3 text-sm text-slate-600">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <Icon className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>{text}</span>
               </div>
             ))}
