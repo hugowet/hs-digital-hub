@@ -92,51 +92,26 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
-const SITE_URL = "https://lovable.app";
-const LOGO_PREVIEW_URL =
-  "https://lovable.app/__l5e/assets-v1/39fcaa1a-9680-41a5-9293-4e05e8dc7c2b/hs-digital-logo.png";
-
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "HS Digital · Marketplace Oficial" },
-      {
-        name: "description",
-        content:
-          "Marketplace HS Digital: compre eletrônicos, ferramentas, utilidades e novidades com frete garantido para todo o Brasil.",
-      },
       { name: "author", content: "HS Digital" },
       { property: "og:site_name", content: "HS Digital Marketplace" },
-      { property: "og:title", content: "HS Digital · Marketplace Oficial" },
-      {
-        property: "og:description",
-        content: "Encontre os melhores produtos com ofertas exclusivas, cupons diários e entrega em todo o Brasil.",
-      },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: SITE_URL },
-      { property: "og:image", content: LOGO_PREVIEW_URL },
-      { property: "og:image:secure_url", content: LOGO_PREVIEW_URL },
-      { property: "og:image:type", content: "image/png" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "HS Digital · Marketplace Oficial" },
-      {
-        name: "twitter:description",
-        content: "Ofertas e novidades com frete garantido para todo o Brasil.",
-      },
-      { name: "twitter:image", content: LOGO_PREVIEW_URL },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "preconnect", href: "https://googleapis.com" },
-      { rel: "preconnect", href: "https://gstatic.com", crossOrigin: "anonymous" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap",
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
