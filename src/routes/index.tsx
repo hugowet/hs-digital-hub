@@ -12,6 +12,7 @@ import {
   Keyboard,
   LampDesk,
   MessageCircle,
+  Play,
   Radio,
   Search,
   ShieldCheck,
@@ -244,22 +245,19 @@ function BuyerGamesPromoLink() {
   return (
     <div className="flex flex-wrap items-center gap-2 mt-2">
       {isBuyer && (
-        <>
-          {/* Botão de Jogos */}
-          <Button asChild variant="secondary" className="w-fit shadow-sm rounded-full">
-            <Link to="/jogos">
-              <Gamepad2 className="h-4 w-4 mr-2" /> Jogos &amp; Prêmios
-            </Link>
-          </Button>
-
-          {/* Botão do Clube HS */}
-          <Button asChild className="w-fit bg-amber-500 hover:bg-amber-600 text-white font-bold border-none shadow-sm rounded-full">
-            <Link to="/clube-hs">
-              <Crown className="h-4 w-4 mr-2 fill-white" /> Clube HS
-            </Link>
-          </Button>
-        </>
+        <Button asChild variant="secondary" className="w-fit shadow-sm rounded-full">
+          <Link to="/jogos">
+            <Gamepad2 className="h-4 w-4 mr-2" /> Jogos &amp; Prêmios
+          </Link>
+        </Button>
       )}
+
+      {/* Botão do Clube HS */}
+      <Button asChild className="w-fit bg-amber-500 hover:bg-amber-600 text-white font-bold border-none shadow-sm rounded-full">
+        <Link to="/clube-hs">
+          <Crown className="h-4 w-4 mr-2 fill-white" /> Clube HS
+        </Link>
+      </Button>
 
       {/* 📻 BOTÃO DA RÁDIO HS */}
       <RadioNavButton />
@@ -272,6 +270,17 @@ function BuyerGamesPromoLink() {
         <Link to="/social" className="inline-flex items-center gap-1.5">
           <MessageCircle className="h-4 w-4 text-emerald-300" />
           <span>HS Social</span>
+        </Link>
+      </Button>
+
+      {/* 🎬 BOTÃO DO HSTRENDS */}
+      <Button
+        asChild
+        className="w-fit font-bold border border-fuchsia-400/40 bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-100 shadow-sm rounded-full transition-all duration-300"
+      >
+        <Link to="/trends" className="inline-flex items-center gap-1.5">
+          <Play className="h-4 w-4 text-fuchsia-300" />
+          <span>HSTrends</span>
         </Link>
       </Button>
     </div>
