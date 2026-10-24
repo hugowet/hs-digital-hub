@@ -1768,7 +1768,9 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          edited_at: string | null
           id: string
+          parent_id: string | null
           user_avatar: string | null
           user_id: string
           user_name: string
@@ -1777,7 +1779,9 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          edited_at?: string | null
           id?: string
+          parent_id?: string | null
           user_avatar?: string | null
           user_id: string
           user_name: string
@@ -1786,13 +1790,22 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          edited_at?: string | null
           id?: string
+          parent_id?: string | null
           user_avatar?: string | null
           user_id?: string
           user_name?: string
           video_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "trend_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "trend_comments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trend_comments_user_id_fkey"
             columns: ["user_id"]
@@ -1890,6 +1903,7 @@ export type Database = {
           title: string
           user_id: string
           video_url: string
+          views_count: number
         }
         Insert: {
           audio_path?: string | null
@@ -1905,6 +1919,7 @@ export type Database = {
           title: string
           user_id: string
           video_url: string
+          views_count?: number
         }
         Update: {
           audio_path?: string | null
@@ -1920,6 +1935,7 @@ export type Database = {
           title?: string
           user_id?: string
           video_url?: string
+          views_count?: number
         }
         Relationships: [
           {
@@ -1927,6 +1943,39 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trend_views: {
+        Row: {
+          created_at: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trend_views_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "trend_videos"
             referencedColumns: ["id"]
           },
         ]
@@ -2349,6 +2398,7 @@ export type Database = {
           total_coins: number
         }[]
       }
+      trend_register_view: { Args: { _video_id: string }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "seller" | "buyer"
