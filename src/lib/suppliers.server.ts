@@ -196,7 +196,7 @@ export async function translateCjProductBatch(
   const { data: products, error } = await query;
   if (error) throw error;
   if (!products?.length) return { translated: 0, remaining: 0 };
-  const originals = products.map((product: any) =>
+  const originals: string[] = products.map((product: any) =>
     String(product.supplier_title_original ?? product.title).trim(),
   );
   const uniqueOriginals = [...new Set(originals)];
