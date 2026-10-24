@@ -1248,6 +1248,41 @@ export function HSTrends() {
         </DialogContent>
       </Dialog>
 
+      {/* EDITAR POST */}
+      <Dialog open={Boolean(editPostTarget)} onOpenChange={(open) => { if (!open) setEditPostTarget(null); }}>
+        <DialogContent className="max-w-md bg-slate-900 border-slate-800 text-white rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-cyan-300" />
+              Editar Post
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveEditedPost} className="space-y-4 mt-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-300">Título</label>
+              <Input
+                value={editPostTitle}
+                onChange={(e) => setEditPostTitle(e.target.value)}
+                required
+                className="mt-1 bg-slate-950 border-slate-800 text-white text-xs rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-300">Legenda / Descrição</label>
+              <Textarea
+                value={editPostDesc}
+                onChange={(e) => setEditPostDesc(e.target.value)}
+                rows={4}
+                className="mt-1 bg-slate-950 border-slate-800 text-white text-xs rounded-xl resize-none"
+              />
+            </div>
+            <Button type="submit" className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs">
+              Salvar Alterações
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* EDITAR PERFIL */}
       <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
         <DialogContent className="max-w-md bg-slate-900 border-slate-800 text-white rounded-3xl p-6">
