@@ -10,6 +10,7 @@ import {
   MapPin,
   Menu,
   MessageCircle,
+  Play,
   Radio,
   Search,
   Share2,
@@ -245,6 +246,16 @@ export function SiteHeader({
             >
               <MessageCircle className="h-3.5 w-3.5 text-emerald-300" />
               <span>HS Social</span>
+            </Link>
+
+            {/* 🎬 Botão HSTrends (Desktop Topo) */}
+            <Link
+              to="/trends"
+              className="relative hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-fuchsia-400/20 text-fuchsia-200 border border-fuchsia-400/35 hover:bg-fuchsia-400/30 transition shadow-sm"
+              title="HSTrends - Vídeos e Ofertas"
+            >
+              <Play className="h-3.5 w-3.5 text-fuchsia-300" />
+              <span>HSTrends</span>
             </Link>
 
             {/* Carrinho */}
