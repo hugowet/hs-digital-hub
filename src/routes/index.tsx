@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { infiniteQueryOptions, useQuery, useSuspenseInfiniteQuery } from "@tanstack/react-query";
+import { infiniteQueryOptions, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import {
   Baby,
   CarFront,
@@ -41,6 +41,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { storefrontDay } from "@/lib/storefront-selection";
+import { SITE_ORIGIN } from "@/lib/seo";
 import { supabase } from "@/integrations/supabase/client";
 import { useRadio } from "@/lib/radio-context";
 import lupiBannerSquare from "@/assets/lupi-banner-square.jpg";
@@ -87,7 +88,7 @@ const catalogQueryOptions = (search: HomeSearch) =>
       return fetchCatalogPage({
         data: {
           page: pageParam,
-          pageSize: 48,
+          pageSize: 24,
           query: resolved.q,
           category: resolved.category,
           range: resolved.range,
@@ -104,23 +105,42 @@ const catalogQueryOptions = (search: HomeSearch) =>
   });
 
 export const Route = createFileRoute("/")({
+  staticData: { sitemap: true },
   validateSearch: normalizeSearch,
   loaderDeps: ({ search }) => search,
   loader: ({ context, deps }) => context.queryClient.ensureInfiniteQueryData(catalogQueryOptions(deps)),
-  head: () => ({
+  head: ({ match }) => {
+    const search = resolveSearch(match.search);
+    const params = new URLSearchParams();
+    if (search.q) params.set("q", search.q);
+    if (search.category) params.set("category", search.category);
+    if (search.range !== "all") params.set("range", search.range);
+    if (search.sort !== "popular") params.set("sort", search.sort);
+    if (search.free) params.set("free", "true");
+    const url = `${SITE_ORIGIN}/${params.size ? `?${params}` : ""}`;
+    return {
     meta: [
-      { title: "HS Digital · Marketplace de produtos e soluções digitais" },
+      { title: "HS Digital Marketplace | Eletrônicos, ferramentas, moda e casa" },
       {
         name: "description",
         content:
-          "Ofertas imperdíveis com envio rápido. Milhares de produtos nacionais e importados com frete grátis e compra protegida.",
+          "Encontre eletrônicos, ferramentas, acessórios para carros e motos, moda e utilidades na HS Digital. Confira preços, detalhes e entrega para seu endereço.",
       },
       { property: "og:title", content: "HS Digital · Marketplace" },
       { property: "og:description", content: "Produtos selecionados, compra rápida e entrega segura na HS Digital." },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: url },
+      ...(params.size ? [{ name: "robots", content: "noindex, follow" }] : []),
       { name: "twitter:card", content: "summary_large_image" },
     ],
-  }),
+    links: [{ rel: "canonical", href: url }],
+    scripts: params.size ? [] : [{ type: "application/ld+json", children: JSON.stringify({
+      "@context": "https://schema.org", "@type": "WebSite", name: "HS Digital Marketplace", url: SITE_ORIGIN,
+    }) }],
+  };
+  },
+  errorComponent: () => <div role="alert" className="p-8">Não foi possível carregar a vitrine. <a href="/">Tentar novamente</a></div>,
+  notFoundComponent: () => <div className="p-8">Página não encontrada. <Link to="/">Voltar à loja</Link></div>,
   component: Home,
 });
 
@@ -258,7 +278,7 @@ function BuyerGamesPromoLink() {
   );
 }
 
-export function Home() {
+function Home() {
   const routeSearch = Route.useSearch();
   const search = resolveSearch(routeSearch);
   const navigate = Route.useNavigate();
@@ -289,21 +309,16 @@ export function Home() {
     return () => window.clearInterval(id);
   }, [bannerSlides.length]);
 
-  const { data: activeCategories = [] } = useQuery({
-    queryKey: ["active-store-categories"],
-    queryFn: async () => {
-      const { data } = await supabase.from("products").select("category").eq("is_active", true);
-      const uniqueSlugs = Array.from(new Set(data?.map((p) => p.category).filter(Boolean)));
-
-      return uniqueSlugs.map((slug) => {
+  const activeCategories = useMemo(() => {
+      const uniqueSlugs = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
+      const extraSlugs = uniqueSlugs.filter((slug) => !CATEGORIES.some((category) => category.slug === slug));
+      return [...CATEGORIES, ...extraSlugs.map((slug) => {
         const found = CATEGORIES.find((c) => c.slug === slug);
         if (found) return found;
         const formatted = slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
         return { slug, label: formatted, icon: "ShoppingBasket" };
-      });
-    },
-    staleTime: 5 * 60_000,
-  });
+      })];
+  }, [data]);
 
   const setSearch = (changes: HomeSearchUpdate, options?: { replace?: boolean }) =>
     navigate({

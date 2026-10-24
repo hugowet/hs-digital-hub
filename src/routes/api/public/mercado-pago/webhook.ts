@@ -11,6 +11,7 @@ type Payment = {
 };
 
 export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

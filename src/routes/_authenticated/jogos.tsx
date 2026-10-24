@@ -22,8 +22,10 @@ import { getGameStatus, playDailyGame } from "@/lib/games.functions";
 import { ArcadeHall } from "@/components/games/arcade-hall";
 
 export const Route = createFileRoute("/_authenticated/jogos")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, follow" },
       { title: "Jogos & Prêmios · HS Digital" },
       { name: "description", content: "Jogue diariamente e ganhe cupons de desconto na HS Digital." },
       { property: "og:title", content: "Jogos & Prêmios · HS Digital" },

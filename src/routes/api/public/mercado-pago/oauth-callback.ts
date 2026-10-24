@@ -9,6 +9,7 @@ type OAuthResponse = {
 };
 
 export const Route = createFileRoute("/api/public/mercado-pago/oauth-callback")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       GET: async ({ request }) => {

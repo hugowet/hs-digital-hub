@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 export const Route = createFileRoute("/radio-hs")({
+  staticData: { sitemap: false },
   beforeLoad: () => { throw redirect({ to: "/radio", replace: true }); },
   head: () => ({ meta: [
     { title: "Rádio HS · Estações ao vivo" },

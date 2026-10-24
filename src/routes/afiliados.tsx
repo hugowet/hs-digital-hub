@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { brl } from "@/lib/format";
 
 export const Route = createFileRoute("/afiliados")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Programa de Afiliados · HS Digital" },

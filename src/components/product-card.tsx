@@ -177,6 +177,7 @@ export function ProductCard({
               src={product.image_url}
               alt={displayTitle}
               loading="lazy"
+              decoding="async"
               width={400}
               height={400}
               className="h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-105"

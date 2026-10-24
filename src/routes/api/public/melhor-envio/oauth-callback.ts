@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 type TokenResponse = { access_token?: string; refresh_token?: string; expires_in?: number };
 
 export const Route = createFileRoute("/api/public/melhor-envio/oauth-callback")({
+  staticData: { sitemap: false },
   server: { handlers: { GET: async ({ request }) => {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get("code");

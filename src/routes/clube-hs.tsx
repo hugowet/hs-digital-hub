@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createClubeHsSubscription } from "@/lib/clube-hs.functions";
 
 export const Route = createFileRoute("/clube-hs")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Clube HS · Assinatura de Fidelidade & Frete Grátis" },
