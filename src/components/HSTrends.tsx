@@ -665,13 +665,21 @@ export function HSTrends() {
                     <p className="text-lg font-extrabold text-white">{post.ad_badge}</p>
                     <p className="text-sm text-slate-300 leading-relaxed max-w-xs">{post.description}</p>
                   </div>
+                ) : post.post_type === "photo" ? (
+                  <>
+                    <img src={post.video_url} alt={post.description} className="absolute inset-0 w-full h-full object-cover" />
+                    {isActive && post.audio_url && <audio src={post.audio_url} autoPlay loop />}
+                  </>
                 ) : (
-                  <HTML5VideoPlayer
-                    src={post.video_url}
-                    isActive={isActive}
-                    isMuted={isMuted}
-                    onToggleMute={() => setIsMuted((prev) => !prev)}
-                  />
+                  <>
+                    <HTML5VideoPlayer
+                      src={post.video_url}
+                      isActive={isActive}
+                      isMuted={isMuted || Boolean(post.audio_url)}
+                      onToggleMute={() => setIsMuted((prev) => !prev)}
+                    />
+                    {isActive && post.audio_url && <audio src={post.audio_url} autoPlay loop muted={isMuted} />}
+                  </>
                 )}
 
                 <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/20 via-transparent to-black/90 z-10" />
@@ -682,7 +690,7 @@ export function HSTrends() {
                     <div className="relative mb-2">
                       <button onClick={() => setProfileModalUser(post)} className="relative block rounded-full focus:outline-none">
                         <img
-                          src={post.author_avatar || FALLBACK_AVATAR}
+                          src={(post.author_id && authorProfiles[post.author_id]?.avatar_url) || post.author_avatar || FALLBACK_AVATAR}
                           alt={post.author_name}
                           className="w-11 h-11 rounded-full border-2 border-white object-cover shadow-lg"
                         />
