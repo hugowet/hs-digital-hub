@@ -3,7 +3,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Package, ShoppingCart, Star, Zap } from "lucide-react";
 import { toast } from "sonner";
 
-import { useCjPrice } from "@/lib/use-cj-price";
 import { Button } from "@/components/ui/button";
 import { brl, compact } from "@/lib/format";
 import { useCart } from "@/lib/cart";
@@ -147,7 +146,6 @@ export function ProductCard({
     product.category?.includes("digital") ||
     product.category?.includes("cursos");
 
-  const isCj = product.supplier === "cj";
   const price = Number(product.price || 0);
   const price = Number(product.price || 0);
 
@@ -164,7 +162,7 @@ export function ProductCard({
   const soldCount =
     product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
 
-  const isFreeShipping = (isCj ? cj.shipping === 0 : price >= 89.90) || isDigital;
+  const isFreeShipping = price >= 89.90 || isDigital;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
@@ -231,7 +229,6 @@ export function ProductCard({
             </span>
           </div>
 
-          {isCj && cj.price === null && <span className="text-xs text-muted-foreground">A partir de · envio a calcular</span>}
           {/* Linha 2: Preço em destaque com centavos sobrescritos */}
           <div className="mt-1 flex items-start leading-none text-foreground">
             <span className="text-xl md:text-2xl font-normal tracking-tight">
@@ -283,7 +280,6 @@ export function ProductCard({
           <Button
             size="sm"
             className="mt-3 w-full font-bold"
-            disabled={isCj && (cj.loading || cj.price === null)}
             onClick={async () => {
               const { data, error } = await supabase.auth.getUser();
               if (error || !data.user) {
