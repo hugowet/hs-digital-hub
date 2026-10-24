@@ -583,7 +583,10 @@ export function HSTrends() {
       if (upError) throw new Error("Não foi possível enviar a mídia. Tente novamente.");
 
       let audioPath: string | null = null;
-      if (musicFile) {
+      if (libraryTrack) {
+        // Música da biblioteca HS: usa a URL pública diretamente
+        audioPath = libraryTrack.url;
+      } else if (musicFile) {
         const audioExt = musicFile.name.split(".").pop() || "mp3";
         audioPath = `${authUser.id}/music-${crypto.randomUUID()}.${audioExt}`;
         const { error: musicError } = await supabase.storage.from("trend-videos").upload(audioPath, musicFile, {
@@ -602,9 +605,11 @@ export function HSTrends() {
         audio_path: audioPath,
         duration_seconds: uploadDuration,
         post_type: uploadKind === "photo" ? "photo" : "organic",
-        music_title: musicFile
-          ? `🎵 ${musicFile.name.replace(/\.[^.]+$/, "")}`
-          : "Som Original · " + (userProfile?.full_name || "Criador HS"),
+        music_title: libraryTrack
+          ? `🎵 ${libraryTrack.title} · ${libraryTrack.artist}`
+          : musicFile
+            ? `🎵 ${musicFile.name.replace(/\.[^.]+$/, "")}`
+            : "Som Original · " + (userProfile?.full_name || "Criador HS"),
       });
       if (error) throw new Error("Não foi possível publicar o post.");
 
@@ -614,6 +619,7 @@ export function HSTrends() {
       setUploadTitle("");
       setUploadDesc("");
       setMusicFile(null);
+      setLibraryTrack(null);
       queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
       toast.success("Seu post foi publicado no HSTrends!");
     } catch (err) {
