@@ -61,7 +61,9 @@ export function useCjPrice(productId: string, quantity = 1, enabled = true, visi
       return task;
     },
   });
+  const rawError = result.error instanceof Error ? result.error.message : "";
+  // Frete não confirmado para o CEP não é erro visível: o preço do produto já vale.
+  const error = rawError.includes("Nenhum envio foi confirmado") ? "" : rawError;
   return { ref, postalCode, price: result.data?.price ?? null, shipping: result.data?.shipping ?? null,
-    service: result.data?.service ?? "", loading: result.isFetching,
-    error: result.error instanceof Error ? result.error.message : "" };
+    service: result.data?.service ?? "", loading: result.isFetching, error };
 }
