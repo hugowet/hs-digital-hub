@@ -952,11 +952,11 @@ export function HSTrends() {
 
           <form onSubmit={handleUploadVideo} className="space-y-4 mt-2">
             <div>
-              <label className="text-xs font-semibold text-slate-300">Vídeo da galeria (máx. 2 minutos)</label>
+              <label className="text-xs font-semibold text-slate-300">Vídeo (máx. 2 min) ou foto da galeria</label>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="video/*"
+                accept="video/*,image/*"
                 className="hidden"
                 onChange={(e) => handlePickVideo(e.target.files?.[0] ?? null)}
               />
@@ -966,7 +966,30 @@ export function HSTrends() {
                 className="mt-1 w-full py-6 rounded-xl border-2 border-dashed border-slate-700 bg-slate-950 text-slate-400 text-xs font-bold flex flex-col items-center gap-2 hover:border-amber-500/60 hover:text-amber-300 transition-colors"
               >
                 <VideoIcon className="w-6 h-6" />
-                {uploadFile ? `${uploadFile.name} · ${uploadDuration}s` : "Toque para abrir a galeria"}
+                {uploadFile
+                  ? uploadKind === "photo"
+                    ? `📷 ${uploadFile.name}`
+                    : `${uploadFile.name} · ${uploadDuration}s`
+                  : "Toque para abrir a galeria"}
+              </button>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-300">Música (opcional)</label>
+              <input
+                ref={musicInputRef}
+                type="file"
+                accept="audio/*"
+                className="hidden"
+                onChange={(e) => handlePickMusic(e.target.files?.[0] ?? null)}
+              />
+              <button
+                type="button"
+                onClick={() => musicInputRef.current?.click()}
+                className="mt-1 w-full py-3 rounded-xl border border-slate-700 bg-slate-950 text-slate-400 text-xs font-bold flex items-center justify-center gap-2 hover:border-amber-500/60 hover:text-amber-300 transition-colors"
+              >
+                <Music2 className="w-4 h-4" />
+                {musicFile ? `🎵 ${musicFile.name}` : "Escolher música do aparelho"}
               </button>
             </div>
 
