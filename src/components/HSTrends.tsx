@@ -383,6 +383,78 @@ export function HSTrends() {
     navigate({ to: "/auth", search: { reason: "login-required" } });
   };
 
+  // Visualização real: registra 1 view por usuário quando o post fica visível
+  const activePost = processedFeed[currentIndex];
+  useEffect(() => {
+    if (!activePost || activePost.post_type === "ad" || !authUser?.id) return;
+    if (viewedPostsRef.current.has(activePost.id)) return;
+    viewedPostsRef.current.add(activePost.id);
+    void supabase.rpc("trend_register_view", { _video_id: activePost.id }).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
+    });
+  }, [activePost?.id, authUser?.id, queryClient]);
+
+  const canManagePost = (post: TrendPost) =>
+    Boolean(authUser && post.author_id && (post.author_id === authUser.id || isAdmin));
+
+  const handleDeletePost = async (post: TrendPost) => {
+    if (!authUser || !canManagePost(post)) return;
+    if (!window.confirm("Apagar este post do HSTrends? Essa ação não pode ser desfeita.")) return;
+    const { data: row } = await supabase.from("trend_videos").select("video_url, audio_path").eq("id", post.id).single();
+    const { error } = await supabase.from("trend_videos").delete().eq("id", post.id);
+    if (error) {
+      toast.error("Não foi possível apagar o post.");
+      return;
+    }
+    const paths = [row?.video_url, row?.audio_path].filter((p): p is string => Boolean(p) && !p!.startsWith("http"));
+    if (paths.length) await supabase.storage.from("trend-videos").remove(paths);
+    queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
+    toast.success("Post apagado.");
+  };
+
+  const openEditPost = (post: TrendPost) => {
+    setEditPostTitle(post.title || "");
+    setEditPostDesc(post.description || "");
+    setEditPostTarget(post);
+  };
+
+  const handleSaveEditedPost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editPostTarget || !authUser) return;
+    const { error } = await supabase
+      .from("trend_videos")
+      .update({ title: editPostTitle.trim(), description: editPostDesc.trim() })
+      .eq("id", editPostTarget.id);
+    if (error) {
+      toast.error("Não foi possível salvar as alterações.");
+      return;
+    }
+    setEditPostTarget(null);
+    queryClient.invalidateQueries({ queryKey: ["trend-supabase-videos"] });
+    toast.success("Post atualizado!");
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    const { error } = await supabase.from("trend_comments").delete().eq("id", commentId);
+    if (error) toast.error("Não foi possível apagar o comentário.");
+    else refetchComments();
+  };
+
+  const handleSaveEditedComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingComment || !newCommentText.trim()) return;
+    const { error } = await supabase
+      .from("trend_comments")
+      .update({ content: newCommentText.trim(), edited_at: new Date().toISOString() })
+      .eq("id", editingComment.id);
+    if (error) toast.error("Não foi possível editar o comentário.");
+    else {
+      setEditingComment(null);
+      setNewCommentText("");
+      refetchComments();
+    }
+  };
+
   const handleSendComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCommentText.trim() || !commentModalPost) return;
@@ -394,10 +466,12 @@ export function HSTrends() {
       user_name: userProfile?.full_name || authUser.email?.split("@")[0] || "Cliente HS",
       user_avatar: userProfile?.avatar_url || FALLBACK_AVATAR,
       content: newCommentText.trim(),
+      parent_id: replyToComment?.id ?? null,
     });
     if (error) toast.error("Não foi possível enviar o comentário.");
     else {
       setNewCommentText("");
+      setReplyToComment(null);
       refetchComments();
     }
   };
