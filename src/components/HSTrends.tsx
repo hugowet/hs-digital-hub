@@ -216,6 +216,9 @@ export function HSTrends() {
   });
 
   const isVipClube = Boolean(userProfile?.is_clube_hs);
+  // Administrador tem HSTrends ilimitado (pode postar sem assinatura)
+  const isAdmin = authUser?.email === "hugoet373@gmail.com";
+  const canPostVideos = isVipClube || isAdmin;
 
   // Vídeos reais do banco + URLs assinadas
   const { data: customVideos = [] } = useQuery({
@@ -419,7 +422,7 @@ export function HSTrends() {
 
   const handleOpenUpload = () => {
     if (!authUser) return requireLogin("postar vídeos");
-    if (!isVipClube) {
+    if (!canPostVideos) {
       toast.info("Postar no HSTrends é exclusivo do Clube HS.");
       navigate({ to: "/clube-hs" });
       return;
@@ -429,7 +432,7 @@ export function HSTrends() {
 
   const handleUploadVideo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authUser || !isVipClube) return;
+    if (!authUser || !canPostVideos) return;
     if (!uploadFile || !uploadTitle.trim()) {
       toast.error("Escolha um vídeo da galeria e escreva um título.");
       return;
@@ -549,7 +552,7 @@ export function HSTrends() {
                 <Camera className="w-4 h-4" />
               </button>
             )}
-            {isVipClube ? (
+            {canPostVideos ? (
               <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 text-[11px] font-extrabold shadow-lg shadow-amber-400/30">
                 <Crown className="w-3.5 h-3.5 fill-slate-950" />
                 VIP Sem Ads

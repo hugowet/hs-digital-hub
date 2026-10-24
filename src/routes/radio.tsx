@@ -49,9 +49,7 @@ export function RadioHSPage() {
     isVipClube,
     showClubModal,
     isLocutorSpeaking,
-    locutorEnabled,
     setShowClubModal,
-    setLocutorEnabled,
     togglePlay,
     handleNextTrack,
     handlePrevTrack,
@@ -224,21 +222,6 @@ export function RadioHSPage() {
               }}
               className="flex-1"
             />
-          </div>
-
-          {/* Alternar Locutor */}
-          <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
-            <span>Locutor a cada 1 min:</span>
-            <button
-              onClick={() => setLocutorEnabled(!locutorEnabled)}
-              className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
-                locutorEnabled
-                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                  : "bg-slate-800 text-slate-500 border-slate-700"
-              }`}
-            >
-              {isVipClube ? "Sem chamadas HS" : locutorEnabled ? "Locutor Ativado" : "Locutor Pausado"}
-            </button>
           </div>
         </div>
       </main>
