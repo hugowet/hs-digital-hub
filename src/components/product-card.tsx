@@ -148,8 +148,9 @@ export function ProductCard({
     product.category?.includes("cursos");
 
   const isCj = product.supplier === "cj";
-  const cj = useCjPrice(product.id, 1, isCj, true);
-  const price = isCj && cj.price !== null ? cj.price : Number(product.price || 0);
+  // A vitrine usa o preço já salvo; a entrega é confirmada no checkout (sem consultas por card).
+  const cj = { ref: undefined, price: null as number | null, shipping: null as number | null, loading: false };
+  const price = Number(product.price || 0);
 
   // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
   const discountPercent = getProductDiscountPercent(product.id);
