@@ -260,6 +260,13 @@
       "when": 1792821888233,
       "tag": "0036_social_contact_profiles_avatar",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792883118116,
+      "tag": "0037_trend_videos_storage_auth_read",
+      "breakpoints": true
     }
   ]
 }

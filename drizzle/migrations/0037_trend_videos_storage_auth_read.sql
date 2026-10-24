@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS "trend_videos_storage_read" ON storage.objects;
+CREATE POLICY "trend_videos_storage_read" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'trend-videos' AND auth.uid() IS NOT NULL);

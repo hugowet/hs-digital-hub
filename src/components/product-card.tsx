@@ -3,7 +3,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Package, ShoppingCart, Star, Zap } from "lucide-react";
 import { toast } from "sonner";
 
-import { useCjPrice } from "@/lib/use-cj-price";
 import { Button } from "@/components/ui/button";
 import { brl, compact } from "@/lib/format";
 import { useCart } from "@/lib/cart";
@@ -147,9 +146,7 @@ export function ProductCard({
     product.category?.includes("digital") ||
     product.category?.includes("cursos");
 
-  const isCj = product.supplier === "cj";
-  const cj = useCjPrice(product.id, 1, isCj, true);
-  const price = isCj && cj.price !== null ? cj.price : Number(product.price || 0);
+  const price = Number(product.price || 0);
 
   // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
   const discountPercent = getProductDiscountPercent(product.id);
@@ -164,11 +161,10 @@ export function ProductCard({
   const soldCount =
     product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
 
-  // Regra de Frete: acima de 87,90 tem frete grátis, abaixo de 87,90 frete {isCj && cj.shipping !== null ? brl(cj.shipping) : "A calcular"}
-  const isFreeShipping = (isCj ? cj.shipping === 0 : price >= 89.90) || isDigital;
+  const isFreeShipping = price >= 89.90 || isDigital;
 
   return (
-    <article ref={cj.ref} className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
+    <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
       {/* Imagem do Produto */}
       <div className="relative aspect-square max-h-56 w-full overflow-hidden bg-muted/20">
         {product.image_url ? (
@@ -232,7 +228,6 @@ export function ProductCard({
             </span>
           </div>
 
-          {isCj && cj.price === null && <span className="text-xs text-muted-foreground">A partir de · envio a calcular</span>}
           {/* Linha 2: Preço em destaque com centavos sobrescritos */}
           <div className="mt-1 flex items-start leading-none text-foreground">
             <span className="text-xl md:text-2xl font-normal tracking-tight">
@@ -264,7 +259,7 @@ export function ProductCard({
                     {Math.max(5, discountPercent - 2)}% no frete
                   </span>
                   <span className="text-[11px] text-muted-foreground">
-                    {isCj && cj.shipping !== null ? brl(cj.shipping) : "Calculado no seu CEP"}
+                    Calculado no seu CEP
                   </span>
                 </>
               )}
@@ -284,7 +279,6 @@ export function ProductCard({
           <Button
             size="sm"
             className="mt-3 w-full font-bold"
-            disabled={isCj && (cj.loading || cj.price === null)}
             onClick={async () => {
               const { data, error } = await supabase.auth.getUser();
               if (error || !data.user) {
