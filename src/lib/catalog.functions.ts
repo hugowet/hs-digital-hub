@@ -66,7 +66,7 @@ async function signProductBatch(products: Product[]) {
 }
 
 const projection =
-  "id,title,supplier_title_original,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier";
+  "id,title,supplier_title_original,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier,supplier_product_id";
 const cardProjection =
   "id,title,price,compare_at_price,stock,category,image_url,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier";
 
@@ -137,7 +137,7 @@ async function queryCatalog(input: CatalogInput) {
     return { products, total: daily.total, nextPage: from + daily.ids.length < daily.total ? input.page + 1 : null };
   }
 
-  let query = supabasePublic.from("products").select(cardProjection, { count: "exact" }).eq("is_active", true);
+  let query = supabasePublic.from("products").select(cardProjection, { count: "exact" }).eq("is_active", true).is("supplier_variant_parent_id", null);
 
   for (const terms of catalogSearchGroups(input.query)) {
     query = query.or(terms.map((term) => `catalog_search_text.ilike.%${term}%`).join(","));
@@ -200,5 +200,15 @@ export const fetchProduct = createServerFn({ method: "GET" })
     if (!productRow) return null;
 
     const [signed] = await signProductBatch([productRow as unknown as Product]);
-    return signed ?? null;
+    if (!signed) return null;
+    if (productRow.supplier === "cj" && productRow.supplier_product_id) {
+      const { data: options, error: optionsError } = await supabasePublic.from("products")
+        .select("id,supplier_variant_label").eq("store_id", productRow.store_id)
+        .eq("supplier", "cj").eq("supplier_product_id", productRow.supplier_product_id)
+        .eq("is_active", true).order("supplier_variant_label");
+      if (optionsError) throw optionsError;
+      return { ...signed, supplierOptions: (options ?? []).flatMap((option) => option.supplier_variant_label
+        ? [{ productId: option.id, label: option.supplier_variant_label }] : []) };
+    }
+    return signed;
   });

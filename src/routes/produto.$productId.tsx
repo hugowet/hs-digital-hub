@@ -37,7 +37,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCjPrice } from "@/lib/use-cj-price";
+import { catalogDisplayPrice } from "@/lib/product-price";
 import { useCart } from "@/lib/cart";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { productQueryOptions } from "@/lib/product-query";
@@ -238,8 +238,7 @@ function ProductDetailPage() {
   }, [product?.stock]);
 
   const isCj = product?.supplier === "cj";
-  const cj = useCjPrice(productId, quantity, isCj);
-  const price = isCj && cj.price !== null ? cj.price : Number(product?.price || 0);
+  const price = catalogDisplayPrice(product);
   const rawOriginal = product?.compare_at_price;
   const originalPrice =
     rawOriginal && Number(rawOriginal) > price
@@ -350,8 +349,14 @@ function ProductDetailPage() {
     el.scrollBy({ left: dir === "left" ? -scrollAmount : scrollAmount, behavior: "smooth" });
   };
 
-  const handleAddToCart = (redirectCheckout: boolean) => {
+  const handleAddToCart = async (redirectCheckout: boolean) => {
     if (!product) return;
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+      toast.info("Faça login para adicionar produtos ao carrinho.");
+      navigate({ to: "/auth", search: { reason: "login-required" } });
+      return;
+    }
     // Botão nunca fica travado: usa o preço da vitrine e o frete é confirmado no checkout.
     markAsPurchasedOrInCart(product.id);
 
@@ -364,7 +369,7 @@ function ProductDetailPage() {
         price,
         imageUrl: product.image_url ?? undefined,
         productType: product.product_type || "physical",
-        freeShipping: isCj ? cj.shipping === 0 : Boolean(product.free_shipping),
+        freeShipping: isDigital || price >= 89.90,
         stock: maxAvailableStock,
       },
       quantity
@@ -574,11 +579,6 @@ function ProductDetailPage() {
                   )}
                 </div>
 
-                {isCj && <div className="mt-4 space-y-2">
-                  {cj.loading && <p role="status" className="text-sm text-muted-foreground">Consultando entrega…</p>}
-                  {cj.error && <p role="alert" className="text-sm text-destructive">{cj.error}</p>}
-                  {cj.service && <p className="text-sm text-muted-foreground">{cj.service} · {cj.shipping === 0 ? "Frete incluso" : `Frete ${brl(cj.shipping)}`}</p>}
-                </div>}
                 {/* Bloco de Preço */}
                 <div className="mt-4 rounded-xl bg-muted/20 p-4 border border-border/80">
                   <div className="flex items-center gap-2 leading-none">
@@ -590,7 +590,6 @@ function ProductDetailPage() {
                     </span>
                   </div>
 
-                  {isCj && cj.price === null && <p className="mt-2 text-xs text-muted-foreground">A partir de · envio a calcular pelo CEP</p>}
                   <div className="mt-2 flex items-baseline gap-1">
                     <span className="text-sm font-semibold text-foreground">R$</span>
                     <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
@@ -605,6 +604,20 @@ function ProductDetailPage() {
                   </p>
                 </div>
 
+                {product.supplierOptions?.length > 1 && (
+                  <fieldset className="mt-4">
+                    <legend className="mb-2 text-sm font-semibold">Cor / Tamanho / Modelo</legend>
+                    <div className="flex flex-wrap gap-2">
+                      {product.supplierOptions.map((option) => (
+                        <Button key={option.productId} size="sm" variant={option.productId === productId ? "default" : "outline"}
+                          aria-pressed={option.productId === productId}
+                          onClick={() => { setQuantity(1); setSelectedImage(0); navigate({ to: "/produto/$productId", params: { productId: option.productId } }); }}>
+                          {option.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
                 {/* Estoque e Quantidade */}
                 <div className="mt-4 flex items-center justify-between border-y border-border py-3">
                   <span className="text-xs text-muted-foreground">Quantidade:</span>

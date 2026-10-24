@@ -27,6 +27,7 @@ export const Route = createFileRoute("/sitemap.xml")({
         });
         const ids = await allPublicProductIds(async (offset, limit) => {
           const { data, error } = await client.from("products").select("id").eq("is_active", true)
+            .is("supplier_variant_parent_id", null)
             .order("id").range(offset, offset + limit - 1);
           if (error) throw error;
           return (data ?? []).map((row) => String(row.id));
