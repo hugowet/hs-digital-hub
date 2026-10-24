@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   Crown,
@@ -53,6 +53,14 @@ export function SiteHeader({
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBuyer, setIsBuyer] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const { data: notificationCount = 0 } = useQuery({
+    queryKey: ["notification-count"], enabled: signedIn,
+    queryFn: async () => {
+      const { count, error } = await supabase.from("account_notifications").select("id", { head: true, count: "exact" }).is("read_at", null);
+      if (error) throw error;
+      return count ?? 0;
+    }, refetchInterval: 60000,
+  });
 
   // Estado local para resposta rápida sem lag
   const [localQuery, setLocalQuery] = useState(query);
@@ -273,9 +281,9 @@ export function SiteHeader({
                   aria-label="Notificações"
                 >
                   <Bell className="h-5 w-5" />
-                  {unreadMessages > 0 && (
+                  {notificationCount + unreadMessages > 0 && (
                     <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold">
-                      {unreadMessages}
+                      {notificationCount + unreadMessages}
                     </span>
                   )}
                 </Link>
@@ -455,7 +463,7 @@ export function SiteHeader({
                   className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
                 >
                   <Bell className="h-4 w-4" />
-                  Notificações {unreadMessages > 0 ? `(${unreadMessages})` : ""}
+                  Notificações {notificationCount + unreadMessages > 0 ? `(${notificationCount + unreadMessages})` : ""}
                 </Link>
               </>
             )}
