@@ -225,6 +225,13 @@
       "when": 1792818566375,
       "tag": "0031_trend_social_authenticated_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1792819156385,
+      "tag": "0032_trend_videos_storage_admin_insert",
+      "breakpoints": true
     }
   ]
 }
