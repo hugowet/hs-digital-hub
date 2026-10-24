@@ -64,6 +64,50 @@ export type Database = {
           },
         ]
       }
+      account_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          event_key: string
+          id: string
+          kind: string
+          read_at: string | null
+          target_id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          event_key: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          target_id: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          event_key?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          target_id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       arcade_game_sessions: {
         Row: {
           accepted_coins: number | null
@@ -96,6 +140,88 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      clube_hs_pix_payments: {
+        Row: {
+          amount: number
+          checkout_url: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          paid_at: string | null
+          preference_id: string | null
+          provider_payment_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          checkout_url?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          paid_at?: string | null
+          preference_id?: string | null
+          provider_payment_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          checkout_url?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          paid_at?: string | null
+          preference_id?: string | null
+          provider_payment_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clube_hs_pix_payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clube_hs_subscriptions: {
+        Row: {
+          external_reference: string | null
+          id: string
+          preapproval_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          external_reference?: string | null
+          id?: string
+          preapproval_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          external_reference?: string | null
+          id?: string
+          preapproval_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clube_hs_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       digital_deliveries: {
         Row: {
@@ -2023,6 +2149,39 @@ export type Database = {
           },
         ]
       }
+      trend_pinned_comments: {
+        Row: {
+          comment_id: string
+          pinned_at: string
+          video_id: string
+        }
+        Insert: {
+          comment_id: string
+          pinned_at?: string
+          video_id: string
+        }
+        Update: {
+          comment_id?: string
+          pinned_at?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_pinned_comments_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: true
+            referencedRelation: "trend_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trend_pinned_comments_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: true
+            referencedRelation: "trend_videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trend_videos: {
         Row: {
           audio_path: string | null
@@ -2335,6 +2494,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_club_pix_payment: {
+        Args: {
+          _amount: number
+          _currency: string
+          _id: string
+          _payment_id: string
+          _status: string
+        }
+        Returns: undefined
+      }
       apply_mercado_pago_status: {
         Args: {
           _payment_method: string
@@ -2381,6 +2550,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      club_has_access: { Args: { _user_id: string }; Returns: boolean }
       create_marketplace_order: {
         Args: { _items: Json; _shipping_address: Json }
         Returns: string
@@ -2533,6 +2703,10 @@ export type Database = {
           session_id: string
           total_coins: number
         }[]
+      }
+      trend_pin_comment: {
+        Args: { _comment_id?: string; _video_id: string }
+        Returns: undefined
       }
       trend_register_view: { Args: { _video_id: string }; Returns: number }
     }
