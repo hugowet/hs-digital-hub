@@ -37,6 +37,16 @@ export const openSocialConversation = createServerFn({ method: "POST" }).middlew
     return room;
   });
 
+export const openSocialConversationByUser = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ userId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("social_open_by_user", { _user_id: data.userId });
+    if (result.error) throw new Error(result.error.message);
+    const room = result.data?.[0];
+    if (!room) throw new Error("Perfil não encontrado.");
+    return room;
+  });
+
 export const getSocialMessages = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ conversationId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
