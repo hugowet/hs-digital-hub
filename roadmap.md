@@ -7,6 +7,7 @@
 - [x] Pesquisar Amazon: importador atual é afiliado/manual; não ativar dropshipping sem contrato/API e operação compatíveis.
 - [x] 17 testes e navegação real aprovados; lote real persistiu fichas e variantes.
 - [ ] Homologar variante → cotação → pedido → envio CJ com estoque confirmado; teste não chegou à cobrança nem envio real.
+- [ ] Igualar oferta ao total confirmado por CEP sem absorver prejuízo: teste real mostrou R$71,90 na vitrine/detalhe e R$154,90 após cotação; precisa unificar a oferta personalizada antes de anunciar preço final, não ignorar o custo CJ.
 - [ ] Ativar sincronização CJ por eventos assinados: depende de publicação do callback e configuração/openId oficial; por enquanto há atualização agendada, sujeita às cotas.
 - [ ] Concluir fichas e títulos de todo o catálogo: cotas CJ e créditos de tradução de títulos continuam necessários; dicionário técnico não traduz todo texto livre.
 - [ ] Amazon automática: falta API autorizada e contrato de fornecimento; não implementada como dropshipping.
