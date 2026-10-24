@@ -319,7 +319,8 @@ function CartPage() {
       });
 
       if (res?.orderId) {
-        window.location.href = `/pedido/${res.orderId}`;
+        // Navegação interna (sem recarregar a página) evita tela branca ao voltar
+        navigate({ to: "/pedido/$orderId", params: { orderId: res.orderId } });
       } else {
         toast.error("Não foi possível gerar o link de pagamento. Tente novamente.");
       }

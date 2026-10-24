@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Clock3, Copy, CreditCard, Download, MessageCircle, QrCode, Send, Store } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, Copy, CreditCard, Download, MessageCircle, QrCode, Send, Store } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -121,7 +121,10 @@ function OrderPaymentPage() {
 
   return <Shell>
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><p className="text-sm text-muted-foreground">Pedido {orderId.slice(0, 8).toUpperCase()}</p><h1 className="text-2xl font-bold">{data.order.payment_status === "approved" ? "Pedido pago" : "Conclua o pagamento"}</h1></div>
+      <div className="flex items-start gap-2">
+        <Button variant="ghost" size="icon" className="mt-0.5" onClick={() => navigate({ to: "/compras" })} aria-label="Voltar para minhas compras" title="Voltar"><ArrowLeft className="h-5 w-5" /></Button>
+        <div><p className="text-sm text-muted-foreground">Pedido {orderId.slice(0, 8).toUpperCase()}</p><h1 className="text-2xl font-bold">{data.order.payment_status === "approved" ? "Pedido pago" : "Conclua o pagamento"}</h1></div>
+      </div>
       <span className={`rounded-md px-3 py-1 text-sm font-semibold ${data.order.payment_status === "approved" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}>{data.order.payment_status === "approved" ? "PAGO" : "AGUARDANDO PAGAMENTO"}</span>
     </div>
 
