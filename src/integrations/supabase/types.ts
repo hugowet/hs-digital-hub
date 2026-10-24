@@ -1063,27 +1063,36 @@ export type Database = {
       profiles: {
         Row: {
           account_type: Database["public"]["Enums"]["app_role"]
+          avatar_url: string | null
+          bio: string | null
           created_at: string
           full_name: string | null
           id: string
           is_clube_hs: boolean
           phone: string | null
+          status_text: string | null
         }
         Insert: {
           account_type?: Database["public"]["Enums"]["app_role"]
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           full_name?: string | null
           id: string
           is_clube_hs?: boolean
           phone?: string | null
+          status_text?: string | null
         }
         Update: {
           account_type?: Database["public"]["Enums"]["app_role"]
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
           is_clube_hs?: boolean
           phone?: string | null
+          status_text?: string | null
         }
         Relationships: []
       }
@@ -1751,6 +1760,170 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: true
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trend_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          user_avatar: string | null
+          user_id: string
+          user_name: string
+          video_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          user_avatar?: string | null
+          user_id: string
+          user_name: string
+          video_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          user_avatar?: string | null
+          user_id?: string
+          user_name?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trend_comments_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "trend_videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trend_follows: {
+        Row: {
+          created_at: string
+          followed_id: string
+          follower_id: string
+        }
+        Insert: {
+          created_at?: string
+          followed_id: string
+          follower_id: string
+        }
+        Update: {
+          created_at?: string
+          followed_id?: string
+          follower_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_follows_followed_id_fkey"
+            columns: ["followed_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trend_follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trend_likes: {
+        Row: {
+          created_at: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trend_likes_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "trend_videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trend_videos: {
+        Row: {
+          author_avatar: string | null
+          author_name: string
+          created_at: string
+          description: string
+          duration_seconds: number
+          id: string
+          likes_count: number
+          music_title: string
+          post_type: string
+          title: string
+          user_id: string
+          video_url: string
+        }
+        Insert: {
+          author_avatar?: string | null
+          author_name: string
+          created_at?: string
+          description?: string
+          duration_seconds?: number
+          id?: string
+          likes_count?: number
+          music_title?: string
+          post_type?: string
+          title: string
+          user_id: string
+          video_url: string
+        }
+        Update: {
+          author_avatar?: string | null
+          author_name?: string
+          created_at?: string
+          description?: string
+          duration_seconds?: number
+          id?: string
+          likes_count?: number
+          music_title?: string
+          post_type?: string
+          title?: string
+          user_id?: string
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_videos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
