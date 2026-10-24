@@ -225,7 +225,8 @@ function ProductDetailPage() {
     if (product) {
       trackProductView({
         id: product.id,
-        title: product.title,
+        title: product.supplierOptions?.find((option) => option.productId === productId)?.label
+          ? `${product.title} — ${product.supplierOptions.find((option) => option.productId === productId)?.label}` : product.title,
         price: Number(product.price),
         imageUrl: product.image_url ?? undefined,
       });

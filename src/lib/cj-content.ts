@@ -50,6 +50,9 @@ export function mapCjDetails(product: Record<string, unknown>) {
 }
 
 const technicalTerms: Record<string, string> = {
+  "main fabric ingredient content": "Teor do componente principal do tecido",
+  "main fabric composition": "Composição principal do tecido", "fabric name": "Nome do tecido",
+  "plastic_bag": "Saco plástico", "unit(s)": "unidade(s)", "unit": "Unidade", "bust": "Busto",
   "product information": "Informações do produto", "packing list": "Conteúdo da embalagem",
   "package contents": "Conteúdo da embalagem", "product image": "Imagem do produto",
   processor: "Processador", interface: "Interface", voltage: "Tensão", power: "Potência",
@@ -66,7 +69,8 @@ const technicalTerms: Record<string, string> = {
 export function localizeCjTechnicalText(value: string) {
   let text = cjPlainText(value);
   for (const [source, target] of Object.entries(technicalTerms).sort((a, b) => b[0].length - a[0].length)) {
-    text = text.replace(new RegExp(`\\b${source}\\b`, "gi"), target);
+    const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    text = text.replace(new RegExp(`(?<![a-zA-Z])${escaped}(?![a-zA-Z])`, "gi"), target);
   }
   return text;
 }

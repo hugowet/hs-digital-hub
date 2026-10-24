@@ -1,11 +1,15 @@
 # HS Digital — MVP
 
 ## Preços consistentes e importação de fornecedores
-- [ ] Manter o mesmo preço ao abrir um produto da vitrine, sem alteração automática por cotação.
-- [ ] Reduzir o gasto de IA na importação CJ, preservando conteúdo e variantes oficiais e progresso durável.
-- [ ] Permitir escolher variantes CJ reais e preservar a escolha na cotação, pedido e envio.
-- [ ] Verificar importação Amazon para dropshipping conforme regras oficiais; ativação depende de API autorizada e operação compatível.
-- [ ] Validar preços e variantes com testes e navegação real; sincronização sujeita às cotas do fornecedor.
+- [x] Mesmo preço salvo na vitrine e detalhe; navegação real até carrinho validada em R$71,90. Checkout mantém cotação oficial e pode recalcular: não foi garantida igualdade do total final por CEP.
+- [x] Fichas em lotes de até 50, reutilizando JSON oficial, normalização técnica sem IA e progresso por produto; títulos deduplicados e compartilhados com variantes. Tradução integral sem IA não é garantida.
+- [x] Opções CJ como produtos-filhos oficiais; escolha de cor/tamanho validada no navegador, ID preservado no carrinho e snapshot do pedido, com confirmação de estoque na cotação.
+- [x] Pesquisar Amazon: importador atual é afiliado/manual; não ativar dropshipping sem contrato/API e operação compatíveis.
+- [x] 17 testes e navegação real aprovados; lote real persistiu fichas e variantes.
+- [ ] Homologar variante → cotação → pedido → envio CJ com estoque confirmado; teste não chegou à cobrança nem envio real.
+- [ ] Ativar sincronização CJ por eventos assinados: depende de publicação do callback e configuração/openId oficial; por enquanto há atualização agendada, sujeita às cotas.
+- [ ] Concluir fichas e títulos de todo o catálogo: cotas CJ e créditos de tradução de títulos continuam necessários; dicionário técnico não traduz todo texto livre.
+- [ ] Amazon automática: falta API autorizada e contrato de fornecimento; não implementada como dropshipping.
 
 ## Vitrine rápida e descoberta nas buscas
 - [x] Reduzir dados do carregamento inicial de 546 KB para 280 KB, eliminar galerias/fichas na lista e leitura geral de categorias; preços e cotações preservados.
