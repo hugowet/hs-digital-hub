@@ -209,6 +209,14 @@ export function HSTrends() {
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadDesc, setUploadDesc] = useState("");
   const [musicFile, setMusicFile] = useState<File | null>(null);
+  const [libraryTrack, setLibraryTrack] = useState<TrendMusicTrack | null>(null);
+  const [musicTab, setMusicTab] = useState<"library" | "device">("library");
+  const [replyToComment, setReplyToComment] = useState<TrendComment | null>(null);
+  const [editingComment, setEditingComment] = useState<TrendComment | null>(null);
+  const [editPostTarget, setEditPostTarget] = useState<TrendPost | null>(null);
+  const [editPostTitle, setEditPostTitle] = useState("");
+  const [editPostDesc, setEditPostDesc] = useState("");
+  const viewedPostsRef = useRef<Set<string>>(new Set());
   const [isSubmittingVideo, setIsSubmittingVideo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const musicInputRef = useRef<HTMLInputElement | null>(null);
@@ -279,6 +287,8 @@ export function HSTrends() {
         music_title: v.music_title || "Som Original",
         likes_count: v.likes_count || 0,
         comments_count: 0,
+        views_count: v.views_count || 0,
+        title: v.title,
       })) as TrendPost[];
     },
     refetchInterval: 60_000,
