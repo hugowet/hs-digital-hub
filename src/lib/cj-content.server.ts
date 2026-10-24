@@ -1,5 +1,6 @@
-import { mapCjDetails } from "@/lib/cj-content";
-import { cjRequest, getCjAccessToken, translateCjProductBatch, translateProductDetails } from "@/lib/suppliers.server";
+import { mapCjEconomicalDetails } from "@/lib/cj-content";
+import { cjRequest, getCjAccessToken, translateCjProductBatch } from "@/lib/suppliers.server";
+import { persistCjVariantProducts } from "@/lib/cj-variant-products.server";
 
 export async function processCjContentJob(db: any, storeId: string, operation: "titles" | "details") {
   const now = new Date();
@@ -23,24 +24,20 @@ export async function processCjContentJob(db: any, storeId: string, operation: "
       await save({ processed: job.processed + processed, status: result.remaining ? "pending" : "completed", lock_expires_at: null, lock_token: null, pause_reason: null });
       return { processed, remaining: result.remaining };
     }
-    const { data: products, error } = await db.from("products").select("id,supplier_product_id")
-      .eq("supplier", "cj").eq("store_id", storeId).is("supplier_details_synced_at", null).order("id").limit(10);
+    const { data: products, error } = await db.from("products").select("id,supplier_product_id,supplier_details_original")
+      .eq("supplier", "cj").eq("store_id", storeId).is("supplier_variant_parent_id", null)
+      .lt("supplier_content_version", 1).order("id").limit(50);
     if (error) throw error;
     if (products?.length) {
-      const token = await getCjAccessToken(db, storeId);
-      const fetched: { id: string; details: Record<string, unknown>; mapped: ReturnType<typeof mapCjDetails> }[] = [];
+      let token: string | undefined;
       for (const product of products) {
         if (!product.supplier_product_id) throw new Error("Produto CJ sem identificador oficial; revisão necessária.");
-        const details = await cjRequest<Record<string, unknown>>(`/product/query?pid=${encodeURIComponent(product.supplier_product_id)}`, token);
-        fetched.push({ id: product.id, details, mapped: mapCjDetails(details) });
-      }
-      // Shoppers are in Brazil: official CJ content is stored translated, original JSON kept for audit.
-      const translated = await translateProductDetails(fetched.map((f) => ({ description: f.mapped.description, specifications: f.mapped.specifications })));
-      for (let i = 0; i < fetched.length; i += 1) {
-        const f = fetched[i]!;
-        const t = translated[i]!;
+        const cached = product.supplier_details_original;
+        if (!cached) token ??= await getCjAccessToken(db, storeId);
+        const details = cached ?? await cjRequest<Record<string, unknown>>(`/product/query?pid=${encodeURIComponent(product.supplier_product_id)}`, token ?? "");
+        const t = mapCjEconomicalDetails(details);
         const values: Record<string, unknown> = {
-          supplier_details_original: f.details,
+          supplier_details_original: details,
           supplier_details_synced_at: new Date().toISOString(),
         };
         // Empty supplier fields must not destroy previously saved content.
@@ -49,20 +46,23 @@ export async function processCjContentJob(db: any, storeId: string, operation: "
           values.description_long = t.description;
         }
         if (Object.keys(t.specifications).length) values.specifications = t.specifications;
-        const { error: updateError } = await db.from("products").update(values).eq("id", f.id).eq("store_id", storeId);
+        const { error: updateError } = await db.from("products").update(values).eq("id", product.id).eq("store_id", storeId);
         if (updateError) throw updateError;
+        await persistCjVariantProducts(db, product.id, details);
+        const { error: versionError } = await db.from("products").update({ supplier_content_version: 1 }).eq("id", product.id);
+        if (versionError) throw versionError;
         processed += 1;
+        await save({ processed: job.processed + processed });
       }
-      await save({ processed: job.processed + processed });
     }
     const { count, error: countError } = await db.from("products").select("id", { count: "exact", head: true })
-      .eq("supplier", "cj").eq("store_id", storeId).is("supplier_details_synced_at", null);
+      .eq("supplier", "cj").eq("store_id", storeId).is("supplier_variant_parent_id", null).lt("supplier_content_version", 1);
     if (countError) throw countError;
     await save({ status: count ? "pending" : "completed", lock_expires_at: null, lock_token: null, pause_reason: null });
     return { processed, remaining: count ?? 0 };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao atualizar o catálogo CJ.";
-    await save({ status: "paused", pause_reason: message.slice(0, 1500), lock_expires_at: null, lock_token: null });
+    await save({ processed: job.processed + processed, status: "paused", pause_reason: message.slice(0, 1500), lock_expires_at: null, lock_token: null });
     return { processed, paused: true, error: message };
   }
 }
