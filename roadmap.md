@@ -1,5 +1,14 @@
 # HS Digital — MVP
 
+## Solicitação atual — 24/10
+- [ ] Variantes de todas as categorias e disponibilidade CJ por variante; verificar atualização e bloqueios externos para eventos em tempo real.
+- [ ] Clube HS: pagamento mensal por Pix com ativação somente após confirmação.
+- [ ] Notificações persistentes de mensagens e vendas aprovadas na barra da conta.
+- [ ] HS Social: câmera/fotos e áudio exclusivo para membros ativos, no servidor e na interface.
+- [ ] HSTrends: fixar/desfixar comentários pelo autor da postagem.
+- [ ] Instalação na tela inicial com logotipo atual e convite ao entrar; sem modo offline.
+- [ ] Auditar e reforçar checkout; executar testes e informar pendências para vendas reais.
+
 ## Preços consistentes e importação de fornecedores
 - [x] Mesmo preço salvo na vitrine e detalhe; navegação real até carrinho validada em R$71,90. Checkout mantém cotação oficial e pode recalcular: não foi garantida igualdade do total final por CEP.
 - [x] Fichas em lotes de até 50, reutilizando JSON oficial, normalização técnica sem IA e progresso por produto; títulos deduplicados e compartilhados com variantes. Tradução integral sem IA não é garantida.
