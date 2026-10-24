@@ -408,11 +408,21 @@ export function HSTrends() {
     queryClient.invalidateQueries({ queryKey: ["trend-follower-counts"] });
   };
 
-  // Seleção de vídeo da galeria com validação de duração (máx. 2 minutos)
+  // Seleção de vídeo (máx. 2 min) ou foto da galeria
   const handlePickVideo = (file: File | null) => {
     if (!file) return;
+    if (file.type.startsWith("image/")) {
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error("A foto deve ter no máximo 20 MB.");
+        return;
+      }
+      setUploadKind("photo");
+      setUploadDuration(0);
+      setUploadFile(file);
+      return;
+    }
     if (!file.type.startsWith("video/")) {
-      toast.error("Selecione um arquivo de vídeo.");
+      toast.error("Selecione um vídeo ou uma foto.");
       return;
     }
     if (file.size > MAX_VIDEO_BYTES) {
@@ -428,6 +438,7 @@ export function HSTrends() {
         toast.error("O vídeo deve ter no máximo 2 minutos.");
         return;
       }
+      setUploadKind("video");
       setUploadDuration(Math.round(probe.duration));
       setUploadFile(file);
     };
@@ -436,6 +447,19 @@ export function HSTrends() {
       toast.error("Não foi possível ler este vídeo.");
     };
     probe.src = url;
+  };
+
+  const handlePickMusic = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("audio/")) {
+      toast.error("Selecione um arquivo de áudio (MP3, etc).");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("A música deve ter no máximo 20 MB.");
+      return;
+    }
+    setMusicFile(file);
   };
 
   const handleOpenUpload = () => {
