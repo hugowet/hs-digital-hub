@@ -1152,21 +1152,66 @@ export function HSTrends() {
 
             <div>
               <label className="text-xs font-semibold text-slate-300">Música (opcional)</label>
-              <input
-                ref={musicInputRef}
-                type="file"
-                accept="audio/*"
-                className="hidden"
-                onChange={(e) => handlePickMusic(e.target.files?.[0] ?? null)}
-              />
-              <button
-                type="button"
-                onClick={() => musicInputRef.current?.click()}
-                className="mt-1 w-full py-3 rounded-xl border border-slate-700 bg-slate-950 text-slate-400 text-xs font-bold flex items-center justify-center gap-2 hover:border-amber-500/60 hover:text-amber-300 transition-colors"
-              >
-                <Music2 className="w-4 h-4" />
-                {musicFile ? `🎵 ${musicFile.name}` : "Escolher música do aparelho"}
-              </button>
+              <div className="mt-1 grid grid-cols-2 gap-1 rounded-xl bg-slate-950 p-1 border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setMusicTab("library")}
+                  className={`py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 ${musicTab === "library" ? "bg-amber-500 text-slate-950" : "text-slate-400"}`}
+                >
+                  <Library className="w-3.5 h-3.5" /> Biblioteca HS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMusicTab("device")}
+                  className={`py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 ${musicTab === "device" ? "bg-amber-500 text-slate-950" : "text-slate-400"}`}
+                >
+                  <Music2 className="w-3.5 h-3.5" /> Do aparelho
+                </button>
+              </div>
+
+              {musicTab === "library" ? (
+                <div className="mt-2 max-h-44 overflow-y-auto space-y-1 rounded-xl border border-slate-800 bg-slate-950 p-2 scrollbar-none">
+                  <button
+                    type="button"
+                    onClick={() => setLibraryTrack(null)}
+                    className={`w-full text-left px-2.5 py-2 rounded-lg text-[11px] font-bold ${!libraryTrack ? "bg-slate-800 text-white" : "text-slate-400 hover:bg-slate-800/50"}`}
+                  >
+                    Sem música (som original)
+                  </button>
+                  {TREND_MUSIC_LIBRARY.map((track) => (
+                    <button
+                      key={track.id}
+                      type="button"
+                      onClick={() => { setLibraryTrack(track); setMusicFile(null); }}
+                      className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between gap-2 ${libraryTrack?.id === track.id ? "bg-amber-500/20 border border-amber-500/50" : "hover:bg-slate-800/50"}`}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-[11px] font-bold text-white">{track.title}</span>
+                        <span className="block text-[10px] text-slate-400">{track.artist}</span>
+                      </span>
+                      <span className="text-[9px] font-bold text-amber-400 shrink-0">{track.tag}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <input
+                    ref={musicInputRef}
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={(e) => { handlePickMusic(e.target.files?.[0] ?? null); setLibraryTrack(null); }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => musicInputRef.current?.click()}
+                    className="mt-2 w-full py-3 rounded-xl border border-slate-700 bg-slate-950 text-slate-400 text-xs font-bold flex items-center justify-center gap-2 hover:border-amber-500/60 hover:text-amber-300 transition-colors"
+                  >
+                    <Music2 className="w-4 h-4" />
+                    {musicFile ? `🎵 ${musicFile.name}` : "Escolher música do aparelho"}
+                  </button>
+                </>
+              )}
             </div>
 
             <div>
