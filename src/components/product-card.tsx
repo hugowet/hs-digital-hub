@@ -259,8 +259,12 @@ export function ProductCard({
                 </>
               ) : (
                 <>
-                  <span className="font-semibold text-[#3483fa]">Envio pelo CEP</span>
-                  <span className="text-[11px] text-muted-foreground">{isCj && cj.shipping !== null ? brl(cj.shipping) : "A calcular"}</span>
+                  <span className="rounded bg-[#3483fa]/10 px-1.5 py-0.5 text-[10px] font-extrabold text-[#3483fa]">
+                    {Math.max(5, discountPercent - 2)}% no frete
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {isCj && cj.shipping !== null ? brl(cj.shipping) : "Calculado no seu CEP"}
+                  </span>
                 </>
               )}
             </div>
