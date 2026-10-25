@@ -308,6 +308,60 @@ function AdminPage() {
             </TabsContent>
 
             {/* ABA: CONCEDER FRETE GRÁTIS */}
+            {/* ABA: AUDIÊNCIA */}
+            <TabsContent value="audience" className="space-y-4 pt-4">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <section className="surface-card p-5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-muted-foreground">Usuários online agora</p>
+                    <span className="relative flex h-3 w-3">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+                    </span>
+                  </div>
+                  <p className="mt-2 font-display text-4xl font-bold tabular-nums">{audience?.onlineNow ?? 0}</p>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Activity className="h-3.5 w-3.5" /> Atualiza automaticamente a cada 10 segundos
+                  </p>
+                </section>
+                <section className="surface-card p-5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-muted-foreground">Total de contas criadas</p>
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <p className="mt-2 font-display text-4xl font-bold tabular-nums">{audience?.totalAccounts ?? 0}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Todos os cadastros da plataforma</p>
+                </section>
+                <section className="surface-card p-5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-muted-foreground">Novos cadastros hoje</p>
+                    <UserPlus className="h-5 w-5 text-primary" />
+                  </div>
+                  <p className="mt-2 font-display text-4xl font-bold tabular-nums">{audience?.newToday ?? 0}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Contas criadas nas últimas 24h</p>
+                </section>
+              </div>
+
+              <section className="surface-card p-5">
+                <h2 className="text-base font-semibold">Novos cadastros por dia</h2>
+                <p className="text-xs text-muted-foreground">Últimos 14 dias</p>
+                <div className="mt-4 flex h-40 items-end gap-1.5">
+                  {(audience?.signupsByDay ?? []).map((item) => {
+                    const max = Math.max(1, ...(audience?.signupsByDay ?? []).map((d) => d.count));
+                    const height = Math.max(4, Math.round((item.count / max) * 100));
+                    const label = new Date(`${item.day}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+                    return (
+                      <div key={item.day} className="group flex flex-1 flex-col items-center justify-end gap-1" title={`${label}: ${item.count} cadastro(s)`}>
+                        <span className="text-[10px] font-medium tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">{item.count}</span>
+                        <div className="w-full rounded-t bg-primary/80 transition-colors group-hover:bg-primary" style={{ height: `${height}%` }} />
+                        <span className="text-[9px] tabular-nums text-muted-foreground">{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </TabsContent>
+
             <TabsContent value="shipping" className="space-y-4 pt-4">
               <section className="surface-card p-5">
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
