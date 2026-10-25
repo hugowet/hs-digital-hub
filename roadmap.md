@@ -1,13 +1,15 @@
 # HS Digital — MVP
 
 ## Solicitação atual — 24/10
-- [ ] Variantes de todas as categorias e disponibilidade CJ por variante; verificar atualização e bloqueios externos para eventos em tempo real.
-- [ ] Clube HS: pagamento mensal por Pix com ativação somente após confirmação.
-- [ ] Notificações persistentes de mensagens e vendas aprovadas na barra da conta.
-- [ ] HS Social: câmera/fotos e áudio exclusivo para membros ativos, no servidor e na interface.
-- [ ] HSTrends: fixar/desfixar comentários pelo autor da postagem.
-- [ ] Instalação na tela inicial com logotipo atual e convite ao entrar; sem modo offline.
-- [ ] Auditar e reforçar checkout; executar testes e informar pendências para vendas reais.
+- [x] Opções oficiais CJ preservadas para roupas, calçados e demais variantes; opções sem estoque ficam bloqueadas e voltam após reposição confirmada pela atualização programada.
+- [ ] Atualização instantânea CJ: depende de callback/openId oficial da CJ; hoje a atualização roda em lotes a cada 5 minutos, sujeita às cotas.
+- [x] Clube HS por Pix de 1 mês, liberado somente após confirmação assinada do Mercado Pago.
+- [x] Avisos persistentes de mensagens HS Social, compra aprovada e venda aprovada na barra de notificações.
+- [x] HS Social com câmera e galeria separadas; áudio exclusivo do Clube no servidor e na tela.
+- [x] HSTrends permite ao autor/Admin fixar e desfixar um comentário por post.
+- [x] Convite de instalação na vitrine com logotipo atual e opção “Agora não”, sem modo offline.
+- [x] Checkout reforçado: cotação exige conta e garantia é calculada no banco, sem valor vindo do navegador.
+- [ ] Testes de cobrança real: Pix do Clube, venda aprovada e envio CJ ainda precisam de pagamento real em produção.
 
 ## Preços consistentes e importação de fornecedores
 - [x] Mesmo preço salvo na vitrine e detalhe; navegação real até carrinho validada em R$71,90. Checkout mantém cotação oficial e pode recalcular: não foi garantida igualdade do total final por CEP.
