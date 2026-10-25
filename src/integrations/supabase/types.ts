@@ -2704,6 +2704,7 @@ export type Database = {
         }
         Returns: string
       }
+      read_trend_pin: { Args: { _video_id: string }; Returns: string }
       release_expired_marketplace_orders: { Args: never; Returns: number }
       reprice_cj_products_brl: {
         Args: {

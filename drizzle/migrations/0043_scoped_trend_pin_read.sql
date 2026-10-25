@@ -1,0 +1,5 @@
+ALTER POLICY trend_pins_read ON public.trend_pinned_comments USING (EXISTS (SELECT 1 FROM public.trend_videos v WHERE v.id=video_id AND v.user_id=auth.uid()) OR public.has_role(auth.uid(),'admin'));
+CREATE OR REPLACE FUNCTION public.read_trend_pin(_video_id uuid) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE pinned uuid; BEGIN IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Login necessário.'; END IF; SELECT p.comment_id INTO pinned FROM public.trend_pinned_comments p JOIN public.trend_videos v ON v.id=p.video_id JOIN public.trend_comments c ON c.id=p.comment_id AND c.video_id=v.id WHERE p.video_id=_video_id; RETURN pinned; END $$;
+REVOKE ALL ON FUNCTION public.read_trend_pin(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.read_trend_pin(uuid) TO authenticated,service_role;
+COMMENT ON FUNCTION public.read_trend_pin(uuid) IS 'Authenticated per-post pin projection for the visible Trend feed; no unrestricted table reads.';
