@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## HS Social — presença e mensagens — 25/10
+- [ ] Conferir notificações de mensagem na barra e atualização ao vivo.
+- [ ] Mostrar presença verde/vermelha, digitação e visualização real na conversa aberta.
+- [ ] Corrigir fotos privadas enviadas e validar envio/reabertura.
+
 ## Tradução CJ sem IA paga — 25/10
 - [x] Substituir tradução paga de títulos/descrições por MyMemory com cache, teto preventivo de 4.000 bytes/dia e retomada no dia seguinte, sem chamadas na vitrine; não há garantia de tradução grátis ilimitada.
 - [x] Conferir preservação de tamanhos, cores, IDs e estoque oficiais; dados de estoque inválidos não mudam disponibilidade, chaves atualizadas no job agendado.
