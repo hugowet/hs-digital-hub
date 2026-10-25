@@ -63,7 +63,9 @@ export function ClubeHsPage() {
       if (!sessionData) return null;
       const { data, error } = await supabase.rpc("club_has_access", { _user_id: sessionData.id });
       if (error) throw error;
-      return { is_clube_hs: data };
+      const admin = await supabase.rpc("has_role", { _user_id: sessionData.id, _role: "admin" });
+      if (admin.error) throw admin.error;
+      return { is_clube_hs: data, is_admin: admin.data };
     },
   });
 
@@ -197,7 +199,7 @@ export function ClubeHsPage() {
             {isMember ? (
               <div className="w-full sm:w-auto px-6 py-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-center flex items-center justify-center gap-2 font-medium">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                Você já é membro ativo do Clube HS!
+                {profile?.is_admin ? "Administrador · acesso premium gratuito permanente" : "Você já é membro ativo do Clube HS!"}
               </div>
             ) : (
               <div className="flex w-full flex-col items-center gap-3">
