@@ -169,6 +169,13 @@ function AdminPage() {
     queryFn: () => getMpConfiguration(),
   });
 
+  const { data: audience } = useQuery({
+    enabled: !!isAdmin,
+    queryKey: ["admin-audience"],
+    queryFn: () => getAudience(),
+    refetchInterval: 10_000,
+  });
+
   const { data: dropiConfigurations = [] } = useQuery({
     enabled: !!isAdmin,
     queryKey: ["admin-dropi-config"],
@@ -226,6 +233,9 @@ function AdminPage() {
           <Tabs defaultValue="overview" className="mt-6">
             <TabsList className="h-auto w-full justify-start overflow-x-auto">
               <TabsTrigger value="overview">Visão geral</TabsTrigger>
+              <TabsTrigger value="audience" className="flex items-center gap-1.5">
+                <Users className="h-4 w-4" /> Audiência
+              </TabsTrigger>
               <TabsTrigger value="shipping" className="flex items-center gap-1.5">
                 <Truck className="h-4 w-4" /> Conceder Frete Grátis
               </TabsTrigger>
