@@ -1,10 +1,10 @@
 # HS Digital — MVP
 
 ## HS Social — presença e mensagens — 25/10
-- [ ] Garantir acesso premium gratuito permanente para administrador, sem cobrança do Clube.
-- [ ] Conferir notificações de mensagem na barra e atualização ao vivo.
-- [ ] Mostrar presença verde/vermelha, digitação e visualização real na conversa aberta.
-- [ ] Corrigir fotos privadas enviadas e validar envio/reabertura.
+- [x] Acesso premium gratuito permanente via papel administrador; RPC real e página do Clube validados, cobrança bloqueada nos handlers.
+- [x] Notificações persistidas e sino dentro da HS Social; teste de foto gerou exatamente um aviso ao destinatário, removido após teste. Listener existente permanece único.
+- [x] Presença verde/vermelha por heartbeat, digitação por conversa com expiração e visualização apenas com conversa visível. Digitação real e limpeza validadas; cinco testes passaram. Não foi feito teste simultâneo com duas contas nesta etapa.
+- [x] Fotos privadas corrigidas por leitura participante/grupo; foto antiga decodificou e foto nova enviada/reaberta após recarga, depois removida. Build final OK.
 
 ## Tradução CJ sem IA paga — 25/10
 - [x] Substituir tradução paga de títulos/descrições por MyMemory com cache, teto preventivo de 4.000 bytes/dia e retomada no dia seguinte, sem chamadas na vitrine; não há garantia de tradução grátis ilimitada.
