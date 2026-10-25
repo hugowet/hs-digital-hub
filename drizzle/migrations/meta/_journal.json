@@ -295,6 +295,20 @@
       "when": 1792886779539,
       "tag": "0041_disambiguate_atomic_checkout_order_reference",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792887090217,
+      "tag": "0042_cj_free_translation_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1792887177720,
+      "tag": "0043_scoped_trend_pin_read",
+      "breakpoints": true
     }
   ]
 }

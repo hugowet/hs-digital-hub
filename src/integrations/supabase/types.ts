@@ -141,6 +141,39 @@ export type Database = {
         }
         Relationships: []
       }
+      cj_translation_cache: {
+        Row: {
+          created_at: string
+          id: string
+          translated_text: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          translated_text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          translated_text?: string
+        }
+        Relationships: []
+      }
+      cj_translation_daily_usage: {
+        Row: {
+          day: string
+          used_bytes: number
+        }
+        Insert: {
+          day: string
+          used_bytes?: number
+        }
+        Update: {
+          day?: string
+          used_bytes?: number
+        }
+        Relationships: []
+      }
       clube_hs_pix_payments: {
         Row: {
           amount: number
@@ -1094,6 +1127,7 @@ export type Database = {
           supplier_product_id: string | null
           supplier_sku: string | null
           supplier_title_original: string | null
+          supplier_translation_version: number
           supplier_variant_id: string | null
           supplier_variant_label: string | null
           supplier_variant_parent_id: string | null
@@ -1137,6 +1171,7 @@ export type Database = {
           supplier_product_id?: string | null
           supplier_sku?: string | null
           supplier_title_original?: string | null
+          supplier_translation_version?: number
           supplier_variant_id?: string | null
           supplier_variant_label?: string | null
           supplier_variant_parent_id?: string | null
@@ -1180,6 +1215,7 @@ export type Database = {
           supplier_product_id?: string | null
           supplier_sku?: string | null
           supplier_title_original?: string | null
+          supplier_translation_version?: number
           supplier_variant_id?: string | null
           supplier_variant_label?: string | null
           supplier_variant_parent_id?: string | null
@@ -1731,6 +1767,7 @@ export type Database = {
           id: string
           lock_expires_at: string | null
           lock_token: string | null
+          next_attempt_at: string | null
           operation: string
           pause_reason: string | null
           processed: number
@@ -1742,6 +1779,7 @@ export type Database = {
           id?: string
           lock_expires_at?: string | null
           lock_token?: string | null
+          next_attempt_at?: string | null
           operation: string
           pause_reason?: string | null
           processed?: number
@@ -1753,6 +1791,7 @@ export type Database = {
           id?: string
           lock_expires_at?: string | null
           lock_token?: string | null
+          next_attempt_at?: string | null
           operation?: string
           pause_reason?: string | null
           processed?: number
@@ -2665,6 +2704,7 @@ export type Database = {
         }
         Returns: string
       }
+      read_trend_pin: { Args: { _video_id: string }; Returns: string }
       release_expired_marketplace_orders: { Args: never; Returns: number }
       reprice_cj_products_brl: {
         Args: {
@@ -2673,6 +2713,10 @@ export type Database = {
           _usd_brl_rate: number
         }
         Returns: number
+      }
+      reserve_cj_free_translation: {
+        Args: { _bytes: number }
+        Returns: boolean
       }
       social_contact_profiles: {
         Args: never

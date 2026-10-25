@@ -1,11 +1,8 @@
-import { cjVariantStock } from "./cj-variants";
+import { cjConfirmedVariantStock } from "./cj-variants";
+import { translateCjFreeText } from "./cj-free-translation.server";
 import { calculateFinalPrice } from "@/lib/pricing";
 import { decryptSecret, encryptSecret } from "@/lib/mercado-pago.server";
-import { createOpenAI } from "@ai-sdk/openai";
-import { streamText, Output } from "ai";
-import { z } from "zod";
 import { mapCjEconomicalDetails } from "@/lib/cj-content";
-import { createLovableAiGatewayRunIdFetch } from "@/lib/ai-run-id.server";
 
 const CJ_API = "https://developers.cjdropshipping.com/api2.0/v1";
 
@@ -67,111 +64,20 @@ let cjLastRequestAt = 0;
 
 type BrlExchangeRate = { rate: number; quotedAt: string };
 
-function parseTranslations(content: string, expected: number) {
-  const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  const parsed = JSON.parse(cleaned) as { translations?: unknown };
-  if (!Array.isArray(parsed.translations) || parsed.translations.length !== expected)
-    throw new Error("A tradução retornou uma quantidade inesperada de títulos.");
-  return parsed.translations.map((value) => String(value).trim().slice(0, 70));
-}
-
-async function translateProductTitles(titles: string[]) {
-  if (titles.length === 0) return [];
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("A tradução automática ainda não está disponível.");
-  const runIdFetch = createLovableAiGatewayRunIdFetch();
-  const provider = createOpenAI({
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    apiKey,
-    headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-    fetch: runIdFetch.fetch,
-  });
-  const result = streamText({
-    model: provider.responses("openai/gpt-6-astra"),
-    instructions:
-      "Traduza títulos de produtos de e-commerce do inglês para português do Brasil em formato conciso, limpo e atraente (estilo Mercado Livre, máximo de 60 caracteres). Remova termos redundantes, tags promocionais e códigos de fornecedor. Preserve marcas reais, modelos e especificações essenciais. Não invente características. Responda somente JSON válido no formato {\"translations\":[\"...\"]}, mantendo exatamente a ordem e a quantidade.",
-    messages: [{ role: "user", content: JSON.stringify(titles) }],
-    maxRetries: 0,
-    output: Output.object({ schema: z.object({ translations: z.array(z.string()) }) }),
-    providerOptions: {
-      openai: {
-        store: false,
-        forceReasoning: true,
-        reasoningEffort: "low",
-        reasoningSummary: "auto",
-        include: ["reasoning.encrypted_content"],
-      },
-    },
-  });
-  const content = await result.text;
-  if (!content) throw new Error("A tradução automática retornou uma resposta vazia.");
-  return parseTranslations(content, titles.length);
-}
-
 export type CjDetailContent = { description: string | null; specifications: Record<string, string> };
 
-/** Translates official CJ descriptions/specifications to pt-BR without inventing data. */
-export async function translateProductDetails(items: CjDetailContent[]): Promise<CjDetailContent[]> {
-  if (items.length === 0) return [];
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("A tradução automática ainda não está disponível.");
-  const runIdFetch = createLovableAiGatewayRunIdFetch();
-  const provider = createOpenAI({
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    apiKey,
-    headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-    fetch: runIdFetch.fetch,
-  });
-  const payload = items.map((item) => ({
-    description: item.description ?? "",
-    specifications: Object.entries(item.specifications).map(([label, value]) => ({ label, value })),
-  }));
-  const result = streamText({
-    model: provider.responses("openai/gpt-6-astra"),
-    instructions:
-      "Traduza para português do Brasil descrições e especificações técnicas de produtos de e-commerce. Traduza fielmente, sem inventar, remover ou acrescentar dados técnicos; preserve números, unidades, medidas e marcas. Mantenha quebras de linha da descrição. Remova da descrição apenas linhas vazias de rótulo sem conteúdo como 'Product Image:'. Traduza rótulos e valores das especificações (ex.: 'Plastic bags' -> 'Sacos plásticos'). Responda somente JSON com {\"items\":[...]} na mesma ordem e quantidade da entrada.",
-    messages: [{ role: "user", content: JSON.stringify(payload) }],
-    maxRetries: 0,
-    output: Output.object({
-      schema: z.object({
-        items: z.array(z.object({
-          description: z.string(),
-          specifications: z.array(z.object({ label: z.string(), value: z.string() })),
-        })),
-      }),
-    }),
-    providerOptions: {
-      openai: {
-        store: false,
-        forceReasoning: true,
-        reasoningEffort: "low",
-        reasoningSummary: "auto",
-        include: ["reasoning.encrypted_content"],
-      },
-    },
-  });
-  let parsed: any;
-  try {
-    parsed = await result.output;
-  } catch {
-    const text = await result.text;
-    parsed = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
-  }
-  const out = Array.isArray(parsed?.items) ? parsed.items : [];
-  if (out.length !== items.length) throw new Error("A tradução das fichas retornou quantidade inesperada.");
-  return out.map((item: any, index: number) => {
+/** Public official catalog text only; free provider, durable cache, no AI fallback. */
+export async function translateProductDetails(db: any, items: CjDetailContent[]): Promise<CjDetailContent[]> {
+  const results: CjDetailContent[] = [];
+  for (const item of items) {
+    const description = item.description ? await translateCjFreeText(db, item.description) : null;
     const specifications: Record<string, string> = {};
-    for (const spec of Array.isArray(item?.specifications) ? item.specifications : []) {
-      const label = String(spec?.label ?? "").trim();
-      const value = String(spec?.value ?? "").trim();
-      if (label && value) specifications[label] = value;
+    for (const [label, value] of Object.entries(item.specifications)) {
+      specifications[await translateCjFreeText(db, label)] = await translateCjFreeText(db, value);
     }
-    const description = String(item?.description ?? "").trim();
-    return {
-      description: description || items[index]!.description,
-      specifications: Object.keys(specifications).length ? specifications : items[index]!.specifications,
-    };
-  });
+    results.push({ description, specifications });
+  }
+  return results;
 }
 
 export async function translateCjProductBatch(
@@ -197,29 +103,20 @@ export async function translateCjProductBatch(
   const { data: products, error } = await query;
   if (error) throw error;
   if (!products?.length) return { translated: 0, remaining: 0 };
-  const originals: string[] = products.map((product: any) =>
-    String(product.supplier_title_original ?? product.title).trim(),
-  );
-  const uniqueOriginals = [...new Set(originals)];
-  const uniqueTranslated = await translateProductTitles(uniqueOriginals);
-  const translations = new Map(uniqueOriginals.map((original, index) => [original, uniqueTranslated[index]]));
-  const translated = originals.map((original) => translations.get(original));
-  for (let index = 0; index < products.length; index += 1) {
-    const product = products[index];
-    const title = translated[index];
-    if (!product || !title) continue;
-    const { error: updateError } = await supabaseAdmin
-      .from("products")
-      .update({
-        title,
-        supplier_title_original: product.supplier_title_original ?? product.title,
-        supplier_locale: "pt-BR",
-      })
-      .eq("id", product.id);
+  let translated = 0;
+  const started = Date.now();
+  for (const product of products) {
+    if (Date.now() - started > 35_000) break;
+    const original = String(product.supplier_title_original ?? product.title).trim();
+    const title = await translateCjFreeText(supabaseAdmin, original);
+    const { error: updateError } = await supabaseAdmin.from("products").update({
+      title, supplier_title_original: original, supplier_locale: "pt-BR",
+    }).eq("id", product.id);
     if (updateError) throw updateError;
     const { error: childrenError } = await supabaseAdmin.from("products")
       .update({ title, supplier_locale: "pt-BR" }).eq("supplier_variant_parent_id", product.id);
     if (childrenError) throw childrenError;
+    translated += 1;
   }
   let countQuery = supabaseAdmin
     .from("products")
@@ -233,7 +130,7 @@ export async function translateCjProductBatch(
     if (idRange.end) countQuery = countQuery.lt("id", idRange.end);
   }
   const { count } = await countQuery;
-  return { translated: translated.length, remaining: count ?? 0 };
+  return { translated, remaining: count ?? 0 };
 }
 
 function bcbDate(date: Date) {
@@ -891,7 +788,7 @@ export async function syncCjStock(supabaseAdmin: any, storeId: string) {
       `/product/stock/queryByVid?vid=${encodeURIComponent(product.supplier_variant_id)}`,
       token,
     );
-    const stock = cjVariantStock(stockData);
+    const stock = cjConfirmedVariantStock(stockData);
     const { error: saveError } = await supabaseAdmin.from("products").update({
       stock, is_active: stock > 0, supplier_last_synced_at: new Date().toISOString(),
     }).eq("id", product.id);

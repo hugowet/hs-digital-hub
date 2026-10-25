@@ -1,5 +1,11 @@
 # HS Digital — MVP
 
+## Tradução CJ sem IA paga — 25/10
+- [x] Substituir tradução paga de títulos/descrições por MyMemory com cache, teto preventivo de 4.000 bytes/dia e retomada no dia seguinte, sem chamadas na vitrine; não há garantia de tradução grátis ilimitada.
+- [x] Conferir preservação de tamanhos, cores, IDs e estoque oficiais; dados de estoque inválidos não mudam disponibilidade, chaves atualizadas no job agendado.
+- [x] Restringir leitura direta de comentários fixados a autor/admin e ler um post por RPC autenticada no feed.
+- [x] Testar tradução gratuita real: lote de 29 títulos persistido, 14 testes passaram e build OK. Fichas não executaram neste teste porque a fila estava ocupada; catálogo completo continua gradual.
+
 ## Solicitação atual — 24/10
 - [x] Opções oficiais CJ preservadas para roupas, calçados e demais variantes; opções sem estoque ficam bloqueadas e voltam após reposição confirmada pela atualização programada.
 - [ ] Atualização instantânea CJ: depende de callback/openId oficial da CJ; hoje a atualização roda em lotes a cada 5 minutos, sujeita às cotas.
