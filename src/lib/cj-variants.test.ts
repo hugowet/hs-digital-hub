@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cjVariantOptions, cjVariantStock, cjSellableStock } from "./cj-variants";
+import { cjVariantOptions, cjVariantStock, cjSellableStock, cjConfirmedVariantStock } from "./cj-variants";
 
 test("preserva os números e IDs oficiais dos calçados sem converter numeração", () => {
   const options = cjVariantOptions({ variants: [
@@ -21,4 +21,11 @@ test("roupas preservam todas as opções oficiais e não convertem tamanhos", ()
 test("estoque esgotado bloqueia e reposição confirmada libera a opção CJ", () => {
   assert.equal(cjSellableStock(cjVariantStock({ data: [{ storageNum: 0 }] })), false);
   assert.equal(cjSellableStock(cjVariantStock([{ storageNum: 12 }])), true);
+});
+test("estoque inválido não muda disponibilidade; zero confirmado e reposição são aceitos", () => {
+  assert.throws(() => cjConfirmedVariantStock({}));
+  assert.throws(() => cjConfirmedVariantStock({ data: [] }));
+  assert.throws(() => cjConfirmedVariantStock({ storageNum: "inválido" }));
+  assert.equal(cjConfirmedVariantStock({ data: [{ storageNum: 0 }] }), 0);
+  assert.equal(cjConfirmedVariantStock([{ storageNum: 12 }]), 12);
 });

@@ -45,3 +45,16 @@ export function cjVariantStock(payload: unknown) {
 }
 
 export function cjSellableStock(stock: number) { return Number.isFinite(stock) && stock > 0; }
+
+/** Unknown/malformed stock must never be treated as a confirmed sell-out. */
+export function cjConfirmedVariantStock(payload: unknown): number {
+  let data = payload;
+  if (data && typeof data === "object" && !Array.isArray(data) && "data" in data) data = (data as Record<string, unknown>).data;
+  const rows = Array.isArray(data) ? data : [data];
+  if (!rows.length || rows.some((row) => {
+    if (!row || typeof row !== "object") return true;
+    const value = row.storageNum ?? row.totalInventory ?? row.totalStock;
+    return value === null || value === undefined || value === "" || !Number.isFinite(Number(value)) || Number(value) < 0;
+  })) throw new Error("Estoque CJ não confirmado; disponibilidade anterior preservada.");
+  return cjVariantStock(data);
+}

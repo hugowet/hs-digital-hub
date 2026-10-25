@@ -1,5 +1,6 @@
 import { mapCjEconomicalDetails, localizeCjTechnicalText } from "@/lib/cj-content";
-import { cjRequest, getCjAccessToken, translateCjProductBatch } from "@/lib/suppliers.server";
+import { cjRequest, getCjAccessToken, translateCjProductBatch, translateProductDetails } from "@/lib/suppliers.server";
+import { FreeTranslationDeferred } from "./cj-free-translation.server";
 import { persistCjVariantProducts } from "@/lib/cj-variant-products.server";
 
 export async function processCjContentJob(db: any, storeId: string, operation: "titles" | "details") {
@@ -8,6 +9,7 @@ export async function processCjContentJob(db: any, storeId: string, operation: "
   const { data: job, error: claimError } = await db.from("supplier_content_jobs")
     .update({ status: "running", lock_expires_at: new Date(now.getTime() + 15 * 60_000).toISOString(), lock_token: lockToken })
     .eq("store_id", storeId).eq("operation", operation).in("status", ["pending", "running"])
+    .or(`next_attempt_at.is.null,next_attempt_at.lte.${now.toISOString()}`)
     .or(`lock_expires_at.is.null,lock_expires_at.lt.${now.toISOString()}`).select("id,processed").maybeSingle();
   if (claimError) throw claimError;
   if (!job) return { processed: 0, busy: true };
@@ -26,7 +28,7 @@ export async function processCjContentJob(db: any, storeId: string, operation: "
     }
     const { data: products, error } = await db.from("products").select("id,supplier_product_id,supplier_details_original,description,description_long,specifications")
       .eq("supplier", "cj").eq("store_id", storeId).is("supplier_variant_parent_id", null)
-      .lt("supplier_content_version", 1).order("id").limit(50);
+      .lt("supplier_translation_version", 1).order("id").limit(50);
     if (error) throw error;
     if (products?.length) {
       let token: string | undefined;
@@ -52,6 +54,11 @@ export async function processCjContentJob(db: any, storeId: string, operation: "
           supplier_details_original: details,
           supplier_details_synced_at: new Date().toISOString(),
         };
+        const [translatedContent] = await translateProductDetails(db, [t]);
+        if (!translatedContent) throw new Error("Tradução gratuita não retornou a ficha.");
+        t.description = translatedContent.description;
+        t.description_long = translatedContent.description;
+        t.specifications = translatedContent.specifications;
         // Empty supplier fields must not destroy previously saved content.
         if (t.description) {
           values.description = t.description;
@@ -61,20 +68,22 @@ export async function processCjContentJob(db: any, storeId: string, operation: "
         const { error: updateError } = await db.from("products").update(values).eq("id", product.id).eq("store_id", storeId);
         if (updateError) throw updateError;
         await persistCjVariantProducts(db, product.id, details);
-        const { error: versionError } = await db.from("products").update({ supplier_content_version: 1 }).eq("id", product.id);
+        const { error: versionError } = await db.from("products").update({ supplier_content_version: 1, supplier_translation_version: 1 }).eq("id", product.id);
         if (versionError) throw versionError;
         processed += 1;
         await save({ processed: job.processed + processed });
       }
     }
     const { count, error: countError } = await db.from("products").select("id", { count: "exact", head: true })
-      .eq("supplier", "cj").eq("store_id", storeId).is("supplier_variant_parent_id", null).lt("supplier_content_version", 1);
+      .eq("supplier", "cj").eq("store_id", storeId).is("supplier_variant_parent_id", null).lt("supplier_translation_version", 1);
     if (countError) throw countError;
     await save({ status: count ? "pending" : "completed", lock_expires_at: null, lock_token: null, pause_reason: null });
     return { processed, remaining: count ?? 0 };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao atualizar o catálogo CJ.";
-    await save({ processed: job.processed + processed, status: "paused", pause_reason: message.slice(0, 1500), lock_expires_at: null, lock_token: null });
+    await save({ processed: job.processed + processed, status: error instanceof FreeTranslationDeferred ? "pending" : "paused",
+      next_attempt_at: error instanceof FreeTranslationDeferred ? error.retryAt : null,
+      pause_reason: message.slice(0, 1500), lock_expires_at: null, lock_token: null });
     return { processed, paused: true, error: message };
   }
 }

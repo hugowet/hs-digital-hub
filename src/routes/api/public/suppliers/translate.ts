@@ -13,7 +13,8 @@ export const Route = createFileRoute("/api/public/suppliers/translate")({
         const { processCjContentJob } = await import("@/lib/cj-content.server");
         try {
           const { data: jobs, error } = await supabaseAdmin.from("supplier_content_jobs")
-            .select("store_id").eq("operation", "titles").in("status", ["pending", "running"]).order("updated_at").limit(1);
+            .select("store_id").eq("operation", "titles").in("status", ["pending", "running"])
+            .or(`next_attempt_at.is.null,next_attempt_at.lte.${new Date().toISOString()}`).order("updated_at").limit(1);
           if (error) throw error;
           const job = jobs?.[0];
           return Response.json(job ? await processCjContentJob(supabaseAdmin, job.store_id, "titles") : { idle: true });

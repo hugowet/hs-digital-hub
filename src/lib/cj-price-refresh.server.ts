@@ -1,6 +1,6 @@
 import { calculateFinalPrice } from "./pricing";
 import { cjRequest, getCjAccessToken, getUsdBrlRate } from "./suppliers.server";
-import { cjVariantStock } from "./cj-variants";
+import { cjConfirmedVariantStock, cjVariantOptions } from "./cj-variants";
 
 export async function refreshCjPrices(db: any, storeId: string) {
   const { data: claims, error: claimError } = await db.rpc("claim_cj_price_refresh", { _store_id: storeId });
@@ -24,9 +24,11 @@ export async function refreshCjPrices(db: any, storeId: string) {
       const variant = await cjRequest<any>(`/product/variant/queryByVid?vid=${encodeURIComponent(row.supplier_variant_id)}`, token);
       const cost = Number(variant?.variantSellPrice);
       if (!Number.isFinite(cost) || cost <= 0 || variant?.vid !== row.supplier_variant_id) throw new Error("Custo CJ inválido.");
-      const stock = cjVariantStock(await cjRequest<unknown>(`/product/stock/queryByVid?vid=${encodeURIComponent(row.supplier_variant_id)}`, token));
+      const stock = cjConfirmedVariantStock(await cjRequest<unknown>(`/product/stock/queryByVid?vid=${encodeURIComponent(row.supplier_variant_id)}`, token));
+      const option = cjVariantOptions({ variants: [variant] })[0];
       const { error: saveError } = await db.from("products").update({
         stock, is_active: stock > 0,
+        ...(option ? { supplier_variant_label: option.label, supplier_sku: option.sku } : {}),
         supplier_cost: cost, supplier_exchange_rate: exchange.rate, supplier_exchange_rate_at: exchange.quotedAt,
         price: calculateFinalPrice(Math.round(cost * exchange.rate * 100) / 100),
         supplier_last_synced_at: new Date().toISOString(),
