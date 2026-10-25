@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft, Camera, Check, CheckCheck, ImagePlus, Loader2, MessageCircle, Mic,
+  ArrowLeft, Bell, Camera, Check, CheckCheck, ImagePlus, Loader2, MessageCircle, Mic,
   Pencil, Plus, Search, Send, ShieldCheck, Square, Trash2, User, Users, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,7 +19,7 @@ import {
   createSocialGroup, listSocialGroups, setSocialGroupMembers, deleteSocialGroup,
   getSocialGroupMessages, sendSocialGroupMessage,
 } from "@/lib/social.functions";
-import { isActiveStory } from "@/lib/social";
+import { isActiveStory, isSocialOnline, isSocialTyping } from "@/lib/social";
 
 export const Route = createFileRoute("/_authenticated/social")({
   staticData: { sitemap: false },
@@ -44,11 +44,19 @@ function MessageBubble({ msg, mine, mediaUrl, onEdit, onDelete }: {
   msg: any; mine: boolean; mediaUrl?: string;
   onEdit: () => void; onDelete: () => void;
 }) {
+  const signFn = useServerFn(getSocialMediaUrl);
+  const media = useQuery({
+    queryKey: ["social-media", msg.media_path], enabled: Boolean(msg.media_path),
+    queryFn: () => signFn({ data: { mediaPath: msg.media_path } }),
+    staleTime: 50 * 60 * 1000, refetchInterval: 50 * 60 * 1000, retry: 2,
+  });
+  const url = media.data ?? mediaUrl;
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"} group`}>
       <div className={`max-w-[85%] rounded-lg px-3 py-2 md:max-w-[70%] ${mine ? "bg-success/15" : "border bg-card"}`}>
-        {msg.kind === "audio" && mediaUrl && <audio controls src={mediaUrl} className="w-52 max-w-full" />}
-        {msg.kind === "image" && mediaUrl && <img src={mediaUrl} alt="Foto enviada" className="max-h-60 rounded-md object-contain" />}
+        {msg.kind === "audio" && url && <audio controls src={url} className="w-52 max-w-full" />}
+        {msg.kind === "image" && url && <img src={url} alt="Foto enviada" className="max-h-60 rounded-md object-contain" onError={() => void media.refetch()} />}
+        {msg.media_path && !url && (media.isError ? <Button size="sm" variant="outline" onClick={() => void media.refetch()}>Tentar abrir mídia</Button> : <Loader2 aria-label="Carregando mídia" className="h-6 w-6 animate-spin" />)}
         {msg.kind !== "audio" && msg.kind !== "image" && (
           <p className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{msg.content}</p>
         )}
@@ -58,7 +66,7 @@ function MessageBubble({ msg, mine, mediaUrl, onEdit, onDelete }: {
         <span className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
           {msg.edited_at && "editada · "}
           {new Date(msg.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-          {mine && (msg.read_at ? <CheckCheck className="h-3 w-3 text-success" /> : <Check className="h-3 w-3" />)}
+          {mine && (msg.read_at ? <span className="flex items-center gap-1" title={`Visualizada em ${new Date(msg.read_at).toLocaleString("pt-BR")}`}><CheckCheck className="h-3 w-3 text-success" />Visualizada</span> : <span title="Mensagem enviada"><Check className="h-3 w-3" /></span>)}
         </span>
         {mine && (
           <span className="mt-1 flex justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
@@ -90,7 +98,6 @@ function HSSocialPage() {
   const deleteMsgFn = useServerFn(deleteSocialMessage);
   const deleteRoomFn = useServerFn(deleteSocialConversation);
   const sendMediaFn = useServerFn(sendSocialMediaMessage);
-  const mediaUrlFn = useServerFn(getSocialMediaUrl);
   const createGroupFn = useServerFn(createSocialGroup);
   const listGroupsFn = useServerFn(listSocialGroups);
   const setMembersFn = useServerFn(setSocialGroupMembers);
@@ -114,7 +121,9 @@ function HSSocialPage() {
   const [storyReply, setStoryReply] = useState("");
   const [now, setNow] = useState(Date.now());
   const [editingMsg, setEditingMsg] = useState<any | null>(null);
-  const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
+  const [pageVisible, setPageVisible] = useState(true);
+  const typingLastSent = useRef(0);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [recording, setRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -131,7 +140,22 @@ function HSSocialPage() {
   const profilePhotoRef = useRef<HTMLInputElement | null>(null);
   const end = useRef<HTMLDivElement | null>(null);
 
-  const isAdmin = user.email === "hugoet373@gmail.com";
+  const admin = useQuery({ queryKey: ["social-admin", user.id], queryFn: async () => {
+    const result = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+    if (result.error) throw result.error;
+    return result.data;
+  } });
+  const isAdmin = Boolean(admin.data);
+  const presence = useQuery({ queryKey: ["social-presence", user.id], queryFn: async () => {
+    const result = await supabase.from("social_presence").select("*");
+    if (result.error) throw result.error;
+    return result.data;
+  }, refetchInterval: 15000 });
+  const alerts = useQuery({ queryKey: ["notification-count"], queryFn: async () => {
+    const result = await supabase.from("account_notifications").select("id", { head: true, count: "exact" }).is("read_at", null);
+    if (result.error) throw result.error;
+    return result.count ?? 0;
+  }, refetchInterval: 30000 });
 
   const home = useQuery({ queryKey: ["social-home", user.id], queryFn: () => homeFn(), refetchInterval: 60000 });
   const messages = useQuery({ queryKey: ["social-messages", user.id, roomId], enabled: Boolean(roomId),
@@ -141,6 +165,11 @@ function HSSocialPage() {
     queryFn: () => groupId ? groupMsgsFn({ data: { groupId } }) : Promise.resolve([]), refetchInterval: 15000 });
   const refresh = () => qc.invalidateQueries({ queryKey: ["social-home", user.id] });
 
+  useEffect(() => {
+    const visible = () => setPageVisible(document.visibilityState === "visible");
+    visible(); document.addEventListener("visibilitychange", visible);
+    return () => document.removeEventListener("visibilitychange", visible);
+  }, []);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
@@ -162,24 +191,40 @@ function HSSocialPage() {
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "social_conversations" }, () => { void refresh(); })
       .on("postgres_changes", { event: "*", schema: "public", table: "social_stories" }, () => { void refresh(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "social_presence" }, () => { void qc.invalidateQueries({ queryKey: ["social-presence", user.id] }); })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [qc, user.id]);
   useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.data?.length, groupMessages.data?.length, roomId, groupId]);
 
-  // Assina URLs das mídias (áudio/foto) das mensagens visíveis
-  const allMsgs = [...(messages.data ?? []), ...(groupMessages.data ?? [])];
   useEffect(() => {
-    const missing = allMsgs.filter((m: any) => m.media_path && !mediaUrls[m.media_path]);
-    if (!missing.length) return;
-    void (async () => {
-      const next: Record<string, string> = {};
-      for (const m of missing as any[]) {
-        try { next[m.media_path as string] = await mediaUrlFn({ data: { mediaPath: m.media_path } }); } catch { /* ignora */ }
+    if (!roomId || !pageVisible || !messages.data?.some((msg) => msg.sender_id !== user.id && !msg.read_at)) return;
+    let active = true;
+    void supabase.rpc("social_mark_read", { _conversation_id: roomId }).then(({ error }) => {
+      if (!error && active) {
+        void qc.invalidateQueries({ queryKey: ["social-messages", user.id, roomId] });
+        void refresh();
       }
-      if (Object.keys(next).length) setMediaUrls((prev) => ({ ...prev, ...next }));
-    })();
-  }, [allMsgs.length]);
+    });
+    return () => { active = false; };
+  }, [roomId, pageVisible, messages.data, user.id, qc]);
+  useEffect(() => {
+    return () => {
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      if (roomId) void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false });
+    };
+  }, [roomId]);
+  function changeMessage(value: string) {
+    setMessage(value);
+    if (!roomId || editingMsg) return;
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    if (!value.trim()) { void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false }); return; }
+    if (Date.now() - typingLastSent.current > 2000) {
+      typingLastSent.current = Date.now();
+      void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: true });
+    }
+    typingTimer.current = setTimeout(() => { void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false }); }, 3000);
+  }
 
   const data = home.data;
   const rooms = data?.rooms ?? [];
@@ -197,7 +242,7 @@ function HSSocialPage() {
     return groupsList;
   }, []);
   const viewGroup = storyView ? storyGroups.find((g) => g.userId === storyView.userId) : null;
-  const story = viewGroup ? viewGroup.stories[Math.min(storyView!.index, viewGroup.stories.length - 1)] : null;
+  const story = viewGroup && storyView ? viewGroup.stories[Math.min(storyView.index, viewGroup.stories.length - 1)] : null;
   useEffect(() => {
     if (!storyView || !viewGroup) return;
     const timer = setTimeout(() => {
@@ -268,23 +313,30 @@ function HSSocialPage() {
     setBusy(true);
     try {
       await sendFn({ data: { conversationId: roomId, content: message } });
+      void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false });
       setMessage(""); await qc.invalidateQueries({ queryKey: ["social-messages", user.id, roomId] }); await refresh();
     } catch (error) { toast.error(error instanceof Error ? error.message : "Mensagem não enviada."); }
     finally { setBusy(false); }
   }
 
   async function uploadChatMedia(mediaFile: File, kind: "audio" | "image") {
+    if (!roomId && !groupId) throw new Error("Selecione uma conversa.");
     if (kind === "audio" && !home.data?.me.is_clube_hs) throw new Error("Envio de áudio exclusivo para assinantes do Clube HS.");
     const ext = kind === "audio" ? "webm" : (mediaFile.type === "image/png" ? "png" : "jpg");
     const path = `${user.id}/chat-${crypto.randomUUID()}.${ext}`;
     const upload = await supabase.storage.from("social-stories").upload(path, mediaFile, { contentType: mediaFile.type });
     if (upload.error) throw new Error("Não foi possível enviar a mídia.");
-    if (groupId) {
+    try { if (groupId) {
       await sendGroupMsgFn({ data: { groupId, content: "", kind, mediaPath: path } });
       await qc.invalidateQueries({ queryKey: ["social-group-messages", groupId] });
     } else if (roomId) {
       await sendMediaFn({ data: { conversationId: roomId, kind, mediaPath: path, content: "" } });
       await qc.invalidateQueries({ queryKey: ["social-messages", user.id, roomId] });
+    }
+    await refresh();
+    } catch (error) {
+      await supabase.storage.from("social-stories").remove([path]);
+      throw error;
     }
   }
 
@@ -410,6 +462,7 @@ function HSSocialPage() {
         <MessageCircle className="h-7 w-7 text-success" /><h1 className="text-lg font-bold">HS Social</h1>
       </div>
       <div className="flex items-center gap-2">
+        <Button asChild variant="ghost" size="icon" title="Notificações" aria-label="Notificações"><Link to="/notificacoes" className="relative"><Bell className="h-5 w-5" />{Boolean(alerts.data) && <span className="absolute right-0 top-0 rounded-full bg-destructive px-1 text-[10px] text-destructive-foreground">{alerts.data}</span>}</Link></Button>
         <Button variant="ghost" size="icon" onClick={() => { setProfileName(data?.me?.full_name ?? ""); setProfileDialog(true); }} title="Meu perfil" aria-label="Editar meu perfil"><User className="h-5 w-5" /></Button>
         <Button size="icon" onClick={() => setNewContact(true)} title="Nova conversa" aria-label="Nova conversa"><Plus className="h-5 w-5" /></Button>
       </div>
@@ -438,7 +491,7 @@ function HSSocialPage() {
               const latest = data?.recentMessages.find((msg) => msg.conversation_id === entry.id);
               const unread = data?.recentMessages.filter((msg) => msg.conversation_id === entry.id && msg.sender_id !== user.id && !msg.read_at).length ?? 0;
               return <Button key={entry.id} variant="ghost" onClick={() => { setRoomId(entry.id); setGroupId(null); setMessage(""); setEditingMsg(null); }} className={`h-auto w-full justify-start gap-3 rounded-none border-b p-4 ${entry.id === roomId ? "bg-accent" : ""}`}>
-                <Avatar name={name} url={avatarFor(oid)} /><span className="min-w-0 flex-1 text-left"><span className="block truncate text-sm font-semibold">{name}</span><span className="block truncate text-xs font-normal text-muted-foreground">{latest?.content || "Sem mensagens"}</span></span>{unread > 0 && <span className="rounded-full bg-success px-2 text-xs text-success-foreground">{unread}</span>}
+                <span className="relative shrink-0"><Avatar name={name} url={avatarFor(oid)} /><span title={isSocialOnline(presence.data?.find((p) => p.user_id === oid)?.last_seen_at, now) ? "Online" : "Offline"} className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card ${isSocialOnline(presence.data?.find((p) => p.user_id === oid)?.last_seen_at, now) ? "bg-success" : "bg-destructive"}`} /></span><span className="min-w-0 flex-1 text-left"><span className="block truncate text-sm font-semibold">{name}</span><span className="block truncate text-xs font-normal text-muted-foreground">{isSocialTyping(presence.data?.find((p) => p.user_id === oid), entry.id, now) ? "Digitando…" : latest?.content || "Sem mensagens"}</span></span>{unread > 0 && <span className="rounded-full bg-success px-2 text-xs text-success-foreground">{unread}</span>}
               </Button>;
             })}
           </div>
@@ -470,14 +523,14 @@ function HSSocialPage() {
           <div className="flex h-18 shrink-0 items-center gap-3 border-b bg-card p-3">
             <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setRoomId(null)} aria-label="Voltar às conversas"><ArrowLeft className="h-5 w-5" /></Button>
             <Avatar name={nameFor(otherId)} url={avatarFor(otherId)} />
-            <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{nameFor(otherId)}</h2><p className="text-xs text-muted-foreground">Conta HS Digital</p></div>
+            <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{nameFor(otherId)}</h2><p className={`flex items-center gap-1 text-xs ${isSocialOnline(presence.data?.find((p) => p.user_id === otherId)?.last_seen_at, now) ? "text-success" : "text-destructive"}`}><span className="h-2 w-2 rounded-full bg-current" />{isSocialTyping(presence.data?.find((p) => p.user_id === otherId), room.id, now) ? "Digitando…" : isSocialOnline(presence.data?.find((p) => p.user_id === otherId)?.last_seen_at, now) ? "Online" : "Offline"}</p></div>
             <Button variant="ghost" size="icon" title="Apagar conversa" aria-label="Apagar conversa" onClick={removeConversation}><Trash2 className="h-4 w-4 text-destructive" /></Button>
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto p-4">
             {messages.isPending && <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
             {messages.error && <p role="alert" className="text-sm text-destructive">Não foi possível carregar as mensagens.</p>}
             {messages.data?.map((msg: any) => (
-              <MessageBubble key={msg.id} msg={msg} mine={msg.sender_id === user.id} mediaUrl={msg.media_path ? mediaUrls[msg.media_path] : undefined}
+              <MessageBubble key={msg.id} msg={msg} mine={msg.sender_id === user.id}
                 onEdit={() => { setEditingMsg(msg); setMessage(msg.content); }}
                 onDelete={async () => { try { await deleteMsgFn({ data: { messageId: msg.id } }); await qc.invalidateQueries({ queryKey: ["social-messages", user.id, roomId] }); } catch { toast.error("Não foi possível apagar."); } }} />
             ))}
@@ -487,7 +540,7 @@ function HSSocialPage() {
           <form onSubmit={send} className="flex shrink-0 items-end gap-2 border-t bg-card p-3">
             <input ref={chatImageRef} type="file" accept="image/*" className="hidden" onChange={(e) => { void sendChatImage(e.target.files?.[0] ?? null); e.target.value = ""; }} />
             <input ref={chatCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { void sendChatImage(e.target.files?.[0] ?? null); e.target.value = ""; }} /><Button type="button" variant="ghost" size="icon" title="Abrir câmera" aria-label="Abrir câmera" onClick={() => chatCameraRef.current?.click()}><Camera className="h-5 w-5" /></Button><Button type="button" variant="ghost" size="icon" title="Enviar foto da galeria" aria-label="Enviar foto da galeria" onClick={() => chatImageRef.current?.click()}><ImagePlus className="h-5 w-5" /></Button>
-            <Textarea aria-label="Mensagem" placeholder="Digite sua mensagem…" value={message} maxLength={4000} onChange={(e) => setMessage(e.target.value)} rows={1} className="max-h-32 min-h-10 resize-none" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(e); } }} />
+            <Textarea aria-label="Mensagem" placeholder="Digite sua mensagem…" value={message} maxLength={4000} onChange={(e) => changeMessage(e.target.value)} rows={1} className="max-h-32 min-h-10 resize-none" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(e); } }} />
             <Button type="button" variant={recording ? "destructive" : "ghost"} size="icon" title={recording ? "Parar e enviar áudio" : "Gravar áudio"} aria-label={recording ? "Parar gravação" : "Gravar áudio"} onClick={() => void toggleRecording()}>{recording ? <Square className="h-4 w-4 animate-pulse" /> : <Mic className="h-5 w-5" />}</Button>
             <Button type="submit" size="icon" title="Enviar mensagem" aria-label="Enviar mensagem" disabled={busy || !message.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</Button>
           </form>
@@ -502,7 +555,7 @@ function HSSocialPage() {
             {groupMessages.data?.map((msg: any) => (
               <div key={msg.id}>
                 {msg.sender_id !== user.id && <p className="mb-0.5 text-[10px] font-semibold text-muted-foreground">{msg.sender_id === activeGroup.created_by ? "Admin" : nameFor(msg.sender_id)}</p>}
-                <MessageBubble msg={msg} mine={msg.sender_id === user.id} mediaUrl={msg.media_path ? mediaUrls[msg.media_path] : undefined}
+                <MessageBubble msg={msg} mine={msg.sender_id === user.id}
                   onEdit={() => {}}
                   onDelete={async () => { await supabase.from("social_group_messages").delete().eq("id", msg.id); await qc.invalidateQueries({ queryKey: ["social-group-messages", groupId] }); }} />
               </div>
