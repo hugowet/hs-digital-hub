@@ -15,7 +15,10 @@ import {
   Truck, 
   XCircle, 
   Gift, 
-  Package 
+  Package,
+  Users,
+  UserPlus,
+  Activity
 } from "lucide-react";
 import { toast } from "sonner";
 
