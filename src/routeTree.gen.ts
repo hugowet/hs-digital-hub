@@ -35,6 +35,7 @@ import { Route as ApiPublicMercadoPagoWebhookRouteImport } from './routes/api/pu
 import { Route as ApiPublicSuppliersContentRouteImport } from './routes/api/public/suppliers/content'
 import { Route as ApiPublicSuppliersPricesRouteImport } from './routes/api/public/suppliers/prices'
 import { Route as ApiPublicSuppliersProcessRouteImport } from './routes/api/public/suppliers/process'
+import { Route as ApiPublicSuppliersSyncRouteImport } from './routes/api/public/suppliers/sync'
 import { Route as ApiPublicSuppliersTranslateRouteImport } from './routes/api/public/suppliers/translate'
 
 const IndexRoute = IndexRouteImport.update({
@@ -174,6 +175,11 @@ const ApiPublicSuppliersProcessRoute =
     path: '/api/public/suppliers/process',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicSuppliersSyncRoute = ApiPublicSuppliersSyncRouteImport.update({
+  id: '/api/public/suppliers/sync',
+  path: '/api/public/suppliers/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicSuppliersTranslateRoute =
   ApiPublicSuppliersTranslateRouteImport.update({
     id: '/api/public/suppliers/translate',
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/api/public/suppliers/content': typeof ApiPublicSuppliersContentRoute
   '/api/public/suppliers/prices': typeof ApiPublicSuppliersPricesRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
+  '/api/public/suppliers/sync': typeof ApiPublicSuppliersSyncRoute
   '/api/public/suppliers/translate': typeof ApiPublicSuppliersTranslateRoute
 }
 export interface FileRoutesByTo {
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/api/public/suppliers/content': typeof ApiPublicSuppliersContentRoute
   '/api/public/suppliers/prices': typeof ApiPublicSuppliersPricesRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
+  '/api/public/suppliers/sync': typeof ApiPublicSuppliersSyncRoute
   '/api/public/suppliers/translate': typeof ApiPublicSuppliersTranslateRoute
 }
 export interface FileRoutesById {
@@ -265,6 +273,7 @@ export interface FileRoutesById {
   '/api/public/suppliers/content': typeof ApiPublicSuppliersContentRoute
   '/api/public/suppliers/prices': typeof ApiPublicSuppliersPricesRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
+  '/api/public/suppliers/sync': typeof ApiPublicSuppliersSyncRoute
   '/api/public/suppliers/translate': typeof ApiPublicSuppliersTranslateRoute
 }
 export interface FileRouteTypes {
@@ -295,6 +304,7 @@ export interface FileRouteTypes {
     | '/api/public/suppliers/content'
     | '/api/public/suppliers/prices'
     | '/api/public/suppliers/process'
+    | '/api/public/suppliers/sync'
     | '/api/public/suppliers/translate'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -323,6 +333,7 @@ export interface FileRouteTypes {
     | '/api/public/suppliers/content'
     | '/api/public/suppliers/prices'
     | '/api/public/suppliers/process'
+    | '/api/public/suppliers/sync'
     | '/api/public/suppliers/translate'
   id:
     | '__root__'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/api/public/suppliers/content'
     | '/api/public/suppliers/prices'
     | '/api/public/suppliers/process'
+    | '/api/public/suppliers/sync'
     | '/api/public/suppliers/translate'
   fileRoutesById: FileRoutesById
 }
@@ -372,6 +384,7 @@ export interface RootRouteChildren {
   ApiPublicSuppliersContentRoute: typeof ApiPublicSuppliersContentRoute
   ApiPublicSuppliersPricesRoute: typeof ApiPublicSuppliersPricesRoute
   ApiPublicSuppliersProcessRoute: typeof ApiPublicSuppliersProcessRoute
+  ApiPublicSuppliersSyncRoute: typeof ApiPublicSuppliersSyncRoute
   ApiPublicSuppliersTranslateRoute: typeof ApiPublicSuppliersTranslateRoute
 }
 
@@ -559,6 +572,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSuppliersProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/suppliers/sync': {
+      id: '/api/public/suppliers/sync'
+      path: '/api/public/suppliers/sync'
+      fullPath: '/api/public/suppliers/sync'
+      preLoaderRoute: typeof ApiPublicSuppliersSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/suppliers/translate': {
       id: '/api/public/suppliers/translate'
       path: '/api/public/suppliers/translate'
@@ -617,6 +637,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSuppliersContentRoute: ApiPublicSuppliersContentRoute,
   ApiPublicSuppliersPricesRoute: ApiPublicSuppliersPricesRoute,
   ApiPublicSuppliersProcessRoute: ApiPublicSuppliersProcessRoute,
+  ApiPublicSuppliersSyncRoute: ApiPublicSuppliersSyncRoute,
   ApiPublicSuppliersTranslateRoute: ApiPublicSuppliersTranslateRoute,
 }
 export const routeTree = rootRouteImport
