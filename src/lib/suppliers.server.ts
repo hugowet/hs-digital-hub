@@ -773,6 +773,40 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
   return { ...batch, repriced: "processed" in refreshed ? refreshed.processed : 0, usdBrlRate: exchange.rate };
 }
 
+// Versão em lotes para a rotina automática: sincroniza os produtos há mais tempo sem atualizar,
+// poucos por execução, para respeitar os pontos da API da CJ.
+export async function syncCjStockBatch(supabaseAdmin: any, storeId: string, limit = 60) {
+  const token = await getCjAccessToken(supabaseAdmin, storeId);
+  const { data: products, error: loadError } = await supabaseAdmin
+    .from("products")
+    .select("id,supplier_variant_id")
+    .eq("store_id", storeId)
+    .eq("supplier", "cj")
+    .not("supplier_variant_id", "is", null)
+    .order("supplier_last_synced_at", { ascending: true, nullsFirst: true })
+    .limit(limit);
+  if (loadError) throw loadError;
+  let updated = 0;
+  for (const product of products ?? []) {
+    const stockData = await cjRequest<any>(
+      `/product/stock/queryByVid?vid=${encodeURIComponent(product.supplier_variant_id)}`,
+      token,
+    );
+    const stock = cjConfirmedVariantStock(stockData);
+    const { error: saveError } = await supabaseAdmin.from("products").update({
+      stock, is_active: stock > 0, supplier_last_synced_at: new Date().toISOString(),
+    }).eq("id", product.id);
+    if (saveError) throw saveError;
+    updated += 1;
+  }
+  await supabaseAdmin
+    .from("supplier_integrations")
+    .update({ last_stock_sync_at: new Date().toISOString(), last_error: null })
+    .eq("store_id", storeId)
+    .eq("provider", "cj");
+  return { updated, remaining: (products ?? []).length === limit };
+}
+
 export async function syncCjStock(supabaseAdmin: any, storeId: string) {
   const token = await getCjAccessToken(supabaseAdmin, storeId);
   const { data: products, error: loadError } = await supabaseAdmin
