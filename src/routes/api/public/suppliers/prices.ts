@@ -7,6 +7,8 @@ export const Route = createFileRoute("/api/public/suppliers/prices")({
     const denied = await authenticateCronRequest(request);
     if (denied) return denied;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const expiry = await supabaseAdmin.rpc("expire_club_pix_memberships");
+    if (expiry.error) throw expiry.error;
     const { refreshCjPrices } = await import("@/lib/cj-price-refresh.server");
     const { data: stores, error } = await supabaseAdmin.from("supplier_integrations")
       .select("store_id").eq("provider", "cj").eq("status", "active").limit(20);

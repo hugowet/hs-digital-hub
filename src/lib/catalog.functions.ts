@@ -203,12 +203,12 @@ export const fetchProduct = createServerFn({ method: "GET" })
     if (!signed) return null;
     if (productRow.supplier === "cj" && productRow.supplier_product_id) {
       const { data: options, error: optionsError } = await supabasePublic.from("products")
-        .select("id,supplier_variant_label").eq("store_id", productRow.store_id)
+        .select("id,supplier_variant_label,stock").eq("store_id", productRow.store_id)
         .eq("supplier", "cj").eq("supplier_product_id", productRow.supplier_product_id)
         .eq("is_active", true).order("supplier_variant_label");
       if (optionsError) throw optionsError;
       return { ...signed, supplierOptions: (options ?? []).flatMap((option) => option.supplier_variant_label
-        ? [{ productId: option.id, label: option.supplier_variant_label }] : []) };
+        ? [{ productId: option.id, label: option.supplier_variant_label, stock: option.stock }] : []) };
     }
     return signed;
   });

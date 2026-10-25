@@ -24,7 +24,9 @@ export const getSocialHome = createServerFn({ method: "GET" }).middleware([requi
       }
       storyRows.push({ ...story, mediaUrl });
     }
-    return { me: me.data, people: people.data ?? [], rooms: rooms.data ?? [], stories: storyRows, recentMessages: messages.data ?? [] };
+    const access = await db.rpc("club_has_access", { _user_id: context.userId });
+    if (access.error) throw access.error;
+    return { me: { ...me.data, is_clube_hs: access.data }, people: people.data ?? [], rooms: rooms.data ?? [], stories: storyRows, recentMessages: messages.data ?? [] };
   });
 
 export const openSocialConversation = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
@@ -133,6 +135,11 @@ export const sendSocialMediaMessage = createServerFn({ method: "POST" }).middlew
     content: z.string().trim().max(4000).default(""),
   }).parse(input))
   .handler(async ({ data, context }) => {
+    if (!data.mediaPath.startsWith(`${context.userId}/`) || data.mediaPath.includes("..")) throw new Error("Mídia inválida.");
+    if (data.kind === "audio") {
+      const access = await context.supabase.rpc("club_has_access", { _user_id: context.userId });
+      if (access.error || !access.data) throw new Error("Envio de áudio exclusivo para assinantes do Clube HS.");
+    }
     const label = data.kind === "audio" ? "🎤 Áudio" : "📷 Foto";
     const result = await context.supabase.from("social_messages").insert({
       conversation_id: data.conversationId,
@@ -220,6 +227,11 @@ export const sendSocialGroupMessage = createServerFn({ method: "POST" }).middlew
   }).parse(input))
   .handler(async ({ data, context }) => {
     if (data.kind === "text" && !data.content) throw new Error("Mensagem vazia.");
+    if (data.kind !== "text" && (!data.mediaPath?.startsWith(`${context.userId}/`) || data.mediaPath.includes(".."))) throw new Error("Mídia inválida.");
+    if (data.kind === "audio") {
+      const access = await context.supabase.rpc("club_has_access", { _user_id: context.userId });
+      if (access.error || !access.data) throw new Error("Envio de áudio exclusivo para assinantes do Clube HS.");
+    }
     const result = await context.supabase.from("social_group_messages").insert({
       group_id: data.groupId,
       sender_id: context.userId,

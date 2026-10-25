@@ -119,6 +119,7 @@ function HSSocialPage() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const chatImageRef = useRef<HTMLInputElement | null>(null);
+  const chatCameraRef = useRef<HTMLInputElement | null>(null);
   const storyCameraRef = useRef<HTMLInputElement | null>(null);
   const [groupDialog, setGroupDialog] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -273,6 +274,7 @@ function HSSocialPage() {
   }
 
   async function uploadChatMedia(mediaFile: File, kind: "audio" | "image") {
+    if (kind === "audio" && !home.data?.me.is_clube_hs) throw new Error("Envio de áudio exclusivo para assinantes do Clube HS.");
     const ext = kind === "audio" ? "webm" : (mediaFile.type === "image/png" ? "png" : "jpg");
     const path = `${user.id}/chat-${crypto.randomUUID()}.${ext}`;
     const upload = await supabase.storage.from("social-stories").upload(path, mediaFile, { contentType: mediaFile.type });
@@ -296,6 +298,10 @@ function HSSocialPage() {
   }
 
   async function toggleRecording() {
+    if (!home.data?.me.is_clube_hs) {
+      toast.info("Assine o Clube HS para enviar áudios.", { action: { label: "Ver plano", onClick: () => { window.location.href = "/clube-hs"; } } });
+      return;
+    }
     if (recording) {
       recorderRef.current?.stop();
       return;
@@ -480,7 +486,7 @@ function HSSocialPage() {
           {editingMsg && <div className="flex items-center justify-between border-t bg-accent/60 px-3 py-1.5 text-xs"><span className="truncate">Editando mensagem</span><button onClick={() => { setEditingMsg(null); setMessage(""); }} aria-label="Cancelar edição"><X className="h-3.5 w-3.5" /></button></div>}
           <form onSubmit={send} className="flex shrink-0 items-end gap-2 border-t bg-card p-3">
             <input ref={chatImageRef} type="file" accept="image/*" className="hidden" onChange={(e) => { void sendChatImage(e.target.files?.[0] ?? null); e.target.value = ""; }} />
-            <Button type="button" variant="ghost" size="icon" title="Enviar foto" aria-label="Enviar foto" onClick={() => chatImageRef.current?.click()}><Camera className="h-5 w-5" /></Button>
+            <input ref={chatCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { void sendChatImage(e.target.files?.[0] ?? null); e.target.value = ""; }} /><Button type="button" variant="ghost" size="icon" title="Abrir câmera" aria-label="Abrir câmera" onClick={() => chatCameraRef.current?.click()}><Camera className="h-5 w-5" /></Button><Button type="button" variant="ghost" size="icon" title="Enviar foto da galeria" aria-label="Enviar foto da galeria" onClick={() => chatImageRef.current?.click()}><ImagePlus className="h-5 w-5" /></Button>
             <Textarea aria-label="Mensagem" placeholder="Digite sua mensagem…" value={message} maxLength={4000} onChange={(e) => setMessage(e.target.value)} rows={1} className="max-h-32 min-h-10 resize-none" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(e); } }} />
             <Button type="button" variant={recording ? "destructive" : "ghost"} size="icon" title={recording ? "Parar e enviar áudio" : "Gravar áudio"} aria-label={recording ? "Parar gravação" : "Gravar áudio"} onClick={() => void toggleRecording()}>{recording ? <Square className="h-4 w-4 animate-pulse" /> : <Mic className="h-5 w-5" />}</Button>
             <Button type="submit" size="icon" title="Enviar mensagem" aria-label="Enviar mensagem" disabled={busy || !message.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</Button>
@@ -505,7 +511,7 @@ function HSSocialPage() {
           </div>
           <form onSubmit={send} className="flex shrink-0 items-end gap-2 border-t bg-card p-3">
             <input ref={chatImageRef} type="file" accept="image/*" className="hidden" onChange={(e) => { void sendChatImage(e.target.files?.[0] ?? null); e.target.value = ""; }} />
-            <Button type="button" variant="ghost" size="icon" title="Enviar foto" aria-label="Enviar foto" onClick={() => chatImageRef.current?.click()}><Camera className="h-5 w-5" /></Button>
+            <input ref={chatCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { void sendChatImage(e.target.files?.[0] ?? null); e.target.value = ""; }} /><Button type="button" variant="ghost" size="icon" title="Abrir câmera" aria-label="Abrir câmera" onClick={() => chatCameraRef.current?.click()}><Camera className="h-5 w-5" /></Button><Button type="button" variant="ghost" size="icon" title="Enviar foto da galeria" aria-label="Enviar foto da galeria" onClick={() => chatImageRef.current?.click()}><ImagePlus className="h-5 w-5" /></Button>
             <Textarea aria-label="Mensagem do grupo" placeholder="Mensagem para o grupo…" value={message} maxLength={4000} onChange={(e) => setMessage(e.target.value)} rows={1} className="max-h-32 min-h-10 resize-none" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(e); } }} />
             <Button type="button" variant={recording ? "destructive" : "ghost"} size="icon" title={recording ? "Parar e enviar áudio" : "Gravar áudio"} aria-label={recording ? "Parar gravação" : "Gravar áudio"} onClick={() => void toggleRecording()}>{recording ? <Square className="h-4 w-4 animate-pulse" /> : <Mic className="h-5 w-5" />}</Button>
             <Button type="submit" size="icon" title="Enviar" aria-label="Enviar" disabled={busy || !message.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</Button>

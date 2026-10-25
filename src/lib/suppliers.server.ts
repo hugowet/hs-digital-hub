@@ -1,3 +1,4 @@
+import { cjVariantStock } from "./cj-variants";
 import { calculateFinalPrice } from "@/lib/pricing";
 import { decryptSecret, encryptSecret } from "@/lib/mercado-pago.server";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -877,31 +878,24 @@ export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginP
 
 export async function syncCjStock(supabaseAdmin: any, storeId: string) {
   const token = await getCjAccessToken(supabaseAdmin, storeId);
-  const { data: products } = await supabaseAdmin
+  const { data: products, error: loadError } = await supabaseAdmin
     .from("products")
     .select("id,supplier_variant_id")
     .eq("store_id", storeId)
     .eq("supplier", "cj")
     .not("supplier_variant_id", "is", null);
+  if (loadError) throw loadError;
   let updated = 0;
   for (const product of products ?? []) {
     const stockData = await cjRequest<any>(
       `/product/stock/queryByVid?vid=${encodeURIComponent(product.supplier_variant_id)}`,
       token,
     );
-    const rows = Array.isArray(stockData) ? stockData : [stockData];
-    const stock = rows.reduce(
-      (sum, row) => sum + Math.max(0, Number(row?.storageNum ?? row?.totalInventory ?? 0)),
-      0,
-    );
-    await supabaseAdmin
-      .from("products")
-      .update({
-        stock,
-        is_active: true,
-        supplier_last_synced_at: new Date().toISOString(),
-      })
-      .eq("id", product.id);
+    const stock = cjVariantStock(stockData);
+    const { error: saveError } = await supabaseAdmin.from("products").update({
+      stock, is_active: stock > 0, supplier_last_synced_at: new Date().toISOString(),
+    }).eq("id", product.id);
+    if (saveError) throw saveError;
     updated += 1;
   }
   await supabaseAdmin

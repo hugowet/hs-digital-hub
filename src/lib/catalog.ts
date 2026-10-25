@@ -28,7 +28,7 @@ export type Product = {
   variations: Array<{ name: string; options: string[] }>;
   product_type: string;
   supplier: string | null;
-  supplierOptions?: Array<{ productId: string; label: string }>;
+  supplierOptions?: Array<{ productId: string; label: string; stock: number }>;
   media?: ProductMedia[];
 };
 

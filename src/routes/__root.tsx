@@ -17,6 +17,8 @@ import { CartProvider } from "../lib/cart";
 import { RadioProvider } from "../lib/radio-context";
 import { Toaster } from "../components/ui/sonner";
 import { AuraChatWidget } from "../components/aura-chat-widget";
+import { InstallAppPrompt } from "../components/install-app-prompt";
+import { AccountNotificationListener } from "../components/account-notification-listener";
 
 function NotFoundComponent() {
   return (
@@ -99,6 +101,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "author", content: "HS Digital" },
+      { name: "theme-color", content: "#321b53" },
       { property: "og:site_name", content: "HS Digital Marketplace" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -115,6 +118,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap",
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -147,6 +152,8 @@ function RootComponent() {
         <RadioProvider>
           <Outlet />
           <Toaster position="top-center" richColors />
+          <AccountNotificationListener />
+          {pathname === "/" && <InstallAppPrompt />}
           {pathname === "/" && <AuraChatWidget />}
         </RadioProvider>
       </CartProvider>

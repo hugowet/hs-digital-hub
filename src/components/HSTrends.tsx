@@ -31,6 +31,7 @@ import {
   Trash2,
   CornerDownRight,
   Library,
+  Pin,
 } from "lucide-react";
 import { TREND_MUSIC_LIBRARY, type TrendMusicTrack } from "@/lib/trends-music";
 import { toast } from "sonner";
@@ -243,7 +244,9 @@ export function HSTrends() {
         .select("is_clube_hs, full_name, avatar_url, bio, status_text")
         .eq("id", authUser.id)
         .maybeSingle();
-      return data;
+      const access = await supabase.rpc("club_has_access", { _user_id: authUser.id });
+      if (access.error) throw access.error;
+      return { ...data, is_clube_hs: access.data };
     },
     enabled: Boolean(authUser?.id),
   });
@@ -361,6 +364,24 @@ export function HSTrends() {
     },
     enabled: Boolean(commentModalPost?.id),
   });
+
+  const { data: pinnedCommentId, refetch: refetchPin } = useQuery({
+    queryKey: ["trend-comment-pin", commentModalPost?.id],
+    enabled: Boolean(commentModalPost?.id),
+    queryFn: async () => {
+      if (!commentModalPost) return null;
+      const { data, error } = await supabase.from("trend_pinned_comments").select("comment_id").eq("video_id", commentModalPost.id).maybeSingle();
+      if (error) throw error;
+      return data?.comment_id ?? null;
+    },
+  });
+  const handlePinComment = async (id: string) => {
+    if (!commentModalPost) return;
+    const { error } = await supabase.rpc("trend_pin_comment", { _video_id: commentModalPost.id, _comment_id: pinnedCommentId === id ? undefined : id });
+    if (error) { toast.error("Não foi possível fixar o comentário."); return; }
+    await refetchPin();
+    toast.success(pinnedCommentId === id ? "Comentário desafixado." : "Comentário fixado.");
+  };
 
   // 1 anúncio a cada 4 vídeos; assinantes Clube HS não veem anúncios
   const processedFeed = useMemo(() => {
@@ -942,6 +963,7 @@ export function HSTrends() {
               ) : (
                 comments
                   .filter((c) => !c.parent_id)
+                  .sort((a, b) => Number(b.id === pinnedCommentId) - Number(a.id === pinnedCommentId))
                   .map((comm) => {
                     const replies = comments.filter((r) => r.parent_id === comm.id);
                     const renderComment = (c: TrendComment, isReply: boolean) => (
@@ -956,7 +978,9 @@ export function HSTrends() {
                             </span>
                           </div>
                           <p className="text-xs text-slate-300 mt-1 leading-relaxed">{c.content}</p>
+                          {c.id === pinnedCommentId && <p className="mt-1 flex items-center gap-1 text-xs text-primary"><Pin className="h-3 w-3" />Fixado pelo autor</p>}
                           <div className="flex items-center gap-3 mt-1.5">
+                            {!isReply && canManagePost(commentModalPost) && <Button variant="ghost" size="sm" className="h-6 px-1 text-xs" onClick={() => handlePinComment(c.id)}><Pin className="mr-1 h-3 w-3" />{c.id === pinnedCommentId ? "Desfixar" : "Fixar"}</Button>}
                             {authUser && !isReply && (
                               <button
                                 onClick={() => { setReplyToComment(c); setEditingComment(null); setNewCommentText(""); }}

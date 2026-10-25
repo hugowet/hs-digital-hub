@@ -234,7 +234,7 @@ function ProductDetailPage() {
 
   const maxAvailableStock = useMemo(() => {
     const rawStock = Number(product?.stock);
-    return Number.isFinite(rawStock) && rawStock > 0 ? rawStock : 99;
+    return Number.isFinite(rawStock) && rawStock > 0 ? rawStock : 0;
   }, [product?.stock]);
 
   const isCj = product?.supplier === "cj";
@@ -351,6 +351,7 @@ function ProductDetailPage() {
 
   const handleAddToCart = async (redirectCheckout: boolean) => {
     if (!product) return;
+    if (maxAvailableStock < quantity) { toast.error("Esta opção está sem estoque."); return; }
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
       toast.info("Faça login para adicionar produtos ao carrinho.");
@@ -612,6 +613,7 @@ function ProductDetailPage() {
                       {product.supplierOptions.map((option) => (
                         <Button key={option.productId} size="sm" variant={option.productId === productId ? "default" : "outline"}
                           aria-pressed={option.productId === productId}
+                          disabled={option.stock <= 0}
                           onClick={() => { setQuantity(1); setSelectedImage(0); navigate({ to: "/produto/$productId", params: { productId: option.productId } }); }}>
                           {option.label}
                         </Button>
