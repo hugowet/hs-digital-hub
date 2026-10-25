@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## HS Social — presença e mensagens — 25/10
+- [ ] Garantir acesso premium gratuito permanente para administrador, sem cobrança do Clube.
 - [ ] Conferir notificações de mensagem na barra e atualização ao vivo.
 - [ ] Mostrar presença verde/vermelha, digitação e visualização real na conversa aberta.
 - [ ] Corrigir fotos privadas enviadas e validar envio/reabertura.
