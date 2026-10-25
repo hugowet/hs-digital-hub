@@ -1,5 +1,11 @@
 # HS Digital — MVP
 
+## Tradução CJ sem IA paga — 25/10
+- [ ] Substituir tradução paga de títulos/descrições por serviço gratuito com cache, cotas e pausa persistente, sem chamadas na vitrine.
+- [ ] Conferir preservação de tamanhos, cores, IDs e estoque oficiais na sincronização.
+- [ ] Restringir leitura direta de comentários fixados sem quebrar o feed.
+- [ ] Testar tradução gratuita real e regressões de variantes.
+
 ## Solicitação atual — 24/10
 - [x] Opções oficiais CJ preservadas para roupas, calçados e demais variantes; opções sem estoque ficam bloqueadas e voltam após reposição confirmada pela atualização programada.
 - [ ] Atualização instantânea CJ: depende de callback/openId oficial da CJ; hoje a atualização roda em lotes a cada 5 minutos, sujeita às cotas.
