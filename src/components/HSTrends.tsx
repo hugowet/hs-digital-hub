@@ -370,9 +370,9 @@ export function HSTrends() {
     enabled: Boolean(commentModalPost?.id),
     queryFn: async () => {
       if (!commentModalPost) return null;
-      const { data, error } = await supabase.from("trend_pinned_comments").select("comment_id").eq("video_id", commentModalPost.id).maybeSingle();
+      const { data, error } = await supabase.rpc("read_trend_pin", { _video_id: commentModalPost.id });
       if (error) throw error;
-      return data?.comment_id ?? null;
+      return data ?? null;
     },
   });
   const handlePinComment = async (id: string) => {

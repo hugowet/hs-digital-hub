@@ -19,7 +19,7 @@ export function readFreeTranslation(payload: unknown): string {
   const body = payload as { responseStatus?: number; quotaFinished?: boolean; responseData?: { translatedText?: unknown } } | null;
   if (body?.quotaFinished || Number(body?.responseStatus) !== 200)
     throw new Error("Tradução gratuita indisponível ou cota atingida; nenhuma IA paga foi utilizada.");
-  const text = body.responseData?.translatedText;
+  const text = body?.responseData?.translatedText;
   if (typeof text !== "string" || !text.trim()) throw new Error("Tradução gratuita retornou conteúdo vazio.");
   return text.trim();
 }

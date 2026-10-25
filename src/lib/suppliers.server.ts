@@ -1,4 +1,4 @@
-import { cjVariantStock, cjConfirmedVariantStock } from "./cj-variants";
+import { cjConfirmedVariantStock } from "./cj-variants";
 import { translateCjFreeText } from "./cj-free-translation.server";
 import { calculateFinalPrice } from "@/lib/pricing";
 import { decryptSecret, encryptSecret } from "@/lib/mercado-pago.server";
