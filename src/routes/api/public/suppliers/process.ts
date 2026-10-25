@@ -1,17 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-function authorized(request: Request) {
-  const expected = process.env["LOVABLE_CRON_SECRET"];
-  const provided = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  return Boolean(expected && provided && expected === provided);
-}
+import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 
 export const Route = createFileRoute("/api/public/suppliers/process")({
   staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {
-        if (!authorized(request)) return new Response("Unauthorized", { status: 401 });
+        const denied = await authenticateCronRequest(request);
+        if (denied) return denied;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: queue, error } = await supabaseAdmin.from("supplier_fulfillments")
           .select("id,provider,attempts")
