@@ -7,6 +7,9 @@ export const createClubeHsSubscription = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ origin: z.string().url() }).parse(input))
   .handler(async ({ data, context }) => {
+    const admin = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    if (admin.error) throw new Error("Não foi possível verificar seu acesso.");
+    if (admin.data) throw new Error("Sua conta administradora já tem acesso premium gratuito, sem assinatura.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { decryptSecret, mercadoPagoRequest, safeOrigin } = await import("@/lib/mercado-pago.server");
 
@@ -69,6 +72,9 @@ export const createClubeHsPix = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ origin: z.string().url() }).parse(input))
   .handler(async ({ data, context }) => {
+    const admin = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    if (admin.error) throw new Error("Não foi possível verificar seu acesso.");
+    if (admin.data) throw new Error("Sua conta administradora já tem acesso premium gratuito, sem assinatura.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { decryptSecret, mercadoPagoRequest, safeOrigin } = await import("@/lib/mercado-pago.server");
     const origin = safeOrigin(data.origin);
