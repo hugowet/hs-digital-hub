@@ -1602,6 +1602,42 @@ export type Database = {
           },
         ]
       }
+      social_presence: {
+        Row: {
+          last_seen_at: string
+          typing_at: string | null
+          typing_conversation_id: string | null
+          user_id: string
+        }
+        Insert: {
+          last_seen_at?: string
+          typing_at?: string | null
+          typing_conversation_id?: string | null
+          user_id: string
+        }
+        Update: {
+          last_seen_at?: string
+          typing_at?: string | null
+          typing_conversation_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_presence_typing_conversation_id_fkey"
+            columns: ["typing_conversation_id"]
+            isOneToOne: false
+            referencedRelation: "social_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_presence_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_stories: {
         Row: {
           caption: string
@@ -2726,6 +2762,7 @@ export type Database = {
           id: string
         }[]
       }
+      social_heartbeat: { Args: never; Returns: undefined }
       social_mark_read: {
         Args: { _conversation_id: string }
         Returns: undefined
@@ -2750,6 +2787,10 @@ export type Database = {
       social_publish_story: {
         Args: { _caption: string; _media_path?: string }
         Returns: string
+      }
+      social_set_typing: {
+        Args: { _conversation_id: string; _typing: boolean }
+        Returns: undefined
       }
       start_arcade_game: {
         Args: { _game_type: string }

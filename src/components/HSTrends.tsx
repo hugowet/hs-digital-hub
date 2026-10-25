@@ -246,14 +246,16 @@ export function HSTrends() {
         .maybeSingle();
       const access = await supabase.rpc("club_has_access", { _user_id: authUser.id });
       if (access.error) throw access.error;
-      return { ...data, is_clube_hs: access.data };
+      const admin = await supabase.rpc("has_role", { _user_id: authUser.id, _role: "admin" });
+      if (admin.error) throw admin.error;
+      return { ...data, is_clube_hs: access.data, is_admin: admin.data };
     },
     enabled: Boolean(authUser?.id),
   });
 
   const isVipClube = Boolean(userProfile?.is_clube_hs);
   // Administrador tem HSTrends ilimitado (pode postar sem assinatura)
-  const isAdmin = authUser?.email === "hugoet373@gmail.com";
+  const isAdmin = Boolean(userProfile?.is_admin);
   const canPostVideos = isVipClube || isAdmin;
 
   // Vídeos reais do banco + URLs assinadas

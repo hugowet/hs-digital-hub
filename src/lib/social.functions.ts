@@ -55,8 +55,6 @@ export const getSocialMessages = createServerFn({ method: "GET" }).middleware([r
     const result = await context.supabase.from("social_messages").select("*")
       .eq("conversation_id", data.conversationId).order("created_at", { ascending: false }).limit(200);
     if (result.error) throw new Error(result.error.message);
-    const read = await context.supabase.rpc("social_mark_read", { _conversation_id: data.conversationId });
-    if (read.error) throw new Error(read.error.message);
     return (result.data ?? []).reverse();
   });
 
