@@ -1,0 +1,12 @@
+CREATE TABLE public.cj_translation_cache (id text PRIMARY KEY, translated_text text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+GRANT ALL ON public.cj_translation_cache TO service_role;
+ALTER TABLE public.cj_translation_cache ENABLE ROW LEVEL SECURITY;
+CREATE TABLE public.cj_translation_daily_usage (day date PRIMARY KEY, used_bytes integer NOT NULL DEFAULT 0 CHECK(used_bytes >= 0));
+GRANT ALL ON public.cj_translation_daily_usage TO service_role;
+ALTER TABLE public.cj_translation_daily_usage ENABLE ROW LEVEL SECURITY;
+CREATE OR REPLACE FUNCTION public.reserve_cj_free_translation(_bytes integer) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE consumed integer; BEGIN IF _bytes < 1 OR _bytes > 500 THEN RETURN false; END IF; INSERT INTO public.cj_translation_daily_usage(day,used_bytes) VALUES((now() AT TIME ZONE 'UTC')::date,_bytes) ON CONFLICT(day) DO UPDATE SET used_bytes=cj_translation_daily_usage.used_bytes+EXCLUDED.used_bytes WHERE cj_translation_daily_usage.used_bytes+EXCLUDED.used_bytes<=4000 RETURNING used_bytes INTO consumed; RETURN consumed IS NOT NULL; END $$;
+REVOKE ALL ON FUNCTION public.reserve_cj_free_translation(integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.reserve_cj_free_translation(integer) TO service_role;
+ALTER TABLE public.products ADD COLUMN supplier_translation_version integer NOT NULL DEFAULT 0;
+ALTER TABLE public.supplier_content_jobs ADD COLUMN next_attempt_at timestamptz;
+COMMENT ON TABLE public.cj_translation_daily_usage IS 'Conservative local 4000-byte/day cap shared by all CJ translation jobs; not a provider entitlement. Never falls back to paid AI.';
