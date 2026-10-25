@@ -34,6 +34,7 @@ import {
   testDropiAdminConnection,
 } from "@/lib/dropi.functions";
 import { getMercadoPagoConfiguration, saveMercadoPagoConfiguration } from "@/lib/payments.functions";
+import { getAudienceStats } from "@/lib/audience.functions";
 
 // Funções de servidor que salvam direto no banco com permissão total de administrador (sem travar no RLS)
 const setProductShippingAdmin = createServerFn({ method: "POST" })
@@ -93,6 +94,7 @@ function AdminPage() {
   const saveDropiConfiguration = useServerFn(saveDropiAdminConfiguration);
   const testDropiConnection = useServerFn(testDropiAdminConnection);
   const importDropiProducts = useServerFn(importDropiAdminProducts);
+  const getAudience = useServerFn(getAudienceStats);
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
