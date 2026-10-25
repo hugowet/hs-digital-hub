@@ -211,19 +211,19 @@ function HSSocialPage() {
   useEffect(() => {
     return () => {
       if (typingTimer.current) clearTimeout(typingTimer.current);
-      if (roomId) void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false });
+      if (roomId) void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false }).then(() => {});
     };
   }, [roomId]);
   function changeMessage(value: string) {
     setMessage(value);
     if (!roomId || editingMsg) return;
     if (typingTimer.current) clearTimeout(typingTimer.current);
-    if (!value.trim()) { void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false }); return; }
+    if (!value.trim()) { void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false }).then(() => {}); return; }
     if (Date.now() - typingLastSent.current > 2000) {
       typingLastSent.current = Date.now();
-      void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: true });
+      void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: true }).then(() => {});
     }
-    typingTimer.current = setTimeout(() => { void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false }); }, 3000);
+    typingTimer.current = setTimeout(() => { void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false }).then(() => {}); }, 3000);
   }
 
   const data = home.data;
@@ -313,7 +313,7 @@ function HSSocialPage() {
     setBusy(true);
     try {
       await sendFn({ data: { conversationId: roomId, content: message } });
-      void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false });
+      void supabase.rpc("social_set_typing", { _conversation_id: roomId, _typing: false }).then(() => {});
       setMessage(""); await qc.invalidateQueries({ queryKey: ["social-messages", user.id, roomId] }); await refresh();
     } catch (error) { toast.error(error instanceof Error ? error.message : "Mensagem não enviada."); }
     finally { setBusy(false); }

@@ -9,7 +9,7 @@ export function AccountNotificationListener() {
     let disposed = false;
     let heartbeat: ReturnType<typeof setInterval> | undefined;
     let generation = 0;
-    const pulse = () => { if (!disposed && document.visibilityState === "visible") void supabase.rpc("social_heartbeat"); };
+    const pulse = () => { if (!disposed && document.visibilityState === "visible") void supabase.rpc("social_heartbeat").then(() => {}); };
     const connect = async () => {
       const current = ++generation;
       const { data } = await supabase.auth.getUser();
