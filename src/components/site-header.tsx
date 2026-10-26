@@ -83,7 +83,7 @@ export function SiteHeader({
     const timer = setTimeout(() => {
       const { query: current, onQueryChange: change } = latest.current;
       typedRef.current = false;
-      console.error("DBG", localQuery, current, !!change); if (localQuery !== current && change) change(localQuery);
+      if (localQuery !== current && change) change(localQuery);
     }, 350);
     return () => clearTimeout(timer);
   }, [localQuery]);
