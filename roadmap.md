@@ -5,7 +5,7 @@
 - [x] Substituir preferência de checkout por Pix direto com CPF, QR/copia-cola e reconciliação protegida; API confirmou Pix ativo e testes passaram, admin permanece grátis.
 - [ ] Validar QR real do Clube: precisa de ação de uma conta não administradora com CPF próprio; não gerada cobrança no CPF inventado nem cobrado admin.
 - [x] Troca real de roupa L→M e calçado verificada; opções sem estoque salvo podem confirmar estoque oficial ao clicar, sem inventar disponibilidade.
-- [x] Banner encurtado e conferido no celular (322px de altura).
+- [x] Banner encurtado e conferido no celular (322px de altura); foto do banner um pouco maior (193px no celular) mantendo o quadrado sem cortar cabeça, orelhas ou texto da arte.
 - [x] Foto da Conta agora persistida no perfil; Social guarda caminho privado e renova assinatura; imagem privada recuperada e exibida. Recebimento em segunda conta não verificado.
 - [ ] Notificações fora do site: conexão Firebase não concluída; envio não implementado sem serviço configurado.
 
