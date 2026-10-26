@@ -351,6 +351,13 @@
       "when": 1793035192312,
       "tag": "0049_catalog_search_ids_rpc",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793035293815,
+      "tag": "0050_catalog_search_ids_definer",
+      "breakpoints": true
     }
   ]
 }
