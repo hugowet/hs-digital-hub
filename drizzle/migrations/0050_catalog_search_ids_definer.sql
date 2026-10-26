@@ -1,0 +1,1 @@
+ALTER FUNCTION public.search_catalog_ids(jsonb, text, numeric, numeric, boolean, text, integer, integer) SECURITY DEFINER;

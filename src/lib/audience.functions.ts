@@ -57,3 +57,34 @@ export const getAudienceStats = createServerFn({ method: "GET" })
       signupsByDay: [...byDay.entries()].map(([day, count]) => ({ day, count })),
     };
   });
+
+export type AudienceAccount = { id: string; name: string | null; email: string | null; createdAt: string };
+
+export const listAudienceAccounts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AudienceAccount[]> => {
+    await ensureAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const accounts: AudienceAccount[] = [];
+    for (let page = 1; page <= 20; page++) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) throw new Error("Não foi possível carregar as contas.");
+      for (const u of data.users) {
+        const meta = (u.user_metadata ?? {}) as Record<string, unknown>;
+        accounts.push({
+          id: u.id,
+          email: u.email ?? null,
+          name: (meta.full_name as string) || (meta.name as string) || null,
+          createdAt: u.created_at,
+        });
+      }
+      if (data.users.length < 1000) break;
+    }
+    const ids = accounts.map((a) => a.id);
+    for (let i = 0; i < ids.length; i += 500) {
+      const { data } = await supabaseAdmin.from("profiles").select("id,full_name").in("id", ids.slice(i, i + 500));
+      const names = new Map((data ?? []).map((p) => [p.id, p.full_name]));
+      for (const a of accounts) if (names.get(a.id)) a.name = names.get(a.id) ?? a.name;
+    }
+    return accounts.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  });

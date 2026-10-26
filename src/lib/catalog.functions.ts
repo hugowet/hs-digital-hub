@@ -137,34 +137,36 @@ async function queryCatalog(input: CatalogInput) {
     return { products, total: daily.total, nextPage: from + daily.ids.length < daily.total ? input.page + 1 : null };
   }
 
-  let query = supabasePublic.from("products").select(cardProjection, { count: "exact" }).eq("is_active", true).is("supplier_variant_parent_id", null);
-
-  for (const terms of catalogSearchGroups(input.query)) {
-    query = query.or(terms.map((term) => `catalog_search_text.ilike.%${term}%`).join(","));
-  }
-  if (input.category) query = query.eq("category", input.category);
-  if (input.range === "a") query = query.lte("price", 50);
-  if (input.range === "b") query = query.gte("price", 50).lte("price", 100);
-  if (input.range === "c") query = query.gte("price", 100).lte("price", 200);
-  if (input.range === "d") query = query.gte("price", 200);
-  if (input.onlyFreeShipping) query = query.or("free_shipping.eq.true,price.gte.79");
-
-  if (input.sort === "price-asc") {
-    query = query.order("price", { ascending: true });
-  } else if (input.sort === "price-desc") {
-    query = query.order("price", { ascending: false });
-  } else {
-    query = query.order("sold_count", { ascending: false }).order("id", { ascending: true });
-  }
-
+  // Text search runs in a SQL function that filters through the trigram index first, then sorts;
+  // the plain REST query let the planner walk the popularity index and hit the statement timeout.
   const from = input.page * input.pageSize;
-  const { data, error, count } = await query.range(from, from + input.pageSize - 1);
-  if (error) throw error;
-
-  const rawProducts = (data ?? []) as unknown as Product[];
-  const products = await prepareCards(rawProducts);
-  const total = count ?? products.length;
-  return { products, total, nextPage: from + products.length < total ? input.page + 1 : null };
+  const bounds: Record<string, [number | null, number | null]> = {
+    a: [null, 50], b: [50, 100], c: [100, 200], d: [200, null],
+  };
+  const [min, max] = bounds[input.range] ?? [null, null];
+  const { data: idRows, error: idError } = await supabasePublic.rpc("search_catalog_ids", {
+    _groups: catalogSearchGroups(input.query),
+    _category: input.category || null,
+    _min: min, _max: max,
+    _free: Boolean(input.onlyFreeShipping),
+    _sort: input.sort,
+    _offset: from,
+    _limit: input.pageSize + 1,
+  } as never);
+  if (idError) throw idError;
+  const ids = ((idRows ?? []) as unknown as string[]).map((r) => (typeof r === "string" ? r : (r as { search_catalog_ids: string }).search_catalog_ids));
+  const hasMore = ids.length > input.pageSize;
+  const pageIds = ids.slice(0, input.pageSize);
+  let rows: Product[] = [];
+  if (pageIds.length) {
+    const { data, error } = await supabasePublic.from("products").select(cardProjection).in("id", pageIds);
+    if (error) throw error;
+    const byId = new Map(((data ?? []) as unknown as Product[]).map((p) => [p.id, p]));
+    rows = pageIds.flatMap((id) => (byId.get(id) ? [byId.get(id)!] : []));
+  }
+  const products = await prepareCards(rows);
+  const total = from + products.length + (hasMore ? 1 : 0);
+  return { products, total, nextPage: hasMore ? input.page + 1 : null };
 }
 
 export const fetchCatalogPage = createServerFn({ method: "GET" })
