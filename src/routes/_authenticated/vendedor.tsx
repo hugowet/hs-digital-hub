@@ -264,6 +264,11 @@ function SellerCenterPage() {
         </div>
       </div>
 
+      <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-600">
+        <BadgeCheck className="h-4 w-4 shrink-0" />
+        Loja aprovada! Você já pode conectar seu Mercado Pago e cadastrar produtos.
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <TabsList className="h-auto w-full justify-start overflow-x-auto border-b">
           <TabsTrigger value="orders">Pedidos e Envios</TabsTrigger>
