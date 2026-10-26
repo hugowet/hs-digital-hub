@@ -1,7 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRight, CircleHelp, Mic, MicOff, Package, Send, ShoppingBag, Sparkles, Store, Tag, X } from "lucide-react";
+import { ArrowRight, CircleHelp, Loader2, Mic, MicOff, Package, Send, ShoppingBag, Sparkles, Store, Tag, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+
+import { askAura } from "@/lib/aura-chat.functions";
 
 interface Message {
   id: string;
