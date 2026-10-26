@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Preço por endereço salvo e economia — 26/10
+- [ ] Consultar preços CJ pelo CEP do endereço salvo na vitrine/detalhe e reutilizar cotação no carrinho, sem anunciar valor não confirmado como final.
+- [ ] Mostrar “Você economizou” somente com descontos reais e verificar navegação autenticada até carrinho.
+
 ## Proteção financeira e correções — 26/10
 - [x] Auditar 15.031 produtos CJ pais, comparar quatro custos oficiais e zerar itens abaixo do custo após comissão; piso por trigger protege novas alterações e checkout exige cotação com margem. Pedido real sem cobrança criado/cancelado com estoque restaurado. Taxas Mercado Pago e impostos externos não verificados; não garantir lucro líquido.
 - [x] Substituir preferência de checkout por Pix direto com CPF, QR/copia-cola e reconciliação protegida; API confirmou Pix ativo e testes passaram, admin permanece grátis.
