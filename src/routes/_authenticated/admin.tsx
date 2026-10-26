@@ -38,6 +38,7 @@ import {
 } from "@/lib/dropi.functions";
 import { getMercadoPagoConfiguration, saveMercadoPagoConfiguration } from "@/lib/payments.functions";
 import { getAudienceStats } from "@/lib/audience.functions";
+import { AudienceAccountsDialog } from "@/components/admin/audience-accounts-dialog";
 
 // Funções de servidor que salvam direto no banco com permissão total de administrador (sem travar no RLS)
 const setProductShippingAdmin = createServerFn({ method: "POST" })
@@ -98,6 +99,7 @@ function AdminPage() {
   const testDropiConnection = useServerFn(testDropiAdminConnection);
   const importDropiProducts = useServerFn(importDropiAdminProducts);
   const getAudience = useServerFn(getAudienceStats);
+  const [accountsOpen, setAccountsOpen] = useState(false);
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -324,14 +326,15 @@ function AdminPage() {
                     <Activity className="h-3.5 w-3.5" /> Atualiza automaticamente a cada 10 segundos
                   </p>
                 </section>
-                <section className="surface-card p-5">
+                <button type="button" onClick={() => setAccountsOpen(true)} className="surface-card p-5 text-left transition hover:ring-2 hover:ring-primary/40">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-muted-foreground">Total de contas criadas</p>
                     <Users className="h-5 w-5 text-primary" />
                   </div>
                   <p className="mt-2 font-display text-4xl font-bold tabular-nums">{audience?.totalAccounts ?? 0}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Todos os cadastros da plataforma</p>
-                </section>
+                  <p className="mt-1 text-xs text-primary">Toque para ver nomes e e-mails</p>
+                </button>
+                <AudienceAccountsDialog open={accountsOpen} onOpenChange={setAccountsOpen} />
                 <section className="surface-card p-5">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-muted-foreground">Novos cadastros hoje</p>
