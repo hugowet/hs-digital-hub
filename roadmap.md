@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Entrega estimada e boleto — 26/10
+- [ ] Exibir intervalo de chegada baseado no prazo real do serviço cotado e identificar origem internacional sem inventar prazos.
+- [ ] Adicionar boleto Mercado Pago ao checkout, preservando cobrança por loja e confirmação segura; testar sem cobrar dados fictícios.
+
 ## Preço por endereço salvo e economia — 26/10
 - [x] Consultar preços CJ pelo CEP do endereço salvo na vitrine/detalhe e reutilizar cotação válida de mesmos itens no carrinho; mudanças exigem aceite explícito, sem preço final inventado. Teste real: R$123,68 na vitrine, detalhe e carrinho.
 - [x] Mostrar “Você economizou” somente com preços anteriores registrados sob condições comparáveis; referências CJ sem envio confirmado excluídas. 17 testes passaram; fluxo autenticado e apresentação no celular verificados, sem cobrança.
