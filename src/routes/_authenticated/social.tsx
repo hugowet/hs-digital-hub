@@ -150,6 +150,29 @@ function HSSocialPage() {
   const profilePhotoRef = useRef<HTMLInputElement | null>(null);
   const end = useRef<HTMLDivElement | null>(null);
 
+  // Native back button closes the open chat/group/story first, then leaves HS Social.
+  const panelOpen = !!(roomId || groupId || storyView);
+  const pushedRef = useRef(false);
+  useEffect(() => {
+    if (panelOpen && !pushedRef.current) {
+      window.history.pushState({ ...(window.history.state || {}), hsSocialPanel: true }, "");
+      pushedRef.current = true;
+    } else if (!panelOpen && pushedRef.current) {
+      pushedRef.current = false;
+      if (window.history.state?.hsSocialPanel) window.history.back();
+    }
+  }, [panelOpen]);
+  useEffect(() => {
+    const onPop = () => {
+      if (pushedRef.current) {
+        pushedRef.current = false;
+        setRoomId(null); setGroupId(null); setStoryView(null);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   const admin = useQuery({ queryKey: ["social-admin", user.id], queryFn: async () => {
     const result = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
     if (result.error) throw result.error;
