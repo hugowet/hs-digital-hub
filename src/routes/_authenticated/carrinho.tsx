@@ -15,7 +15,8 @@ import {
   Zap,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { SiteFooter } from "@/components/site-footer";
@@ -32,6 +33,8 @@ import { quoteMarketplaceShipping } from "@/lib/shipping.functions";
 import { getMyCoupons } from "@/lib/games.functions";
 import { getFirstPurchaseShippingEligibility } from "@/lib/checkout.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { useDeliveryAddress } from "@/lib/delivery-context";
+import { cartSavings, quotePriceChanged } from "@/lib/cart-savings";
 
 export const Route = createFileRoute("/_authenticated/carrinho")({
   staticData: { sitemap: false },
@@ -111,6 +114,15 @@ function CartPage() {
   const loadCoupons = useServerFn(getMyCoupons);
   const loadFirstPurchaseEligibility = useServerFn(getFirstPurchaseShippingEligibility);
   const groups = groupByStore(items);
+  const delivery = useDeliveryAddress();
+  const addressLoaded = useRef(false);
+  const quoteRequest = useRef(0);
+  const [confirmedRequest, setConfirmedRequest] = useState("");
+  const [priceChangeAccepted, setPriceChangeAccepted] = useState(true);
+  const [clock, setClock] = useState(Date.now());
+  const requestKey = JSON.stringify([items.filter((item) => item.productType !== "digital")
+    .map((item) => [item.productId, item.quantity]).sort(), postalCodeKey()]);
+  function postalCodeKey() { return postalCode.replace(/\D/g, ""); }
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -135,6 +147,7 @@ function CartPage() {
         embeddedFreeShipping?: boolean;
         deliveryDaysMin: number | null;
         deliveryDaysMax: number | null;
+        expiresAt: string;
       }>;
     }>
   >([]);
@@ -205,34 +218,59 @@ function CartPage() {
   const embeddedShipping = selectedOptions.some((option) => option.embeddedFreeShipping);
   const firstPurchaseMargin = firstPurchaseEligible && !embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? 10 : 0;
   const totalPedido = Math.round((subtotalProdutos + valorFreteCobrado + valorSeguro + firstPurchaseMargin) * 100) / 100;
+  const hasPhysicalItems = items.some((item) => item.productType !== "digital");
+  const quotesReady = !hasPhysicalItems || (confirmedRequest === requestKey && selectedOptions.length === groups.filter((group) => group.items.some((item) => item.productType !== "digital")).length
+    && selectedOptions.every((option) => Date.parse(option.expiresAt) > clock) && !quoting);
+  const { data: referencePrices = [] } = useQuery({
+    queryKey: ["cart-reference-prices", items.map((item) => item.productId).sort().join(",")],
+    enabled: items.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("products").select("id,compare_at_price,supplier")
+        .in("id", items.map((item) => item.productId));
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 60_000,
+  });
+  const economizou = cartSavings(items.map((item) => {
+    const recorded = referencePrices.find((entry) => entry.id === item.productId);
+    const quoted = pricedItems.find((entry) => entry.product_id === item.productId && entry.quantity === item.quantity);
+    return { quantity: item.quantity, price: quoted ? Number(quoted.unit_price) : item.price,
+      supplier: recorded?.supplier ?? item.supplier, compareAtPrice: recorded?.compare_at_price };
+  }));
 
   useEffect(() => {
     if (items.length > 0) void trackCheckoutAbandonment(items);
   }, [items]);
 
   useEffect(() => {
-    supabase
-      .from("user_addresses")
-      .select("recipient_name,phone,street_address,city,state,postal_code,complement")
-      .eq("is_default", true)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
+    const data = delivery.address;
+    if (!data || addressLoaded.current) return;
+    addressLoaded.current = true;
         setName(data.recipient_name ?? "");
         setPhone(data.phone ?? "");
         setAddress(`${data.street_address ?? ""}${data.complement ? `, ${data.complement}` : ""}`);
         setCity(data.city ?? "");
         setState(data.state ?? "");
         setPostalCode(data.postal_code ?? "");
-      });
-  }, []);
+  }, [delivery.address]);
 
   useEffect(() => {
-    if (postalCode.replace(/\D/g, "").length === 8 && items.length > 0) {
-      void calculateShipping();
-    }
+    quoteRequest.current += 1;
+    setConfirmedRequest("");
+    setQuotes([]);
+    setSelectedQuotes({});
+    if (postalCode.replace(/\D/g, "").length !== 8 || !hasPhysicalItems) { setQuoting(false); return; }
+    setQuoting(true);
+    const timer = setTimeout(() => void calculateShipping(), 350);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, postalCode]);
+  }, [requestKey]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   async function calculateShipping(customCep?: string) {
     const rawCep = (customCep ?? postalCode).replace(/\D/g, "");
@@ -243,6 +281,8 @@ function CartPage() {
     const physicalItems = items.filter((i) => i.productType !== "digital");
     if (physicalItems.length === 0) return;
 
+    const request = ++quoteRequest.current;
+    const key = requestKey;
     setQuoting(true);
     setQuotes([]);
     setSelectedQuotes({});
@@ -254,7 +294,16 @@ function CartPage() {
         },
       });
 
+      if (request !== quoteRequest.current) return;
+      const confirmedItems = quotesRes.flatMap((group) => group.options[0]?.itemPrices ?? []);
+      const priceChanged = physicalItems.some((item) => {
+        const confirmed = confirmedItems.find((entry) => entry.product_id === item.productId && entry.quantity === item.quantity);
+        return confirmed && quotePriceChanged(item.price, Number(confirmed.unit_price));
+      });
+      setPriceChangeAccepted(!priceChanged);
       setQuotes(quotesRes as any);
+      setConfirmedRequest(key);
+      setClock(Date.now());
 
       const defaults: Record<string, string> = {};
       for (const group of quotesRes as any) {
@@ -263,11 +312,11 @@ function CartPage() {
         }
       }
       setSelectedQuotes(defaults);
-      toast.success("Opções de envio calculadas com sucesso!");
+      if (priceChanged) toast.info("O preço mudou para as condições atuais. Confira o novo total antes de continuar.");
     } catch (err: any) {
-      toast.error(err?.message || "Não foi possível calcular o frete para este CEP.");
+      if (request === quoteRequest.current) toast.error(err?.message || "Não foi possível calcular o frete para este CEP.");
     } finally {
-      setQuoting(false);
+      if (request === quoteRequest.current) setQuoting(false);
     }
   }
 
@@ -280,8 +329,8 @@ function CartPage() {
         toast.error("Preencha todos os campos do endereço de entrega.");
         return;
       }
-      if (quotes.length === 0) {
-        toast.error("Calcule o frete informando seu CEP antes de continuar.");
+      if (!quotesReady || !priceChangeAccepted) {
+        toast.error(!priceChangeAccepted ? "Confirme o novo preço antes de continuar." : "Confirme novamente o preço e envio para continuar.");
         return;
       }
     }
@@ -579,6 +628,9 @@ function CartPage() {
               <h3 className="text-sm font-bold border-b pb-2">Resumo do Pedido</h3>
 
               <div className="space-y-1.5 text-xs">
+                <div data-testid="cart-savings" className="flex items-center justify-between gap-2 rounded-md bg-primary/5 p-2 font-semibold text-primary">
+                  <span>Você economizou</span><span>{brl(economizou)}</span>
+                </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Subtotal produtos</span>
                   <span>{brl(subtotalProdutos)}</span>
@@ -627,11 +679,20 @@ function CartPage() {
                 </div>
               </div>
 
+              {!priceChangeAccepted && quotesReady && <div role="alert" className="space-y-2 text-xs text-muted-foreground">
+                <p>O preço foi atualizado para o endereço, os itens ou a validade atual da cotação. Confira o total.</p>
+                <Button variant="outline" size="sm" onClick={() => setPriceChangeAccepted(true)}>Aceitar novo total</Button>
+              </div>}
+              {hasPhysicalItems && !quotesReady && !quoting && quotes.length > 0 && <div role="alert" className="space-y-2 text-xs text-muted-foreground">
+                <p>A cotação venceu. Confirme o preço novamente antes de pagar.</p>
+                <Button variant="outline" size="sm" onClick={() => void calculateShipping()}>Atualizar cotação</Button>
+              </div>}
+
               <Button
                 size="lg"
                 className="w-full font-bold mt-4 shadow-md"
                 onClick={handleCheckout}
-                disabled={submitting || quoting}
+                disabled={submitting || quoting || !quotesReady || !priceChangeAccepted}
               >
                 {submitting ? (
                   <>
