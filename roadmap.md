@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## Entrega estimada e boleto — 26/10
+- [ ] Verificar Alelo alimentação: oferecer somente com credenciamento e integração compatível confirmados.
 - [ ] Exibir intervalo de chegada baseado no prazo real do serviço cotado e identificar origem internacional sem inventar prazos.
 - [ ] Adicionar boleto Mercado Pago ao checkout, preservando cobrança por loja e confirmação segura; testar sem cobrar dados fictícios.
 
