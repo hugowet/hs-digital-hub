@@ -689,7 +689,62 @@ function ProductDetailPage() {
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" /> Adicionar ao Carrinho
                 </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setSellerChatOpen(true)}
+                  className="w-full h-11 text-sm font-semibold rounded-xl text-muted-foreground hover:text-foreground"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" /> Fale com o vendedor
+                </Button>
               </div>
+
+              {/* Conversa direta com o vendedor sobre este produto */}
+              <Dialog open={sellerChatOpen} onOpenChange={setSellerChatOpen}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Fale com o vendedor</DialogTitle>
+                  </DialogHeader>
+                  <form
+                    className="space-y-3"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const body = sellerMessage.trim();
+                      if (!body || sendingSellerMessage) return;
+                      setSendingSellerMessage(true);
+                      try {
+                        const { data: authData } = await supabase.auth.getUser();
+                        if (!authData.user) {
+                          toast.info("Entre na sua conta para falar com o vendedor.");
+                          setSellerChatOpen(false);
+                          navigate({ to: "/auth" });
+                          return;
+                        }
+                        await sendToSeller({ data: { productId, body } });
+                        toast.success("Mensagem enviada! O vendedor responde pelo painel dele.");
+                        setSellerMessage("");
+                        setSellerChatOpen(false);
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : "Não foi possível enviar a mensagem.");
+                      } finally {
+                        setSendingSellerMessage(false);
+                      }
+                    }}
+                  >
+                    <Textarea
+                      value={sellerMessage}
+                      onChange={(e) => setSellerMessage(e.target.value)}
+                      placeholder="Tire sua dúvida sobre tamanho, cor, prazo de entrega..."
+                      maxLength={2000}
+                      rows={4}
+                      required
+                    />
+                    <Button type="submit" className="w-full" disabled={!sellerMessage.trim() || sendingSellerMessage}>
+                      <Send className="h-4 w-4 mr-2" />
+                      {sendingSellerMessage ? "Enviando..." : "Enviar mensagem"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>
