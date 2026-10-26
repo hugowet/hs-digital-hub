@@ -9,6 +9,7 @@ import { useCart } from "@/lib/cart";
 import type { Product } from "@/lib/catalog";
 import { supabase } from "@/integrations/supabase/client";
 import { catalogDisplayPrice } from "@/lib/product-price";
+import { useCjPrice } from "@/lib/use-cj-price";
 
 // Faixas de desconto conforme solicitado: 5, 6, 7, 12, 22, 35, 50, 66, 71%
 export const DISCOUNT_TIERS = [5, 6, 7, 12, 22, 35, 50, 66, 71] as const;
@@ -147,25 +148,29 @@ export function ProductCard({
     product.category?.includes("digital") ||
     product.category?.includes("cursos");
 
-  const price = catalogDisplayPrice(product);
+  const isCj = product.supplier === "cj" && !isDigital;
+  const delivery = useCjPrice(product.id, 1, isCj, true);
+  const price = delivery.price ?? catalogDisplayPrice(product);
+  const confirmed = !isCj || delivery.price !== null;
 
   // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
-  const discountPercent = getProductDiscountPercent(product.id);
+  const discountPercent = !isCj && Number(product.compare_at_price) > price
+    ? Math.round((1 - price / Number(product.compare_at_price)) * 100) : 0;
   const rawOriginal = product.originalPrice ?? product.compare_at_price;
   const originalPrice =
     rawOriginal && Number(rawOriginal) > price
       ? Number(rawOriginal)
-      : Math.round((price / (1 - discountPercent / 100)) * 100) / 100;
+      : null;
 
   const priceParts = formatSplitPrice(price);
   const installment = getInstallmentDetails(price);
   const soldCount =
     product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
 
-  const isFreeShipping = price >= 89.90 || isDigital;
+  const isFreeShipping = isCj ? delivery.embeddedFreeShipping : price >= 89.90 || isDigital;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
+    <article ref={delivery.ref} data-product-id={product.id} className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
       {/* Imagem do Produto */}
       <div className="relative aspect-square max-h-56 w-full overflow-hidden bg-muted/20">
         {product.image_url ? (
@@ -220,33 +225,36 @@ export function ProductCard({
         {/* Bloco de Preços no Estilo Mercado Livre */}
         <div className="mt-auto pt-3">
           {/* Linha 1: [XX% OFF] + Preço Riscado */}
-          <div className="flex items-center gap-1.5 leading-none">
+          {discountPercent > 0 && originalPrice && <div className="flex items-center gap-1.5 leading-none">
             <span className="rounded bg-[#00a650] px-1.5 py-0.5 text-[10px] font-bold text-white">
               {discountPercent}% OFF
             </span>
             <span className="text-xs text-muted-foreground line-through">
               {brl(originalPrice)}
             </span>
-          </div>
+          </div>}
 
           {/* Linha 2: Preço em destaque com centavos sobrescritos */}
-          {product.supplier === "cj" && <p className="mt-1 text-[11px] text-muted-foreground">A partir de</p>}
-          <div className="mt-1 flex items-start leading-none text-foreground">
+          {isCj && !confirmed && <p className="mt-1 min-h-10 text-xs text-muted-foreground">
+            {delivery.loading ? "Confirmando preço…" : !delivery.userId ? "Entre para ver o preço no seu endereço" : !delivery.postalCode ? "Salve seu endereço para ver o preço" : "Entrega não confirmada"}
+          </p>}
+          {confirmed && <div data-testid="product-price" className="mt-1 flex items-start leading-none text-foreground">
             <span className="text-xl md:text-2xl font-normal tracking-tight">
               R$ {priceParts.reais}
             </span>
             <span className="text-[11px] font-semibold tracking-tight ml-0.5">
               {priceParts.centavos}
             </span>
-          </div>
+          </div>}
 
           {/* Linha 3: Parcelamento */}
-          <p className="mt-1.5 text-xs text-foreground/80 font-normal leading-tight">
+          {confirmed && <p className="mt-1.5 text-xs text-foreground/80 font-normal leading-tight">
             {installment.text}
-          </p>
+          </p>}
+          {isCj && confirmed && <p className="mt-1 text-[11px] text-muted-foreground">Entrega no CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")}</p>}
 
           {/* Linha 4: Frete Grátis ou com Desconto */}
-          {!isDigital && (
+          {!isDigital && confirmed && (
             <div className="mt-1 flex items-baseline gap-1 text-xs">
               {isFreeShipping ? (
                 <>
@@ -258,7 +266,7 @@ export function ProductCard({
               ) : (
                 <>
                   <span className="rounded bg-[#3483fa]/10 px-1.5 py-0.5 text-[10px] font-extrabold text-[#3483fa]">
-                    {Math.max(5, discountPercent - 2)}% no frete
+                    {isCj ? `Frete ${brl(delivery.shipping ?? 0)}` : "Entrega"}
                   </span>
                   <span className="text-[11px] text-muted-foreground">
                     Calculado no seu CEP
@@ -297,6 +305,8 @@ export function ProductCard({
                   productId: product.id,
                   title: displayTitle,
                   price: price,
+                  supplier: product.supplier,
+                  compareAtPrice: product.compare_at_price,
                   imageUrl: product.image_url ?? undefined,
                   stock: product.stock ?? 99,
                   freeShipping: isFreeShipping,

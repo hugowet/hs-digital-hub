@@ -40,6 +40,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { catalogDisplayPrice } from "@/lib/product-price";
+import { useCjPrice } from "@/lib/use-cj-price";
 import { confirmCjOption } from "@/lib/cj-option.functions";
 import { sendSellerMessage } from "@/lib/seller-chat.functions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -259,14 +260,16 @@ function ProductDetailPage() {
   }, [product?.stock]);
 
   const isCj = product?.supplier === "cj";
-  const price = catalogDisplayPrice(product);
+  const delivery = useCjPrice(productId, quantity, isCj);
+  const price = delivery.price ?? catalogDisplayPrice(product);
+  const priceConfirmed = !isCj || delivery.price !== null;
   const rawOriginal = product?.compare_at_price;
   const originalPrice =
     rawOriginal && Number(rawOriginal) > price
       ? Number(rawOriginal)
-      : Math.round((price / 0.68) * 100) / 100;
+      : null;
 
-  const discountPercent = Math.max(5, Math.round(((originalPrice - price) / originalPrice) * 100));
+  const discountPercent = !isCj && originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
   const priceParts = formatSplitPrice(price);
   const maxInstallments = Math.min(10, Math.max(2, Math.floor(price / 15)));
   const installmentValue = price / maxInstallments;
@@ -379,7 +382,11 @@ function ProductDetailPage() {
       navigate({ to: "/auth", search: { reason: "login-required" } });
       return;
     }
-    // Botão nunca fica travado: usa o preço da vitrine e o frete é confirmado no checkout.
+    if (isCj && !priceConfirmed) {
+      toast.info(delivery.postalCode ? "Aguarde a confirmação do preço para seu endereço." : "Salve seu endereço na sua conta para confirmar o preço.");
+      if (!delivery.postalCode) navigate({ to: "/conta" });
+      return;
+    }
     markAsPurchasedOrInCart(product.id);
 
     add(
@@ -390,9 +397,14 @@ function ProductDetailPage() {
         title: product.supplierOptions?.find((option) => option.productId === productId)?.label
           ? `${product.title} — ${product.supplierOptions.find((option) => option.productId === productId)?.label}` : product.title,
         price,
+        supplier: product.supplier,
+        compareAtPrice: product.compare_at_price,
+        quotedPostalCode: isCj ? delivery.postalCode : undefined,
+        quotedExpiresAt: delivery.expiresAt,
+        quotedShipping: delivery.shipping ?? undefined,
         imageUrl: product.image_url ?? undefined,
         productType: product.product_type || "physical",
-        freeShipping: isDigital || price >= 89.90,
+        freeShipping: isCj ? delivery.embeddedFreeShipping : isDigital || price >= 89.90,
         stock: maxAvailableStock,
       },
       quantity
@@ -604,28 +616,38 @@ function ProductDetailPage() {
 
                 {/* Bloco de Preço */}
                 <div className="mt-4 rounded-xl bg-muted/20 p-4 border border-border/80">
-                  <div className="flex items-center gap-2 leading-none">
+                  {discountPercent > 0 && originalPrice && <div className="flex items-center gap-2 leading-none">
                     <span className="rounded bg-[#00a650] px-1.5 py-0.5 text-[11px] font-bold text-white">
                       {discountPercent}% OFF
                     </span>
                     <span className="text-xs text-muted-foreground line-through">
                       {brl(originalPrice)}
                     </span>
-                  </div>
+                  </div>}
 
-                  <div className="mt-2 flex items-baseline gap-1">
-                    {isCj && <span className="text-xs text-muted-foreground">A partir de</span>}
+                  {!priceConfirmed && <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>{delivery.loading ? "Confirmando preço para seu endereço…" : !delivery.userId ? "Entre na sua conta para ver o preço de entrega." : !delivery.postalCode ? "Salve seu endereço para confirmar o preço." : delivery.error || "Entrega não confirmada."}</p>
+                    {!delivery.loading && <Button variant="outline" size="sm" onClick={() => {
+                      if (!delivery.userId) navigate({ to: "/auth", search: { reason: "login-required" } });
+                      else if (!delivery.postalCode) navigate({ to: "/conta" });
+                      else void delivery.retry();
+                    }}>{!delivery.userId ? "Entrar" : !delivery.postalCode ? "Salvar endereço" : "Tentar novamente"}</Button>}
+                  </div>}
+                  {priceConfirmed && <div data-testid="detail-price" className="mt-2 flex items-baseline gap-1">
                     <span className="text-sm font-semibold text-foreground">R$</span>
                     <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
                       {priceParts.reais}
                     </span>
                     <span className="text-sm font-semibold text-foreground">{priceParts.centavos}</span>
-                  </div>
+                  </div>}
 
-                  <p className="mt-1 text-xs text-emerald-600 font-medium flex items-center gap-1">
+                  {priceConfirmed && <p className="mt-1 text-xs text-emerald-600 font-medium flex items-center gap-1">
                     <Zap className="h-3.5 w-3.5 fill-emerald-600" />
                     em {maxInstallments}x de {brl(installmentValue)} sem juros
-                  </p>
+                  </p>}
+                  {isCj && priceConfirmed && <p className="mt-2 text-xs text-muted-foreground">
+                    CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")} · {delivery.embeddedFreeShipping ? "Frete grátis" : `Frete ${brl(delivery.shipping ?? 0)}`} · Envio Express
+                  </p>}
                 </div>
 
                 {product.supplierOptions?.length > 1 && (
@@ -680,6 +702,7 @@ function ProductDetailPage() {
               <div className="mt-6 space-y-2.5">
                 <Button
                   onClick={() => handleAddToCart(true)}
+                  disabled={isCj && Boolean(delivery.postalCode) && !priceConfirmed}
                   className="w-full h-12 text-sm font-bold bg-[#3483fa] hover:bg-[#2968c8] text-white shadow-md rounded-xl"
                 >
                   <Zap className="h-4 w-4 mr-2" /> Comprar Agora
@@ -687,6 +710,7 @@ function ProductDetailPage() {
                 <Button
                   variant="outline"
                   onClick={() => handleAddToCart(false)}
+                  disabled={isCj && Boolean(delivery.postalCode) && !priceConfirmed}
                   className="w-full h-12 text-sm font-bold rounded-xl border-primary/40 text-primary hover:bg-primary/5"
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" /> Adicionar ao Carrinho

@@ -12,6 +12,11 @@ export type CartItem = {
   productType: string;
   stock: number;
   quantity: number;
+  supplier?: string | null;
+  compareAtPrice?: number | null;
+  quotedPostalCode?: string;
+  quotedExpiresAt?: string;
+  quotedShipping?: number;
 };
 
 type CartContextValue = {
@@ -69,7 +74,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           if (found) {
             return prev.map((i) =>
               i.productId === item.productId
-                ? { ...i, quantity: Math.min(i.quantity + quantity, i.stock) }
+                ? { ...i, ...item, quantity: Math.min(i.quantity + quantity, i.stock) }
                 : i,
             );
           }
