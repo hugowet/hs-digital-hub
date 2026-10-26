@@ -1,5 +1,11 @@
 # HS Digital — MVP
 
+## Entrega estimada e boleto — 26/10
+- [x] Verificar Alelo alimentação: não há suporte online confirmado no Mercado Pago; não oferecer como cartão comum. Depende de credenciamento e compras elegíveis de alimentos.
+- [x] Exibir datas estimadas pelos limites cotados, identificar produtos CJ internacionais e remover prazo fixo inventado; projeção CJ em dias corridos explicitamente condicionada ao envio, preparação e alfândega. Detalhe/carrinho reais validados.
+- [x] Adicionar boleto por loja com CPF validado, endereço obrigatório, consulta de método disponível, boleto/código oficial persistidos e reconciliação/webhook; formulário real do pedido validado e pedido cancelado sem cobrança. 22 testes passaram.
+- [ ] Homologar emissão/compensação real do boleto e split: requer pagador com CPF/endereço próprios e conta Mercado Pago elegível; nenhuma cobrança gerada nesta etapa.
+
 ## Preço por endereço salvo e economia — 26/10
 - [x] Consultar preços CJ pelo CEP do endereço salvo na vitrine/detalhe e reutilizar cotação válida de mesmos itens no carrinho; mudanças exigem aceite explícito, sem preço final inventado. Teste real: R$123,68 na vitrine, detalhe e carrinho.
 - [x] Mostrar “Você economizou” somente com preços anteriores registrados sob condições comparáveis; referências CJ sem envio confirmado excluídas. 17 testes passaram; fluxo autenticado e apresentação no celular verificados, sem cobrança.

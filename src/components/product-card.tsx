@@ -10,6 +10,7 @@ import type { Product } from "@/lib/catalog";
 import { supabase } from "@/integrations/supabase/client";
 import { catalogDisplayPrice } from "@/lib/product-price";
 import { useCjPrice } from "@/lib/use-cj-price";
+import { formatDeliveryRange } from "@/lib/delivery-estimate";
 
 // Faixas de desconto conforme solicitado: 5, 6, 7, 12, 22, 35, 50, 66, 71%
 export const DISCOUNT_TIERS = [5, 6, 7, 12, 22, 35, 50, 66, 71] as const;
@@ -202,6 +203,7 @@ export function ProductCard({
               <Package className="h-3 w-3" /> Físico
             </span>
           )}
+          {isCj && <span className="rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">Internacional</span>}
         </div>
       </div>
 
@@ -252,6 +254,7 @@ export function ProductCard({
             {installment.text}
           </p>}
           {isCj && confirmed && <p className="mt-1 text-[11px] text-muted-foreground">Entrega no CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")}</p>}
+          {isCj && confirmed && <p className="mt-1 text-[11px] text-muted-foreground">{formatDeliveryRange(delivery.arrivalRange)}{delivery.arrivalRange ? " · se enviado hoje" : ""}</p>}
 
           {/* Linha 4: Frete Grátis ou com Desconto */}
           {!isDigital && confirmed && (

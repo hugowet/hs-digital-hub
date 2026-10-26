@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { boletoPayer, boletoDetails } from "@/lib/boleto";
 
 const settingsSchema = z.object({
   publicKey: z.string().min(8).max(300),
@@ -171,7 +172,17 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
 const paymentSchema = z.object({
   transactionId: z.string().uuid(),
   origin: z.string().url(),
-  method: z.enum(["pix", "card"]),
+  method: z.enum(["pix", "card", "boleto"]),
+  boleto: z.object({
+    identificationNumber: z.string().transform((value) => value.replace(/\D/g, "")).pipe(z.string().length(11)),
+    firstName: z.string().trim().min(2).max(80), lastName: z.string().trim().min(2).max(100),
+    address: z.object({
+      zipCode: z.string().transform((value) => value.replace(/\D/g, "")).pipe(z.string().length(8)),
+      streetName: z.string().trim().min(2).max(150), streetNumber: z.string().trim().min(1).max(20),
+      neighborhood: z.string().trim().min(2).max(100), city: z.string().trim().min(2).max(100),
+      state: z.string().trim().toUpperCase().regex(/^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/),
+    }),
+  }).optional(),
   pix: z
     .object({
       identificationNumber: z
@@ -200,6 +211,8 @@ type PaymentResponse = {
   payment_method_id?: string;
   date_of_expiration?: string;
   point_of_interaction?: { transaction_data?: { qr_code?: string; qr_code_base64?: string } };
+  transaction_details?: { external_resource_url?: string };
+  barcode?: { content?: string };
 };
 
 type MercadoPagoUser = {
@@ -218,7 +231,7 @@ async function applyPaymentStatus(transactionId: string, payment: PaymentRespons
     _provider_payment_id: String(payment.id),
     _status: payment.status,
     _payment_method: payment.payment_method_id ?? "",
-    _provider_payload: { status_detail: payment.status_detail ?? null },
+    _provider_payload: boletoDetails(payment),
   });
   if (error) throw error;
 }
@@ -275,7 +288,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     const origin = safeOrigin(data.origin);
     const paymentNotificationOrigin =
       origin === "http://localhost:8080" || origin.endsWith(".lovable.app")
-        ? "https://hs-digital-hub.lovable.app"
+        ? "https://hs-digital-marck.lovable.app"
         : origin;
     const { data: transaction, error } = await context.supabase
       .from("payment_transactions")
@@ -288,6 +301,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     if (transaction.provider_payment_id) throw new Error("Este pagamento já foi iniciado.");
     if (data.method === "pix" && !data.pix) throw new Error("Informe o CPF do pagador para gerar o Pix.");
     if (data.method === "card" && !data.card) throw new Error("Dados do cartão ausentes.");
+    if (data.method === "boleto" && !data.boleto) throw new Error("Informe o CPF, nome completo e endereço do pagador para gerar o boleto.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [{ data: account }, { data: settings }] = await Promise.all([
@@ -321,10 +335,10 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
         "O Mercado Pago não permite pagar uma venda para a própria conta. Use uma conta compradora diferente.",
       );
     }
-    const payerCpf = data.pix?.identificationNumber;
+    const payerCpf = data.method === "boleto" ? data.boleto?.identificationNumber : data.pix?.identificationNumber;
     const collectorDocument = collectorUser.identification?.number?.replace(/\D/g, "");
     if (payerCpf && collectorDocument && payerCpf === collectorDocument) {
-      throw new Error("O Mercado Pago não permite gerar Pix usando o CPF do titular da conta vendedora.");
+      throw new Error("O Mercado Pago não permite pagar usando o CPF do titular da conta vendedora.");
     }
 
     const { data: profile } = await context.supabase
@@ -364,6 +378,13 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
         last_name: lastName,
         identification: { type: "CPF", number: data.pix?.identificationNumber },
       };
+    } else if (data.method === "boleto" && data.boleto) {
+      const methods = await mercadoPagoRequest<Array<{ id: string; status: string }>>("/v1/payment_methods", accessToken);
+      if (!methods.some((method) => method.id === "bolbradesco" && method.status === "active")) {
+        throw new Error("Boleto não está disponível na conta Mercado Pago desta loja. Escolha Pix ou cartão.");
+      }
+      body["payment_method_id"] = "bolbradesco";
+      body["payer"] = boletoPayer(email, data.boleto);
     } else if (data.card) {
       body["token"] = data.card.token;
       body["payment_method_id"] = data.card.paymentMethodId;
@@ -393,7 +414,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
         pix_qr_code: qr?.qr_code ?? null,
         pix_qr_code_base64: qr?.qr_code_base64 ?? null,
         payment_expires_at: payment.date_of_expiration ?? (data.method === "pix" ? expiration : null),
-        provider_payload: { status_detail: payment.status_detail ?? null },
+        provider_payload: boletoDetails(payment),
       })
       .eq("id", transaction.id);
     if (updateError) throw updateError;
@@ -405,5 +426,6 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
       qrCode: qr?.qr_code ?? null,
       qrCodeBase64: qr?.qr_code_base64 ?? null,
       expiresAt: payment.date_of_expiration ?? null,
+      boleto: data.method === "boleto" ? boletoDetails(payment) : null,
     };
   });

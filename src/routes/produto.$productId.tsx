@@ -41,6 +41,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { catalogDisplayPrice } from "@/lib/product-price";
 import { useCjPrice } from "@/lib/use-cj-price";
+import { formatDeliveryRange } from "@/lib/delivery-estimate";
 import { confirmCjOption } from "@/lib/cj-option.functions";
 import { sendSellerMessage } from "@/lib/seller-chat.functions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -602,14 +603,14 @@ function ProductDetailPage() {
                 {/* Selo de origem do envio: internacional (CJ) ou nacional */}
                 <div className="mt-2">
                   {(product as any)?.supplier === "cj" ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-600">
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
                       <Truck className="h-3.5 w-3.5" />
-                      Envio internacional ✈️ — prazo médio de 12 a 18 dias úteis
+                      Produto internacional · envio do exterior
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600">
                       <Truck className="h-3.5 w-3.5" />
-                      Envio nacional 🇧🇷 — entrega mais rápida
+                      Produto de loja parceira
                     </span>
                   )}
                 </div>
@@ -648,6 +649,10 @@ function ProductDetailPage() {
                   {isCj && priceConfirmed && <p className="mt-2 text-xs text-muted-foreground">
                     CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")} · {delivery.embeddedFreeShipping ? "Frete grátis" : `Frete ${brl(delivery.shipping ?? 0)}`} · Envio Express
                   </p>}
+                  {isCj && priceConfirmed && <div className="mt-2 text-xs text-muted-foreground" data-testid="delivery-estimate">
+                    <p className="font-semibold text-foreground">{formatDeliveryRange(delivery.arrivalRange)}</p>
+                    {delivery.arrivalRange && <p className="mt-1">Estimativa se enviado hoje, em dias corridos. Preparação e fiscalização aduaneira podem alterar as datas; o prazo começa no envio após o pagamento confirmado.</p>}
+                  </div>}
                 </div>
 
                 {product.supplierOptions?.length > 1 && (
