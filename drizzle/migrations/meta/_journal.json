@@ -358,6 +358,13 @@
       "when": 1793035293815,
       "tag": "0050_catalog_search_ids_definer",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1793035675197,
+      "tag": "0051_open_social_trends_to_all",
+      "breakpoints": true
     }
   ]
 }
