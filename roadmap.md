@@ -1,5 +1,13 @@
 # HS Digital — MVP
 
+## Proteção financeira e correções — 26/10
+- [ ] Auditar preços CJ e proteger margem com custo oficial, frete e comissão; explicar exemplos de R$ 40, 50, 60 e 100.
+- [ ] Corrigir e verificar geração de Pix do Clube HS sem cobrar administradores.
+- [ ] Corrigir seleção de numeração de calçados e roupas; verificar troca real.
+- [ ] Encurtar o banner rotativo da vitrine.
+- [ ] Corrigir visualização das fotos de perfil entre contatos da HS Social.
+- [ ] Implementar notificações de mensagens fora do site; depende de conexão de envio e permissão do destinatário.
+
 ## Ampliar tradução gratuita — 26/10
 - [x] Confirmar MyMemory: 50.000 caracteres/dia com contato válido, conforme página oficial; e-mail autorizado por Hugo.
 - [x] Configurar envio do contato e reserva compartilhada conservadora de 45.000 bytes/dia, preservando cache e sem IA paga; clientes antigos mantêm teto anônimo.
