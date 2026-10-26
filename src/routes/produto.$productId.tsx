@@ -736,14 +736,14 @@ function ProductDetailPage() {
               </h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-2xl font-black text-foreground">
-                  {reviews.length ? (reviews.reduce((sum, rev) => sum + rev.rating, 0) / reviews.length).toFixed(1) : "—"}
+                  {allReviews.length ? (allReviews.reduce((sum, rev) => sum + rev.rating, 0) / allReviews.length).toFixed(1) : "—"}
                 </span>
                 <div className="flex text-amber-500">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <Star key={s} className="h-4 w-4 fill-amber-500" />
                   ))}
                 </div>
-                <span className="text-xs text-muted-foreground">({reviews.length} avaliações)</span>
+                <span className="text-xs text-muted-foreground">({allReviews.length} avaliações)</span>
               </div>
             </div>
 
@@ -850,12 +850,12 @@ function ProductDetailPage() {
           {/* Lista de Avaliações */}
           <div className="mt-6 space-y-4">
             {reviewsError && <p role="alert" className="text-destructive">Não foi possível carregar as avaliações. <Button variant="ghost" onClick={() => reloadReviews()}>Tentar novamente</Button></p>}
-            {!reviewsError && reviews.length === 0 && <p className="text-muted-foreground">Nenhuma avaliação publicada ainda.</p>}
-            {reviews.map((rev) => (
+            {allReviews.map((rev) => (
               <div key={rev.id} className="rounded-xl border border-border/80 bg-card p-4 text-xs sm:text-sm space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-foreground">{rev.author}</span>
+                    {rev.city && <span className="text-[10px] text-muted-foreground">{rev.city}</span>}
                     {rev.verified && (
                       <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded">
                         <BadgeCheck className="h-3 w-3" /> Compra Verificada
