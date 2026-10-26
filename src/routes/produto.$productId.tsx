@@ -614,6 +614,7 @@ function ProductDetailPage() {
                         <Button key={option.productId} size="sm" variant={option.productId === productId ? "default" : "outline"}
                           aria-pressed={option.productId === productId}
                           disabled={option.stock <= 0}
+                          title={option.stock <= 0 ? "Sem estoque confirmado na CJ" : option.label}
                           onClick={() => { setQuantity(1); setSelectedImage(0); navigate({ to: "/produto/$productId", params: { productId: option.productId } }); }}>
                           {option.label}
                         </Button>
@@ -621,6 +622,7 @@ function ProductDetailPage() {
                     </div>
                   </fieldset>
                 )}
+                {isCj && <p className="mt-2 text-xs text-muted-foreground">Opções apagadas estão sem estoque confirmado.</p>}
                 {/* Estoque e Quantidade */}
                 <div className="mt-4 flex items-center justify-between border-y border-border py-3">
                   <span className="text-xs text-muted-foreground">Quantidade:</span>

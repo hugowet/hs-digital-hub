@@ -26,7 +26,12 @@ export const getSocialHome = createServerFn({ method: "GET" }).middleware([requi
     }
     const access = await db.rpc("club_has_access", { _user_id: context.userId });
     if (access.error) throw access.error;
-    return { me: { ...me.data, is_clube_hs: access.data }, people: people.data ?? [], rooms: rooms.data ?? [], stories: storyRows, recentMessages: messages.data ?? [] };
+    // Only profile rows already authorized by the authenticated contact RPC enter signing.
+    const { supabaseAdmin }=await import("@/integrations/supabase/client.server");
+    const {signSocialAvatar}=await import("./social-avatar.server");
+    const contacts=await Promise.all((people.data??[]).map(async person=>({...person,avatar_url:await signSocialAvatar(supabaseAdmin,person)})));
+    const ownAvatar=await signSocialAvatar(supabaseAdmin,me.data);
+    return { me: { ...me.data, avatar_url:ownAvatar, is_clube_hs: access.data }, people: contacts, rooms: rooms.data ?? [], stories: storyRows, recentMessages: messages.data ?? [] };
   });
 
 export const openSocialConversation = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
