@@ -1673,6 +1673,24 @@ export type Database = {
           },
         ]
       }
+      storefront_daily_ranking: {
+        Row: {
+          day: string
+          position: number
+          product_id: string
+        }
+        Insert: {
+          day: string
+          position: number
+          product_id: string
+        }
+        Update: {
+          day?: string
+          position?: number
+          product_id?: string
+        }
+        Relationships: []
+      }
       stores: {
         Row: {
           balance: number
@@ -2741,6 +2759,14 @@ export type Database = {
         Returns: string
       }
       read_trend_pin: { Args: { _video_id: string }; Returns: string }
+      refresh_storefront_daily_ranking: {
+        Args: { p_day?: string }
+        Returns: number
+      }
+      refresh_storefront_daily_ranking_if_missing: {
+        Args: never
+        Returns: number
+      }
       release_expired_marketplace_orders: { Args: never; Returns: number }
       reprice_cj_products_brl: {
         Args: {

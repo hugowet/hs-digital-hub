@@ -316,6 +316,13 @@
       "when": 1792887846023,
       "tag": "0044_social_presence_private_chat_media_admin_premium",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1792992212200,
+      "tag": "0045_precomputed_daily_storefront",
+      "breakpoints": true
     }
   ]
 }
