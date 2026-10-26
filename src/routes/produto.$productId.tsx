@@ -627,17 +627,17 @@ function ProductDetailPage() {
                       {product.supplierOptions.map((option) => (
                         <Button key={option.productId} size="sm" variant={option.productId === productId ? "default" : "outline"}
                           aria-pressed={option.productId === productId}
-                          disabled={checkingOption!==null}
-                          title={option.stock <= 0 ? "Sem estoque confirmado na CJ" : option.label}
-                          onClick={async () => {
-                            setCheckingOption(option.productId);
-                            try {
-                              if(option.stock<=0)await confirmOption({data:{parentId:productId,productId:option.productId}});
-                              setQuantity(1);setSelectedImage(0);await navigate({to:"/produto/$productId",params:{productId:option.productId}});
-                            } catch(error){toast.error(error instanceof Error ? error.message : "Não foi possível confirmar esta opção.");}
-                            finally{setCheckingOption(null);}
+                          title={option.stock <= 0 ? "Estoque será confirmado no checkout" : option.label}
+                          onClick={() => {
+                            // Troca instantânea: navega já e confirma o estoque da CJ em segundo plano.
+                            setQuantity(1);
+                            setSelectedImage(0);
+                            if (option.stock <= 0) {
+                              void confirmOption({ data: { parentId: productId, productId: option.productId } }).catch(() => {});
+                            }
+                            void navigate({ to: "/produto/$productId", params: { productId: option.productId } });
                           }}>
-                          {checkingOption===option.productId ? "Confirmando…" : option.label}
+                          {option.label}
                         </Button>
                       ))}
                     </div>
