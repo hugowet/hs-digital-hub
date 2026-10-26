@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Ampliar tradução gratuita — 26/10
+- [ ] Confirmar cotas oficiais de um tradutor gratuito com maior capacidade para títulos e fichas CJ.
+- [ ] Configurar a opção escolhida, mantendo cache, limites compartilhados e nenhuma alternativa de IA paga; depende do cadastro ou contato exigido pelo serviço.
+- [ ] Testar tradução real de título e ficha antes de ativar o processamento ampliado.
+
 ## HS Social — presença e mensagens — 25/10
 - [x] Acesso premium gratuito permanente via papel administrador; RPC real e página do Clube validados, cobrança bloqueada nos handlers.
 - [x] Notificações persistidas e sino dentro da HS Social; teste de foto gerou exatamente um aviso ao destinatário, removido após teste. Listener existente permanece único.
