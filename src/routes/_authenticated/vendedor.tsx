@@ -364,7 +364,7 @@ function SellerCenterPage() {
 
         {/* Aba de Fornecedores */}
         <TabsContent value="suppliers" className="pt-4">
-          <CjSupplierPanel storeId={store.id} />
+          {isPlatformOwner ? <CjSupplierPanel storeId={store.id} /> : null}
         </TabsContent>
 
         {/* Aba Importador Amazon */}
