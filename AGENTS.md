@@ -43,3 +43,4 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Radio shares one provider; Club suppresses HS announcements. Signed API-verified Pix intents grant monthly access; browser profile writes cannot grant membership. Installability uses a manifest and dismissible home prompt, without offline caching.
 - Sitemap follows explicit route decisions and paginated public reads; private subtrees are excluded and failures never emit partial XML.
 - Search schema omits destination-unconfirmed CJ offers and invented review statistics.
+- The Home "Todos" daily order is precomputed once per Boa Vista day into a ranking table by a scheduled SQL job; the public RPC only pages that table, because computing it per request over the full catalog timed out.
