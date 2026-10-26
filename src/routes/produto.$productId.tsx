@@ -41,6 +41,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { catalogDisplayPrice } from "@/lib/product-price";
 import { confirmCjOption } from "@/lib/cj-option.functions";
+import { sendSellerMessage } from "@/lib/seller-chat.functions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/lib/cart";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { productQueryOptions } from "@/lib/product-query";
@@ -163,7 +166,10 @@ function ProductDetailPage() {
   const navigate = useNavigate();
   const { add } = useCart();
   const confirmOption=useServerFn(confirmCjOption);
-  const [checkingOption,setCheckingOption]=useState<string|null>(null);
+  const sendToSeller=useServerFn(sendSellerMessage);
+  const [sellerChatOpen,setSellerChatOpen]=useState(false);
+  const [sellerMessage,setSellerMessage]=useState("");
+  const [sendingSellerMessage,setSendingSellerMessage]=useState(false);
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
