@@ -29,6 +29,7 @@ export function AuraChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -107,7 +108,7 @@ export function AuraChatWidget() {
 
   const handleSend = (textToSend?: string) => {
     const query = (textToSend || input).trim();
-    if (!query) return;
+    if (!query || isThinking) return;
 
     const userTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -142,7 +143,7 @@ export function AuraChatWidget() {
         q.includes("hugo")
       ) {
         responseText =
-          "Tanto a plataforma HS Digital quanto eu, a Aura, fomos idealizados e criados por Hugo Rogerio! Ele projetou cada detalhe desse ecossistema para oferecer tecnologia de ponta, segurança máxima e a melhor experiência de compras e vendas online.";
+          "Tanto a plataforma HS Digital quanto eu, a Aura, fomos idealizados e criados por Hugo Rogério, nosso fundador! Ele projetou cada detalhe desse ecossistema para oferecer tecnologia de ponta, segurança máxima e a melhor experiência de compras e vendas online.";
         actionTag = "Fundador & Idealizador";
       }
       // Dúvidas de Compras / Rastreio / Pedidos
