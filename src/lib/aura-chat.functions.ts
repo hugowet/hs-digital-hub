@@ -45,13 +45,14 @@ export const askAura = createServerFn({ method: "POST" })
       message: data.message.trim().slice(0, 1000),
       history: Array.isArray(data.history)
         ? data.history
-            .filter(
-              (m) =>
+            .filter((m) => {
+              return (
                 m &&
                 (m.role === "user" || m.role === "assistant") &&
                 typeof m.content === "string" &&
-                m.content.trim(),
-            )
+                m.content.trim().length > 0
+              );
+            })
             .slice(-10)
             .map((m) => ({ role: m.role, content: m.content.trim().slice(0, 1000) })),
         : [],
