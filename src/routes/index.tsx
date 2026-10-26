@@ -383,7 +383,7 @@ function Home() {
       if (price < selectedRange.min || price > selectedRange.max) return false;
       return true;
     });
-  }, [products, search.range]);
+  }, [personalized, search.range]);
 
   const activeCategory = activeCategories.find((category) => category.slug === search.category);
   const activeRange = PRICE_RANGES.find((item) => item.id === search.range);
