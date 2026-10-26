@@ -230,10 +230,10 @@ function SellerCenterPage() {
       <Shell>
         <div className="mx-auto max-w-md py-12 text-center">
           <Clock className="mx-auto h-12 w-12 text-primary" />
-          <h1 className="mt-4 text-xl font-bold">Solicitação em análise</h1>
+          <h1 className="mt-4 text-xl font-bold">Loja criada! Aguardando análise do time HS Digital</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Sua loja <strong>{store.name}</strong> foi enviada para aprovação. Assim que o administrador aprovar,
-            você já pode cadastrar produtos e vender com a mesma conta.
+            Sua loja <strong>{store.name}</strong> foi criada e está aguardando análise do time HS Digital.
+            Assim que for aprovada, você poderá conectar seu Mercado Pago e começar a cadastrar produtos.
           </p>
         </div>
       </Shell>
@@ -874,7 +874,7 @@ function SellerRequestForm({ userId, onCreated }: { userId: string | null; onCre
         status: "pending",
       });
       if (error) throw error;
-      toast.success("Solicitação enviada! Aguarde a aprovação do administrador.");
+      toast.success("Loja criada! Aguardando análise do time HS Digital.");
       onCreated();
     } catch (err: any) {
       toast.error(err?.message || "Não foi possível enviar a solicitação.");
