@@ -761,7 +761,7 @@ export function HSTrends() {
           {processedFeed.length === 0 && (
             <div className="h-full w-full flex flex-col items-center justify-center gap-3 text-center px-8">
               <VideoIcon className="w-12 h-12 text-slate-600" />
-              <p className="text-sm text-slate-400">Nenhum vídeo publicado ainda. Assine o Clube HS e seja o primeiro a postar!</p>
+              <p className="text-sm text-slate-400">Nenhum vídeo publicado ainda. Seja o primeiro a postar!</p>
               <Link to="/clube-hs" className="text-amber-400 font-bold text-sm underline">Conhecer o Clube HS</Link>
             </div>
           )}

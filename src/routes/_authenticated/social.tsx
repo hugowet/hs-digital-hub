@@ -349,10 +349,6 @@ function HSSocialPage() {
   }
 
   async function toggleRecording() {
-    if (!home.data?.me.is_clube_hs) {
-      toast.info("Assine o Clube HS para enviar áudios.", { action: { label: "Ver plano", onClick: () => { window.location.href = "/clube-hs"; } } });
-      return;
-    }
     if (recording) {
       recorderRef.current?.stop();
       return;
