@@ -69,6 +69,23 @@ export const createClubeHsSubscription = createServerFn({ method: "POST" })
     return { initPoint: mpResponse.init_point };
   });
 
+export const reconcileClubeHsPix=createServerFn({method:"POST"}).middleware([requireSupabaseAuth])
+ .inputValidator(input=>z.object({intentId:z.string().uuid()}).parse(input))
+ .handler(async({data,context})=>{
+   const intent=await context.supabase.from("clube_hs_pix_payments").select("id,provider_payment_id,status").eq("id",data.intentId).eq("user_id",context.userId).single();
+   if(intent.error || !intent.data?.provider_payment_id)throw new Error("Pix não encontrado.");
+   if(intent.data.status==='approved')return {status:'approved'};
+   const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+   const {decryptSecret,mercadoPagoRequest}=await import("@/lib/mercado-pago.server");
+   const settings=await supabaseAdmin.from("payment_provider_settings").select("access_token_encrypted").eq("provider","mercadopago").single();
+   if(!settings.data)throw new Error("Pagamento indisponível.");
+   const payment=await mercadoPagoRequest<any>(`/v1/payments/${intent.data.provider_payment_id}`,await decryptSecret(settings.data.access_token_encrypted));
+   if(payment.external_reference!==`club-pix:${data.intentId}` || String(payment.id)!==intent.data.provider_payment_id || payment.payment_method_id!=='pix')throw new Error("Pagamento não corresponde ao Pix.");
+   const apply=await supabaseAdmin.rpc("apply_club_pix_payment",{_id:data.intentId,_payment_id:String(payment.id),_status:payment.status,_amount:payment.transaction_amount,_currency:payment.currency_id});
+   if(apply.error)throw new Error("Não foi possível confirmar o pagamento.");
+   return {status:payment.status};
+ });
+
 export const createClubeHsPix = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ origin: z.string().url(), cpf: z.string().refine(validPixCpf, "Informe um CPF válido para gerar o Pix.") }).parse(input))

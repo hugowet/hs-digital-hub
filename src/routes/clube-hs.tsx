@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { createClubeHsSubscription, createClubeHsPix } from "@/lib/clube-hs.functions";
+import { createClubeHsSubscription, createClubeHsPix, reconcileClubeHsPix } from "@/lib/clube-hs.functions";
 
 export const Route = createFileRoute("/clube-hs")({
   staticData: { sitemap: true },
@@ -48,9 +48,11 @@ export function ClubeHsPage() {
   const [loading, setLoading] = useState(false);
   const subscribeFn = useServerFn(createClubeHsSubscription);
   const pixFn = useServerFn(createClubeHsPix);
+  const reconcilePix=useServerFn(reconcileClubeHsPix);
   const [pixOpen,setPixOpen]=useState(false);
   const [cpf,setCpf]=useState("");
-  const [pix,setPix]=useState<{qrCode:string;qrImage?:string;expiresAt?:string}|null>(null);
+  const [pix,setPix]=useState<{intentId:string;qrCode:string;qrImage?:string;expiresAt?:string}|null>(null);
+  const paymentStatus=useQuery({queryKey:["club-pix-status",pix?.intentId],enabled:Boolean(pixOpen&&pix?.intentId),queryFn:()=>reconcilePix({data:{intentId:pix?.intentId??""}}),refetchInterval:query=>query.state.data?.status==='approved'?false:10000,retry:false});
 
   // Busca dados do usuário autenticado para checar status
   const { data: sessionData } = useQuery({
@@ -240,7 +242,7 @@ export function ClubeHsPage() {
         </div>
       </main>
       <Dialog open={pixOpen} onOpenChange={setPixOpen}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Clube HS · Pix R$ 19,90</DialogTitle></DialogHeader>
-        {pix ? <div className="space-y-3">{pix.qrImage && <img alt="QR Code Pix do Clube HS" className="mx-auto h-56 w-56" src={`data:image/png;base64,${pix.qrImage}`}/>}<p className="text-sm text-muted-foreground">Aguardando pagamento. Acesso liberado após confirmação.</p><Button className="w-full" onClick={async()=>{try{await navigator.clipboard.writeText(pix.qrCode);toast.success("Código Pix copiado.");}catch{toast.error("Selecione e copie o código abaixo.");}}}>Copiar código Pix</Button><Input aria-label="Código Pix copia e cola" value={pix.qrCode} readOnly /></div> : <form onSubmit={e=>{e.preventDefault();void handleSubscribe(true);}} className="space-y-4"><label className="block space-y-2 text-sm">CPF do pagador<Input value={cpf} onChange={e=>setCpf(e.target.value)} inputMode="numeric" autoComplete="off" required placeholder="000.000.000-00"/></label><Button type="submit" className="w-full" disabled={loading}>{loading ? "Gerando Pix…" : "Gerar Pix · R$ 19,90"}</Button></form>}
+        {pix ? <div className="space-y-3">{pix.qrImage && <img alt="QR Code Pix do Clube HS" className="mx-auto h-56 w-56" src={`data:image/png;base64,${pix.qrImage}`}/>}<p className="text-sm text-muted-foreground">{paymentStatus.data?.status==='approved' ? "Pagamento confirmado. Seu Clube HS está ativo!" : "Aguardando pagamento. Acesso liberado após confirmação."}</p><Button className="w-full" onClick={async()=>{try{await navigator.clipboard.writeText(pix.qrCode);toast.success("Código Pix copiado.");}catch{toast.error("Selecione e copie o código abaixo.");}}}>Copiar código Pix</Button><Input aria-label="Código Pix copia e cola" value={pix.qrCode} readOnly /></div> : <form onSubmit={e=>{e.preventDefault();void handleSubscribe(true);}} className="space-y-4"><label className="block space-y-2 text-sm">CPF do pagador<Input value={cpf} onChange={e=>setCpf(e.target.value)} inputMode="numeric" autoComplete="off" required placeholder="000.000.000-00"/></label><Button type="submit" className="w-full" disabled={loading}>{loading ? "Gerando Pix…" : "Gerar Pix · R$ 19,90"}</Button></form>}
       </DialogContent></Dialog>
     </div>
   );
