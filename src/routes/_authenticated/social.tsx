@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft, Bell, Camera, Check, CheckCheck, ImagePlus, Loader2, MessageCircle, Mic,
-  Pencil, Plus, Search, Send, ShieldCheck, Square, Trash2, User, Users, X,
+  Pencil, Phone, Plus, Search, Video, Send, ShieldCheck, Square, Trash2, User, Users, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
   createSocialGroup, listSocialGroups, setSocialGroupMembers, deleteSocialGroup,
   getSocialGroupMessages, sendSocialGroupMessage,
 } from "@/lib/social.functions";
+import { CallScreen, useSocialCalls } from "@/components/social-call";
 import { isActiveStory, isSocialOnline, isSocialTyping } from "@/lib/social";
 
 export const Route = createFileRoute("/_authenticated/social")({
@@ -35,7 +36,16 @@ export const Route = createFileRoute("/_authenticated/social")({
 });
 
 function Avatar({ name, url, size = "h-11 w-11" }: { name: string; url?: string | null; size?: string }) {
-  if (url) return <img src={url} alt={name} className={`${size} shrink-0 rounded-full object-cover`} />;
+  const [full, setFull] = useState(false);
+  if (url) return <>
+    <img src={url} alt={name} role="button" tabIndex={0} title="Ver foto" className={`${size} shrink-0 cursor-zoom-in rounded-full object-cover`}
+      onClick={(e) => { e.stopPropagation(); e.preventDefault(); setFull(true); }}
+      onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); setFull(true); } }} />
+    {full && <div className="fixed inset-0 z-[90] flex flex-col bg-foreground/95" onClick={(e) => { e.stopPropagation(); setFull(false); }}>
+      <div className="flex items-center justify-between p-4 text-background"><span className="font-semibold">{name}</span><button type="button" aria-label="Fechar foto" onClick={(e) => { e.stopPropagation(); setFull(false); }}><X className="h-6 w-6" /></button></div>
+      <img src={url} alt={name} className="m-auto max-h-[85vh] max-w-full object-contain" onClick={(e) => e.stopPropagation()} />
+    </div>}
+  </>;
   return <span className={`grid ${size} shrink-0 place-items-center rounded-full bg-success/10 font-semibold text-success`} aria-hidden="true">{name.trim().slice(0, 1).toUpperCase() || <User className="h-5 w-5" />}</span>;
 }
 
@@ -321,7 +331,7 @@ function HSSocialPage() {
 
   async function uploadChatMedia(mediaFile: File, kind: "audio" | "image") {
     if (!roomId && !groupId) throw new Error("Selecione uma conversa.");
-    const ext = kind === "audio" ? "webm" : (mediaFile.type === "image/png" ? "png" : "jpg");
+    const ext = kind === "audio" ? (mediaFile.type.includes("mp4") ? "m4a" : mediaFile.type.includes("ogg") ? "ogg" : "webm") : (mediaFile.type === "image/png" ? "png" : "jpg");
     const path = `${user.id}/chat-${crypto.randomUUID()}.${ext}`;
     const upload = await supabase.storage.from("social-stories").upload(path, mediaFile, { contentType: mediaFile.type });
     if (upload.error) throw new Error("Não foi possível enviar a mídia.");
@@ -348,30 +358,47 @@ function HSSocialPage() {
     finally { setBusy(false); }
   }
 
+  const [recSeconds, setRecSeconds] = useState(0);
+  const cancelRecRef = useRef(false);
+  const recTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  function stopRecording(cancel: boolean) {
+    cancelRecRef.current = cancel;
+    recorderRef.current?.stop();
+  }
   async function toggleRecording() {
-    if (recording) {
-      recorderRef.current?.stop();
-      return;
-    }
+    if (recording) { stopRecording(false); return; }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].find((m) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(m)) ?? "";
+      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      const type = (recorder.mimeType || mime || "audio/webm").split(";")[0];
       chunksRef.current = [];
+      cancelRecRef.current = false;
       recorder.ondataavailable = (ev) => { if (ev.data.size) chunksRef.current.push(ev.data); };
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
+        clearInterval(recTimer.current);
         setRecording(false);
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        if (blob.size < 1000) return;
+        setRecSeconds(0);
+        if (cancelRecRef.current) return;
+        const blob = new Blob(chunksRef.current, { type });
+        if (blob.size < 1000) { toast.info("Áudio muito curto."); return; }
         setBusy(true);
         try {
-          await uploadChatMedia(new File([blob], "audio.webm", { type: "audio/webm" }), "audio");
+          const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
+          await uploadChatMedia(new File([blob], `audio.${ext}`, { type }), "audio");
+          toast.success("Áudio enviado");
         } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível enviar o áudio."); }
         finally { setBusy(false); }
       };
       recorderRef.current = recorder;
-      recorder.start();
+      recorder.start(250);
       setRecording(true);
+      setRecSeconds(0);
+      recTimer.current = setInterval(() => setRecSeconds((v) => {
+        if (v + 1 >= 180) stopRecording(false);
+        return v + 1;
+      }), 1000);
     } catch {
       toast.error("Permita o acesso ao microfone para gravar áudio.");
     }
@@ -518,6 +545,8 @@ function HSSocialPage() {
             <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setRoomId(null)} aria-label="Voltar às conversas"><ArrowLeft className="h-5 w-5" /></Button>
             <Avatar name={nameFor(otherId)} url={avatarFor(otherId)} />
             <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{nameFor(otherId)}</h2><p className={`flex items-center gap-1 text-xs ${isSocialOnline(presence.data?.find((p) => p.user_id === otherId)?.last_seen_at, now) ? "text-success" : "text-destructive"}`}><span className="h-2 w-2 rounded-full bg-current" />{isSocialTyping(presence.data?.find((p) => p.user_id === otherId), room.id, now) ? "Digitando…" : isSocialOnline(presence.data?.find((p) => p.user_id === otherId)?.last_seen_at, now) ? "Online" : "Offline"}</p></div>
+            <Button variant="ghost" size="icon" title="Chamada de voz" aria-label="Chamada de voz" onClick={() => void calls.startCall(otherId, nameFor(otherId), false)}><Phone className="h-5 w-5 text-success" /></Button>
+            <Button variant="ghost" size="icon" title="Chamada de vídeo" aria-label="Chamada de vídeo" onClick={() => void calls.startCall(otherId, nameFor(otherId), true)}><Video className="h-5 w-5 text-success" /></Button>
             <Button variant="ghost" size="icon" title="Apagar conversa" aria-label="Apagar conversa" onClick={removeConversation}><Trash2 className="h-4 w-4 text-destructive" /></Button>
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto p-4">
@@ -531,7 +560,8 @@ function HSSocialPage() {
             <div ref={end} />
           </div>
           {editingMsg && <div className="flex items-center justify-between border-t bg-accent/60 px-3 py-1.5 text-xs"><span className="truncate">Editando mensagem</span><button onClick={() => { setEditingMsg(null); setMessage(""); }} aria-label="Cancelar edição"><X className="h-3.5 w-3.5" /></button></div>}
-          <form onSubmit={send} className="flex shrink-0 items-end gap-2 border-t bg-card p-3">
+          {recording && <div className="flex shrink-0 items-center gap-3 border-t bg-card px-3 py-2"><span className="h-3 w-3 animate-pulse rounded-full bg-destructive" /><span className="text-sm font-semibold tabular-nums">{String(Math.floor(recSeconds / 60)).padStart(2, "0")}:{String(recSeconds % 60).padStart(2, "0")}</span><span className="flex flex-1 items-center gap-0.5" aria-hidden="true">{Array.from({ length: 24 }).map((_, i) => <span key={i} className="w-1 rounded-full bg-success/70" style={{ height: `${6 + ((i * 7 + recSeconds * 5) % 16)}px` }} />)}</span><Button type="button" variant="ghost" size="sm" onClick={() => stopRecording(true)} className="text-destructive"><Trash2 className="mr-1 h-4 w-4" />Cancelar</Button><Button type="button" size="sm" onClick={() => stopRecording(false)} className="bg-success text-success-foreground hover:bg-success/90"><Send className="mr-1 h-4 w-4" />Enviar</Button></div>}
+          <form onSubmit={send} className={`flex shrink-0 items-end gap-2 border-t bg-card p-3 ${recording ? "hidden" : ""}`}>
             <input ref={chatImageRef} type="file" accept="image/*" className="hidden" onChange={(e) => { void sendChatImage(e.target.files?.[0] ?? null); e.target.value = ""; }} />
             <input ref={chatCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { void sendChatImage(e.target.files?.[0] ?? null); e.target.value = ""; }} /><Button type="button" variant="ghost" size="icon" title="Abrir câmera" aria-label="Abrir câmera" onClick={() => chatCameraRef.current?.click()}><Camera className="h-5 w-5" /></Button><Button type="button" variant="ghost" size="icon" title="Enviar foto da galeria" aria-label="Enviar foto da galeria" onClick={() => chatImageRef.current?.click()}><ImagePlus className="h-5 w-5" /></Button>
             <Textarea aria-label="Mensagem" placeholder="Digite sua mensagem…" value={message} maxLength={4000} onChange={(e) => changeMessage(e.target.value)} rows={1} className="max-h-32 min-h-10 resize-none" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(e); } }} />
@@ -556,7 +586,8 @@ function HSSocialPage() {
             ))}
             <div ref={end} />
           </div>
-          <form onSubmit={send} className="flex shrink-0 items-end gap-2 border-t bg-card p-3">
+          {recording && <div className="flex shrink-0 items-center gap-3 border-t bg-card px-3 py-2"><span className="h-3 w-3 animate-pulse rounded-full bg-destructive" /><span className="text-sm font-semibold tabular-nums">{String(Math.floor(recSeconds / 60)).padStart(2, "0")}:{String(recSeconds % 60).padStart(2, "0")}</span><span className="flex flex-1 items-center gap-0.5" aria-hidden="true">{Array.from({ length: 24 }).map((_, i) => <span key={i} className="w-1 rounded-full bg-success/70" style={{ height: `${6 + ((i * 7 + recSeconds * 5) % 16)}px` }} />)}</span><Button type="button" variant="ghost" size="sm" onClick={() => stopRecording(true)} className="text-destructive"><Trash2 className="mr-1 h-4 w-4" />Cancelar</Button><Button type="button" size="sm" onClick={() => stopRecording(false)} className="bg-success text-success-foreground hover:bg-success/90"><Send className="mr-1 h-4 w-4" />Enviar</Button></div>}
+          <form onSubmit={send} className={`flex shrink-0 items-end gap-2 border-t bg-card p-3 ${recording ? "hidden" : ""}`}>
             <input ref={chatImageRef} type="file" accept="image/*" className="hidden" onChange={(e) => { void sendChatImage(e.target.files?.[0] ?? null); e.target.value = ""; }} />
             <input ref={chatCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { void sendChatImage(e.target.files?.[0] ?? null); e.target.value = ""; }} /><Button type="button" variant="ghost" size="icon" title="Abrir câmera" aria-label="Abrir câmera" onClick={() => chatCameraRef.current?.click()}><Camera className="h-5 w-5" /></Button><Button type="button" variant="ghost" size="icon" title="Enviar foto da galeria" aria-label="Enviar foto da galeria" onClick={() => chatImageRef.current?.click()}><ImagePlus className="h-5 w-5" /></Button>
             <Textarea aria-label="Mensagem do grupo" placeholder="Mensagem para o grupo…" value={message} maxLength={4000} onChange={(e) => setMessage(e.target.value)} rows={1} className="max-h-32 min-h-10 resize-none" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(e); } }} />
