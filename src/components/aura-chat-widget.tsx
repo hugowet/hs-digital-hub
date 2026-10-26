@@ -36,6 +36,20 @@ export function AuraChatWidget() {
 
   const [messages, setMessages] = useState<Message[]>([]);
 
+  // Chamada discreta "Dúvidas? Fale com a Aura": aparece sozinha e some sem atrapalhar (1x por sessão)
+  useEffect(() => {
+    if (sessionStorage.getItem("hs-aura-teaser")) return;
+    const showTimer = window.setTimeout(() => setShowTeaser(true), 2500);
+    const hideTimer = window.setTimeout(() => {
+      setShowTeaser(false);
+      sessionStorage.setItem("hs-aura-teaser", "1");
+    }, 9000);
+    return () => {
+      window.clearTimeout(showTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
+
   useEffect(() => {
     setMounted(true);
     setMessages([
