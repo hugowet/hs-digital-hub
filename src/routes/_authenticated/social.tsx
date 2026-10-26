@@ -422,8 +422,7 @@ function HSSocialPage() {
         const path = `${user.id}/profile-${Date.now()}.jpg`;
         const upload = await supabase.storage.from("social-stories").upload(path, profilePhoto, { contentType: profilePhoto.type });
         if (upload.error) throw new Error("Não foi possível enviar a foto.");
-        const signed = await supabase.storage.from("social-stories").createSignedUrl(path, 60 * 60 * 24 * 365);
-        avatarUrl = signed.data?.signedUrl;
+        avatarUrl = path;
       }
       const update: any = { full_name: profileName.trim() || null };
       if (avatarUrl) update.avatar_url = avatarUrl;
