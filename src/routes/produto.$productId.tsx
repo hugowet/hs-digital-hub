@@ -23,6 +23,7 @@ import {
   Send,
   Share2,
   ShieldCheck,
+  ShoppingBag,
   ShoppingCart,
   Sliders,
   Star,
