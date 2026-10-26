@@ -27,6 +27,7 @@ export function AuraChatWidget() {
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [showTeaser, setShowTeaser] = useState(false);
   const [input, setInput] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -34,6 +35,20 @@ export function AuraChatWidget() {
   const recognitionRef = useRef<any>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
+
+  // Chamada discreta "Dúvidas? Fale com a Aura": aparece sozinha e some sem atrapalhar (1x por sessão)
+  useEffect(() => {
+    if (sessionStorage.getItem("hs-aura-teaser")) return;
+    const showTimer = window.setTimeout(() => setShowTeaser(true), 2500);
+    const hideTimer = window.setTimeout(() => {
+      setShowTeaser(false);
+      sessionStorage.setItem("hs-aura-teaser", "1");
+    }, 9000);
+    return () => {
+      window.clearTimeout(showTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -292,6 +307,21 @@ export function AuraChatWidget() {
 
   return (
     <>
+      {/* Chamada automática que aparece e some sozinha */}
+      {showTeaser && !isOpen && (
+        <button
+          onClick={() => {
+            setShowTeaser(false);
+            sessionStorage.setItem("hs-aura-teaser", "1");
+            setIsOpen(true);
+          }}
+          className="fixed bottom-24 right-5 z-50 flex items-center gap-2 rounded-2xl rounded-br-none border border-purple-500/40 bg-background/95 px-3.5 py-2.5 text-xs font-semibold text-foreground shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-500"
+        >
+          <Sparkles className="h-4 w-4 text-purple-400" />
+          Dúvidas? Fale com a Aura
+        </button>
+      )}
+
       {/* Botão Flutuante da Aura */}
       <button
         onClick={() => setIsOpen(!isOpen)}
