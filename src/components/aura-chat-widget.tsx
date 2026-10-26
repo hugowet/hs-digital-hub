@@ -412,6 +412,15 @@ export function AuraChatWidget() {
                 <span className="mt-1 px-1 text-[10px] text-muted-foreground">{m.time}</span>
               </div>
             ))}
+            {isThinking && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <AuraAvatar />
+                <span className="flex items-center gap-1.5 rounded-2xl rounded-bl-none border border-border/60 bg-muted/90 px-3.5 py-2.5 text-[11px]">
+                  <Loader2 className="h-3 w-3 animate-spin text-purple-400" />
+                  Aura está pensando...
+                </span>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -450,7 +459,7 @@ export function AuraChatWidget() {
             {/* Botão de Enviar */}
             <button
               type="submit"
-              disabled={!input.trim()}
+              disabled={!input.trim() || isThinking}
               className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
             >
               <Send className="h-3.5 w-3.5" />
