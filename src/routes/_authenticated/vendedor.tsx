@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SellerMessagesTab } from "@/components/seller-messages-tab";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -259,6 +260,7 @@ function SellerCenterPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <TabsList className="h-auto w-full justify-start overflow-x-auto border-b">
           <TabsTrigger value="orders">Pedidos e Envios</TabsTrigger>
+          <TabsTrigger value="messages">Mensagens</TabsTrigger>
           <TabsTrigger value="products">Meus produtos</TabsTrigger>
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e extrato</TabsTrigger>
@@ -270,6 +272,11 @@ function SellerCenterPage() {
         {/* Aba de Pedidos e Rastreio */}
         <TabsContent value="orders" className="pt-4">
           <SellerOrdersTab storeId={store.id} />
+        </TabsContent>
+
+        {/* Aba de Mensagens dos compradores */}
+        <TabsContent value="messages" className="pt-4">
+          <SellerMessagesTab />
         </TabsContent>
 
         {/* Aba de Produtos */}

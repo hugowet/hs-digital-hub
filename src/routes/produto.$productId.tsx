@@ -41,6 +41,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { catalogDisplayPrice } from "@/lib/product-price";
 import { confirmCjOption } from "@/lib/cj-option.functions";
+import { sendSellerMessage } from "@/lib/seller-chat.functions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/lib/cart";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { productQueryOptions } from "@/lib/product-query";
@@ -163,7 +166,10 @@ function ProductDetailPage() {
   const navigate = useNavigate();
   const { add } = useCart();
   const confirmOption=useServerFn(confirmCjOption);
-  const [checkingOption,setCheckingOption]=useState<string|null>(null);
+  const sendToSeller=useServerFn(sendSellerMessage);
+  const [sellerChatOpen,setSellerChatOpen]=useState(false);
+  const [sellerMessage,setSellerMessage]=useState("");
+  const [sendingSellerMessage,setSendingSellerMessage]=useState(false);
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -627,17 +633,17 @@ function ProductDetailPage() {
                       {product.supplierOptions.map((option) => (
                         <Button key={option.productId} size="sm" variant={option.productId === productId ? "default" : "outline"}
                           aria-pressed={option.productId === productId}
-                          disabled={checkingOption!==null}
-                          title={option.stock <= 0 ? "Sem estoque confirmado na CJ" : option.label}
-                          onClick={async () => {
-                            setCheckingOption(option.productId);
-                            try {
-                              if(option.stock<=0)await confirmOption({data:{parentId:productId,productId:option.productId}});
-                              setQuantity(1);setSelectedImage(0);await navigate({to:"/produto/$productId",params:{productId:option.productId}});
-                            } catch(error){toast.error(error instanceof Error ? error.message : "Não foi possível confirmar esta opção.");}
-                            finally{setCheckingOption(null);}
+                          title={option.stock <= 0 ? "Estoque será confirmado no checkout" : option.label}
+                          onClick={() => {
+                            // Troca instantânea: navega já e confirma o estoque da CJ em segundo plano.
+                            setQuantity(1);
+                            setSelectedImage(0);
+                            if (option.stock <= 0) {
+                              void confirmOption({ data: { parentId: productId, productId: option.productId } }).catch(() => {});
+                            }
+                            void navigate({ to: "/produto/$productId", params: { productId: option.productId } });
                           }}>
-                          {checkingOption===option.productId ? "Confirmando…" : option.label}
+                          {option.label}
                         </Button>
                       ))}
                     </div>
@@ -683,7 +689,62 @@ function ProductDetailPage() {
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" /> Adicionar ao Carrinho
                 </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setSellerChatOpen(true)}
+                  className="w-full h-11 text-sm font-semibold rounded-xl text-muted-foreground hover:text-foreground"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" /> Fale com o vendedor
+                </Button>
               </div>
+
+              {/* Conversa direta com o vendedor sobre este produto */}
+              <Dialog open={sellerChatOpen} onOpenChange={setSellerChatOpen}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Fale com o vendedor</DialogTitle>
+                  </DialogHeader>
+                  <form
+                    className="space-y-3"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const body = sellerMessage.trim();
+                      if (!body || sendingSellerMessage) return;
+                      setSendingSellerMessage(true);
+                      try {
+                        const { data: authData } = await supabase.auth.getUser();
+                        if (!authData.user) {
+                          toast.info("Entre na sua conta para falar com o vendedor.");
+                          setSellerChatOpen(false);
+                          navigate({ to: "/auth" });
+                          return;
+                        }
+                        await sendToSeller({ data: { productId, body } });
+                        toast.success("Mensagem enviada! O vendedor responde pelo painel dele.");
+                        setSellerMessage("");
+                        setSellerChatOpen(false);
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : "Não foi possível enviar a mensagem.");
+                      } finally {
+                        setSendingSellerMessage(false);
+                      }
+                    }}
+                  >
+                    <Textarea
+                      value={sellerMessage}
+                      onChange={(e) => setSellerMessage(e.target.value)}
+                      placeholder="Tire sua dúvida sobre tamanho, cor, prazo de entrega..."
+                      maxLength={2000}
+                      rows={4}
+                      required
+                    />
+                    <Button type="submit" className="w-full" disabled={!sellerMessage.trim() || sendingSellerMessage}>
+                      <Send className="h-4 w-4 mr-2" />
+                      {sendingSellerMessage ? "Enviando..." : "Enviar mensagem"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>
