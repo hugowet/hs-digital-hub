@@ -120,9 +120,6 @@ function CartPage() {
   const [confirmedRequest, setConfirmedRequest] = useState("");
   const [priceChangeAccepted, setPriceChangeAccepted] = useState(true);
   const [clock, setClock] = useState(Date.now());
-  const requestKey = JSON.stringify([items.filter((item) => item.productType !== "digital")
-    .map((item) => [item.productId, item.quantity]).sort(), postalCodeKey()]);
-  function postalCodeKey() { return postalCode.replace(/\D/g, ""); }
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -130,6 +127,8 @@ function CartPage() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [postalCode, setPostalCode] = useState("");
+  const requestKey = JSON.stringify([items.filter((item) => item.productType !== "digital")
+    .map((item) => [item.productId, item.quantity]).sort(), postalCode.replace(/\D/g, "")]);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [quoting, setQuoting] = useState(false);

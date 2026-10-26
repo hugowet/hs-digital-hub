@@ -6,6 +6,8 @@ import { quoteMarketplaceShipping } from "./shipping.functions";
 
 // Serialize visible-product quotes so catalog rendering never floods the supplier.
 let quoteQueue: Promise<unknown> = Promise.resolve();
+type DeliveryPrice = { price: number; shipping: number; service: string; quoteId: string;
+  storeId: string; expiresAt: string; embeddedFreeShipping: boolean; postalCode: string };
 
 export function useCjPrice(productId: string, quantity = 1, enabled = true, visibleOnly = false) {
   const quote = useServerFn(quoteMarketplaceShipping);
@@ -21,7 +23,7 @@ export function useCjPrice(productId: string, quantity = 1, enabled = true, visi
     observer.observe(ref.current);
     return () => observer.disconnect();
   }, [visibleOnly]);
-  const result = useQuery({
+  const result = useQuery<DeliveryPrice>({
     queryKey: ["cj-delivery-price", userId, productId, quantity, postalCode],
     enabled: Boolean(enabled && visible && userId && postalCode),
     staleTime: (query) => {
@@ -40,6 +42,7 @@ export function useCjPrice(productId: string, quantity = 1, enabled = true, visi
         const option = groups[0]?.options[0];
         const item = option?.itemPrices?.find((entry: { product_id: string }) => entry.product_id === productId);
         if (!item || !option) throw new Error("Não foi possível confirmar a entrega para o endereço salvo.");
+        if (!groups[0]?.storeId || !option.expiresAt) throw new Error("Cotação incompleta.");
         return { price: Number(item.unit_price), shipping: Number(option.amount), service: option.serviceName,
           quoteId: option.id, storeId: groups[0]?.storeId, expiresAt: option.expiresAt,
           embeddedFreeShipping: Boolean(option.embeddedFreeShipping), postalCode };
