@@ -21,7 +21,20 @@ export async function refreshCjPrices(db: any, storeId: string) {
     const token = await getCjAccessToken(db, storeId);
     const exchange = await getUsdBrlRate(db, storeId);
     for (const row of rows ?? []) {
-      const variant = await cjRequest<any>(`/product/variant/queryByVid?vid=${encodeURIComponent(row.supplier_variant_id)}`, token);
+      let variant: any;
+      try {
+        variant = await cjRequest<any>(`/product/variant/queryByVid?vid=${encodeURIComponent(row.supplier_variant_id)}`, token);
+      } catch (caught) {
+        const message = caught instanceof Error ? caught.message : "";
+        // Supplier removed this variant: stop selling it and move on instead of blocking the queue.
+        if (!/removed from shelves|not exist|not found|offline/i.test(message)) throw caught;
+        const { error: offError } = await db.from("products").update({
+          stock: 0, is_active: false, supplier_last_synced_at: new Date().toISOString(),
+        }).eq("id", row.id);
+        if (offError) throw offError;
+        cursor = row.id; processed += 1;
+        continue;
+      }
       const cost = Number(variant?.variantSellPrice);
       if (!Number.isFinite(cost) || cost <= 0 || variant?.vid !== row.supplier_variant_id) throw new Error("Custo CJ inválido.");
       const stock = cjConfirmedVariantStock(await cjRequest<unknown>(`/product/stock/queryByVid?vid=${encodeURIComponent(row.supplier_variant_id)}`, token));

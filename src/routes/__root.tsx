@@ -47,20 +47,11 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
   useEffect(() => {
     if (error instanceof Error) {
-      console.warn("Recuperação resiliente da rota:", error.message);
       reportLovableError(error, { boundary: "tanstack_root_error_component" });
-
-      // Se for falha de carregamento de chunk ou timeout assíncrono, redireciona suavemente para /
-      if (
-        error.message.includes("dynamically imported") ||
-        error.message.includes("fetch") ||
-        error.message.includes("NetworkError") ||
-        error.message.includes("supabase")
-      ) {
-        const timer = setTimeout(() => {
-          window.location.href = "/";
-        }, 1500);
-        return () => clearTimeout(timer);
+      // A stale deploy chunk is fixed by one reload; guard it so it can never loop.
+      if (error.message.includes("dynamically imported") && !sessionStorage.getItem("hs-chunk-reload")) {
+        sessionStorage.setItem("hs-chunk-reload", "1");
+        window.location.reload();
       }
     }
   }, [error]);
@@ -68,9 +59,9 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">Carregando a HS Digital…</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Não foi possível carregar esta página</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sincronizando sua conexão segura com a plataforma. Você será redirecionado em instantes.
+          Houve uma falha temporária de conexão. Tente novamente em alguns segundos.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
