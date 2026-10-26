@@ -109,7 +109,16 @@ export const Route = createFileRoute("/")({
   staticData: { sitemap: true },
   validateSearch: normalizeSearch,
   loaderDeps: ({ search }) => search,
-  loader: ({ context, deps }) => context.queryClient.ensureInfiniteQueryData(catalogQueryOptions(deps)),
+  // On search/filter changes while already on the home page, don't block the route:
+  // the component keeps showing the previous products (useDeferredValue) until the new page arrives.
+  loader: ({ context, deps, cause }) => {
+    const options = catalogQueryOptions(deps);
+    if (cause === "stay") {
+      void context.queryClient.prefetchInfiniteQuery(options);
+      return;
+    }
+    return context.queryClient.ensureInfiniteQueryData(options);
+  },
   head: ({ match }) => {
     const search = resolveSearch(match.search);
     const params = new URLSearchParams();
@@ -291,8 +300,10 @@ function Home() {
   const routeSearch = Route.useSearch();
   const search = resolveSearch(routeSearch);
   const navigate = Route.useNavigate();
+  const deferredSearch = useDeferredValue(routeSearch);
+  const isSearching = deferredSearch !== routeSearch;
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
-    catalogQueryOptions(routeSearch),
+    catalogQueryOptions(deferredSearch),
   );
   const products = data.pages.flatMap((page) => page.products);
 
