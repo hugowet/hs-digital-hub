@@ -898,6 +898,20 @@ function ProductDetailPage() {
             ))}
           </div>
         </section>
+
+        {/* 5. PRODUTOS RECOMENDADOS (mesma categoria) */}
+        {relatedProducts.length > 0 && (
+          <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
+            <h2 className="text-lg sm:text-xl font-black text-foreground flex items-center gap-2 pb-3 border-b border-border">
+              <ShoppingBag className="h-5 w-5 text-primary" /> Produtos recomendados
+            </h2>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 sm:gap-4">
+              {relatedProducts.map((p: Product) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       <SiteFooter />
