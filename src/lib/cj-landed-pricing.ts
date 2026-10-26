@@ -1,4 +1,4 @@
-import { calculateFinalPrice } from "./pricing";
+import { calculateFinalPrice, getMarginRate } from "./pricing";
 import { protectedCjPrice } from "./cj-profit";
 
 export const FREE_SHIPPING_THRESHOLD = 89.9;
@@ -25,7 +25,7 @@ export function priceCjShipment(
     const landedPrice = protectedCjPrice(landedCost, commissionRate, freightPerUnit);
     return { product_id: item.productId, quantity: item.quantity, landed_price: landedPrice, freight_per_unit: freightPerUnit,
       supplier_item_cost_brl: Math.ceil(item.costUsd * exchangeRate * 100) / 100,
-      protected_net_target: Math.max(calculateFinalPrice(landedCost),landedCost+0.01) };
+      protected_net_target: Math.max(commissionRate > 0 ? landedCost * (1 + getMarginRate(landedCost)) : calculateFinalPrice(landedCost),landedCost+0.01) };
   });
   const landedTotal = Math.round(pricedItems.reduce((sum, item) => sum + item.landed_price * item.quantity, 0) * 100) / 100;
   const embedded = landedTotal >= FREE_SHIPPING_THRESHOLD;
