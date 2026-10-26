@@ -31,10 +31,19 @@ function checkRateLimit(key: string): boolean {
   return entry.count <= RATE_LIMIT_MAX;
 }
 
-export type AuraChatInput = {
-  message: string;
-  history?: Array<{ role: "user" | "assistant"; content: string }>;
-};
+export type AuraChatMessage = { role: "user" | "assistant"; content: string };
+export type AuraChatInput = { message: string; history?: AuraChatMessage[] };
+
+function sanitizeHistory(history: AuraChatMessage[] | undefined): AuraChatMessage[] {
+  if (!Array.isArray(history)) return [];
+  const clean: AuraChatMessage[] = [];
+  for (const m of history) {
+    if (!m || (m.role !== "user" && m.role !== "assistant")) continue;
+    if (typeof m.content !== "string" || !m.content.trim()) continue;
+    clean.push({ role: m.role, content: m.content.trim().slice(0, 1000) });
+  }
+  return clean.slice(-10);
+}
 
 export const askAura = createServerFn({ method: "POST" })
   .inputValidator((data: AuraChatInput) => {
@@ -43,19 +52,7 @@ export const askAura = createServerFn({ method: "POST" })
     }
     return {
       message: data.message.trim().slice(0, 1000),
-      history: Array.isArray(data.history)
-        ? data.history
-            .filter((m) => {
-              return (
-                m &&
-                (m.role === "user" || m.role === "assistant") &&
-                typeof m.content === "string" &&
-                m.content.trim().length > 0
-              );
-            })
-            .slice(-10)
-            .map((m) => ({ role: m.role, content: m.content.trim().slice(0, 1000) })),
-        : [],
+      history: sanitizeHistory(data.history),
     };
   })
   .handler(async ({ data, request }): Promise<{ reply: string }> => {
