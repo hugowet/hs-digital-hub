@@ -195,7 +195,7 @@ export function SiteHeader({
                 type="search"
                 enterKeyHint="search"
                 value={localQuery}
-                onChange={(e) => setLocalQuery(e.target.value)}
+                onChange={(e) => { typedRef.current = true; setLocalQuery(e.target.value); }}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => window.setTimeout(() => setSearchFocused(false), 200)}
                 placeholder="Buscar produtos e lojas..."
