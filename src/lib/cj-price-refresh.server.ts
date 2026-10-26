@@ -1,4 +1,4 @@
-import { calculateFinalPrice } from "./pricing";
+import { protectedCjPrice } from "./cj-profit";
 import { cjRequest, getCjAccessToken, getUsdBrlRate } from "./suppliers.server";
 import { cjConfirmedVariantStock, cjVariantOptions } from "./cj-variants";
 
@@ -20,6 +20,8 @@ export async function refreshCjPrices(db: any, storeId: string) {
     if (error) throw error;
     const token = await getCjAccessToken(db, storeId);
     const exchange = await getUsdBrlRate(db, storeId);
+    const { data: platform, error: platformError } = await db.from("platform_settings").select("commission_rate").eq("id", true).single();
+    if (platformError || !platform) throw new Error("Comissão da plataforma não confirmada.");
     for (const row of rows ?? []) {
       let variant: any;
       try {
@@ -43,7 +45,7 @@ export async function refreshCjPrices(db: any, storeId: string) {
         stock, is_active: stock > 0,
         ...(option ? { supplier_variant_label: option.label, supplier_sku: option.sku } : {}),
         supplier_cost: cost, supplier_exchange_rate: exchange.rate, supplier_exchange_rate_at: exchange.quotedAt,
-        price: calculateFinalPrice(Math.round(cost * exchange.rate * 100) / 100),
+        price: protectedCjPrice(Math.ceil(cost * exchange.rate * 100) / 100, Number(platform.commission_rate)),
         supplier_last_synced_at: new Date().toISOString(),
       }).eq("id", row.id);
       if (saveError) throw saveError;
