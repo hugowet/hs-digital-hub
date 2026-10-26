@@ -1,9 +1,9 @@
 # HS Digital — MVP
 
 ## Ampliar tradução gratuita — 26/10
-- [ ] Confirmar cotas oficiais de um tradutor gratuito com maior capacidade para títulos e fichas CJ.
-- [ ] Configurar a opção escolhida, mantendo cache, limites compartilhados e nenhuma alternativa de IA paga; depende do cadastro ou contato exigido pelo serviço.
-- [ ] Testar tradução real de título e ficha antes de ativar o processamento ampliado.
+- [x] Confirmar MyMemory: 50.000 caracteres/dia com contato válido, conforme página oficial; e-mail autorizado por Hugo.
+- [x] Configurar envio do contato e reserva compartilhada conservadora de 45.000 bytes/dia, preservando cache e sem IA paga; clientes antigos mantêm teto anônimo.
+- [x] Testar título real salvo e ficha oficial com 18 especificações; ficha do mesmo produto salva e exibida, cache reutilizado e sete testes aprovados. Novo limite nos jobs públicos depende da publicação; catálogo completo continua gradual.
 
 ## HS Social — presença e mensagens — 25/10
 - [x] Acesso premium gratuito permanente via papel administrador; RPC real e página do Clube validados, cobrança bloqueada nos handlers.
