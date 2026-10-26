@@ -323,6 +323,13 @@
       "when": 1792992212200,
       "tag": "0045_precomputed_daily_storefront",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1793031369400,
+      "tag": "0046_catalog_search_and_supplier_indexes",
+      "breakpoints": true
     }
   ]
 }
