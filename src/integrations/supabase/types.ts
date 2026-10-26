@@ -2784,6 +2784,19 @@ export type Database = {
         Args: { _bytes: number }
         Returns: boolean
       }
+      search_catalog_ids: {
+        Args: {
+          _category: string
+          _free: boolean
+          _groups: Json
+          _limit: number
+          _max: number
+          _min: number
+          _offset: number
+          _sort: string
+        }
+        Returns: string[]
+      }
       social_contact_profiles: {
         Args: never
         Returns: {
