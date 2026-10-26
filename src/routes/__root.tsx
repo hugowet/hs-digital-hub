@@ -147,6 +147,7 @@ function RootComponent() {
           <AccountNotificationListener />
           {pathname === "/" && <InstallAppPrompt />}
           {pathname === "/" && <AuraChatWidget />}
+          {pathname === "/" && <ExitConfirmGuard />}
         </RadioProvider>
       </CartProvider>
     </QueryClientProvider>
