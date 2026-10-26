@@ -69,22 +69,24 @@ export function SiteHeader({
   // Referência do campo de busca, usada para fechar o teclado do celular
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Only text the user typed is sent to the URL; a URL change (e.g. Back button) wins over the field.
+  const typedRef = useRef(false);
   useEffect(() => {
-    // Só atualiza o campo vindo de fora se o usuário não estiver focado nele digitando
-    if (!searchFocused) {
-      setLocalQuery(query);
-    }
-  }, [query, searchFocused]);
+    if (typedRef.current) return;
+    setLocalQuery(query);
+  }, [query]);
 
-  // Debounce otimizado para não travar o teclado nem sobrecarregar o histórico
+  const latest = useRef({ query, onQueryChange });
+  latest.current = { query, onQueryChange };
   useEffect(() => {
+    if (!typedRef.current) return;
     const timer = setTimeout(() => {
-      if (localQuery !== query && onQueryChange) {
-        onQueryChange(localQuery);
-      }
+      const { query: current, onQueryChange: change } = latest.current;
+      typedRef.current = false;
+      if (localQuery !== current && change) change(localQuery);
     }, 350);
     return () => clearTimeout(timer);
-  }, [localQuery, onQueryChange, query]);
+  }, [localQuery]);
 
   const matches = useMemo(() => {
     const raw = normalizeCatalogSearch(localQuery ?? "");
@@ -193,7 +195,7 @@ export function SiteHeader({
                 type="search"
                 enterKeyHint="search"
                 value={localQuery}
-                onChange={(e) => setLocalQuery(e.target.value)}
+                onChange={(e) => { typedRef.current = true; setLocalQuery(e.target.value); }}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => window.setTimeout(() => setSearchFocused(false), 200)}
                 placeholder="Buscar produtos e lojas..."

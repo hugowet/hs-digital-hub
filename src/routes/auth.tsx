@@ -49,6 +49,13 @@ function AuthPage() {
     }
   }, [reason]);
 
+  // Already signed in (e.g. user pressed Back after logging in): leave the login screen.
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: (redirectUrl as any) || "/", replace: true });
+    });
+  }, [navigate, redirectUrl]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -69,7 +76,7 @@ function AuthPage() {
           return;
         }
         toast.success("Conta criada com sucesso!");
-        navigate({ to: (redirectUrl as any) || "/" });
+        navigate({ to: (redirectUrl as any) || "/", replace: true });
         return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -78,7 +85,7 @@ function AuthPage() {
         });
         if (error) throw error;
       }
-      navigate({ to: (redirectUrl as any) || "/" });
+      navigate({ to: (redirectUrl as any) || "/", replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível continuar");
     } finally {
@@ -95,7 +102,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: (redirectUrl as any) || "/" });
+    navigate({ to: (redirectUrl as any) || "/", replace: true });
   }
 
   return (

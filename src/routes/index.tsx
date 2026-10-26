@@ -340,9 +340,12 @@ function Home() {
       })];
   }, [data]);
 
+  // First filter from the clean home adds one history entry (so Back returns to the home);
+  // further typing/filter changes replace it instead of stacking entries.
+  const isFiltered = Boolean(search.q || search.category || search.free || search.range !== "all" || search.sort !== "popular");
   const setSearch = (changes: HomeSearchUpdate, options?: { replace?: boolean }) =>
     navigate({
-      replace: options?.replace ?? true,
+      replace: options?.replace ?? isFiltered,
       search: (previous) => {
         const next = { ...previous, ...changes } as Record<string, unknown>;
         if (!next["q"]) delete next["q"];
