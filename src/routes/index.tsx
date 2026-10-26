@@ -31,7 +31,7 @@ import {
   Crown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/product-card";
 import { IntroAnimation } from "@/components/intro-animation";
@@ -580,7 +580,7 @@ function Home() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div aria-busy={isSearching} className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 transition-opacity ${isSearching ? "opacity-60" : ""}`}>
             {filtered.map((prod) => (
               <ProductCard key={prod.id} product={prod} />
             ))}
