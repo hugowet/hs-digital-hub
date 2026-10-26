@@ -367,9 +367,9 @@ function SellerCenterPage() {
           {isPlatformOwner ? <CjSupplierPanel storeId={store.id} /> : null}
         </TabsContent>
 
-        {/* Aba Importador Amazon */}
+         {/* Aba Importador Amazon */}
         <TabsContent value="amazon-affiliate" className="pt-4">
-          <AmazonAffiliateImporter />
+          {isPlatformOwner ? <AmazonAffiliateImporter /> : null}
         </TabsContent>
       </Tabs>
 
