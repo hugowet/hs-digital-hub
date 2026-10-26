@@ -3,11 +3,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useDeliveryAddress } from "./delivery-context";
 import { quoteMarketplaceShipping } from "./shipping.functions";
+import { deliveryDateRange } from "./delivery-estimate";
 
 // Serialize visible-product quotes so catalog rendering never floods the supplier.
 let quoteQueue: Promise<unknown> = Promise.resolve();
 type DeliveryPrice = { price: number; shipping: number; service: string; quoteId: string;
-  storeId: string; expiresAt: string; embeddedFreeShipping: boolean; postalCode: string };
+  storeId: string; expiresAt: string; embeddedFreeShipping: boolean; postalCode: string;
+  deliveryDaysMin: number | null; deliveryDaysMax: number | null; estimatedAt: string };
 
 export function useCjPrice(productId: string, quantity = 1, enabled = true, visibleOnly = false) {
   const quote = useServerFn(quoteMarketplaceShipping);
@@ -45,7 +47,9 @@ export function useCjPrice(productId: string, quantity = 1, enabled = true, visi
         if (!groups[0]?.storeId || !option.expiresAt) throw new Error("Cotação incompleta.");
         return { price: Number(item.unit_price), shipping: Number(option.amount), service: option.serviceName,
           quoteId: option.id, storeId: groups[0]?.storeId, expiresAt: option.expiresAt,
-          embeddedFreeShipping: Boolean(option.embeddedFreeShipping), postalCode };
+          embeddedFreeShipping: Boolean(option.embeddedFreeShipping), postalCode,
+          deliveryDaysMin: option.deliveryDaysMin, deliveryDaysMax: option.deliveryDaysMax,
+          estimatedAt: new Date().toISOString() };
       });
       quoteQueue = task;
       return task;
@@ -61,6 +65,7 @@ export function useCjPrice(productId: string, quantity = 1, enabled = true, visi
     shipping: valid ? result.data?.shipping ?? null : null,
     quoteId: valid ? result.data?.quoteId : undefined, expiresAt: valid ? result.data?.expiresAt : undefined,
     embeddedFreeShipping: valid && result.data?.embeddedFreeShipping,
+    arrivalRange: valid && result.data ? deliveryDateRange(result.data.deliveryDaysMin, result.data.deliveryDaysMax, result.data.estimatedAt) : null,
     service: result.data?.service ?? "", loading: addressLoading || result.isFetching,
     error: result.isError ? "Não foi possível confirmar a entrega para seu endereço." : "",
     retry: result.refetch };

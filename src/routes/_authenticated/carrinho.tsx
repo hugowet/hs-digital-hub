@@ -35,6 +35,7 @@ import { getFirstPurchaseShippingEligibility } from "@/lib/checkout.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useDeliveryAddress } from "@/lib/delivery-context";
 import { cartSavings, quotePriceChanged } from "@/lib/cart-savings";
+import { deliveryDateRange, formatDeliveryRange } from "@/lib/delivery-estimate";
 
 export const Route = createFileRoute("/_authenticated/carrinho")({
   staticData: { sitemap: false },
@@ -57,42 +58,6 @@ export const Route = createFileRoute("/_authenticated/carrinho")({
   }),
   component: CartPage,
 });
-
-// Calcula prazo com formato: "Chegará entre os dias X e Y de Mês"
-function getDeliveryEstimate(startDate: Date = new Date(), minDays: number = 12, maxDays: number = 18) {
-  function addBusinessDays(date: Date, days: number): Date {
-    const cur = new Date(date);
-    let added = 0;
-    while (added < days) {
-      cur.setDate(cur.getDate() + 1);
-      const day = cur.getDay();
-      if (day !== 0 && day !== 6) {
-        added++;
-      }
-    }
-    return cur;
-  }
-
-  const minDate = addBusinessDays(startDate, minDays);
-  const maxDate = addBusinessDays(startDate, maxDays);
-
-  const months = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-  ];
-
-  const minDay = minDate.getDate();
-  const maxDay = maxDate.getDate();
-  const minMonth = months[minDate.getMonth()];
-  const maxMonth = months[maxDate.getMonth()];
-
-  const text =
-    minMonth === maxMonth
-      ? `Chegará entre os dias ${minDay} e ${maxDay} de ${minMonth}.`
-      : `Chegará entre os dias ${minDay} de ${minMonth} e ${maxDay} de ${maxMonth}.`;
-
-  return { minDay, maxDay, text };
-}
 
 const WARRANTY_OPTIONS = [
   { id: "1_year", title: "1 ano", amount: 5.0, originalAmount: 5.0, tag: null },
@@ -140,6 +105,7 @@ function CartPage() {
         id: string;
         serviceName: string;
         carrierName: string;
+        provider: string;
         amount: number;
         itemPrices?: Array<{ product_id: string; unit_price: number; quantity: number }>;
         supplierFreight?: number;
@@ -163,10 +129,6 @@ function CartPage() {
 
   // Primeira Compra
   const [firstPurchaseEligible, setFirstPurchaseEligible] = useState(false);
-
-  // Prazos dinâmicos baseados na data de hoje
-  const expressEstimate = useMemo(() => getDeliveryEstimate(new Date(), 12, 18), []);
-  const premiumEstimate = useMemo(() => getDeliveryEstimate(new Date(), 8, 14), []);
 
   useEffect(() => {
     loadCoupons()
@@ -559,13 +521,14 @@ function CartPage() {
                   return (
                     <div key={group.storeId} className="space-y-2">
                       <p className="text-xs text-muted-foreground">{group.storeName}</p>
+                      {group.options[0]?.provider === "cj" && <p className="text-xs font-semibold text-primary">Produtos internacionais · envio do exterior</p>}
                       {group.options.map((option) => (
                         <label key={option.id} className={`flex cursor-pointer items-start justify-between gap-3 rounded-lg border p-3 text-xs ${currentSelectedId === option.id ? "border-primary bg-primary/5" : "border-border"}`}>
                           <div className="flex min-w-0 gap-2">
                             <input type="radio" name={`shipping-${group.storeId}`} checked={currentSelectedId === option.id} onChange={() => setSelectedQuotes((prev) => ({ ...prev, [group.storeId]: option.id }))} />
                             <div><strong className="block">{option.serviceName}</strong>
                               <span className="block text-muted-foreground">{option.carrierName}</span>
-                              <span className="text-muted-foreground">{option.deliveryDaysMin !== null && option.deliveryDaysMax !== null ? `${option.deliveryDaysMin}–${option.deliveryDaysMax} dias` : "Prazo a confirmar"}</span>
+                              <span className="block text-muted-foreground">{formatDeliveryRange(deliveryDateRange(option.deliveryDaysMin, option.deliveryDaysMax, new Date(clock), option.provider === "melhor_envio"))}</span>
                             </div>
                           </div>
                           <strong className="shrink-0">{option.amount === 0 ? "Frete incluso" : `+${brl(option.amount)}`}</strong>
@@ -574,6 +537,7 @@ function CartPage() {
                     </div>
                   );
                 })}
+                <p className="text-[11px] text-muted-foreground">Estimativa se enviado hoje. O prazo começa no envio após o pagamento confirmado; preparação, feriados e alfândega podem alterar as datas.</p>
               </div>
             )}
 
