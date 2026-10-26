@@ -30,7 +30,9 @@
 - Catalog search uses a trigger-maintained accent-normalized text column with a trigram index and intersects per-word synonym groups; home search changes keep prior results visible instead of blocking the route; supplier totals use exact database counts rather than the seller product page size.
 - Physical checkout uses short-lived, buyer-bound server quotes per store; CJ quotes are converted from USD and own-stock products use each seller's Melhor Envio OAuth account, while platform commission never applies to shipping.
 - CJ base prices have a database cost/markup/commission floor; CEP quotes store protected net targets and exact costs, with a transaction trigger rejecting underfunded CJ orders. Freight is allocated once outside commission; payment fees remain unverified.
-- Catalog/detail share saved prices; CJ options preserve official IDs and confirmed stock. Authenticated checkout atomically validates quotes and resolves optional add-on prices, never browser amounts.
+- CJ cards/detail serialize visible quotes for saved CEP; cart reuses valid exact quotes and requires acceptance of changes. Official variants, server-priced add-ons and atomic profit/quote guards remain authoritative.
+- One delivery provider shares identity/address across cards and cart, avoiding duplicate auth listeners.
+- Savings use recorded comparable prices, never generated discounts, CJ base references or embedded freight.
 - CJ delivery exposes only Express and Premium mapped to confirmed services; buyer-bound quotes are reused across product and cart, Premium shows only its real difference, and first-purchase margin is in quoted prices and allocated atomically to the platform ledger, never re-added.
 Game rewards are issued and rate-limited atomically in the database; shipping coupons expire after 24 hours and are redeemed atomically during checkout, funded only from platform commission up to R$ 30.
 - Authentication uses email/password and Google; biometric/passkey authentication is intentionally excluded because it caused deployment startup failures.
