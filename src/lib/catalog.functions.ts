@@ -137,7 +137,7 @@ async function queryCatalog(input: CatalogInput) {
     return { products, total: daily.total, nextPage: from + daily.ids.length < daily.total ? input.page + 1 : null };
   }
 
-  let query = supabasePublic.from("products").select(cardProjection, { count: "exact" }).eq("is_active", true).is("supplier_variant_parent_id", null);
+  let query = supabasePublic.from("products").select(cardProjection).eq("is_active", true).is("supplier_variant_parent_id", null);
 
   for (const terms of catalogSearchGroups(input.query)) {
     query = query.or(terms.map((term) => `catalog_search_text.ilike.%${term}%`).join(","));
@@ -158,13 +158,15 @@ async function queryCatalog(input: CatalogInput) {
   }
 
   const from = input.page * input.pageSize;
-  const { data, error, count } = await query.range(from, from + input.pageSize - 1);
+  // Fetch one extra row to detect a next page; an exact count over text search timed out.
+  const { data, error } = await query.range(from, from + input.pageSize);
   if (error) throw error;
 
-  const rawProducts = (data ?? []) as unknown as Product[];
-  const products = await prepareCards(rawProducts);
-  const total = count ?? products.length;
-  return { products, total, nextPage: from + products.length < total ? input.page + 1 : null };
+  const rows = (data ?? []) as unknown as Product[];
+  const hasMore = rows.length > input.pageSize;
+  const products = await prepareCards(rows.slice(0, input.pageSize));
+  const total = from + products.length + (hasMore ? 1 : 0);
+  return { products, total, nextPage: hasMore ? input.page + 1 : null };
 }
 
 export const fetchCatalogPage = createServerFn({ method: "GET" })
