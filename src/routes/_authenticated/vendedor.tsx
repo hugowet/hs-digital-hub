@@ -100,10 +100,17 @@ function SellerCenterPage() {
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [activeTab, setActiveTab] = useState("products");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id ?? null);
+      setUserEmail(data.user?.email ?? null);
+    });
   }, []);
+
+  // Importadores (CJ Dropshipping e Amazon) são exclusivos da conta da plataforma.
+  const isPlatformOwner = userEmail === "hugohug12ou@gmail.com";
 
   const { data: store, isLoading: storeLoading } = useQuery({
     enabled: !!userId,
@@ -265,8 +272,8 @@ function SellerCenterPage() {
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e extrato</TabsTrigger>
           <TabsTrigger value="mercadopago">Mercado Pago</TabsTrigger>
-          <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
-          <TabsTrigger value="amazon-affiliate">Importador Amazon</TabsTrigger>
+          {isPlatformOwner && <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>}
+          {isPlatformOwner && <TabsTrigger value="amazon-affiliate">Importador Amazon</TabsTrigger>}
         </TabsList>
 
         {/* Aba de Pedidos e Rastreio */}
