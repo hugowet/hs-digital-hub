@@ -2780,6 +2780,10 @@ export type Database = {
         Args: { _bytes: number }
         Returns: boolean
       }
+      reserve_cj_identified_free_translation: {
+        Args: { _bytes: number }
+        Returns: boolean
+      }
       social_contact_profiles: {
         Args: never
         Returns: {

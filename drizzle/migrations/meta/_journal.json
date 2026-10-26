@@ -330,6 +330,13 @@
       "when": 1793031369400,
       "tag": "0046_catalog_search_and_supplier_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793032272321,
+      "tag": "0047_cj_identified_free_translation_budget",
+      "breakpoints": true
     }
   ]
 }
