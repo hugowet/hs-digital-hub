@@ -34,6 +34,7 @@ import type { LucideIcon } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/product-card";
+import { personalizeProducts, recordCategoryClick, recordSearch } from "@/lib/interest-profile";
 import { IntroAnimation } from "@/components/intro-animation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -357,18 +358,32 @@ function Home() {
       },
     });
 
+  // Learn from searches (debounced so each typed phrase counts once).
+  useEffect(() => {
+    if (!search.q || search.q.trim().length < 3) return;
+    const id = window.setTimeout(() => recordSearch(search.q), 1500);
+    return () => window.clearTimeout(id);
+  }, [search.q]);
+
+  // On the unfiltered storefront, re-rank by this person's interest profile so
+  // each visitor sees more of what they search, click and view.
+  const personalized = useMemo(
+    () => (isFiltered ? products : personalizeProducts(products)),
+    [products, isFiltered],
+  );
+
   const filtered = useMemo(() => {
     const selectedRange = PRICE_RANGES.find((item) => item.id === search.range) ?? {
       min: 0,
       max: Infinity,
     };
 
-    return products.filter((p) => {
+    return personalized.filter((p) => {
       const price = Number(p.price);
       if (price < selectedRange.min || price > selectedRange.max) return false;
       return true;
     });
-  }, [products, search.range]);
+  }, [personalized, search.range]);
 
   const activeCategory = activeCategories.find((category) => category.slug === search.category);
   const activeRange = PRICE_RANGES.find((item) => item.id === search.range);
@@ -540,7 +555,7 @@ function Home() {
                   <button
                     key={category.slug}
                     type="button"
-                    onClick={() => setSearch({ category: category.slug })}
+                    onClick={() => { recordCategoryClick(category.slug); setSearch({ category: category.slug }); }}
                     className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-2xl border text-xs font-medium transition ${
                       active
                         ? "border-primary bg-primary/10 text-primary font-bold shadow-sm"

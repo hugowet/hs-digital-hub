@@ -52,6 +52,7 @@ import { brl } from "@/lib/format";
 import type { Product } from "@/lib/catalog";
 import { ProductCard } from "@/components/product-card";
 import { trackProductView, markAsPurchasedOrInCart, initAbandonmentWatcher } from "@/lib/abandonment-tracker";
+import { recordProductView } from "@/lib/interest-profile";
 
 export const Route = createFileRoute("/produto/$productId")({
   staticData: { sitemap: true },
@@ -242,6 +243,7 @@ function ProductDetailPage() {
   useEffect(() => {
     initAbandonmentWatcher();
     if (product) {
+      recordProductView(product.category, product.title);
       trackProductView({
         id: product.id,
         title: product.title,
