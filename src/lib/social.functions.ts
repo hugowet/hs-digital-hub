@@ -13,6 +13,7 @@ export const getSocialHome = createServerFn({ method: "GET" }).middleware([requi
       db.from("social_messages").select("*").order("created_at", { ascending: false }).limit(200),
     ]);
     for (const result of [rooms, people, me, stories, messages]) if (result.error) throw new Error(result.error.message);
+    if (!me.data) throw new Error("Seu perfil não foi encontrado.");
     const storyRows = [];
     for (const story of stories.data ?? []) {
       let mediaUrl: string | null = null;
