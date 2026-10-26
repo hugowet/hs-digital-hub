@@ -189,3 +189,6 @@
 - [x] HS Social: foto de perfil em tela cheia ao tocar
 - [x] HS Social: chamadas de áudio e vídeo (só com HS Social aberto; sem servidor TURN)
 - [x] HS Social: melhorar botão de gravar áudio
+
+## Biometria no login (pedido 26/10)
+- [ ] Cadastro de digital/biometria na tela de login e autenticação sem senha (atenção: biometria já causou falha de abertura no deploy antes — testar bem)
