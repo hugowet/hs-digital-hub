@@ -18,6 +18,7 @@ import { RadioProvider } from "../lib/radio-context";
 import { Toaster } from "../components/ui/sonner";
 import { AuraChatWidget } from "../components/aura-chat-widget";
 import { InstallAppPrompt } from "../components/install-app-prompt";
+import { ExitConfirmGuard } from "../components/exit-confirm-guard";
 import { AccountNotificationListener } from "../components/account-notification-listener";
 
 function NotFoundComponent() {
@@ -146,6 +147,7 @@ function RootComponent() {
           <AccountNotificationListener />
           {pathname === "/" && <InstallAppPrompt />}
           {pathname === "/" && <AuraChatWidget />}
+          {pathname === "/" && <ExitConfirmGuard />}
         </RadioProvider>
       </CartProvider>
     </QueryClientProvider>
