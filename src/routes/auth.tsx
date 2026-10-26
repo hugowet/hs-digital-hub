@@ -69,7 +69,7 @@ function AuthPage() {
           return;
         }
         toast.success("Conta criada com sucesso!");
-        navigate({ to: (redirectUrl as any) || "/" });
+        navigate({ to: (redirectUrl as any) || "/", replace: true });
         return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -78,7 +78,7 @@ function AuthPage() {
         });
         if (error) throw error;
       }
-      navigate({ to: (redirectUrl as any) || "/" });
+      navigate({ to: (redirectUrl as any) || "/", replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível continuar");
     } finally {
@@ -95,7 +95,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: (redirectUrl as any) || "/" });
+    navigate({ to: (redirectUrl as any) || "/", replace: true });
   }
 
   return (
