@@ -241,6 +241,7 @@ function HSSocialPage() {
   const personFor = (id: string) => data?.people.find((person) => person.id === id);
   const nameFor = (id: string) => personFor(id)?.full_name || "Contato HS Digital";
   const avatarFor = (id: string) => personFor(id)?.avatar_url;
+  const calls = useSocialCalls(user.id, data?.me?.full_name || "Contato HS Digital");
   const room = rooms.find((entry) => entry.id === roomId);
   const otherId = room ? (room.member_a === user.id ? room.member_b : room.member_a) : "";
   const activeGroup = (groups.data?.groups ?? []).find((g: any) => g.id === groupId);
@@ -477,6 +478,7 @@ function HSSocialPage() {
   const groupMembersOf = (gid: string) => (groups.data?.members ?? []).filter((m: any) => m.group_id === gid);
 
   return <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+    <CallScreen calls={calls} />
     <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b bg-card px-4">
       <div className="flex items-center gap-3">
         <Button asChild variant="ghost" size="icon" title="Voltar à vitrine"><Link to="/"><ArrowLeft className="h-5 w-5" /></Link></Button>
