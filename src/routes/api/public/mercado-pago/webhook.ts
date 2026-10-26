@@ -8,6 +8,8 @@ type Payment = {
   payment_method_id?: string;
   external_reference?: string;
   metadata?: { transaction_id?: string };
+  transaction_details?: { external_resource_url?: string };
+  barcode?: { content?: string };
 };
 
 export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
@@ -150,13 +152,14 @@ export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
         const payment = await mercadoPagoRequest<Payment>(`/v1/payments/${encodeURIComponent(dataId)}`, await decryptSecret(account.access_token_encrypted));
         const boundTransactionId = payment.metadata?.transaction_id ?? payment.external_reference;
         if (boundTransactionId !== transaction.id) return new Response("Payment mismatch", { status: 409 });
+        const { boletoDetails } = await import("@/lib/boleto");
         
         const { error } = await supabaseAdmin.rpc("apply_mercado_pago_status", {
           _transaction_id: transaction.id,
           _provider_payment_id: String(payment.id),
           _status: payment.status,
           _payment_method: payment.payment_method_id ?? "",
-          _provider_payload: { status_detail: payment.status_detail ?? null },
+          _provider_payload: boletoDetails(payment),
         });
         
         if (error) throw error;
