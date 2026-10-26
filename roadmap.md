@@ -192,6 +192,6 @@
 
 ## Biometria no login (pedido 26/10)
 - [ ] Cadastro de digital/biometria na tela de login e autenticação sem senha (atenção: biometria já causou falha de abertura no deploy antes — testar bem)
-- [ ] Avaliações: 3-4 comentários por produto com nomes/cidades únicos (sem repetir entre produtos)
-- [ ] Recomendados: mesma categoria do produto exibido
+- [x] Avaliações: 3-4 comentários por produto com nomes/cidades únicos (testado em 2 produtos, sem repetição)
+- [x] Recomendados: seção criada na página do produto, só mesma categoria (testado)
 - [ ] Biometria no login (cadastro de digital + entrada sem senha)
