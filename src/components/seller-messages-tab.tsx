@@ -85,12 +85,12 @@ export function SellerMessagesTab() {
         </div>
         <div className="max-h-[420px] space-y-3 overflow-y-auto p-4">
           {messages.map((m) => (
-            <div key={m.id} className={`flex ${m.senderId === activeConversation.buyerName ? "" : ""}`}>
+            <div key={m.id} className={`flex ${m.senderId === userId ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
-                  m.senderId === (messages.find((x) => x.senderId !== m.senderId)?.senderId ?? "")
-                    ? "bg-muted"
-                    : "bg-muted"
+                  m.senderId === userId
+                    ? "bg-primary text-primary-foreground rounded-br-none"
+                    : "bg-muted rounded-bl-none"
                 }`}
               >
                 <p className="whitespace-pre-line">{m.body}</p>
