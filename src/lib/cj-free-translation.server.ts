@@ -1,5 +1,9 @@
 import { readFreeTranslation, splitTranslationText } from "./cj-free-translation";
 
+// Explicitly authorized provider contact, not a customer address or an API credential.
+// https://mymemory.translated.net/doc/usagelimits.php: valid de contact => 50,000 chars/day.
+const MYMEMORY_CONTACT = "hugoet373@gmail.com";
+
 export class FreeTranslationDeferred extends Error {
   constructor(public readonly retryAt: string, message: string) { super(message); }
 }
@@ -22,12 +26,14 @@ export async function translateCjFreeText(db: any, source: string): Promise<stri
     const cached = await db.from("cj_translation_cache").select("translated_text").eq("id", id).maybeSingle();
     if (cached.error) throw cached.error;
     if (cached.data) { translated.push(cached.data.translated_text); continue; }
-    const reservation = await db.rpc("reserve_cj_free_translation", { _bytes: new TextEncoder().encode(chunk).length });
+    // Dedicated server-only RPC keeps old published anonymous clients on their original cap.
+    const reservation = await db.rpc("reserve_cj_identified_free_translation", { _bytes: new TextEncoder().encode(chunk).length });
     if (reservation.error) throw reservation.error;
     if (!reservation.data) throw new FreeTranslationDeferred(nextTranslationDay(), "Limite diário preventivo da tradução gratuita atingido. Retomada automática amanhã, sem IA paga.");
     const url = new URL("https://api.mymemory.translated.net/get");
     url.searchParams.set("q", chunk);
     url.searchParams.set("langpair", "en|pt-br");
+    url.searchParams.set("de", MYMEMORY_CONTACT);
     const response = await fetch(url, { signal: AbortSignal.timeout(12_000) });
     if (response.status === 429) throw new FreeTranslationDeferred(nextTranslationDay(), "Cota do tradutor gratuito atingida; aguardando próximo dia.");
     if (!response.ok) throw new Error(`Tradutor gratuito indisponível (${response.status}); nenhuma IA paga foi utilizada.`);
