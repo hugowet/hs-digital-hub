@@ -185,3 +185,7 @@
 - [ ] Traduzir para português todos os produtos importados que ainda aparecem em inglês.
 
 - [x] Centralizar verticalmente a passagem do Lupi e aumentar sua duração para 3 minutos, mantendo as frases no final.
+
+- [ ] HS Social: foto de perfil em tela cheia ao tocar
+- [ ] HS Social: chamadas de áudio e vídeo
+- [ ] HS Social: melhorar botão de gravar áudio
