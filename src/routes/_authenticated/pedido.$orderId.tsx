@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, CheckCircle2, Clock3, Copy, CreditCard, Download, MessageCircle, QrCode, Send, Store } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, Copy, CreditCard, Download, FileText, MessageCircle, QrCode, Send, Store } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { MercadoPagoCard } from "@/components/mercado-pago-card";
+import { BoletoForm, BoletoPayment } from "@/components/boleto-payment";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/pedido/$orderId")({
   head: () => ({ meta: [
       { name: "robots", content: "noindex, follow" },
     { title: "Pagamento do pedido · HS Digital" },
-    { name: "description", content: "Pague seu pedido com Pix ou cartão e acompanhe a confirmação." },
+    { name: "description", content: "Pague seu pedido com Pix, cartão ou boleto e acompanhe a confirmação." },
     { property: "og:title", content: "Pagamento do pedido · HS Digital" },
     { property: "og:description", content: "Pagamento protegido e confirmação do pedido HS Digital." },
     { property: "og:type", content: "website" },
@@ -137,10 +138,14 @@ function OrderPaymentPage() {
             <header className="flex items-center gap-2 border-b border-border px-4 py-3"><Store className="h-4 w-4 text-primary" /><strong>{transaction.stores?.name ?? "Loja parceira"}</strong><span className="ml-auto font-bold">{brl(Number(transaction.gross_amount))}</span></header>
             <div className="p-4">
               <ul className="space-y-2 text-sm">{storeItems.map((item) => <li key={item.id} className="flex justify-between gap-3"><span>{item.quantity}x {item.title}</span><span>{brl(Number(item.unit_price) * item.quantity)}</span></li>)}</ul>
-              {approved ? <div className="mt-4 flex items-center gap-2 rounded-md bg-success/10 p-3 text-sm font-semibold text-success"><CheckCircle2 className="h-5 w-5" />Pagamento confirmado</div> : transaction.pix_qr_code ? <PixPayment transaction={transaction} /> : transaction.provider_payment_id ? <div className="mt-4 flex items-center gap-2 rounded-md bg-muted p-3 text-sm"><Clock3 className="h-5 w-5 text-primary" />Pagamento em processamento. Esta página atualiza automaticamente.</div> : !mpConfig?.configured ? <p className="mt-4 rounded-md border border-border p-3 text-sm text-muted-foreground">O pagamento ficará disponível assim que o Mercado Pago for configurado pelo administrador.</p> : <Tabs defaultValue="pix" className="mt-4">
-                <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="pix"><QrCode />Pix</TabsTrigger><TabsTrigger value="card"><CreditCard />Cartão</TabsTrigger></TabsList>
+              {approved ? <div className="mt-4 flex items-center gap-2 rounded-md bg-success/10 p-3 text-sm font-semibold text-success"><CheckCircle2 className="h-5 w-5" />Pagamento confirmado</div> : transaction.payment_method === "bolbradesco" || transaction.payment_method === "boleto" ? <BoletoPayment details={transaction.provider_payload} expiresAt={transaction.payment_expires_at} status={transaction.status} /> : transaction.pix_qr_code ? <PixPayment transaction={transaction} /> : transaction.provider_payment_id ? <div className="mt-4 flex items-center gap-2 rounded-md bg-muted p-3 text-sm"><Clock3 className="h-5 w-5 text-primary" />Pagamento em processamento. Esta página atualiza automaticamente.</div> : !mpConfig?.configured ? <p className="mt-4 rounded-md border border-border p-3 text-sm text-muted-foreground">O pagamento ficará disponível assim que o Mercado Pago for configurado pelo administrador.</p> : <Tabs defaultValue="pix" className="mt-4">
+                <TabsList className="grid w-full grid-cols-3"><TabsTrigger value="pix"><QrCode />Pix</TabsTrigger><TabsTrigger value="card"><CreditCard />Cartão</TabsTrigger><TabsTrigger value="boleto"><FileText />Boleto</TabsTrigger></TabsList>
                 <TabsContent value="pix" className="space-y-3 pt-3"><div><Label htmlFor={`pix-cpf-${transaction.id}`}>CPF do pagador</Label><Input id={`pix-cpf-${transaction.id}`} value={pixCpf} onChange={(event) => setPixCpf(event.target.value)} inputMode="numeric" autoComplete="off" maxLength={14} placeholder="000.000.000-00" className="mt-1" /></div><Button className="w-full" disabled={creatingPix === transaction.id} onClick={async () => { const cpf = pixCpf.replace(/\D/g, ""); if (cpf.length !== 11) { toast.error("Informe um CPF válido com 11 números."); return; } try { setCreatingPix(transaction.id); await createPayment({ data: { transactionId: transaction.id, origin: window.location.origin, method: "pix", pix: { identificationNumber: cpf } } }); await qc.invalidateQueries({ queryKey: ["buyer-order", orderId] }); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível gerar o Pix."); } finally { setCreatingPix(null); } }}>{creatingPix === transaction.id ? "Gerando Pix…" : "Gerar QR Code Pix"}</Button></TabsContent>
                 <TabsContent value="card" className="pt-3"><MercadoPagoCard publicKey={mpConfig.publicKey} amount={Number(transaction.gross_amount)} onSubmit={(cardData) => payCard(transaction.id, cardData)} /></TabsContent>
+                <TabsContent value="boleto"><BoletoForm initialAddress={data.order.shipping_address && typeof data.order.shipping_address === "object" && !Array.isArray(data.order.shipping_address) ? data.order.shipping_address : null} onSubmit={async (payer) => {
+                  await createPayment({ data: { transactionId: transaction.id, origin: window.location.origin, method: "boleto", boleto: payer } });
+                  await qc.invalidateQueries({ queryKey: ["buyer-order", orderId] });
+                }} /></TabsContent>
               </Tabs>}
             </div>
           </section>;
