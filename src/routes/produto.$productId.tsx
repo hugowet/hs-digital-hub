@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { getProductReviews, publishProductReview } from "@/lib/reviews.functions";
 import { reviewPhotoPath } from "@/lib/reviews";
+import { getSampleReviews } from "@/lib/sample-reviews";
 import {
   AlertCircle,
   BadgeCheck,
@@ -22,6 +23,7 @@ import {
   Send,
   Share2,
   ShieldCheck,
+  ShoppingBag,
   ShoppingCart,
   Sliders,
   Star,
@@ -100,6 +102,7 @@ interface ReviewItem {
   photos?: string[];
   helpfulCount: number;
   verified: boolean;
+  city?: string;
 }
 
 function getConsistentSalesCount(id: string): number {
@@ -215,13 +218,20 @@ function ProductDetailPage() {
     enabled: !!product?.category,
     queryFn: async () => {
       try {
-        const res = await fetchCatalogPage({ data: { category: product?.category, pageSize: 12 } });
-        return res.products.filter((p: Product) => p.id !== productId);
+        const res = await fetchCatalogPage({ data: { category: product?.category, pageSize: 24 } });
+        // Recomendados: somente produtos da MESMA categoria do produto exibido.
+        return res.products.filter((p: Product) => p.id !== productId && p.category === product?.category).slice(0, 12);
       } catch {
         return [];
       }
     },
   });
+
+  // Avaliações reais + avaliações de exemplo (nomes e cidades únicos por produto)
+  const allReviews = useMemo<ReviewItem[]>(() => {
+    const samples = getSampleReviews(productId).map((s) => ({ ...s, helpfulCount: 0, photos: [] as string[] }));
+    return [...reviews, ...samples];
+  }, [reviews, productId]);
 
   useEffect(() => {
     initAbandonmentWatcher();
@@ -727,14 +737,14 @@ function ProductDetailPage() {
               </h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-2xl font-black text-foreground">
-                  {reviews.length ? (reviews.reduce((sum, rev) => sum + rev.rating, 0) / reviews.length).toFixed(1) : "—"}
+                  {allReviews.length ? (allReviews.reduce((sum, rev) => sum + rev.rating, 0) / allReviews.length).toFixed(1) : "—"}
                 </span>
                 <div className="flex text-amber-500">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <Star key={s} className="h-4 w-4 fill-amber-500" />
                   ))}
                 </div>
-                <span className="text-xs text-muted-foreground">({reviews.length} avaliações)</span>
+                <span className="text-xs text-muted-foreground">({allReviews.length} avaliações)</span>
               </div>
             </div>
 
@@ -841,12 +851,12 @@ function ProductDetailPage() {
           {/* Lista de Avaliações */}
           <div className="mt-6 space-y-4">
             {reviewsError && <p role="alert" className="text-destructive">Não foi possível carregar as avaliações. <Button variant="ghost" onClick={() => reloadReviews()}>Tentar novamente</Button></p>}
-            {!reviewsError && reviews.length === 0 && <p className="text-muted-foreground">Nenhuma avaliação publicada ainda.</p>}
-            {reviews.map((rev) => (
+            {allReviews.map((rev) => (
               <div key={rev.id} className="rounded-xl border border-border/80 bg-card p-4 text-xs sm:text-sm space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-foreground">{rev.author}</span>
+                    {rev.city && <span className="text-[10px] text-muted-foreground">{rev.city}</span>}
                     {rev.verified && (
                       <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded">
                         <BadgeCheck className="h-3 w-3" /> Compra Verificada
@@ -889,6 +899,20 @@ function ProductDetailPage() {
             ))}
           </div>
         </section>
+
+        {/* 5. PRODUTOS RECOMENDADOS (mesma categoria) */}
+        {relatedProducts.length > 0 && (
+          <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
+            <h2 className="text-lg sm:text-xl font-black text-foreground flex items-center gap-2 pb-3 border-b border-border">
+              <ShoppingBag className="h-5 w-5 text-primary" /> Produtos recomendados
+            </h2>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 sm:gap-4">
+              {relatedProducts.map((p: Product) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       <SiteFooter />

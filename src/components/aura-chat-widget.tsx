@@ -1,7 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRight, CircleHelp, Mic, MicOff, Package, Send, ShoppingBag, Sparkles, Store, Tag, X } from "lucide-react";
+import { ArrowRight, CircleHelp, Loader2, Mic, MicOff, Package, Send, ShoppingBag, Sparkles, Store, Tag, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+
+import { askAura } from "@/lib/aura-chat.functions";
 
 interface Message {
   id: string;
@@ -27,6 +29,7 @@ export function AuraChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -48,7 +51,7 @@ export function AuraChatWidget() {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, isThinking]);
 
   // Função do Microfone (Web Speech API)
   const toggleListening = () => {
@@ -105,7 +108,7 @@ export function AuraChatWidget() {
 
   const handleSend = (textToSend?: string) => {
     const query = (textToSend || input).trim();
-    if (!query) return;
+    if (!query || isThinking) return;
 
     const userTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -140,7 +143,7 @@ export function AuraChatWidget() {
         q.includes("hugo")
       ) {
         responseText =
-          "Tanto a plataforma HS Digital quanto eu, a Aura, fomos idealizados e criados por Hugo Rogerio! Ele projetou cada detalhe desse ecossistema para oferecer tecnologia de ponta, segurança máxima e a melhor experiência de compras e vendas online.";
+          "Tanto a plataforma HS Digital quanto eu, a Aura, fomos idealizados e criados por Hugo Rogério, nosso fundador! Ele projetou cada detalhe desse ecossistema para oferecer tecnologia de ponta, segurança máxima e a melhor experiência de compras e vendas online.";
         actionTag = "Fundador & Idealizador";
       }
       // Dúvidas de Compras / Rastreio / Pedidos
@@ -237,21 +240,53 @@ export function AuraChatWidget() {
       }
       // Resposta persuasiva padrão
       else {
-        responseText = `Com certeza posso te ajudar com "${query}"! No HS Digital você encontra as melhores ofertas, frete ágil e produtos exclusivos. Quer que eu te direcione para as promoções da semana ou prefere ver categorias específicas?`;
-        linkAction = { label: "Explorar Melhores Ofertas", url: "/" };
-        actionTag = "Oportunidade";
+        responseText = "";
       }
 
-      const botMsg: Message = {
-        id: String(Date.now() + 1),
-        sender: "aura",
-        text: responseText,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        ...(linkAction ? { link: linkAction } : {}),
-        actionTag,
-      };
+      if (responseText) {
+        const botMsg: Message = {
+          id: String(Date.now() + 1),
+          sender: "aura",
+          text: responseText,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          ...(linkAction ? { link: linkAction } : {}),
+          actionTag,
+        };
+        setMessages((prev) => [...prev, botMsg]);
+        return;
+      }
 
-      setMessages((prev) => [...prev, botMsg]);
+      // Sem intenção rápida correspondente: consulta a IA da Aura.
+      setIsThinking(true);
+      const history = messages
+        .slice(-8)
+        .map((m) => ({ role: m.sender === "user" ? ("user" as const) : ("assistant" as const), content: m.text }));
+      askAura({ data: { message: query, history } })
+        .then(({ reply }) => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: String(Date.now() + 1),
+              sender: "aura",
+              text: reply,
+              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              actionTag: "Consultora IA",
+            },
+          ]);
+        })
+        .catch((err) => {
+          console.error("Erro na Aura:", err);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: String(Date.now() + 1),
+              sender: "aura",
+              text: "Tive uma instabilidade agora, mas já estou de volta! Pode repetir sua pergunta?",
+              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            },
+          ]);
+        })
+        .finally(() => setIsThinking(false));
     }, 400);
   };
 
@@ -377,6 +412,15 @@ export function AuraChatWidget() {
                 <span className="mt-1 px-1 text-[10px] text-muted-foreground">{m.time}</span>
               </div>
             ))}
+            {isThinking && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <AuraAvatar />
+                <span className="flex items-center gap-1.5 rounded-2xl rounded-bl-none border border-border/60 bg-muted/90 px-3.5 py-2.5 text-[11px]">
+                  <Loader2 className="h-3 w-3 animate-spin text-purple-400" />
+                  Aura está pensando...
+                </span>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -415,7 +459,7 @@ export function AuraChatWidget() {
             {/* Botão de Enviar */}
             <button
               type="submit"
-              disabled={!input.trim()}
+              disabled={!input.trim() || isThinking}
               className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
             >
               <Send className="h-3.5 w-3.5" />
