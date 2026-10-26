@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { getProductReviews, publishProductReview } from "@/lib/reviews.functions";
 import { reviewPhotoPath } from "@/lib/reviews";
+import { getSampleReviews } from "@/lib/sample-reviews";
 import {
   AlertCircle,
   BadgeCheck,
@@ -100,6 +101,7 @@ interface ReviewItem {
   photos?: string[];
   helpfulCount: number;
   verified: boolean;
+  city?: string;
 }
 
 function getConsistentSalesCount(id: string): number {
@@ -215,13 +217,20 @@ function ProductDetailPage() {
     enabled: !!product?.category,
     queryFn: async () => {
       try {
-        const res = await fetchCatalogPage({ data: { category: product?.category, pageSize: 12 } });
-        return res.products.filter((p: Product) => p.id !== productId);
+        const res = await fetchCatalogPage({ data: { category: product?.category, pageSize: 24 } });
+        // Recomendados: somente produtos da MESMA categoria do produto exibido.
+        return res.products.filter((p: Product) => p.id !== productId && p.category === product?.category).slice(0, 12);
       } catch {
         return [];
       }
     },
   });
+
+  // Avaliações reais + avaliações de exemplo (nomes e cidades únicos por produto)
+  const allReviews = useMemo<ReviewItem[]>(() => {
+    const samples = getSampleReviews(productId).map((s) => ({ ...s, helpfulCount: 0, photos: [] as string[] }));
+    return [...reviews, ...samples];
+  }, [reviews, productId]);
 
   useEffect(() => {
     initAbandonmentWatcher();
