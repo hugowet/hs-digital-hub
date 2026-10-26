@@ -49,6 +49,13 @@ function AuthPage() {
     }
   }, [reason]);
 
+  // Already signed in (e.g. user pressed Back after logging in): leave the login screen.
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: (redirectUrl as any) || "/", replace: true });
+    });
+  }, [navigate, redirectUrl]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
