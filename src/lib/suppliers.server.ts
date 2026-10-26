@@ -754,7 +754,11 @@ export async function processCjCatalogBatch(
 export async function syncCjCatalog(supabaseAdmin: any, storeId: string, marginPercent: number) {
   const exchange = await getUsdBrlRate(supabaseAdmin, storeId);
   const { refreshCjPrices } = await import("./cj-price-refresh.server");
-  const refreshed = await refreshCjPrices(supabaseAdmin, storeId);
+  // A price-refresh failure is recorded on its own job and must not stop catalog imports.
+  const refreshed = await refreshCjPrices(supabaseAdmin, storeId).catch((caught: unknown) => {
+    console.warn("Atualização de preços CJ pausada:", caught instanceof Error ? caught.message : caught);
+    return { paused: true };
+  });
   const { data: job } = await supabaseAdmin
     .from("supplier_import_jobs")
     .select("id,status")
