@@ -337,6 +337,13 @@
       "when": 1793032272321,
       "tag": "0047_cj_identified_free_translation_budget",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793033333018,
+      "tag": "0048_cj_atomic_profit_guard",
+      "breakpoints": true
     }
   ]
 }
