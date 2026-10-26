@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
+  BadgeCheck,
   CheckCircle2,
   Clock,
   DollarSign,
@@ -100,10 +101,17 @@ function SellerCenterPage() {
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [activeTab, setActiveTab] = useState("products");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id ?? null);
+      setUserEmail(data.user?.email ?? null);
+    });
   }, []);
+
+  // Importadores (CJ Dropshipping e Amazon) são exclusivos da conta da plataforma.
+  const isPlatformOwner = userEmail === "hugohug12ou@gmail.com";
 
   const { data: store, isLoading: storeLoading } = useQuery({
     enabled: !!userId,
@@ -223,10 +231,10 @@ function SellerCenterPage() {
       <Shell>
         <div className="mx-auto max-w-md py-12 text-center">
           <Clock className="mx-auto h-12 w-12 text-primary" />
-          <h1 className="mt-4 text-xl font-bold">Solicitação em análise</h1>
+          <h1 className="mt-4 text-xl font-bold">Loja criada! Aguardando análise do time HS Digital</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Sua loja <strong>{store.name}</strong> foi enviada para aprovação. Assim que o administrador aprovar,
-            você já pode cadastrar produtos e vender com a mesma conta.
+            Sua loja <strong>{store.name}</strong> foi criada e está aguardando análise do time HS Digital.
+            Assim que for aprovada, você poderá conectar seu Mercado Pago e começar a cadastrar produtos.
           </p>
         </div>
       </Shell>
@@ -257,6 +265,11 @@ function SellerCenterPage() {
         </div>
       </div>
 
+      <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-600">
+        <BadgeCheck className="h-4 w-4 shrink-0" />
+        Loja aprovada! Você já pode conectar seu Mercado Pago e cadastrar produtos.
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <TabsList className="h-auto w-full justify-start overflow-x-auto border-b">
           <TabsTrigger value="orders">Pedidos e Envios</TabsTrigger>
@@ -265,8 +278,8 @@ function SellerCenterPage() {
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e extrato</TabsTrigger>
           <TabsTrigger value="mercadopago">Mercado Pago</TabsTrigger>
-          <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
-          <TabsTrigger value="amazon-affiliate">Importador Amazon</TabsTrigger>
+          {isPlatformOwner && <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>}
+          {isPlatformOwner && <TabsTrigger value="amazon-affiliate">Importador Amazon</TabsTrigger>}
         </TabsList>
 
         {/* Aba de Pedidos e Rastreio */}
@@ -328,21 +341,28 @@ function SellerCenterPage() {
 
         {/* Aba Cadastrar Produto */}
         <TabsContent value="create" className="pt-4">
-          <div className="max-w-xl">
-            <div className="mb-4 rounded-md border border-border bg-muted/40 p-4">
-              <h2 className="font-semibold">Venda com estoque próprio</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Cadastre seus produtos com até 10 fotos da galeria, defina preço, estoque e categoria.
-              </p>
-            </div>
-            <ProductForm
+          {!store.contract_accepted_at ? (
+            <SellerContract
               storeId={store.id}
-              onCreated={() => {
-                qc.invalidateQueries({ queryKey: ["store-products"] });
-                setActiveTab("products");
-              }}
+              onAccepted={() => qc.invalidateQueries({ queryKey: ["seller-store", userId] })}
             />
-          </div>
+          ) : (
+            <div className="max-w-xl">
+              <div className="mb-4 rounded-md border border-border bg-muted/40 p-4">
+                <h2 className="font-semibold">Venda com estoque próprio</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Cadastre seus produtos com até 10 fotos da galeria, defina preço, estoque e categoria.
+                </p>
+              </div>
+              <ProductForm
+                storeId={store.id}
+                onCreated={() => {
+                  qc.invalidateQueries({ queryKey: ["store-products"] });
+                  setActiveTab("products");
+                }}
+              />
+            </div>
+          )}
         </TabsContent>
 
         {/* Aba de Vendas e Extrato */}
@@ -357,12 +377,12 @@ function SellerCenterPage() {
 
         {/* Aba de Fornecedores */}
         <TabsContent value="suppliers" className="pt-4">
-          <CjSupplierPanel storeId={store.id} />
+          {isPlatformOwner ? <CjSupplierPanel storeId={store.id} /> : null}
         </TabsContent>
 
-        {/* Aba Importador Amazon */}
+         {/* Aba Importador Amazon */}
         <TabsContent value="amazon-affiliate" className="pt-4">
-          <AmazonAffiliateImporter />
+          {isPlatformOwner ? <AmazonAffiliateImporter /> : null}
         </TabsContent>
       </Tabs>
 
@@ -843,6 +863,59 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
   );
 }
 
+function SellerContract({ storeId, onAccepted }: { storeId: string; onAccepted: () => void }) {
+  const [agreed, setAgreed] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleAccept = async () => {
+    if (!agreed || saving) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update({ contract_accepted_at: new Date().toISOString() })
+        .eq("id", storeId);
+      if (error) throw error;
+      toast.success("Contrato aceito! Agora você pode cadastrar seus produtos.");
+      onAccepted();
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível registrar o aceite.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <h2 className="text-lg font-bold">Contrato de Vendedor HS Digital</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Leia com atenção antes de cadastrar seu primeiro produto.
+      </p>
+      <div className="mt-4 max-h-80 space-y-3 overflow-y-auto rounded-xl border border-border bg-muted/30 p-4 text-sm leading-relaxed text-foreground/90">
+        <p><strong>1. Retenção do repasse (proteção contra golpe).</strong> O valor de cada venda fica retido pela plataforma e só é liberado para o vendedor quando o pedido for confirmado como <strong>entregue na casa do cliente</strong>. Pedidos cancelados, devolvidos ou com fraude comprovada não geram repasse.</p>
+        <p><strong>2. Veracidade dos anúncios.</strong> O vendedor é responsável por fotos, descrições, preços e estoque reais. Anúncios enganosos, produtos falsificados, proibidos ou sem estoque podem ser removidos e a loja suspensa.</p>
+        <p><strong>3. Prazo e envio.</strong> O vendedor deve despachar dentro do prazo informado e registrar o código de rastreio válido. Atrasos recorrentes ou rastreios inválidos podem bloquear novas vendas.</p>
+        <p><strong>4. Pagamentos.</strong> Todas as vendas são processadas pelo Mercado Pago conectado à loja, com a comissão da plataforma descontada automaticamente no momento do pagamento. É proibido tentar receber por fora da plataforma.</p>
+        <p><strong>5. Atendimento.</strong> O vendedor deve responder às mensagens dos compradores na aba Mensagens e resolver problemas de entrega, troca e devolução de boa-fé.</p>
+        <p><strong>6. Cancelamentos e reembolsos.</strong> Se o produto não chegar, chegar com defeito ou for diferente do anunciado, o comprador será reembolsado e o valor não será repassado ao vendedor.</p>
+        <p><strong>7. Suspensão.</strong> O descumprimento destas regras pode resultar em retenção de valores, suspensão ou remoção definitiva da loja, conforme análise do time HS Digital.</p>
+      </div>
+      <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 text-sm font-medium">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-primary"
+        />
+        Li e concordo com o Contrato de Vendedor HS Digital, incluindo a retenção do dinheiro até a entrega do produto na casa do cliente.
+      </label>
+      <Button className="mt-4 w-full" disabled={!agreed || saving} onClick={() => void handleAccept()}>
+        {saving ? "Registrando..." : "Confirmar e começar a vender"}
+      </Button>
+    </div>
+  );
+}
+
 function SellerRequestForm({ userId, onCreated }: { userId: string | null; onCreated: () => void }) {
   const [storeName, setStoreName] = useState("");
   const [storeDescription, setStoreDescription] = useState("");
@@ -867,7 +940,7 @@ function SellerRequestForm({ userId, onCreated }: { userId: string | null; onCre
         status: "pending",
       });
       if (error) throw error;
-      toast.success("Solicitação enviada! Aguarde a aprovação do administrador.");
+      toast.success("Loja criada! Aguardando análise do time HS Digital.");
       onCreated();
     } catch (err: any) {
       toast.error(err?.message || "Não foi possível enviar a solicitação.");

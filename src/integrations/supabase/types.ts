@@ -1771,6 +1771,7 @@ export type Database = {
       stores: {
         Row: {
           balance: number
+          contract_accepted_at: string | null
           created_at: string
           description: string | null
           id: string
@@ -1791,6 +1792,7 @@ export type Database = {
         }
         Insert: {
           balance?: number
+          contract_accepted_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -1811,6 +1813,7 @@ export type Database = {
         }
         Update: {
           balance?: number
+          contract_accepted_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
