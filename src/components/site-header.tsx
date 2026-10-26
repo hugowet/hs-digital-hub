@@ -76,16 +76,17 @@ export function SiteHeader({
     setLocalQuery(query);
   }, [query]);
 
+  const latest = useRef({ query, onQueryChange });
+  latest.current = { query, onQueryChange };
   useEffect(() => {
     if (!typedRef.current) return;
     const timer = setTimeout(() => {
-      if (typedRef.current && localQuery !== query && onQueryChange) {
-        typedRef.current = false;
-        onQueryChange(localQuery);
-      }
+      const { query: current, onQueryChange: change } = latest.current;
+      typedRef.current = false;
+      if (localQuery !== current && change) change(localQuery);
     }, 350);
     return () => clearTimeout(timer);
-  }, [localQuery, onQueryChange, query]);
+  }, [localQuery]);
 
   const matches = useMemo(() => {
     const raw = normalizeCatalogSearch(localQuery ?? "");
