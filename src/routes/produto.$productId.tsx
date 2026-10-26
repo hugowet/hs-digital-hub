@@ -242,6 +242,7 @@ function ProductDetailPage() {
   useEffect(() => {
     initAbandonmentWatcher();
     if (product) {
+      recordProductView(product.category, product.title);
       trackProductView({
         id: product.id,
         title: product.title,
