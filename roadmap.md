@@ -186,6 +186,6 @@
 
 - [x] Centralizar verticalmente a passagem do Lupi e aumentar sua duração para 3 minutos, mantendo as frases no final.
 
-- [ ] HS Social: foto de perfil em tela cheia ao tocar
-- [ ] HS Social: chamadas de áudio e vídeo
-- [ ] HS Social: melhorar botão de gravar áudio
+- [x] HS Social: foto de perfil em tela cheia ao tocar
+- [x] HS Social: chamadas de áudio e vídeo (só com HS Social aberto; sem servidor TURN)
+- [x] HS Social: melhorar botão de gravar áudio
