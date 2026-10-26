@@ -256,7 +256,7 @@ export function HSTrends() {
   const isVipClube = Boolean(userProfile?.is_clube_hs);
   // Administrador tem HSTrends ilimitado (pode postar sem assinatura)
   const isAdmin = Boolean(userProfile?.is_admin);
-  const canPostVideos = isVipClube || isAdmin;
+  const canPostVideos = true;
 
   // Vídeos reais do banco + URLs assinadas
   const { data: customVideos = [] } = useQuery({

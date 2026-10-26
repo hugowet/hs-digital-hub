@@ -321,7 +321,6 @@ function HSSocialPage() {
 
   async function uploadChatMedia(mediaFile: File, kind: "audio" | "image") {
     if (!roomId && !groupId) throw new Error("Selecione uma conversa.");
-    if (kind === "audio" && !home.data?.me.is_clube_hs) throw new Error("Envio de áudio exclusivo para assinantes do Clube HS.");
     const ext = kind === "audio" ? "webm" : (mediaFile.type === "image/png" ? "png" : "jpg");
     const path = `${user.id}/chat-${crypto.randomUUID()}.${ext}`;
     const upload = await supabase.storage.from("social-stories").upload(path, mediaFile, { contentType: mediaFile.type });

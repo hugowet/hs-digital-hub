@@ -141,8 +141,6 @@ export const sendSocialMediaMessage = createServerFn({ method: "POST" }).middlew
   .handler(async ({ data, context }) => {
     if (!data.mediaPath.startsWith(`${context.userId}/`) || data.mediaPath.includes("..")) throw new Error("Mídia inválida.");
     if (data.kind === "audio") {
-      const access = await context.supabase.rpc("club_has_access", { _user_id: context.userId });
-      if (access.error || !access.data) throw new Error("Envio de áudio exclusivo para assinantes do Clube HS.");
     }
     const label = data.kind === "audio" ? "🎤 Áudio" : "📷 Foto";
     const result = await context.supabase.from("social_messages").insert({
@@ -233,8 +231,6 @@ export const sendSocialGroupMessage = createServerFn({ method: "POST" }).middlew
     if (data.kind === "text" && !data.content) throw new Error("Mensagem vazia.");
     if (data.kind !== "text" && (!data.mediaPath?.startsWith(`${context.userId}/`) || data.mediaPath.includes(".."))) throw new Error("Mídia inválida.");
     if (data.kind === "audio") {
-      const access = await context.supabase.rpc("club_has_access", { _user_id: context.userId });
-      if (access.error || !access.data) throw new Error("Envio de áudio exclusivo para assinantes do Clube HS.");
     }
     const result = await context.supabase.from("social_group_messages").insert({
       group_id: data.groupId,
