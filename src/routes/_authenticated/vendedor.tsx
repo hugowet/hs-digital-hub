@@ -863,6 +863,59 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
   );
 }
 
+function SellerContract({ storeId, onAccepted }: { storeId: string; onAccepted: () => void }) {
+  const [agreed, setAgreed] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleAccept = async () => {
+    if (!agreed || saving) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update({ contract_accepted_at: new Date().toISOString() })
+        .eq("id", storeId);
+      if (error) throw error;
+      toast.success("Contrato aceito! Agora você pode cadastrar seus produtos.");
+      onAccepted();
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível registrar o aceite.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <h2 className="text-lg font-bold">Contrato de Vendedor HS Digital</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Leia com atenção antes de cadastrar seu primeiro produto.
+      </p>
+      <div className="mt-4 max-h-80 space-y-3 overflow-y-auto rounded-xl border border-border bg-muted/30 p-4 text-sm leading-relaxed text-foreground/90">
+        <p><strong>1. Retenção do repasse (proteção contra golpe).</strong> O valor de cada venda fica retido pela plataforma e só é liberado para o vendedor quando o pedido for confirmado como <strong>entregue na casa do cliente</strong>. Pedidos cancelados, devolvidos ou com fraude comprovada não geram repasse.</p>
+        <p><strong>2. Veracidade dos anúncios.</strong> O vendedor é responsável por fotos, descrições, preços e estoque reais. Anúncios enganosos, produtos falsificados, proibidos ou sem estoque podem ser removidos e a loja suspensa.</p>
+        <p><strong>3. Prazo e envio.</strong> O vendedor deve despachar dentro do prazo informado e registrar o código de rastreio válido. Atrasos recorrentes ou rastreios inválidos podem bloquear novas vendas.</p>
+        <p><strong>4. Pagamentos.</strong> Todas as vendas são processadas pelo Mercado Pago conectado à loja, com a comissão da plataforma descontada automaticamente no momento do pagamento. É proibido tentar receber por fora da plataforma.</p>
+        <p><strong>5. Atendimento.</strong> O vendedor deve responder às mensagens dos compradores na aba Mensagens e resolver problemas de entrega, troca e devolução de boa-fé.</p>
+        <p><strong>6. Cancelamentos e reembolsos.</strong> Se o produto não chegar, chegar com defeito ou for diferente do anunciado, o comprador será reembolsado e o valor não será repassado ao vendedor.</p>
+        <p><strong>7. Suspensão.</strong> O descumprimento destas regras pode resultar em retenção de valores, suspensão ou remoção definitiva da loja, conforme análise do time HS Digital.</p>
+      </div>
+      <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 text-sm font-medium">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-primary"
+        />
+        Li e concordo com o Contrato de Vendedor HS Digital, incluindo a retenção do dinheiro até a entrega do produto na casa do cliente.
+      </label>
+      <Button className="mt-4 w-full" disabled={!agreed || saving} onClick={() => void handleAccept()}>
+        {saving ? "Registrando..." : "Confirmar e começar a vender"}
+      </Button>
+    </div>
+  );
+}
+
 function SellerRequestForm({ userId, onCreated }: { userId: string | null; onCreated: () => void }) {
   const [storeName, setStoreName] = useState("");
   const [storeDescription, setStoreDescription] = useState("");
