@@ -14,6 +14,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "../lib/cart";
+import { DeliveryProvider } from "../lib/delivery-context";
 import { RadioProvider } from "../lib/radio-context";
 import { Toaster } from "../components/ui/sonner";
 import { AuraChatWidget } from "../components/aura-chat-widget";
@@ -140,6 +141,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <DeliveryProvider>
       <CartProvider>
         <RadioProvider>
           <Outlet />
@@ -150,6 +152,7 @@ function RootComponent() {
           {pathname === "/" && <ExitConfirmGuard />}
         </RadioProvider>
       </CartProvider>
+      </DeliveryProvider>
     </QueryClientProvider>
   );
 }
