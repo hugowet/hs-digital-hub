@@ -23,6 +23,11 @@ export function SellerMessagesTab() {
   const [activeConversation, setActiveConversation] = useState<SellerConversation | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
 
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ["seller-conversations"],
