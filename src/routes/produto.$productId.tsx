@@ -596,6 +596,7 @@ function ProductDetailPage() {
                   </div>
 
                   <div className="mt-2 flex items-baseline gap-1">
+                    {isCj && <span className="text-xs text-muted-foreground">A partir de</span>}
                     <span className="text-sm font-semibold text-foreground">R$</span>
                     <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
                       {priceParts.reais}
