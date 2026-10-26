@@ -2,6 +2,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { clubPixBody, validPixCpf } from "./club-pix";
 
 export const createClubeHsSubscription = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -68,9 +69,26 @@ export const createClubeHsSubscription = createServerFn({ method: "POST" })
     return { initPoint: mpResponse.init_point };
   });
 
+export const reconcileClubeHsPix=createServerFn({method:"POST"}).middleware([requireSupabaseAuth])
+ .inputValidator(input=>z.object({intentId:z.string().uuid()}).parse(input))
+ .handler(async({data,context})=>{
+   const intent=await context.supabase.from("clube_hs_pix_payments").select("id,provider_payment_id,status").eq("id",data.intentId).eq("user_id",context.userId).single();
+   if(intent.error || !intent.data?.provider_payment_id)throw new Error("Pix não encontrado.");
+   if(intent.data.status==='approved')return {status:'approved'};
+   const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+   const {decryptSecret,mercadoPagoRequest}=await import("@/lib/mercado-pago.server");
+   const settings=await supabaseAdmin.from("payment_provider_settings").select("access_token_encrypted").eq("provider","mercadopago").single();
+   if(!settings.data)throw new Error("Pagamento indisponível.");
+   const payment=await mercadoPagoRequest<any>(`/v1/payments/${intent.data.provider_payment_id}`,await decryptSecret(settings.data.access_token_encrypted));
+   if(payment.external_reference!==`club-pix:${data.intentId}` || String(payment.id)!==intent.data.provider_payment_id || payment.payment_method_id!=='pix')throw new Error("Pagamento não corresponde ao Pix.");
+   const apply=await supabaseAdmin.rpc("apply_club_pix_payment",{_id:data.intentId,_payment_id:String(payment.id),_status:payment.status,_amount:payment.transaction_amount,_currency:payment.currency_id});
+   if(apply.error)throw new Error("Não foi possível confirmar o pagamento.");
+   return {status:payment.status};
+ });
+
 export const createClubeHsPix = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ origin: z.string().url() }).parse(input))
+  .inputValidator((input) => z.object({ origin: z.string().url(), cpf: z.string().refine(validPixCpf, "Informe um CPF válido para gerar o Pix.") }).parse(input))
   .handler(async ({ data, context }) => {
     const admin = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
     if (admin.error) throw new Error("Não foi possível verificar seu acesso.");
@@ -81,30 +99,33 @@ export const createClubeHsPix = createServerFn({ method: "POST" })
     const { data: settings } = await supabaseAdmin.from("payment_provider_settings")
       .select("access_token_encrypted").eq("provider", "mercadopago").maybeSingle();
     if (!settings?.access_token_encrypted) throw new Error("Pagamento do Clube indisponível. Tente novamente mais tarde.");
-    const recent = await supabaseAdmin.from("clube_hs_pix_payments").select("checkout_url")
-      .eq("user_id", context.userId).eq("status", "pending")
-      .gt("created_at", new Date(Date.now() - 30 * 60_000).toISOString())
-      .not("checkout_url", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (recent.data?.checkout_url) return { initPoint: recent.data.checkout_url };
+    const accessToken=await decryptSecret(settings.access_token_encrypted);
+    const {data: identity}=await context.supabase.auth.getUser();
+    const email=identity.user?.email;
+    if(!email)throw new Error("Confirme o e-mail da sua conta para gerar o Pix.");
+    const collector=await mercadoPagoRequest<{email?:string;identification?:{number?:string}}>("/users/me",accessToken);
+    if(collector.email?.toLowerCase()===email.toLowerCase() || collector.identification?.number?.replace(/\D/g,"")===data.cpf.replace(/\D/g,""))throw new Error("O Mercado Pago não permite Pix para a própria conta recebedora. Administradores já têm acesso gratuito.");
+    const recent=await supabaseAdmin.from("clube_hs_pix_payments").select("id,provider_payment_id").eq("user_id",context.userId).eq("status","pending").gt("created_at",new Date(Date.now()-30*60_000).toISOString()).not("provider_payment_id","is",null).order("created_at",{ascending:false}).limit(1).maybeSingle();
+    if(recent.error)throw new Error("Não foi possível consultar o Pix anterior.");
+    if(recent.data?.provider_payment_id){
+      const payment=await mercadoPagoRequest<any>(`/v1/payments/${recent.data.provider_payment_id}`,accessToken);
+      if(payment.status==='pending' && payment.external_reference===`club-pix:${recent.data.id}` && Date.parse(payment.date_of_expiration)>Date.now() && payment.point_of_interaction?.transaction_data?.qr_code){const qr=payment.point_of_interaction.transaction_data;return {intentId:recent.data.id,qrCode:qr.qr_code,qrImage:qr.qr_code_base64,expiresAt:payment.date_of_expiration};}
+    }
     const { data: intent, error } = await supabaseAdmin.from("clube_hs_pix_payments")
       .insert({ user_id: context.userId }).select("id").single();
     if (error || !intent) throw new Error("Não foi possível iniciar o pagamento.");
     try {
-      const result = await mercadoPagoRequest<{ id: string; init_point: string }>("/checkout/preferences", await decryptSecret(settings.access_token_encrypted), {
+      const result = await mercadoPagoRequest<any>("/v1/payments", accessToken, {
         method: "POST", headers: { "X-Idempotency-Key": intent.id },
-        body: JSON.stringify({
-          items: [{ id: "clube-hs-month", title: "Clube HS · 1 mês", quantity: 1, currency_id: "BRL", unit_price: 19.90 }],
-          external_reference: `club-pix:${intent.id}`,
-          notification_url: "https://hs-digital-marck.lovable.app/api/public/mercado-pago/webhook",
-          back_urls: { success: `${origin}/clube-hs`, pending: `${origin}/clube-hs`, failure: `${origin}/clube-hs` },
-          payment_methods: { default_payment_method_id: "pix", excluded_payment_types: [{ id: "credit_card" }, { id: "debit_card" }, { id: "ticket" }, { id: "atm" }], installments: 1 },
-        }),
+        body: JSON.stringify(clubPixBody(intent.id,email,data.cpf)),
       });
-      const saved = await supabaseAdmin.from("clube_hs_pix_payments").update({ preference_id: result.id, checkout_url: result.init_point }).eq("id", intent.id);
+      const qr=result.point_of_interaction?.transaction_data;
+      if(!qr?.qr_code)throw new Error("O Mercado Pago não retornou um código Pix para esta cobrança.");
+      const saved = await supabaseAdmin.from("clube_hs_pix_payments").update({ provider_payment_id: String(result.id) }).eq("id", intent.id);
       if (saved.error) throw saved.error;
-      return { initPoint: result.init_point };
-    } catch {
+      return { intentId:intent.id, qrCode:qr.qr_code, qrImage:qr.qr_code_base64, expiresAt:result.date_of_expiration };
+    } catch (caught) {
       await supabaseAdmin.from("clube_hs_pix_payments").update({ status: "failed" }).eq("id", intent.id);
-      throw new Error("Não foi possível abrir o Pix do Clube HS. Tente novamente.");
+      throw new Error(caught instanceof Error ? caught.message : "Não foi possível gerar o Pix do Clube HS.");
     }
   });

@@ -1,4 +1,5 @@
-import { calculateFinalPrice } from "./pricing";
+import { calculateFinalPrice, getMarginRate } from "./pricing";
+import { protectedCjPrice } from "./cj-profit";
 
 export const FREE_SHIPPING_THRESHOLD = 89.9;
 
@@ -6,6 +7,7 @@ export function priceCjShipment(
   items: Array<{ productId: string; quantity: number; costUsd: number }>,
   freightUsd: number,
   exchangeRate: number,
+  commissionRate = 0,
 ) {
   if (!items.length || !Number.isFinite(freightUsd) || freightUsd < 0 ||
       !Number.isFinite(exchangeRate) || exchangeRate <= 0 ||
@@ -20,8 +22,10 @@ export function priceCjShipment(
     remainingCents -= cents;
     const freightPerUnit = cents / 100 / item.quantity;
     const landedCost = Math.round((item.costUsd * exchangeRate + freightPerUnit) * 100) / 100;
-    const landedPrice = calculateFinalPrice(landedCost);
-    return { product_id: item.productId, quantity: item.quantity, landed_price: landedPrice, freight_per_unit: freightPerUnit };
+    const landedPrice = protectedCjPrice(landedCost, commissionRate, freightPerUnit);
+    return { product_id: item.productId, quantity: item.quantity, landed_price: landedPrice, freight_per_unit: freightPerUnit,
+      supplier_item_cost_brl: Math.ceil(item.costUsd * exchangeRate * 100) / 100,
+      protected_net_target: Math.max(commissionRate > 0 ? landedCost * (1 + getMarginRate(landedCost)) : calculateFinalPrice(landedCost),landedCost+0.01) };
   });
   const landedTotal = Math.round(pricedItems.reduce((sum, item) => sum + item.landed_price * item.quantity, 0) * 100) / 100;
   const embedded = landedTotal >= FREE_SHIPPING_THRESHOLD;

@@ -1,12 +1,13 @@
 # HS Digital — MVP
 
 ## Proteção financeira e correções — 26/10
-- [ ] Auditar preços CJ e proteger margem com custo oficial, frete e comissão; explicar exemplos de R$ 40, 50, 60 e 100.
-- [ ] Corrigir e verificar geração de Pix do Clube HS sem cobrar administradores.
-- [ ] Corrigir seleção de numeração de calçados e roupas; verificar troca real.
-- [ ] Encurtar o banner rotativo da vitrine.
-- [ ] Corrigir visualização das fotos de perfil entre contatos da HS Social.
-- [ ] Implementar notificações de mensagens fora do site; depende de conexão de envio e permissão do destinatário.
+- [x] Auditar 15.031 produtos CJ pais, comparar quatro custos oficiais e zerar itens abaixo do custo após comissão; piso por trigger protege novas alterações e checkout exige cotação com margem. Pedido real sem cobrança criado/cancelado com estoque restaurado. Taxas Mercado Pago e impostos externos não verificados; não garantir lucro líquido.
+- [x] Substituir preferência de checkout por Pix direto com CPF, QR/copia-cola e reconciliação protegida; API confirmou Pix ativo e testes passaram, admin permanece grátis.
+- [ ] Validar QR real do Clube: precisa de ação de uma conta não administradora com CPF próprio; não gerada cobrança no CPF inventado nem cobrado admin.
+- [x] Troca real de roupa L→M e calçado verificada; opções sem estoque salvo podem confirmar estoque oficial ao clicar, sem inventar disponibilidade.
+- [x] Banner encurtado e conferido no celular (322px de altura).
+- [x] Foto da Conta agora persistida no perfil; Social guarda caminho privado e renova assinatura; imagem privada recuperada e exibida. Recebimento em segunda conta não verificado.
+- [ ] Notificações fora do site: conexão Firebase não concluída; envio não implementado sem serviço configurado.
 
 ## Ampliar tradução gratuita — 26/10
 - [x] Confirmar MyMemory: 50.000 caracteres/dia com contato válido, conforme página oficial; e-mail autorizado por Hugo.

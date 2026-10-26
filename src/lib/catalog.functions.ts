@@ -66,7 +66,7 @@ async function signProductBatch(products: Product[]) {
 }
 
 const projection =
-  "id,title,supplier_title_original,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier,supplier_product_id";
+  "id,title,supplier_title_original,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier,supplier_product_id,supplier_variant_parent_id";
 const cardProjection =
   "id,title,price,compare_at_price,stock,category,image_url,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier";
 
@@ -202,10 +202,12 @@ export const fetchProduct = createServerFn({ method: "GET" })
     const [signed] = await signProductBatch([productRow as unknown as Product]);
     if (!signed) return null;
     if (productRow.supplier === "cj" && productRow.supplier_product_id) {
-      const { data: options, error: optionsError } = await supabasePublic.from("products")
+      // Only safe option fields of this already-public product family, including unconfirmed options.
+      const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+      const { data: options, error: optionsError } = await supabaseAdmin.from("products")
         .select("id,supplier_variant_label,stock").eq("store_id", productRow.store_id)
-        .eq("supplier", "cj").eq("supplier_product_id", productRow.supplier_product_id)
-        .eq("is_active", true).order("supplier_variant_label");
+        .eq("supplier", "cj").or(`id.eq.${productRow.supplier_variant_parent_id ?? productRow.id},supplier_variant_parent_id.eq.${productRow.supplier_variant_parent_id ?? productRow.id}`)
+        .order("supplier_variant_label");
       if (optionsError) throw optionsError;
       return { ...signed, supplierOptions: (options ?? []).flatMap((option) => option.supplier_variant_label
         ? [{ productId: option.id, label: option.supplier_variant_label, stock: option.stock }] : []) };

@@ -85,7 +85,7 @@ export async function mercadoPagoRequest<T>(path: string, accessToken: string, i
   });
   const body = await response.text();
   if (!response.ok) {
-    console.error(`Mercado Pago request failed [${response.status}]: ${body}`);
+    console.error(`Mercado Pago request failed [${response.status}] at ${path.split("?")[0]}`);
     let detail = "";
     try {
       const parsed = JSON.parse(body) as {

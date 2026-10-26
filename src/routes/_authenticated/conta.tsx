@@ -128,6 +128,7 @@ export function AccountPage() {
     if (profile) {
       setFullName(profile.full_name || "");
       setPhone(profile.phone || "");
+      setAvatarUrl(profile.avatar_url || null);
 
       // Carrega dados locais persistidos (foto e CPF verificado)
       const savedData = localStorage.getItem(`user_profile_meta_${user.id}`);
@@ -137,7 +138,7 @@ export function AccountPage() {
           setCpf(parsed.cpf || "");
           setIsCpfVerified(Boolean(parsed.isCpfVerified));
           setBirthDate(parsed.birthDate || "");
-          setAvatarUrl(parsed.avatarUrl || null);
+          if (!profile.avatar_url) setAvatarUrl(parsed.avatarUrl || null);
         } catch {}
       }
     }
@@ -153,8 +154,10 @@ export function AccountPage() {
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const result = event.target?.result as string;
+      const { error } = await supabase.from("profiles").update({ avatar_url: result }).eq("id", user.id);
+      if (error) { toast.error("Não foi possível salvar sua foto para os contatos."); return; }
       setAvatarUrl(result);
 
       const current = JSON.parse(localStorage.getItem(`user_profile_meta_${user.id}`) || "{}");
@@ -163,6 +166,8 @@ export function AccountPage() {
         JSON.stringify({ ...current, avatarUrl: result }),
       );
       toast.success("Foto de perfil atualizada com sucesso!");
+      await qc.invalidateQueries({ queryKey: ["social-home"] });
+      await qc.invalidateQueries({ queryKey: ["my-profile", user.id] });
     };
     reader.readAsDataURL(file);
   };

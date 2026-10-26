@@ -21,6 +21,8 @@ type QuoteOption = {
 async function cjQuotes(supabaseAdmin: any, storeId: string, postalCode: string, products: any[]): Promise<QuoteOption[]> {
   const token = await getCjAccessToken(supabaseAdmin, storeId);
   const exchange = await getUsdBrlRate(supabaseAdmin, storeId);
+  const { data: platform, error: platformError } = await supabaseAdmin.from("platform_settings").select("commission_rate").eq("id", true).single();
+  if (platformError || !platform) throw new Error("Não foi possível confirmar a comissão. Compra CJ bloqueada.");
   const currentItems: Array<{ productId: string; quantity: number; costUsd: number }> = [];
   for (const product of products) {
     if (!product.supplier_variant_id) throw new Error("Produto sem variante CJ confirmada.");
@@ -49,12 +51,13 @@ async function cjQuotes(supabaseAdmin: any, storeId: string, postalCode: string,
   return cjShippingModalities(response.flatMap<QuoteOption>((entry) => {
     const name = typeof entry.logisticName === "string" ? entry.logisticName.trim() : "";
     if (!name) return [];
-    const priced = priceCjShipment(currentItems, cjFreightUsd(entry), exchange.rate);
+    const priced = priceCjShipment(currentItems, cjFreightUsd(entry), exchange.rate, Number(platform.commission_rate));
     const days = String(entry.logisticAging ?? "").match(/\d+/g)?.map(Number) ?? [];
     return [{ provider: "cj", serviceCode: name, serviceName: name, carrierName: name,
       amount: priced.amount, deliveryDaysMin: days[0] ?? null,
       deliveryDaysMax: days[1] ?? days[0] ?? null,
-      providerPayload: { pricing_version: 1, cj: entry, exchangeRate: exchange.rate,
+      providerPayload: { pricing_version: 1, profit_guard_version: 1, commission_rate: Number(platform.commission_rate), cj: entry, exchangeRate: exchange.rate,
+        protected_net_target: priced.items.reduce((sum, item) => sum + item.protected_net_target * item.quantity, 0),
         supplier_freight_brl: priced.freightBrl, embedded_free_shipping: priced.embedded,
         priced_items: priced.items, quoted_at: new Date().toISOString() } }];
   }));
@@ -178,7 +181,7 @@ export async function quoteCartShipping(
         .gt("expires_at", new Date(Date.now() + 60_000).toISOString())
         .order("created_at", { ascending: false }).limit(10);
       if (cacheError) throw cacheError;
-      const current = (cached ?? []).filter((row: any) => row.provider_payload?.modality
+      const current = (cached ?? []).filter((row: any) => row.provider_payload?.modality && row.provider_payload.profit_guard_version === 1
         && Boolean(row.provider_payload.first_purchase_margin_included) === (firstPurchase && !marginAllocated && Boolean(row.provider_payload.embedded_free_shipping)));
       const express = current.find((row: any) => row.provider_payload.modality === "express");
       const premium = current.find((row: any) => row.provider_payload.modality === "premium" && row.expires_at === express?.expires_at);

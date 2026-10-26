@@ -38,6 +38,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { catalogDisplayPrice } from "@/lib/product-price";
+import { confirmCjOption } from "@/lib/cj-option.functions";
 import { useCart } from "@/lib/cart";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { productQueryOptions } from "@/lib/product-query";
@@ -158,6 +159,8 @@ function ProductDetailPage() {
   const { productId } = Route.useParams();
   const navigate = useNavigate();
   const { add } = useCart();
+  const confirmOption=useServerFn(confirmCjOption);
+  const [checkingOption,setCheckingOption]=useState<string|null>(null);
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -593,6 +596,7 @@ function ProductDetailPage() {
                   </div>
 
                   <div className="mt-2 flex items-baseline gap-1">
+                    {isCj && <span className="text-xs text-muted-foreground">A partir de</span>}
                     <span className="text-sm font-semibold text-foreground">R$</span>
                     <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
                       {priceParts.reais}
@@ -613,9 +617,17 @@ function ProductDetailPage() {
                       {product.supplierOptions.map((option) => (
                         <Button key={option.productId} size="sm" variant={option.productId === productId ? "default" : "outline"}
                           aria-pressed={option.productId === productId}
-                          disabled={option.stock <= 0}
-                          onClick={() => { setQuantity(1); setSelectedImage(0); navigate({ to: "/produto/$productId", params: { productId: option.productId } }); }}>
-                          {option.label}
+                          disabled={checkingOption!==null}
+                          title={option.stock <= 0 ? "Sem estoque confirmado na CJ" : option.label}
+                          onClick={async () => {
+                            setCheckingOption(option.productId);
+                            try {
+                              if(option.stock<=0)await confirmOption({data:{parentId:productId,productId:option.productId}});
+                              setQuantity(1);setSelectedImage(0);await navigate({to:"/produto/$productId",params:{productId:option.productId}});
+                            } catch(error){toast.error(error instanceof Error ? error.message : "Não foi possível confirmar esta opção.");}
+                            finally{setCheckingOption(null);}
+                          }}>
+                          {checkingOption===option.productId ? "Confirmando…" : option.label}
                         </Button>
                       ))}
                     </div>

@@ -230,6 +230,7 @@ export function ProductCard({
           </div>
 
           {/* Linha 2: Preço em destaque com centavos sobrescritos */}
+          {product.supplier === "cj" && <p className="mt-1 text-[11px] text-muted-foreground">A partir de</p>}
           <div className="mt-1 flex items-start leading-none text-foreground">
             <span className="text-xl md:text-2xl font-normal tracking-tight">
               R$ {priceParts.reais}
