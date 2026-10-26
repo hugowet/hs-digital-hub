@@ -1,0 +1,2 @@
+ALTER TABLE public.stores ADD COLUMN contract_accepted_at timestamptz;
+COMMENT ON COLUMN public.stores.contract_accepted_at IS 'Quando o vendedor aceitou o contrato do marketplace (retenção do repasse até a entrega e regras antifraude). Obrigatório antes de cadastrar produtos.';
