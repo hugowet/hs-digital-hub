@@ -451,7 +451,7 @@ function Home() {
 {/* BANNER DE FRETE GRÁTIS ANTES DAS CATEGORIAS */}
 <section className="relative mb-5 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-emerald-700 to-emerald-950 p-2 shadow-xl sm:p-3">
   <div className="flex flex-col items-center gap-3 rounded-xl bg-black/70 p-3 md:flex-row">
-    <div className="relative aspect-square w-36 shrink-0 overflow-hidden rounded-xl border-2 border-emerald-400 bg-black/70 shadow-lg sm:w-44">
+    <div className="relative aspect-[4/3] w-48 shrink-0 overflow-hidden rounded-xl border-2 border-emerald-400 bg-black/70 shadow-lg sm:w-60">
       {bannerSlides.map((slide, index) => (
         <div
           key={slide.kind === "highlight" ? slide.title : slide.kind}
