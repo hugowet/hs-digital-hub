@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText, type ModelMessage } from "ai";
 
@@ -55,11 +56,11 @@ export const askAura = createServerFn({ method: "POST" })
       history: sanitizeHistory(data.history),
     };
   })
-  .handler(async ({ data, request }): Promise<{ reply: string }> => {
+  .handler(async ({ data }): Promise<{ reply: string }> => {
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("Serviço de IA não configurado.");
 
-    const forwarded = request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    const forwarded = getRequest().headers.get("x-forwarded-for")?.split(",")[0]?.trim();
     if (!checkRateLimit(forwarded || "anon")) {
       throw new Error("Muitas mensagens seguidas. Aguarde alguns minutos e tente de novo.");
     }
