@@ -51,7 +51,7 @@ export function AuraChatWidget() {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, isThinking]);
 
   // Função do Microfone (Web Speech API)
   const toggleListening = () => {
@@ -240,21 +240,53 @@ export function AuraChatWidget() {
       }
       // Resposta persuasiva padrão
       else {
-        responseText = `Com certeza posso te ajudar com "${query}"! No HS Digital você encontra as melhores ofertas, frete ágil e produtos exclusivos. Quer que eu te direcione para as promoções da semana ou prefere ver categorias específicas?`;
-        linkAction = { label: "Explorar Melhores Ofertas", url: "/" };
-        actionTag = "Oportunidade";
+        responseText = "";
       }
 
-      const botMsg: Message = {
-        id: String(Date.now() + 1),
-        sender: "aura",
-        text: responseText,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        ...(linkAction ? { link: linkAction } : {}),
-        actionTag,
-      };
+      if (responseText) {
+        const botMsg: Message = {
+          id: String(Date.now() + 1),
+          sender: "aura",
+          text: responseText,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          ...(linkAction ? { link: linkAction } : {}),
+          actionTag,
+        };
+        setMessages((prev) => [...prev, botMsg]);
+        return;
+      }
 
-      setMessages((prev) => [...prev, botMsg]);
+      // Sem intenção rápida correspondente: consulta a IA da Aura.
+      setIsThinking(true);
+      const history = messages
+        .slice(-8)
+        .map((m) => ({ role: m.sender === "user" ? ("user" as const) : ("assistant" as const), content: m.text }));
+      askAura({ data: { message: query, history } })
+        .then(({ reply }) => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: String(Date.now() + 1),
+              sender: "aura",
+              text: reply,
+              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              actionTag: "Consultora IA",
+            },
+          ]);
+        })
+        .catch((err) => {
+          console.error("Erro na Aura:", err);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: String(Date.now() + 1),
+              sender: "aura",
+              text: "Tive uma instabilidade agora, mas já estou de volta! Pode repetir sua pergunta?",
+              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            },
+          ]);
+        })
+        .finally(() => setIsThinking(false));
     }, 400);
   };
 
