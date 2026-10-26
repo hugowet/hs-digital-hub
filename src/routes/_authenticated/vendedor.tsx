@@ -341,21 +341,28 @@ function SellerCenterPage() {
 
         {/* Aba Cadastrar Produto */}
         <TabsContent value="create" className="pt-4">
-          <div className="max-w-xl">
-            <div className="mb-4 rounded-md border border-border bg-muted/40 p-4">
-              <h2 className="font-semibold">Venda com estoque próprio</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Cadastre seus produtos com até 10 fotos da galeria, defina preço, estoque e categoria.
-              </p>
-            </div>
-            <ProductForm
+          {!store.contract_accepted_at ? (
+            <SellerContract
               storeId={store.id}
-              onCreated={() => {
-                qc.invalidateQueries({ queryKey: ["store-products"] });
-                setActiveTab("products");
-              }}
+              onAccepted={() => qc.invalidateQueries({ queryKey: ["seller-store", userId] })}
             />
-          </div>
+          ) : (
+            <div className="max-w-xl">
+              <div className="mb-4 rounded-md border border-border bg-muted/40 p-4">
+                <h2 className="font-semibold">Venda com estoque próprio</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Cadastre seus produtos com até 10 fotos da galeria, defina preço, estoque e categoria.
+                </p>
+              </div>
+              <ProductForm
+                storeId={store.id}
+                onCreated={() => {
+                  qc.invalidateQueries({ queryKey: ["store-products"] });
+                  setActiveTab("products");
+                }}
+              />
+            </div>
+          )}
         </TabsContent>
 
         {/* Aba de Vendas e Extrato */}
