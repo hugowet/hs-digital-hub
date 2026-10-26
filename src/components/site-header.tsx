@@ -72,7 +72,7 @@ export function SiteHeader({
   // Only text the user typed is sent to the URL; a URL change (e.g. Back button) wins over the field.
   const typedRef = useRef(false);
   useEffect(() => {
-    typedRef.current = false;
+    if (typedRef.current) return;
     setLocalQuery(query);
   }, [query]);
 
