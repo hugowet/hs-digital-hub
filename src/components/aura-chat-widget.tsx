@@ -307,6 +307,21 @@ export function AuraChatWidget() {
 
   return (
     <>
+      {/* Chamada automática que aparece e some sozinha */}
+      {showTeaser && !isOpen && (
+        <button
+          onClick={() => {
+            setShowTeaser(false);
+            sessionStorage.setItem("hs-aura-teaser", "1");
+            setIsOpen(true);
+          }}
+          className="fixed bottom-24 right-5 z-50 flex items-center gap-2 rounded-2xl rounded-br-none border border-purple-500/40 bg-background/95 px-3.5 py-2.5 text-xs font-semibold text-foreground shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-500"
+        >
+          <Sparkles className="h-4 w-4 text-purple-400" />
+          Dúvidas? Fale com a Aura
+        </button>
+      )}
+
       {/* Botão Flutuante da Aura */}
       <button
         onClick={() => setIsOpen(!isOpen)}
