@@ -393,6 +393,13 @@
       "when": 1793079370820,
       "tag": "0055_hs_bank_credit_analysis_reference",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793084744938,
+      "tag": "0056_allow_amazon_supplier",
+      "breakpoints": true
     }
   ]
 }
