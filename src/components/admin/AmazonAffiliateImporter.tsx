@@ -70,6 +70,9 @@ export function AmazonAffiliateImporter() {
   ]);
   const [submitting, setSubmitting] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
+  const [bulkInput, setBulkInput] = useState("");
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [showBulkBox, setShowBulkBox] = useState(false);
   const [autoFillJson, setAutoFillJson] = useState("");
   const [showAutoFillBox, setShowAutoFillBox] = useState(false);
 
