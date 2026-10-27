@@ -2,11 +2,18 @@ export const HS_BANK_POLICY = {
   commissionRate: 0.12,
   repaymentRate: 0.15,
   salesHistoryDays: 30,
+  analysisRate: 0.30,
+  consistencyDays: 90,
   launchCode: "HSBANK50",
   discountCents: 5000,
   minimumCartCents: 15000,
   buyerLimit: 10,
 } as const;
+
+export function creditAnalysisCents(revenueCents: number) {
+  if (!Number.isSafeInteger(revenueCents) || revenueCents < 0) throw new Error("Faturamento inválido.");
+  return Math.round(revenueCents * HS_BANK_POLICY.analysisRate);
+}
 
 // Advisory validation only. Redemption must eventually be locked atomically
 // in checkout SQL after verified identity and dedicated funding are available.

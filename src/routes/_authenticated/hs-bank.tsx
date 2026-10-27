@@ -45,7 +45,7 @@ function HsBankPage() {
     try {
       await requestCredit({ data: { storeId: data.store.id } });
       await qc.invalidateQueries({ queryKey: ["hs-bank"] });
-      toast.success("Interesse registrado. Nenhum crédito foi contratado ou liberado.");
+      toast.success("Solicitação recebida com sucesso! O HS Bank está analisando seu perfil de vendas. A análise considera 90 dias de consistência; não há crédito aprovado nem liberação automática.");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível registrar a solicitação."); }
     finally { setPending(false); }
   };
@@ -74,8 +74,8 @@ function HsBankPage() {
           </div>
           <div className="flex flex-col justify-center gap-5 border-l border-border pl-5">
             <div><p className="text-sm text-muted-foreground">A liberar após entrega</p><p className="mt-2 text-2xl font-semibold tabular-nums">{amount(data.held)}</p></div>
-            <Button variant="bank" className="w-fit" onClick={() => setTransfer(true)}><ArrowUpRight />Transferir Saldo / Pix</Button>
-            <p className="text-xs text-muted-foreground">Transferências são realizadas na sua conta Mercado Pago; não há saque direto habilitado no HS Bank.</p>
+            <Button variant="bank" className="w-fit" onClick={() => setTransfer(true)}><ArrowUpRight />Liquidação Mercado Pago</Button>
+            <p className="text-xs text-muted-foreground">Pagamentos aprovados são processados na conta Mercado Pago vinculada à loja. A disponibilidade para transferência segue os prazos e condições do Mercado Pago.</p>
           </div>
         </section>
         <Tabs defaultValue="statement">
@@ -96,20 +96,24 @@ function HsBankPage() {
           </TabsContent>
           <TabsContent value="credit" className="max-w-2xl py-8">
             <LockKeyhole className="size-8 text-bank" /><h2 className="mt-4 text-xl font-semibold">Crédito e Antecipação</h2>
-            <p className="mt-3 text-sm text-muted-foreground">Elegibilidade inicial: loja aprovada com vendas pagas nos últimos 30 dias. Uma solicitação registra interesse, não aprova nem contrata empréstimo.</p>
+            <p className="mt-3 text-sm text-muted-foreground">Vendas pagas nos últimos 30 dias: {amount(data.revenue30Days)}</p>
+            <p className="mt-3 text-2xl font-semibold text-bank">Referência para análise: {amount(data.creditEstimate)}</p>
+            <p className="mt-2 text-sm text-muted-foreground">Estimativa de 30% do faturamento pago nos últimos 30 dias, não um limite pré-aprovado. Loja aprovada e vendas nesse período são necessárias para solicitar análise.</p>
+            <p className="mt-3 text-sm text-muted-foreground">A análise considera 90 dias de consistência na plataforma. Esse prazo não garante aprovação; liberação depende de instituição autorizada, validação e contrato.</p>
             <div className="my-6 border-l-2 border-bank pl-4"><p className="font-semibold">Retenção proposta: 15% das vendas futuras</p><p className="mt-2 text-sm text-muted-foreground">Somente após contrato e integração com instituição autorizada, até quitar o saldo devedor. Nenhuma retenção de crédito está ativa.</p></div>
-            <p className="mb-4 text-sm font-medium">{data.request ? "Interesse registrado · aguardando habilitação do provedor" : data.eligible ? "Histórico elegível para registrar interesse" : "Solicitação bloqueada: sem vendas pagas nos últimos 30 dias"}</p>
+            <p className="mb-4 text-sm font-medium">{data.request ? "Solicitação recebida · análise pendente, sem crédito aprovado" : data.eligible ? "Histórico elegível para solicitar análise" : "Solicitação bloqueada: sem vendas pagas nos últimos 30 dias"}</p>
+            {data.request && <p className="mb-4 text-sm text-muted-foreground">Referência registrada na solicitação: {data.request.estimated_amount == null ? "Não calculada na solicitação anterior" : amount(Number(data.request.estimated_amount))}. Nenhum dinheiro foi liberado.</p>}
             <Button variant="bank" disabled={!data.eligible || !!data.request || pending} onClick={() => void submit()}><Landmark />{pending ? "Registrando…" : "Solicitar análise de crédito"}</Button>
           </TabsContent>
           <TabsContent value="launch" className="max-w-2xl py-8">
             <Ticket className="size-8 text-bank" /><h2 className="mt-4 text-xl font-semibold">Campanha HSBANK50 · Não ativada</h2>
             <p className="mt-3 text-sm text-muted-foreground">Condições previstas: R$ 50 de desconto na primeira compra, em carrinhos a partir de R$ 150, para os primeiros 10 compradores elegíveis, sem reutilização de CPF ou dispositivo.</p>
-            <p className="mt-4 text-sm text-muted-foreground">Ativação depende de verba própria para o desconto, verificação de identidade e resgate simultâneo protegido. O desconto não será retirado da margem protegida dos produtos CJ.</p>
+            <p className="mt-4 text-sm text-muted-foreground">R$ 150 de carrinho não garante verba para R$ 50 de desconto: a comissão de 12% sobre R$ 150 em produtos é R$ 18. A campanha permanece indisponível até haver cobertura financeira real, verificação de identidade e resgate único protegido por CPF e e-mail. O desconto não será retirado do valor do fornecedor ou do vendedor.</p>
           </TabsContent>
         </Tabs>
       </>}
       <footer className="mt-8 border-t border-border py-6 text-xs leading-relaxed text-muted-foreground">HS Bank © 2026. Infraestrutura de pagamento e serviços de liquidação processados com a tecnologia e segurança do Mercado Pago.<p className="mt-2">HS Bank é a carteira e o extrato internos da HS Digital; não é uma instituição bancária, nem representa parceria bancária ou custódia de valores.</p></footer>
     </main>
-    <Dialog open={transfer} onOpenChange={setTransfer}><DialogContent><DialogHeader><DialogTitle>Transferir Saldo / Pix</DialogTitle><DialogDescription>O HS Bank não movimenta seu saldo bancário. Consulte valores disponíveis e faça transferências diretamente na sua conta Mercado Pago. A liberação interna após entrega não retém dinheiro na conta Mercado Pago.</DialogDescription></DialogHeader><Button variant="bank" asChild><a href="https://www.mercadopago.com.br/" target="_blank" rel="noopener noreferrer">Abrir Mercado Pago<ArrowUpRight /></a></Button></DialogContent></Dialog>
+    <Dialog open={transfer} onOpenChange={setTransfer}><DialogContent><DialogHeader><DialogTitle>Liquidação na conta vinculada</DialogTitle><DialogDescription>O split destina o pagamento à conta Mercado Pago vinculada à loja e separa a comissão da plataforma. O HS Bank espelha os registros de vendas, não consulta seu saldo bancário nem realiza saques. A disponibilidade real depende dos prazos, taxas e condições do Mercado Pago; o registro de entrega no HS Bank não retém nem libera dinheiro naquela conta.</DialogDescription></DialogHeader><Button variant="bank" asChild><a href="https://www.mercadopago.com.br/" target="_blank" rel="noopener noreferrer">Consultar minha conta Mercado Pago<ArrowUpRight /></a></Button></DialogContent></Dialog>
   </div>;
 }
