@@ -205,7 +205,7 @@ export function ProductCard({
             </span>
           )}
           {isCj && <span className="rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">Internacional</span>}
-          {product.supplier === "amazon" && !isDigital && <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">Nacional</span>}
+          {product.supplier === "amazon" && !isDigital && <span className="rounded-md bg-success px-2 py-0.5 text-[10px] font-semibold text-success-foreground">🇧🇷 Nacional</span>}
         </div>
       </div>
 
