@@ -12,6 +12,7 @@ const PRODUCT_SCHEMA = {
     title: { type: "string", description: "Título completo do produto" },
     price: { type: "number", description: "Preço atual de venda em reais (apenas o número, sem símbolo)" },
     images: { type: "array", items: { type: "string" }, description: "URLs das fotos do produto (m.media-amazon.com)" },
+    specs: { type: "object", description: "Especificações técnicas mencionadas na página (marca, cor, conectividade, voltagem, dimensões etc.). Use SOMENTE fatos presentes na página; nunca invente." },
   },
 };
 
