@@ -1,5 +1,12 @@
 # HS Digital — MVP
 
+## HS Bank — 27/10
+- [ ] Carteira oficial azul com Loop, saldo interno real ocultável, extrato de vendas e acesso pelo painel vendedor.
+- [ ] Solicitações de crédito protegidas por vendas aprovadas nos últimos 30 dias; não conceder dinheiro nem alterar split sem provedor habilitado.
+- [ ] Verificar transferência Pix real, retenção de 15% e operação de crédito com Mercado Pago; bloquear funções não homologadas.
+- [ ] HSBANK50: primeira compra, R$150 mínimo, R$50 desconto, limite global de 10, CPF/dispositivo e financiamento sem consumir margem CJ.
+- [ ] Confirmar alteração da comissão atual para 9% antes de mudar preços, contratos e split.
+
 ## Entrega estimada e boleto — 26/10
 - [x] Verificar Alelo alimentação: não há suporte online confirmado no Mercado Pago; não oferecer como cartão comum. Depende de credenciamento e compras elegíveis de alimentos.
 - [x] Exibir datas estimadas pelos limites cotados, identificar produtos CJ internacionais e remover prazo fixo inventado; projeção CJ em dias corridos explicitamente condicionada ao envio, preparação e alfândega. Detalhe/carrinho reais validados.
