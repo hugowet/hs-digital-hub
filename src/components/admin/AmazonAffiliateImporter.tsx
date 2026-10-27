@@ -738,7 +738,7 @@ export function AmazonAffiliateImporter() {
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300/70 bg-white/70 px-2.5 py-2 dark:bg-background/60">
                 <div className="text-[11px] text-amber-900/90 dark:text-amber-200/90">
                   <span className="font-bold">Robô automático diário:</span>{" "}
-                  {autoImport.enabled ? "ativo — puxa até 50 produtos nacionais por dia, só com boa reputação (nota 4.3+, centenas de avaliações, selo oficial ou envio pela Amazon e preço coerente)." : "pausado."}
+                  {autoImport.enabled ? "ativo — a cada 10 minutos puxa até 10 produtos nacionais, só com boa reputação (nota 4.3+, centenas de avaliações, selo oficial ou envio pela Amazon e preço coerente)." : "pausado."}
                   {autoImport.lastRunAt && (
                     <span className="block opacity-70">
                       Última rodada: {new Date(autoImport.lastRunAt).toLocaleString("pt-BR")}
