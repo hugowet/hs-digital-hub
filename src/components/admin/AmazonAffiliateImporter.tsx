@@ -665,6 +665,45 @@ export function AmazonAffiliateImporter() {
           </div>
         </div>
 
+        {/* Caixa do Rastreador de Tendências */}
+        {showTrendBox && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3 space-y-2 dark:border-amber-900 dark:bg-amber-950/40">
+            <Label className="text-xs font-bold text-amber-900 dark:text-amber-200">
+              Rastreador de Tendências Automático — encontra produtos vencedores na Amazon e publica tudo sozinho
+            </Label>
+            <p className="text-[11px] text-amber-900/80 dark:text-amber-200/80">
+              Filtra só produtos com nota 4.5+, selo "Escolha da Amazon"/"Mais vendidos" ou muitas avaliações.
+              Os links entram direto na Importação em Massa com a sua tag de afiliado e são publicados por categoria.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={trendKeyword}
+                onChange={(e) => setTrendKeyword(e.target.value)}
+                placeholder="Ex: fone de ouvido bluetooth"
+                className="h-8 flex-1 min-w-[220px] text-xs bg-white dark:bg-background"
+              />
+              <select
+                value={trendLimit}
+                onChange={(e) => setTrendLimit(Number(e.target.value) as 10 | 20 | 50)}
+                className="h-8 rounded-md border border-input bg-white px-2 text-xs dark:bg-background"
+              >
+                <option value={10}>10 produtos</option>
+                <option value={20}>20 produtos</option>
+                <option value={50}>50 produtos</option>
+              </select>
+              <Button
+                type="button"
+                size="sm"
+                disabled={trendRunning || bulkFetching}
+                onClick={handleTrendHunt}
+                className="bg-amber-600 text-white hover:bg-amber-700 text-xs h-8"
+              >
+                {trendRunning || bulkFetching ? "Rastreando e publicando..." : "Rastrear e Publicar"}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Caixa de Importação em Massa */}
         {showBulkBox && (
           <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 space-y-2 dark:border-emerald-900 dark:bg-emerald-950/40">
