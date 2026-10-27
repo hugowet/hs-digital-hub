@@ -529,6 +529,8 @@ export function AmazonAffiliateImporter() {
     }
   };
 
+  const handleBulkFetchAndPublish = () => handleBulkFetchAndPublishWithLinks();
+
   // Recalcular Preço de Todos os Produtos Amazon Já Cadastrados
   const handleRecalculateAllAmazonProducts = async () => {
     if (!confirm("Deseja aplicar a nova regra de preços com terminação ,90 ou ,97 em todos os produtos da Amazon já cadastrados?")) {
