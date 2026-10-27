@@ -14,6 +14,7 @@ import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
 import { categorizeAmazonProduct } from "./amazon-category";
 import { amazonVariationTemplate } from "./amazon-variations";
 import { calculateFinalPrice } from "./pricing";
+import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -304,15 +305,16 @@ export async function runAmazonAutoImport(
       }
       const cost = data.costPrice;
       const salePrice = calculateFinalPrice(cost);
-      const description = data.description || "Produto oficial importado com garantia e entrega rápida via Amazon.";
+      const title = sanitizeAmazonText(data.title);
+      const description = buildAmazonDescription(data.description);
       const gallery = Array.from(new Set([data.mainImage, ...data.gallery].filter((u) => u.startsWith("http"))));
-      const category = categorizeAmazonProduct({ title: data.title, description, amazonCategory: data.amazonCategory || candidate.title });
-      const variations = amazonVariationTemplate({ title: data.title, description, amazonCategory: data.amazonCategory });
+      const category = categorizeAmazonProduct({ title, description, amazonCategory: data.amazonCategory || candidate.title });
+      const variations = amazonVariationTemplate({ title, description, amazonCategory: data.amazonCategory });
       const affiliateUrl = new URL(candidate.url);
       affiliateUrl.searchParams.set("tag", AMAZON_AFFILIATE_TAG);
       rows.push({
         store_id: storeId,
-        title: data.title,
+        title,
         description,
         description_long: description,
         price: salePrice,
