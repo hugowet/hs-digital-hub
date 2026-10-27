@@ -251,12 +251,12 @@ export function AmazonAffiliateImporter() {
       }
     });
 
-    const finalDescription = description.trim() || buildAmazonDescription("");
+    const finalDescription = description.trim() ? buildAmazonDescription(description) : buildAmazonDescription("");
 
     try {
       const payload: any = {
         store_id: storeId,
-        title: title.trim(),
+        title: sanitizeAmazonText(title.trim()),
         description: finalDescription,
         description_long: finalDescription,
         price: calculatedSalePrice,
@@ -266,7 +266,7 @@ export function AmazonAffiliateImporter() {
         gallery_urls: allGalleryUrls,
         free_shipping: true,
         is_active: true,
-        category: categorizeAmazonProduct({ title: title.trim(), description: finalDescription, amazonCategory }),
+        category: categorizeAmazonProduct({ title: sanitizeAmazonText(title.trim()), description: finalDescription, amazonCategory }),
         variations: amazonVariationTemplate({ title, description: finalDescription, amazonCategory }),
         stock: amazonVariationTemplate({ title, description: finalDescription, amazonCategory }).length ? 0 : 999,
         supplier: "amazon",
@@ -363,7 +363,7 @@ export function AmazonAffiliateImporter() {
         }
         const salePrice = calculateAmazonFinalPrice(item.cost);
         const title = item.title || "Produto importado Amazon";
-        const description = item.description || buildAmazonDescription("");
+        const description = item.description ? buildAmazonDescription(item.description) : buildAmazonDescription("");
         const gallery = Array.from(new Set([item.image, ...item.gallery].filter((u) => u.startsWith("http"))));
         const category = categorizeAmazonProduct({
           title,
@@ -505,13 +505,13 @@ export function AmazonAffiliateImporter() {
         return;
       }
       const salePrice = calculateAmazonFinalPrice(cost);
-      const description = data.description || buildAmazonDescription("");
+      const description = data.description ? buildAmazonDescription(data.description) : buildAmazonDescription("");
       const gallery = Array.from(new Set([data.mainImage, ...data.gallery].filter((u) => u.startsWith("http"))));
-      const category = categorizeAmazonProduct({ title: data.title, description, amazonCategory: data.amazonCategory });
+      const category = categorizeAmazonProduct({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory });
       usedCategories.add(category);
       rows.push({
         store_id: storeId,
-        title: data.title,
+        title: sanitizeAmazonText(data.title),
         description,
         description_long: description,
         price: salePrice,
@@ -522,8 +522,8 @@ export function AmazonAffiliateImporter() {
         free_shipping: true,
         is_active: true,
         category,
-        variations: amazonVariationTemplate({ title: data.title, description, amazonCategory: data.amazonCategory }),
-        stock: amazonVariationTemplate({ title: data.title, description, amazonCategory: data.amazonCategory }).length ? 0 : 999,
+        variations: amazonVariationTemplate({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }),
+        stock: amazonVariationTemplate({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }).length ? 0 : 999,
         supplier: "amazon",
         product_type: "physical",
         specifications: {
