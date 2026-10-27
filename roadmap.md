@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## HS Bank — 27/10
+- [ ] Ajuste solicitado às três travas: espelho de liquidação no Mercado Pago, estimativa de análise de 30% das vendas pagas em 30 dias com referência a 90 dias (sem crédito pré-aprovado), e avaliação do desconto HSBANK50 sem prejudicar fornecedor/vendedor. Não garantir custo zero nem dinheiro liberado automaticamente.
 - [x] Carteira azul com Loop, saldo interno ocultável, extrato de até 50 registros reais, acesso no menu/painel vendedor. Conta autenticada sem loja e celular validados, sem erro ou transbordamento; build OK.
 - [x] Interesse em crédito persistido via RPC, protegido por loja aprovada e vendas pagas nos últimos 30 dias; sem concessão de dinheiro ou mudança no split. Dez testes de regras passaram.
 - [x] Hugo confirmou manter a comissão de 12%; extrato preserva os valores reais de cada transação.
