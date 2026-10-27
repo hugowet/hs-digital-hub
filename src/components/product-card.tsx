@@ -259,7 +259,7 @@ export function ProductCard({
           {cjConfirmed && <p className="mt-1 text-[11px] text-muted-foreground">{formatDeliveryRange(delivery.arrivalRange)}{delivery.arrivalRange ? " · se enviado hoje" : ""}</p>}
 
           {/* Linha 4: Frete Grátis ou com Desconto */}
-          {!isDigital && confirmed && (
+          {!isDigital && (
             <div className="mt-1 flex items-baseline gap-1 text-xs">
               {isFreeShipping ? (
                 <>
@@ -271,10 +271,10 @@ export function ProductCard({
               ) : (
                 <>
                   <span className="rounded bg-[#3483fa]/10 px-1.5 py-0.5 text-[10px] font-extrabold text-[#3483fa]">
-                    {isCj ? `Frete ${brl(delivery.shipping ?? 0)}` : "Entrega"}
+                    {cjConfirmed ? `Frete ${brl(delivery.shipping ?? 0)}` : "Entrega"}
                   </span>
                   <span className="text-[11px] text-muted-foreground">
-                    Calculado no seu CEP
+                    {isCj && !cjConfirmed ? "Frete confirmado no seu CEP" : "Calculado no seu CEP"}
                   </span>
                 </>
               )}
