@@ -191,6 +191,45 @@ export interface AmazonTrendItem {
   badge: string;
 }
 
+/** Status da importação automática (botão pausar/retomar no painel). */
+export const getAmazonAutoImportStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const email = String(context.claims?.email ?? "").toLowerCase();
+    if (!ALLOWED_EMAILS.includes(email)) throw new Error("Recurso exclusivo da administração.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("supplier_integrations")
+      .select("auto_sync,last_catalog_sync_at,last_error")
+      .eq("provider", "amazon")
+      .eq("status", "active")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return {
+      configured: Boolean(data),
+      enabled: data?.auto_sync ?? false,
+      lastRunAt: data?.last_catalog_sync_at ?? null,
+      lastError: data?.last_error ?? null,
+    };
+  });
+
+export const setAmazonAutoImport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ enabled: z.boolean() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const email = String(context.claims?.email ?? "").toLowerCase();
+    if (!ALLOWED_EMAILS.includes(email)) throw new Error("Recurso exclusivo da administração.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("supplier_integrations")
+      .update({ auto_sync: data.enabled })
+      .eq("provider", "amazon")
+      .eq("status", "active");
+    if (error) throw error;
+    return { enabled: data.enabled };
+  });
+
 /**
  * Rastreador de Tendências: pesquisa produtos na Amazon e filtra os vencedores
  * (nota >= 4.5, selo "Escolha da Amazon"/"Mais vendidos" ou alto volume de avaliações).
