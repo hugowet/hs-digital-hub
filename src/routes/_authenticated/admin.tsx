@@ -100,6 +100,8 @@ function AdminPage() {
   const importDropiProducts = useServerFn(importDropiAdminProducts);
   const getAudience = useServerFn(getAudienceStats);
   const [accountsOpen, setAccountsOpen] = useState(false);
+  const [supplierFilter, setSupplierFilter] = useState<"all" | "cj" | "amazon">("all");
+  const [productPage, setProductPage] = useState(0);
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -143,16 +145,19 @@ function AdminPage() {
     },
   });
 
-  const { data: allProducts = [], isLoading: productsLoading } = useQuery({
+  const { data: productResult, isLoading: productsLoading } = useQuery({
     enabled: !!isAdmin,
-    queryKey: ["admin-products-shipping"],
+    queryKey: ["admin-products-shipping", supplierFilter, productPage],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("products")
-        .select("id, title, price, free_shipping, stock, store_id, stores(name)")
-        .order("created_at", { ascending: false });
+        .select("id, title, price, free_shipping, stock, store_id, supplier, stores(name)", { count: "exact" })
+        .order("created_at", { ascending: false }).order("id")
+        .range(productPage * 50, productPage * 50 + 49);
+      if (supplierFilter !== "all") query = query.eq("supplier", supplierFilter);
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data ?? [];
+      return { products: data ?? [], total: count ?? 0 };
     },
   });
 
@@ -208,7 +213,7 @@ function AdminPage() {
     if (settings) setRate((Number(settings.commission_rate) * 100).toFixed(2));
   }, [settings]);
 
-  const filteredProducts = allProducts.filter((p: any) => 
+  const filteredProducts = (productResult?.products ?? []).filter((p: any) => 
     p.title.toLowerCase().includes(searchProduct.toLowerCase()) || 
     (p.stores?.name && p.stores.name.toLowerCase().includes(searchProduct.toLowerCase()))
   );
@@ -413,8 +418,15 @@ function AdminPage() {
                 </div>
 
                 <div className="mt-4">
+                  <Tabs value={supplierFilter} onValueChange={(value) => { if (value === "all" || value === "cj" || value === "amazon") { setSupplierFilter(value); setProductPage(0); } }} className="mb-4">
+                    <TabsList aria-label="Fornecedores do catálogo administrativo" className="h-auto flex w-full flex-wrap justify-start gap-1">
+                      <TabsTrigger value="all">Todos os fornecedores</TabsTrigger>
+                      <TabsTrigger value="cj">Produtos CJ Dropshipping</TabsTrigger>
+                      <TabsTrigger value="amazon">Produtos Amazon</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                   <Input 
-                    placeholder="Filtrar por nome do produto ou nome da loja..."
+                    placeholder="Filtrar nesta página por produto ou loja..."
                     value={searchProduct}
                     onChange={(e) => setSearchProduct(e.target.value)}
                     className="max-w-md"
@@ -484,6 +496,13 @@ function AdminPage() {
                       )}
                     </tbody>
                   </table>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs text-muted-foreground">{productResult?.total ?? 0} produtos · Página {productPage + 1}</span>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" disabled={productPage === 0 || productsLoading} onClick={() => setProductPage((page) => page - 1)}>Anterior</Button>
+                    <Button variant="outline" size="sm" disabled={productsLoading || (productPage + 1) * 50 >= (productResult?.total ?? 0)} onClick={() => setProductPage((page) => page + 1)}>Próxima</Button>
+                  </div>
                 </div>
               </section>
             </TabsContent>

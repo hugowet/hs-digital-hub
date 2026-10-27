@@ -9,6 +9,7 @@ export function usesDailySelection(input: {
   range: string;
   sort: string;
   onlyFreeShipping: boolean;
+  supplier?: string | null;
 }) {
-  return !input.query && !input.category && input.range === "all" && input.sort === "popular" && !input.onlyFreeShipping;
+  return !input.supplier && !input.query && !input.category && input.range === "all" && input.sort === "popular" && !input.onlyFreeShipping;
 }

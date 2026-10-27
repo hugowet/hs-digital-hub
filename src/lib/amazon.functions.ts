@@ -129,11 +129,13 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
     let description = "";
     let specs: Record<string, string> = {};
     let htmlTitle = "";
+    let amazonCategory = "";
     if (rawHtml) {
       const { document } = parseHTML(rawHtml);
       description = extractDescription(document);
       specs = extractSpecs(document);
       htmlTitle = cleanText(document.querySelector("#productTitle")?.textContent);
+      amazonCategory = cleanText(document.querySelector("#wayfinding-breadcrumbs_feature_div")?.textContent);
     }
 
     // A Amazon carrega a tabela de especificações por demanda; quando o HTML não a traz,
@@ -155,6 +157,7 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
       mainImage: images[0] ?? "",
       gallery: images.slice(1),
       specs,
+      amazonCategory,
     };
   });
 

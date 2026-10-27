@@ -679,6 +679,15 @@ function ProductDetailPage() {
                   </fieldset>
                 )}
                 {/* Estoque e Quantidade */}
+                {product.supplier === "amazon" && product.variations?.map((variation) => (
+                  <fieldset key={variation.name} className="mt-4">
+                    <legend className="mb-2 text-sm font-semibold">{variation.name}</legend>
+                    <div className="flex flex-wrap gap-2">
+                      {variation.options.map((option) => <Button key={option} variant="outline" size="sm" disabled title="Disponibilidade não confirmada pelo fornecedor">{option}</Button>)}
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">Tamanhos aguardando confirmação de disponibilidade do fornecedor.</p>
+                  </fieldset>
+                ))}
                 <div className="mt-4 flex items-center justify-between border-y border-border py-3">
                   <span className="text-xs text-muted-foreground">Quantidade:</span>
                   <div className="flex items-center gap-2">
@@ -707,7 +716,7 @@ function ProductDetailPage() {
               <div className="mt-6 space-y-2.5">
                 <Button
                   onClick={() => handleAddToCart(true)}
-                  disabled={isCj && Boolean(delivery.postalCode) && !priceConfirmed}
+                  disabled={maxAvailableStock === 0 || (isCj && Boolean(delivery.postalCode) && !priceConfirmed)}
                   className="w-full h-12 text-sm font-bold bg-[#3483fa] hover:bg-[#2968c8] text-white shadow-md rounded-xl"
                 >
                   <Zap className="h-4 w-4 mr-2" /> Comprar Agora
@@ -715,7 +724,7 @@ function ProductDetailPage() {
                 <Button
                   variant="outline"
                   onClick={() => handleAddToCart(false)}
-                  disabled={isCj && Boolean(delivery.postalCode) && !priceConfirmed}
+                  disabled={maxAvailableStock === 0 || (isCj && Boolean(delivery.postalCode) && !priceConfirmed)}
                   className="w-full h-12 text-sm font-bold rounded-xl border-primary/40 text-primary hover:bg-primary/5"
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" /> Adicionar ao Carrinho

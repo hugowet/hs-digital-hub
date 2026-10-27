@@ -11,3 +11,14 @@ test("fone bluetooth exige ambos os conceitos, não qualquer palavra", () => {
   assert.equal(groups[0]?.includes("earbuds"), true);
   assert.deepEqual(groups[2], ["bluetooth", "bt"]);
 });
+test("fone à prova d'água cruza objeto e atributo técnico", () => {
+  const groups = catalogSearchGroups("fone à prova d'água");
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0]?.includes("earbuds"), true);
+  assert.equal(groups[1]?.includes("waterproof"), true);
+  const document = normalizeCatalogSearch("Headphone sem fio Conectividade Bluetooth Proteção Waterproof eletronicos");
+  assert.equal(groups.every((group) => group.some((term) => document.includes(term))), true);
+});
+test("símbolos de URL e acentos não alteram os conceitos", () => {
+  assert.deepEqual(catalogSearchGroups("FONE+de+OUVIDO"), catalogSearchGroups("fone de ouvido"));
+});

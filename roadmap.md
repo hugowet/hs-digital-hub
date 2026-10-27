@@ -1,5 +1,13 @@
 # HS Digital — MVP
 
+## Fornecedores, grades Amazon e busca — 27/10
+- [x] Separar CJ/Amazon na vitrine e lista administrativa; navegador validou 24 CJ/13 Amazon e Admin com 13 Amazon.
+- [x] Preparar grades Amazon P/M/G/GG/XG e 34–44 em cadastro individual/lotes; 18 testes passaram. Sem disponibilidade oficial, grade bloqueada e novos vestuários com estoque zero; teste visual do importador bloqueado pela conta sem acesso à aba.
+- [x] Busca cruza índice de título, descrições, ficha e categoria; consulta real de fone à prova d'água retornou 20 produtos sem erro; build OK.
+
+## Pressão no Lovable Cloud — 27/10
+- [x] Saúde conferida duas vezes: memória 71–75%, disco 78%, conexões 24/60, zero reinícios; alerta histórico DiskIO às 00:13 UTC, sem prova de pressão contínua atual. Consulta de variantes com índice existente; CJ faz leituras por variante e escritas repetidas, products ocupa 1201MB (900MB de conteúdo grande). Schedules e custos verificados; recomendar otimizar primeiro, sem resize nem alteração de cron. Pico/Micro/Small: 55,74/74,30/120,74 créditos solicitados por 720 horas antes de cobertura; sem economia financeira comprovada.
+
 ## HS Bank — 27/10
 - [x] Espelho de liquidação Mercado Pago sem API externa; referência de crédito de 30% das vendas pagas em 30 dias calculada por SQL do titular e salva na solicitação, análise de 90 dias sem promessa de aprovação. Doze testes passaram; tela autenticada sem loja aprovada validada sem erros, build OK.
 - [ ] HSBANK50 sem reserva externa: bloqueado porque não há cobertura financeira/identidade verificada/resgate atômico integrado; R$150 de produtos com comissão de 12% gera R$18, não R$50. Não retirar diferença de fornecedor/vendedor nem alegar custo zero.
