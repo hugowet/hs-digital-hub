@@ -409,6 +409,94 @@ export function AmazonAffiliateImporter() {
     }
   };
 
+  // Modo "só links": cola até 50 links da Amazon (um por linha); o sistema puxa
+  // título, fotos, descrição, especificações e preço de TODOS em paralelo,
+  // categoriza automaticamente e publica tudo em uma única gravação no banco.
+  const handleBulkFetchAndPublish = async () => {
+    if (!storeId) return toast.error("Nenhuma loja ativa vinculada para receber os produtos.");
+    const links = bulkInput
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /amazon\.|amzn\./i.test(l));
+    if (links.length === 0) return toast.error("Cole pelo menos um link da Amazon (um por linha).");
+    if (links.length > BULK_LIMIT) return toast.error(`Máximo de ${BULK_LIMIT} links por importação.`);
+
+    setBulkFetching(true);
+    // Dispara todas as leituras em paralelo — não uma por vez.
+    const results = await Promise.allSettled(links.map((url) => fetchAmazonProduct({ data: { url } })));
+
+    const rows: any[] = [];
+    const usedCategories = new Set<string>();
+    let failed = 0;
+
+    results.forEach((res, i) => {
+      if (res.status !== "fulfilled" || !res.value?.title) {
+        failed++;
+        console.warn("Falha ao ler link:", links[i], res.status === "rejected" ? res.reason : "sem dados");
+        return;
+      }
+      const data = res.value;
+      const cost = data.costPrice > 0 ? data.costPrice : 0;
+      if (cost <= 0) {
+        failed++;
+        return;
+      }
+      const salePrice = calculateAmazonFinalPrice(cost);
+      const description = data.description || "Produto oficial importado com garantia e entrega rápida via Amazon.";
+      const gallery = Array.from(new Set([data.mainImage, ...data.gallery].filter((u) => u.startsWith("http"))));
+      const category = categorizeAmazonProduct({ title: data.title, description });
+      usedCategories.add(category);
+      rows.push({
+        store_id: storeId,
+        title: data.title,
+        description,
+        description_long: description,
+        price: salePrice,
+        compare_at_price: Number((salePrice * 1.25).toFixed(2)),
+        supplier_cost: cost,
+        image_url: data.mainImage || null,
+        gallery_urls: gallery,
+        free_shipping: true,
+        is_active: true,
+        category,
+        stock: 999,
+        supplier: "amazon",
+        product_type: "physical",
+        specifications: {
+          ...data.specs,
+          affiliate_url: formatAmazonAffiliateLink(links[i]),
+          partner: "amazon",
+          affiliate_id: AMAZON_AFFILIATE_TAG,
+        },
+      });
+    });
+
+    let imported = 0;
+    if (rows.length > 0) {
+      // Bulk upsert: uma única operação grava todos os produtos de uma vez.
+      const { error } = await supabase.from("products").upsert(rows);
+      if (error) {
+        setBulkFetching(false);
+        toast.error(error.message || "Erro ao publicar os produtos em massa.");
+        return;
+      }
+      imported = rows.length;
+    }
+
+    setBulkFetching(false);
+    if (imported > 0) {
+      toast.success(
+        `Sucesso! ${imported} produtos publicados e organizados em ${usedCategories.size} categoria(s) na vitrine da HS Digital.`,
+        { duration: 6000 },
+      );
+      setBulkInput("");
+      setShowBulkBox(false);
+    }
+    if (failed > 0) {
+      toast.error(`${failed} link(s) não puderam ser lidos pela Amazon agora.`);
+    }
+  };
+
   // Recalcular Preço de Todos os Produtos Amazon Já Cadastrados
   const handleRecalculateAllAmazonProducts = async () => {
     if (!confirm("Deseja aplicar a nova regra de preços com terminação ,90 ou ,97 em todos os produtos da Amazon já cadastrados?")) {
