@@ -379,6 +379,13 @@
       "when": 1793039939440,
       "tag": "0053_seller_contract_acceptance",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793078212936,
+      "tag": "0054_hs_bank_secure_dashboard",
+      "breakpoints": true
     }
   ]
 }

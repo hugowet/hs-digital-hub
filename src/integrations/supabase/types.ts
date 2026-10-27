@@ -425,6 +425,41 @@ export type Database = {
         }
         Relationships: []
       }
+      hs_bank_credit_requests: {
+        Row: {
+          created_at: string
+          id: string
+          repayment_rate: number
+          status: string
+          store_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          repayment_rate?: number
+          status?: string
+          store_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          repayment_rate?: number
+          status?: string
+          store_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hs_bank_credit_requests_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercado_pago_accounts: {
         Row: {
           access_token_encrypted: string
@@ -2817,6 +2852,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      hs_bank_credit_eligible: { Args: { _store_id: string }; Returns: boolean }
+      hs_bank_request_credit: { Args: { _store_id: string }; Returns: string }
       normalize_catalog_text: { Args: { value: string }; Returns: string }
       play_daily_game: {
         Args: { _game_type: string }
