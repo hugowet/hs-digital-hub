@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { parseHTML } from "linkedom";
 import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
+import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
