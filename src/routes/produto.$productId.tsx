@@ -600,12 +600,17 @@ function ProductDetailPage() {
                   </span>
                 </div>
 
-                {/* Selo de origem do envio: internacional (CJ) ou nacional */}
+                {/* Selo de origem do envio: internacional (CJ), nacional (Amazon) ou loja parceira */}
                 <div className="mt-2">
                   {(product as any)?.supplier === "cj" ? (
                     <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
                       <Truck className="h-3.5 w-3.5" />
                       Produto internacional · envio do exterior
+                    </span>
+                  ) : (product as any)?.supplier === "amazon" ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600">
+                      <Truck className="h-3.5 w-3.5" />
+                      Produto nacional · envio do Brasil
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600">

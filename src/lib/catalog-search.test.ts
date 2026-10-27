@@ -22,3 +22,21 @@ test("fone à prova d'água cruza objeto e atributo técnico", () => {
 test("símbolos de URL e acentos não alteram os conceitos", () => {
   assert.deepEqual(catalogSearchGroups("FONE+de+OUVIDO"), catalogSearchGroups("fone de ouvido"));
 });
+test("celular encontra smartphone e telefone", () => {
+  const groups = catalogSearchGroups("celular");
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0]?.includes("smartphone"), true);
+  assert.equal(groups[0]?.includes("telefone"), true);
+});
+test("tênis encontra sapato e calçado", () => {
+  const groups = catalogSearchGroups("tênis");
+  assert.equal(groups[0]?.includes("sapato"), true);
+  assert.equal(groups[0]?.includes("calcado"), true);
+  const doc = normalizeCatalogSearch("Sapato casual masculino calcado confortavel moda");
+  assert.equal(groups.every((g) => g.some((t) => doc.includes(t))), true);
+});
+test("busca identifica o produto pela ficha técnica e não só pelo título", () => {
+  const groups = catalogSearchGroups("fone à prova d'água");
+  const specOnly = normalizeCatalogSearch("Fone sem fio Eletronicos especificacoes: water resistant ipx7");
+  assert.equal(groups.every((g) => g.some((t) => specOnly.includes(t))), true);
+});
