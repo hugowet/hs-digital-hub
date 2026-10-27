@@ -33,9 +33,10 @@ export const AMAZON_AUTO_KEYWORDS: { keyword: string; hint: string }[] = [
   { keyword: "suplemento whey", hint: "esporte" },
 ];
 
-const MAX_CATEGORIES_PER_RUN = 3;
-const MAX_TOTAL_PER_RUN = 50;
-const PER_CATEGORY_TARGET = 17; // ~50 por rodada com 3 categorias
+// Rodada a cada 10 minutos: 1 categoria por vez, até 10 produtos por rodada.
+const MAX_CATEGORIES_PER_RUN = 1;
+const MAX_TOTAL_PER_RUN = 10;
+const PER_CATEGORY_TARGET = 10;
 
 /** Piso de preço coerente: abaixo disso, sem oferta comprovada, é sinal de golpe. */
 const MIN_TRUSTWORTHY_COST = 15;
