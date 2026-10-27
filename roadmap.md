@@ -6,7 +6,7 @@
 - [x] Busca cruza índice de título, descrições, ficha e categoria; consulta real de fone à prova d'água retornou 20 produtos sem erro; build OK.
 
 ## Pressão no Lovable Cloud — 27/10
-- [ ] Conferir recursos atuais, alertas recentes, consultas e tarefas prováveis; comparar custos antes de recomendar aumento, sem alterar tamanho.
+- [x] Saúde conferida duas vezes: memória 71–75%, disco 78%, conexões 24/60, zero reinícios; alerta histórico DiskIO às 00:13 UTC, sem prova de pressão contínua atual. Consulta de variantes com índice existente; CJ faz leituras por variante e escritas repetidas, products ocupa 1201MB (900MB de conteúdo grande). Schedules e custos verificados; recomendar otimizar primeiro, sem resize nem alteração de cron. Pico/Micro/Small: 55,74/74,30/120,74 créditos solicitados por 720 horas antes de cobertura; sem economia financeira comprovada.
 
 ## HS Bank — 27/10
 - [x] Espelho de liquidação Mercado Pago sem API externa; referência de crédito de 30% das vendas pagas em 30 dias calculada por SQL do titular e salva na solicitação, análise de 90 dias sem promessa de aprovação. Doze testes passaram; tela autenticada sem loja aprovada validada sem erros, build OK.
