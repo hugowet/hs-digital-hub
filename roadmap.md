@@ -5,7 +5,8 @@
 - [x] Interesse em crédito persistido via RPC, protegido por loja aprovada e vendas pagas nos últimos 30 dias; sem concessão de dinheiro ou mudança no split. Dez testes de regras passaram.
 - [x] Hugo confirmou manter a comissão de 12%; extrato preserva os valores reais de cada transação.
 - [ ] Validar saldo, extrato e solicitação no fluxo de lojista elegível: a conta disponível no teste não tem loja aprovada; precisa de sessão de um proprietário elegível.
-- [ ] Transferência Pix direta, crédito real e retenção de 15%: dependem de produto/API habilitado e instituição/contrato autorizados; split atual não confirma essas capacidades. Botão direciona ao Mercado Pago, sem simular saque.
+- [ ] Saque direto para a própria conta Pix cadastrada, solicitado por Hugo em 27/10: sem redirecionamento ao Mercado Pago. Bloqueado até confirmar e habilitar um provedor de transferências com saldo real disponível; integrar reserva atômica, titularidade, idempotência e confirmação antes de baixar o saldo. O botão atual apenas abre o Mercado Pago e não realiza saque.
+- [ ] Crédito real e retenção de 15%: dependem de produto/API habilitado e instituição/contrato autorizados; split atual não confirma essas capacidades.
 - [ ] Ativar HSBANK50: política e testes preparados (primeira compra/R$150/R$50/10/CPF/dispositivo), mas sem emissão ou resgate. Precisa de verba própria, verificação real de identidade e reserva/resgate atômicos integrados ao checkout; desconto não pode consumir margem CJ.
 
 ## Entrega estimada e boleto — 26/10
