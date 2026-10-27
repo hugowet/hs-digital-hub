@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { calculateFinalPrice, getMarginRate } from "@/lib/pricing";
 import { categorizeAmazonProduct } from "@/lib/amazon-category";
-import { fetchAmazonProduct } from "@/lib/amazon.functions";
+import { fetchAmazonProduct, searchAmazonTrends } from "@/lib/amazon.functions";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -79,6 +79,10 @@ export function AmazonAffiliateImporter() {
   const [showBulkBox, setShowBulkBox] = useState(false);
   const [autoFillJson, setAutoFillJson] = useState("");
   const [showAutoFillBox, setShowAutoFillBox] = useState(false);
+  const [trendKeyword, setTrendKeyword] = useState("");
+  const [trendLimit, setTrendLimit] = useState<10 | 20 | 50>(10);
+  const [trendRunning, setTrendRunning] = useState(false);
+  const [showTrendBox, setShowTrendBox] = useState(false);
 
   // Verificação de Autenticação
   useEffect(() => {
