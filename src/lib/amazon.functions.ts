@@ -41,7 +41,7 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
       },
       body: JSON.stringify({
         url,
-        formats: [{ type: "json", schema: PRODUCT_SCHEMA, prompt: "Extraia os dados do produto desta página da Amazon." }],
+        formats: [{ type: "json", schema: PRODUCT_SCHEMA, prompt: "Extraia os dados do produto desta página da Amazon. Em 'specs', inclua TODAS as linhas das tabelas 'Informações técnicas' e 'Detalhes do produto' (ex: Marca, Modelo, Cor, Dimensões, Peso, Voltagem). Em 'images', liste todas as fotos do produto." }],
         onlyMainContent: false,
         waitFor: 3000,
         location: { country: "BR", languages: ["pt-BR"] },
