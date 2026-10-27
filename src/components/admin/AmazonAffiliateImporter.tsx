@@ -444,11 +444,11 @@ export function AmazonAffiliateImporter() {
   // Modo "só links": cola até 50 links da Amazon (um por linha); o sistema puxa
   // título, fotos, descrição, especificações e preço de TODOS em paralelo,
   // categoriza automaticamente e publica tudo em uma única gravação no banco.
-  const handleBulkFetchAndPublish = async () => {
+  const handleBulkFetchAndPublishWithLinks = async (linksOverride?: string[]) => {
     if (!storeId) return toast.error("Nenhuma loja ativa vinculada para receber os produtos.");
-    const links = bulkInput
+    const links = (linksOverride ?? bulkInput
       .split("\n")
-      .map((l) => l.trim())
+      .map((l) => l.trim()))
       .filter((l) => /amazon\.|amzn\./i.test(l));
     if (links.length === 0) return toast.error("Cole pelo menos um link da Amazon (um por linha).");
     if (links.length > BULK_LIMIT) return toast.error(`Máximo de ${BULK_LIMIT} links por importação.`);
