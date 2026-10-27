@@ -5,6 +5,7 @@ import {
   Crown,
   Gamepad2,
   Home,
+  Landmark,
   LogIn,
   LogOut,
   MapPin,
@@ -343,6 +344,10 @@ export function SiteHeader({
                     <DropdownMenuItem onSelect={() => navigate({ to: "/vendedor" })}>
                       <Store className="mr-2 h-4 w-4" />
                       Seller Center
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => navigate({ to: "/hs-bank" })}>
+                      <Landmark className="mr-2 h-4 w-4" />
+                      HS Bank
                     </DropdownMenuItem>
                     {isAdmin && (
                       <DropdownMenuItem onSelect={() => navigate({ to: "/admin" })}>
