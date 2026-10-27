@@ -39,6 +39,7 @@ import {
 import { getMercadoPagoConfiguration, saveMercadoPagoConfiguration } from "@/lib/payments.functions";
 import { getAudienceStats } from "@/lib/audience.functions";
 import { AudienceAccountsDialog } from "@/components/admin/audience-accounts-dialog";
+import { SupplierProductsPanel } from "@/components/admin/SupplierProductsPanel";
 
 // Funções de servidor que salvam direto no banco com permissão total de administrador (sem travar no RLS)
 const setProductShippingAdmin = createServerFn({ method: "POST" })
@@ -510,6 +511,22 @@ function AdminPage() {
             </TabsContent>
 
             {/* ABA: MENSAGENS */}
+            <TabsContent value="amazon-products" className="pt-4">
+              <SupplierProductsPanel
+                supplier="amazon"
+                title="Produtos Amazon"
+                description="Tudo que o robô e o importador trouxeram da Amazon aparece aqui, com status na vitrine, preço de venda e custo."
+              />
+            </TabsContent>
+
+            <TabsContent value="cj-products" className="pt-4">
+              <SupplierProductsPanel
+                supplier="cj"
+                title="Produtos CJ Dropshipping"
+                description="Catálogo importado da CJ Dropshipping, separado dos produtos Amazon."
+              />
+            </TabsContent>
+
             <TabsContent value="messages" className="pt-4">
               <section className="surface-card grid min-h-[440px] overflow-hidden md:grid-cols-[280px_1fr]">
                 <aside className="border-b border-border md:border-b-0 md:border-r">
