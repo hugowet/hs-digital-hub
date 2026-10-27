@@ -479,6 +479,40 @@ export function AmazonAffiliateImporter() {
           </div>
         </div>
 
+        {/* Caixa de Importação em Massa */}
+        {showBulkBox && (
+          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 space-y-2 dark:border-emerald-900 dark:bg-emerald-950/40">
+            <Label className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+              Cole até 50 produtos, um por linha. Formatos aceitos:
+            </Label>
+            <p className="text-[11px] text-emerald-900/80 dark:text-emerald-200/80 font-mono">
+              link | custo | título | imagem<br />
+              ou JSON por linha: {"{\"url\",\"costPrice\",\"title\",\"mainImage\",\"description\"}"}
+            </p>
+            <Textarea
+              rows={6}
+              placeholder={"https://www.amazon.com.br/dp/XXXX | 49.90 | Título do produto | https://m.media-amazon.com/images/I/...\nhttps://www.amazon.com.br/dp/YYYY | 129.90 | Outro produto | https://..."}
+              value={bulkInput}
+              onChange={(e) => setBulkInput(e.target.value)}
+              className="text-xs font-mono bg-white dark:bg-background"
+            />
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] text-muted-foreground">
+                A Margem Dinâmica é aplicada automaticamente e a compra fecha 100% no checkout da HS Digital — o cliente nunca sai para a Amazon.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                disabled={bulkRunning}
+                onClick={handleBulkImport}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 text-xs h-8 shrink-0"
+              >
+                {bulkRunning ? "Importando..." : "Importar em Massa"}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Caixa de Preenchimento Rápido */}
         {showAutoFillBox && (
           <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 space-y-2 dark:border-blue-900 dark:bg-blue-950/40">
