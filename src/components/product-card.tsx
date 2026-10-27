@@ -1,5 +1,5 @@
-import { sellerDisplayName } from "@/lib/seller-display";
 // @ts-nocheck -- types out of sync with backend schema; see build log
+import { sellerDisplayName } from "@/lib/seller-display";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Package, ShoppingCart, Star, Zap } from "lucide-react";
 import { toast } from "sonner";

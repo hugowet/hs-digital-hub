@@ -1,5 +1,5 @@
-import { sellerDisplayName } from "@/lib/seller-display";
 // @ts-nocheck -- types out of sync with backend schema; see build log
+import { sellerDisplayName } from "@/lib/seller-display";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Check,
