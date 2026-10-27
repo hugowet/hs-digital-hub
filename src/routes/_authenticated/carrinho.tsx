@@ -647,6 +647,9 @@ function CartPage() {
                   <span>Total</span>
                   <span className="text-lg text-primary">{brl(totalPedido)}</span>
                 </div>
+                {economizou > 0 && <p className="rounded-md bg-success/10 p-2 text-center text-xs font-semibold text-success">
+                  Sem a HS Digital você pagaria {brl(totalPedido + economizou)} — você economizou {brl(economizou)} 🎉
+                </p>}
               </div>
 
               {!priceChangeAccepted && quotesReady && <div role="alert" className="space-y-2 text-xs text-muted-foreground">
