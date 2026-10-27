@@ -263,6 +263,7 @@ function SellerCenterPage() {
           <h1 className="text-2xl font-bold tracking-tight">{store.name}</h1>
           <p className="text-sm text-muted-foreground">Painel de controle do vendedor</p>
         </div>
+        <Button variant="bank" asChild><Link to="/hs-bank"><WalletCards className="size-4" />HS Bank</Link></Button>
       </div>
 
       <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-600">

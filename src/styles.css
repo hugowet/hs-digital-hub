@@ -22,6 +22,9 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-bank: var(--bank);
+  --color-bank-foreground: var(--bank-foreground);
+  --color-bank-soft: var(--bank-soft);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-glow: var(--primary-glow);
   --color-ink: var(--ink);
@@ -56,6 +59,9 @@
 }
 
 :root {
+  --bank: oklch(0.48 0.19 255);
+  --bank-foreground: oklch(0.99 0 0);
+  --bank-soft: oklch(0.95 0.025 245);
   --radius: 0.75rem;
   --background: oklch(0.985 0.002 300);
   --foreground: oklch(0.16 0.02 290);
@@ -111,6 +117,9 @@ html {
 }
 
 .dark {
+  --bank: oklch(0.68 0.15 245);
+  --bank-foreground: oklch(0.15 0.02 255);
+  --bank-soft: oklch(0.23 0.035 245);
   --background: oklch(0.14 0.015 290);
   --foreground: oklch(0.98 0 0);
   --card: oklch(0.19 0.02 292);
