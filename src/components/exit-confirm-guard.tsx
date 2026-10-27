@@ -11,16 +11,20 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const SENTINEL_KEY = "hsExitGuard";
+// Two back presses inside this window count as the exit "double click".
+const DOUBLE_BACK_WINDOW_MS = 2500;
 
 /**
- * Home-only exit guard: pressing the device back button on the storefront
- * asks "Deseja sair da HS Digital?" instead of leaving the app. Choosing
- * "Não" stays put; "Sim" steps back out of the app. Mounted only on "/"
- * so product → home back navigation stays instant and untouched.
+ * Home-only exit guard: on the main storefront, a single device back press
+ * stays put silently; two back presses in a row (the double click) ask
+ * "Deseja sair da HS Digital?" so nobody leaves the shop by accident.
+ * Mounted only on "/" so product → home back navigation stays untouched.
  */
 export function ExitConfirmGuard() {
   const [open, setOpen] = useState(false);
   const armedRef = useRef(false);
+  const lastBackAtRef = useRef(0);
+  const exitingRef = useRef(false);
 
   const arm = () => {
     window.history.pushState({ ...(window.history.state || {}), [SENTINEL_KEY]: true }, "");
@@ -28,11 +32,21 @@ export function ExitConfirmGuard() {
   };
 
   useEffect(() => {
+    exitingRef.current = false;
     arm();
     const onPop = () => {
-      if (!armedRef.current) return;
+      if (!armedRef.current || exitingRef.current) return;
       armedRef.current = false;
-      setOpen(true);
+      const now = Date.now();
+      const isDoubleBack = now - lastBackAtRef.current <= DOUBLE_BACK_WINDOW_MS;
+      lastBackAtRef.current = now;
+      if (isDoubleBack) {
+        // Second press inside the window: ask before leaving.
+        setOpen(true);
+        return;
+      }
+      // Single press: stay on the storefront, re-arm silently.
+      arm();
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -43,7 +57,10 @@ export function ExitConfirmGuard() {
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) arm();
+        if (!next) {
+          if (!exitingRef.current) arm();
+          lastBackAtRef.current = 0;
+        }
       }}
     >
       <AlertDialogContent>
@@ -57,6 +74,7 @@ export function ExitConfirmGuard() {
           <AlertDialogCancel>Não, continuar</AlertDialogCancel>
           <AlertDialogAction
             onClick={() => {
+              exitingRef.current = true;
               armedRef.current = false;
               // Step back past the sentinel so the app actually closes.
               window.history.go(-2);
