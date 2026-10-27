@@ -28,8 +28,10 @@ export const getCjSupplierStatus = createServerFn({ method: "GET" })
       db.from("supplier_import_jobs").select("status,completed_categories,total_categories,imported_products,pause_reason").eq("store_id", data.storeId).eq("provider", "cj").maybeSingle(),
     ]);
     for (const result of [total, active, translated, details, jobs, catalog]) if (result.error) throw result.error;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: integ } = await supabaseAdmin.from("supplier_integrations").select("auto_sync").eq("store_id", data.storeId).eq("provider", "cj").maybeSingle();
     return { total: total.count ?? 0, active: active.count ?? 0, translated: translated.count ?? 0,
-      details: details.count ?? 0, jobs: jobs.data ?? [], catalog: catalog.data };
+      details: details.count ?? 0, jobs: jobs.data ?? [], catalog: catalog.data, autoImport: integ?.auto_sync ?? true };
   });
 
 export const updateCjContent = createServerFn({ method: "POST" })
@@ -242,4 +244,16 @@ export const importCjProductByUrl = createServerFn({ method: "POST" })
     await persistCjVariantProducts(supabaseAdmin, inserted.id, product);
 
     return { success: true, updated: false, productId: inserted.id, title, price: finalPrice };
+  });
+
+export const setCjAutoImport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ storeId: z.string().uuid(), enabled: z.boolean() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await ownedStore(context, data.storeId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("supplier_integrations").update({ auto_sync: data.enabled })
+      .eq("store_id", data.storeId).eq("provider", "cj");
+    if (error) throw error;
+    return { enabled: data.enabled };
   });
