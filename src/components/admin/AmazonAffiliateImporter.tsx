@@ -633,6 +633,16 @@ export function AmazonAffiliateImporter() {
               type="button"
               variant="outline"
               size="sm"
+              onClick={() => setShowTrendBox(!showTrendBox)}
+              className="border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-semibold"
+            >
+              <Sparkles className="h-3.5 w-3.5 mr-1" />
+              Rastreador de Tendências
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setShowBulkBox(!showBulkBox)}
               className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs font-semibold"
             >
