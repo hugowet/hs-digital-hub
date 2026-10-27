@@ -41,7 +41,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { catalogDisplayPrice } from "@/lib/product-price";
 import { useCjPrice } from "@/lib/use-cj-price";
-import { formatDeliveryRange } from "@/lib/delivery-estimate";
+import { deliveryDateRange, formatDeliveryRange } from "@/lib/delivery-estimate";
 import { confirmCjOption } from "@/lib/cj-option.functions";
 import { sendSellerMessage } from "@/lib/seller-chat.functions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
