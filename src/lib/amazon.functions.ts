@@ -20,7 +20,7 @@ function cleanText(value: string | null | undefined): string {
 }
 
 /** "Sobre este item": bullets de #feature-bullets / .a-unordered-list.a-vertical.a-spacing-mini → markdown. */
-function extractDescription(doc: Document): string {
+export function extractDescription(doc: Document): string {
   const container =
     doc.querySelector("#feature-bullets") ??
     doc.querySelector(".a-unordered-list.a-vertical.a-spacing-mini") ??
@@ -41,7 +41,7 @@ function addSpec(specs: Record<string, string>, key: string, value: string) {
 }
 
 /** Tabelas de especificações: #productDetails_techSpec_section_1, .prodDetTable, #detailBullets_feature_div. */
-function extractSpecs(doc: Document): Record<string, string> {
+export function extractSpecs(doc: Document): Record<string, string> {
   const specs: Record<string, string> = {};
 
   // 1) Tabelas de informações técnicas (th/td)
