@@ -28,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { calculateFinalPrice, getMarginRate } from "@/lib/pricing";
 import { categorizeAmazonProduct } from "@/lib/amazon-category";
 import { amazonVariationTemplate } from "@/lib/amazon-variations";
-import { fetchAmazonProduct, searchAmazonTrends } from "@/lib/amazon.functions";
+import { fetchAmazonProduct, searchAmazonTrends, getAmazonAutoImportStatus, setAmazonAutoImport } from "@/lib/amazon.functions";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -85,6 +85,8 @@ export function AmazonAffiliateImporter() {
   const [trendLimit, setTrendLimit] = useState<10 | 20 | 50>(10);
   const [trendRunning, setTrendRunning] = useState(false);
   const [showTrendBox, setShowTrendBox] = useState(false);
+  const [autoImport, setAutoImport] = useState<{ configured: boolean; enabled: boolean; lastRunAt: string | null } | null>(null);
+  const [autoImportToggling, setAutoImportToggling] = useState(false);
 
   // Verificação de Autenticação
   useEffect(() => {
