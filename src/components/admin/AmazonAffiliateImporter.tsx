@@ -129,6 +129,32 @@ export function AmazonAffiliateImporter() {
     setSpecs((prev) => prev.filter((item) => item.id !== id));
   };
 
+  // Puxa título, fotos, descrição, especificações e preço direto do link da Amazon
+  const handleFetchFromLink = async () => {
+    const url = amazonUrl.trim();
+    if (!url) return toast.error("Cole primeiro o link do produto da Amazon.");
+    setFetchingLink(true);
+    try {
+      const data = await fetchAmazonProduct({ data: { url } });
+      if (data.title) setTitle(data.title);
+      if (data.costPrice > 0) setCostPrice(String(data.costPrice));
+      if (data.description) setDescription(data.description);
+      if (data.mainImage) setImageUrl(data.mainImage);
+      if (data.gallery.length > 0) setGalleryInput(data.gallery.join("\n"));
+      const newSpecs: SpecItem[] = Object.entries(data.specs).map(([key, value]) => ({
+        id: Math.random().toString(),
+        key,
+        value: String(value),
+      }));
+      if (newSpecs.length > 0) setSpecs(newSpecs);
+      toast.success("Dados do produto puxados da Amazon! Confira e publique.");
+    } catch (err: any) {
+      toast.error(err?.message || "Não consegui ler o link da Amazon.");
+    } finally {
+      setFetchingLink(false);
+    }
+  };
+
   // Preenchimento Automático via JSON
   const handleApplyAutoFill = (jsonString?: string) => {
     const raw = jsonString || autoFillJson;
