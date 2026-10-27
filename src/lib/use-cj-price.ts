@@ -5,8 +5,57 @@ import { useDeliveryAddress } from "./delivery-context";
 import { quoteMarketplaceShipping } from "./shipping.functions";
 import { deliveryDateRange } from "./delivery-estimate";
 
-// Serialize visible-product quotes so catalog rendering never floods the supplier.
+// Serialize visible-product quotes so catalog rendering never floods the supplier,
+// and batch all cards that become visible in the same moment into ONE server call.
+type QuoteGroups = Array<{
+  storeId?: string;
+  options?: Array<{
+    id?: string; amount: number; serviceName: string; expiresAt?: string;
+    deliveryDaysMin: number | null; deliveryDaysMax: number | null;
+    embeddedFreeShipping?: boolean;
+    itemPrices?: Array<{ product_id: string; unit_price: number }>;
+  }>;
+}>;
+type PendingQuote = {
+  productId: string; quantity: number; postalCode: string;
+  resolve: (groups: QuoteGroups) => void; reject: (err: unknown) => void;
+};
 let quoteQueue: Promise<unknown> = Promise.resolve();
+let pendingQuotes: PendingQuote[] = [];
+let flushScheduled = false;
+
+function enqueueQuote(
+  quoteFn: (args: { data: { postalCode: string; items: Array<{ productId: string; quantity: number }> } }) => Promise<QuoteGroups>,
+  postalCode: string, productId: string, quantity: number,
+): Promise<QuoteGroups> {
+  return new Promise((resolve, reject) => {
+    pendingQuotes.push({ productId, quantity, postalCode, resolve, reject });
+    if (flushScheduled) return;
+    flushScheduled = true;
+    setTimeout(() => {
+      flushScheduled = false;
+      const batch = pendingQuotes.splice(0, 24);
+      if (!batch.length) return;
+      const task = quoteQueue.catch(() => undefined).then(async () => {
+        const byCep = new Map<string, PendingQuote[]>();
+        for (const p of batch) {
+          const list = byCep.get(p.postalCode) ?? [];
+          list.push(p);
+          byCep.set(p.postalCode, list);
+        }
+        for (const [cep, items] of byCep) {
+          try {
+            const groups = await quoteFn({ data: { postalCode: cep, items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })) } });
+            for (const p of items) p.resolve(groups);
+          } catch (err) {
+            for (const p of items) p.reject(err);
+          }
+        }
+      });
+      quoteQueue = task;
+    }, 80);
+  });
+}
 type DeliveryPrice = { price: number; shipping: number; service: string; quoteId: string;
   storeId: string; expiresAt: string; embeddedFreeShipping: boolean; postalCode: string;
   deliveryDaysMin: number | null; deliveryDaysMax: number | null; estimatedAt: string };
