@@ -642,15 +642,27 @@ export function AmazonAffiliateImporter() {
               <p className="text-[11px] text-muted-foreground">
                 A Margem Dinâmica é aplicada automaticamente e a compra fecha 100% no checkout da HS Digital — o cliente nunca sai para a Amazon.
               </p>
-              <Button
-                type="button"
-                size="sm"
-                disabled={bulkRunning}
-                onClick={handleBulkImport}
-                className="bg-emerald-600 text-white hover:bg-emerald-700 text-xs h-8 shrink-0"
-              >
-                {bulkRunning ? "Importando..." : "Importar em Massa"}
-              </Button>
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={bulkRunning || bulkFetching}
+                  onClick={handleBulkFetchAndPublish}
+                  className="bg-blue-600 text-white hover:bg-blue-700 text-xs h-8"
+                  title="Cole só os links (um por linha): o sistema puxa todos os dados em paralelo e publica de uma vez"
+                >
+                  {bulkFetching ? "Puxando e publicando..." : "Puxar e Publicar (só links)"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={bulkRunning || bulkFetching}
+                  onClick={handleBulkImport}
+                  className="bg-emerald-600 text-white hover:bg-emerald-700 text-xs h-8"
+                >
+                  {bulkRunning ? "Importando..." : "Importar em Massa"}
+                </Button>
+              </div>
             </div>
           </div>
         )}
