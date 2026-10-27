@@ -184,7 +184,7 @@ export async function quoteCartShipping(
         .order("created_at", { ascending: false }).limit(10);
       if (cacheError) throw cacheError;
       const current = (cached ?? []).filter((row: any) => row.provider_payload?.modality && row.provider_payload.profit_guard_version === 1
-        && Boolean(row.provider_payload.first_purchase_margin_included) === (firstPurchase && !marginAllocated && Boolean(row.provider_payload.embedded_free_shipping)));
+        && Boolean(Number(row.provider_payload.first_purchase_margin_included) > 0) === (firstPurchase && !marginAllocated));
       const express = current.find((row: any) => row.provider_payload.modality === "express");
       const premium = current.find((row: any) => row.provider_payload.modality === "premium" && row.expires_at === express?.expires_at);
       if (express) {
@@ -205,7 +205,7 @@ export async function quoteCartShipping(
     }
     // Amazon dropshipping ships straight from the supplier: the margin is already in the price, no store origin CEP.
     let rawOptions = suppliers.has("cj")
-      ? await cjQuotes(supabaseAdmin, storeId, postalCode, products)
+      ? await cjQuotes(supabaseAdmin, storeId, postalCode, products, firstPurchase && !marginAllocated)
       : suppliers.has("amazon")
         ? [{ provider: "supplier", serviceCode: "amazon_direct", serviceName: "Envio direto do fornecedor",
             carrierName: "Fornecedor nacional", amount: 0, deliveryDaysMin: 5, deliveryDaysMax: 12,
@@ -214,8 +214,7 @@ export async function quoteCartShipping(
         : await melhorEnvioQuotes(supabaseAdmin, store, postalCode, products);
     if (!rawOptions.length) throw new Error("Nenhum envio foi confirmado para este CEP. Não será cobrado frete estimado.");
     if (suppliers.has("cj")) {
-      rawOptions = includeFirstPurchaseMargin(rawOptions, firstPurchase && !marginAllocated);
-      marginAllocated ||= Boolean(rawOptions[0]?.providerPayload.first_purchase_margin_included);
+      marginAllocated ||= Number(rawOptions[0]?.providerPayload.first_purchase_margin_included) > 0;
     }
 
     const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
