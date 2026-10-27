@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { calculateFinalPrice, getMarginRate } from "@/lib/pricing";
+import { fetchAmazonProduct } from "@/lib/amazon.functions";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -69,6 +70,7 @@ export function AmazonAffiliateImporter() {
     { id: "3", key: "Voltagem", value: "" },
   ]);
   const [submitting, setSubmitting] = useState(false);
+  const [fetchingLink, setFetchingLink] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
   const [bulkInput, setBulkInput] = useState("");
   const [bulkRunning, setBulkRunning] = useState(false);
