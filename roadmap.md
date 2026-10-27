@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Fornecedores, grades Amazon e busca — 27/10
+- [ ] Separar CJ/Amazon na vitrine e lista administrativa, com paginação filtrada no servidor.
+- [ ] Preparar grades Amazon P/M/G/GG/XG e 34–44 sem inventar disponibilidade de compra.
+- [ ] Validar busca por título, descrição, ficha e categoria, incluindo acentos e atributos.
+
 ## HS Bank — 27/10
 - [x] Espelho de liquidação Mercado Pago sem API externa; referência de crédito de 30% das vendas pagas em 30 dias calculada por SQL do titular e salva na solicitação, análise de 90 dias sem promessa de aprovação. Doze testes passaram; tela autenticada sem loja aprovada validada sem erros, build OK.
 - [ ] HSBANK50 sem reserva externa: bloqueado porque não há cobertura financeira/identidade verificada/resgate atômico integrado; R$150 de produtos com comissão de 12% gera R$18, não R$50. Não retirar diferença de fornecedor/vendedor nem alegar custo zero.
