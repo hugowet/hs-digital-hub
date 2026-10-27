@@ -2,7 +2,7 @@ import { cjRequest, getCjAccessToken, getUsdBrlRate } from "@/lib/suppliers.serv
 import { decryptSecret } from "@/lib/mercado-pago.server";
 
 import { priceCjShipment, cjFreightUsd } from "@/lib/cj-landed-pricing";
-import { cjShippingModalities, includeFirstPurchaseMargin } from "@/lib/shipping-modalities";
+import { cjShippingModalities } from "@/lib/shipping-modalities";
 import { cjVariantStock } from "@/lib/cj-variants";
 
 const MELHOR_ENVIO_API = "https://melhorenvio.com.br/api/v2";
