@@ -27,15 +27,15 @@ test("primeira compra CJ com custo até R$100 leva margem fixa de R$15", () => {
   // custo US$ 10 + frete US$ 5, câmbio 5.0 → landedCost = 50 + 25 = 75 (≤ 100)
   const priced = priceCjShipment([{ productId: "a", quantity: 1, costUsd: 10 }], 5, 5, 0.12, true);
   assert.equal(priced.firstPurchaseMarginTotal, 15);
-  // preço = (75 + 15) / (1 - 0.12) arredondado para cima = 102.28
-  assert.equal(priced.items[0].landed_price, 102.28);
+  // preço = (75 + 15 − 0.12·25) / 0.88 arredondado para cima = 98.87
+  assert.equal(priced.items[0].landed_price, 98.87);
 });
 
 test("da segunda compra em diante a margem fixa sobe para R$20", () => {
   const priced = priceCjShipment([{ productId: "a", quantity: 1, costUsd: 10 }], 5, 5, 0.12, false);
   assert.equal(priced.firstPurchaseMarginTotal, 0);
-  // (75 + 20) / 0.88 = 107.96
-  assert.equal(priced.items[0].landed_price, 107.96);
+  // (75 + 20 − 0.12·25) / 0.88 = 104.55
+  assert.equal(priced.items[0].landed_price, 104.55);
 });
 
 test("custo acima de R$100 mantém a tabela dinâmica, sem margem fixa", () => {
