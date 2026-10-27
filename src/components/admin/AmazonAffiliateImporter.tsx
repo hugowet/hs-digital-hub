@@ -262,6 +262,99 @@ export function AmazonAffiliateImporter() {
     }
   };
 
+  // Importação em massa: até 50 produtos por vez.
+  // Cada linha aceita JSON ({"url","costPrice","title","mainImage","description","gallery"})
+  // ou formato com barras: url | custo | título | imagem
+  const BULK_LIMIT = 50;
+
+  const parseBulkLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith("{")) {
+      const data = JSON.parse(trimmed);
+      return {
+        url: String(data.url || data.amazonUrl || ""),
+        cost: Number(data.costPrice ?? data.cost ?? 0),
+        title: String(data.title || ""),
+        image: String(data.mainImage || data.image || ""),
+        description: String(data.description || ""),
+        gallery: Array.isArray(data.gallery) ? data.gallery.map(String) : [],
+      };
+    }
+    const parts = trimmed.split("|").map((p) => p.trim());
+    if (parts.length < 2) return null;
+    return {
+      url: parts[0] || "",
+      cost: Number(String(parts[1] || "").replace(",", ".")) || 0,
+      title: parts[2] || "",
+      image: parts[3] || "",
+      description: parts[4] || "",
+      gallery: parts.slice(5).filter((p) => p.startsWith("http")),
+    };
+  };
+
+  const handleBulkImport = async () => {
+    if (!storeId) return toast.error("Nenhuma loja ativa vinculada para receber os produtos.");
+    const lines = bulkInput.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) return toast.error("Cole pelo menos um link ou linha de produto.");
+    if (lines.length > BULK_LIMIT) return toast.error(`Máximo de ${BULK_LIMIT} produtos por importação.`);
+
+    setBulkRunning(true);
+    let imported = 0;
+    const failures: string[] = [];
+
+    for (const line of lines) {
+      try {
+        const item = parseBulkLine(line);
+        if (!item || !item.url || item.cost <= 0) {
+          failures.push("Linha inválida (precisa de link e custo): " + line.slice(0, 60));
+          continue;
+        }
+        const salePrice = calculateAmazonFinalPrice(item.cost);
+        const title = item.title || "Produto importado Amazon";
+        const description = item.description || "Produto oficial importado com garantia e entrega rápida via Amazon.";
+        const gallery = Array.from(new Set([item.image, ...item.gallery].filter((u) => u.startsWith("http"))));
+        const { error } = await supabase.from("products").insert({
+          store_id: storeId,
+          title,
+          description,
+          description_long: description,
+          price: salePrice,
+          compare_at_price: Number((salePrice * 1.25).toFixed(2)),
+          supplier_cost: item.cost,
+          image_url: item.image || null,
+          gallery_urls: gallery,
+          free_shipping: true,
+          is_active: true,
+          category: "geral",
+          stock: 999,
+          supplier: "amazon",
+          product_type: "physical",
+          specifications: {
+            affiliate_url: formatAmazonAffiliateLink(item.url),
+            partner: "amazon",
+            affiliate_id: AMAZON_AFFILIATE_TAG,
+          },
+        });
+        if (error) throw error;
+        imported++;
+      } catch (err: any) {
+        failures.push(err?.message || "Falha ao importar uma linha.");
+      }
+    }
+
+    setBulkRunning(false);
+    if (imported > 0) {
+      toast.success(`${imported} produto(s) importado(s) com a Margem Dinâmica aplicada! Compra 100% dentro da HS Digital.`);
+      setBulkInput("");
+      setShowBulkBox(false);
+    }
+    if (failures.length > 0) {
+      toast.error(`${failures.length} linha(s) não importada(s). Verifique o formato.`);
+      console.warn("Falhas na importação em massa:", failures);
+    }
+  };
+
   // Recalcular Preço de Todos os Produtos Amazon Já Cadastrados
   const handleRecalculateAllAmazonProducts = async () => {
     if (!confirm("Deseja aplicar a nova regra de preços com terminação ,90 ou ,97 em todos os produtos da Amazon já cadastrados?")) {
@@ -359,6 +452,16 @@ export function AmazonAffiliateImporter() {
             >
               <RefreshCw className={`h-3.5 w-3.5 mr-1 ${recalculating ? "animate-spin" : ""}`} />
               Recalcular Vitrine Amazon
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowBulkBox(!showBulkBox)}
+              className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs font-semibold"
+            >
+              <Layers className="h-3.5 w-3.5 mr-1" />
+              Importação em Massa (até 50)
             </Button>
             <Button
               type="button"
