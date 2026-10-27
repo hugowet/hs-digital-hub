@@ -330,7 +330,7 @@ export async function runAmazonAutoImport(
         supplier: "amazon",
         product_type: "physical",
         specifications: {
-          ...data.specs,
+          ...sanitizeAmazonSpecs(data.specs),
           affiliate_url: affiliateUrl.toString(),
           partner: "amazon",
           affiliate_id: AMAZON_AFFILIATE_TAG,

@@ -154,12 +154,12 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
     const images: string[] = Array.from(new Set<string>(hiRes.length ? hiRes : extracted)).slice(0, 10);
 
     return {
-      title: String(json?.title ?? htmlTitle ?? ""),
+      title: sanitizeAmazonText(String(json?.title ?? htmlTitle ?? "")),
       costPrice: Number(json?.price) || 0,
-      description,
+      description: description ? buildAmazonDescription(description) : "",
       mainImage: images[0] ?? "",
       gallery: images.slice(1),
-      specs,
+      specs: sanitizeAmazonSpecs(specs),
       amazonCategory,
     };
   });
