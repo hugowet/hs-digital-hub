@@ -429,6 +429,24 @@ export function AmazonAffiliateImporter() {
   // produtos vencedores (nota >= 4.5, selo "Escolha da Amazon"/"Mais vendidos"
   // ou alto volume de avaliações) e injeta os links na caixa de importação em
   // massa, já disparando o fluxo completo de publicação.
+  // Pausa/retoma a importação automática agendada (robô diário de tendências)
+  const handleToggleAutoImport = async () => {
+    if (!autoImport) return;
+    setAutoImportToggling(true);
+    try {
+      const next = !autoImport.enabled;
+      await setAmazonAutoImport({ data: { enabled: next } });
+      setAutoImport({ ...autoImport, enabled: next });
+      toast.success(next
+        ? "Importação automática ativada! O robô vai puxar tendências todos os dias."
+        : "Importação automática pausada. Nada novo será importado até você retomar.");
+    } catch (err: any) {
+      toast.error(err?.message || "Não consegui alterar a automação agora.");
+    } finally {
+      setAutoImportToggling(false);
+    }
+  };
+
   const handleTrendHunt = async () => {
     const keyword = trendKeyword.trim();
     if (keyword.length < 2) return toast.error("Digite uma palavra-chave (ex: fone de ouvido bluetooth).");
@@ -714,6 +732,32 @@ export function AmazonAffiliateImporter() {
                 {trendRunning || bulkFetching ? "Rastreando e publicando..." : "Rastrear e Publicar"}
               </Button>
             </div>
+            {/* Automação agendada: robô diário de tendências com filtro anti-golpe */}
+            {autoImport?.configured && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300/70 bg-white/70 px-2.5 py-2 dark:bg-background/60">
+                <div className="text-[11px] text-amber-900/90 dark:text-amber-200/90">
+                  <span className="font-bold">Robô automático diário:</span>{" "}
+                  {autoImport.enabled ? "ativo — puxa até 50 produtos nacionais por dia, só com boa reputação (nota 4.3+, centenas de avaliações, selo oficial ou envio pela Amazon e preço coerente)." : "pausado."}
+                  {autoImport.lastRunAt && (
+                    <span className="block opacity-70">
+                      Última rodada: {new Date(autoImport.lastRunAt).toLocaleString("pt-BR")}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={autoImportToggling}
+                  onClick={handleToggleAutoImport}
+                  className={autoImport.enabled
+                    ? "border-red-300 text-red-700 hover:bg-red-50 text-xs h-8"
+                    : "border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs h-8"}
+                >
+                  {autoImportToggling ? "Salvando..." : autoImport.enabled ? "Pausar automação" : "Retomar automação"}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
