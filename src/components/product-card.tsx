@@ -152,8 +152,11 @@ export function ProductCard({
 
   const isCj = product.supplier === "cj" && !isDigital;
   const delivery = useCjPrice(product.id, 1, isCj, true);
+  // O preço base já fica estampado no cartão; a cotação confirmada pelo CEP
+  // substitui em segundo plano quando chega, sem deixar o cartão vazio.
   const price = delivery.price ?? catalogDisplayPrice(product);
-  const confirmed = !isCj || delivery.price !== null;
+  const confirmed = true;
+  const cjConfirmed = isCj && delivery.price !== null;
 
   // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
   const discountPercent = !isCj && Number(product.compare_at_price) > price
