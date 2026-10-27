@@ -24,7 +24,10 @@ export const getHsBank = createServerFn({ method: "GET" })
     const creditSummary = summary.data && typeof summary.data === "object" && !Array.isArray(summary.data) ? summary.data : {};
     return {
       store: { id: store.id, name: store.name, balance: Number(store.balance), connected: store.mercado_pago_status === "connected" },
-      transactions: (history.data ?? []).map((tx) => ({
+      transactions: (history.data ?? [])
+        // Cobranças não aprovadas expiram do extrato após 72 horas.
+        .filter((tx) => tx.status === "approved" || Date.now() - new Date(tx.created_at).getTime() < 72 * 60 * 60 * 1000)
+        .map((tx) => ({
         id: tx.id, orderId: tx.order_id, gross: Number(tx.gross_amount), fee: Number(tx.platform_fee),
         net: Number(tx.seller_amount), status: tx.status, date: tx.paid_at ?? tx.created_at,
         released: tx.orders?.payout_status === "released",

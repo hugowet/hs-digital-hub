@@ -1001,11 +1001,21 @@ const DELIVERY_STEPS = [
   ["delivered", "Entregue"],
 ] as const;
 
+// Pedidos não pagos expiram para o lojista após 72 horas: somem das abas
+// "Pedidos e Envios" e "Vendas e extrato" (regra de negócio HS Digital).
+export const UNPAID_ORDER_VISIBILITY_MS = 72 * 60 * 60 * 1000;
+
+export function isOrderVisibleToSeller(order: { payment_status?: string | null; created_at?: string | null }, now = Date.now()) {
+  if (order.payment_status === "paid") return true;
+  const createdAt = order.created_at ? new Date(order.created_at).getTime() : 0;
+  return now - createdAt < UNPAID_ORDER_VISIBILITY_MS;
+}
+
 function SellerOrdersTab({ storeId }: { storeId: string }) {
   const qc = useQueryClient();
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
 
-  const { data: orders = [], isLoading } = useQuery({
+  const { data: rawOrders = [], isLoading } = useQuery({
     queryKey: ["store-orders", storeId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1017,6 +1027,9 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
       return data ?? [];
     },
   });
+
+  // Esconde pedidos "Aguardando pagamento" / não aprovados com mais de 72h.
+  const orders = rawOrders.filter((o: any) => isOrderVisibleToSeller(o));
 
   const { data: trackingEvents = [] } = useQuery({
     enabled: orders.length > 0,
