@@ -880,6 +880,15 @@ export function AmazonAffiliateImporter() {
           </div>
 
           {/* ESPECIFICAÇÕES DO PRODUTO */}
+          {amazonVariationTemplate({ title, description, amazonCategory }).map((variation) => (
+            <fieldset key={variation.name} className="space-y-2 border-t border-border pt-4">
+              <legend className="text-sm font-semibold">{variation.name}</legend>
+              <div className="flex flex-wrap gap-2">
+                {variation.options.map((option) => <Badge key={option} variant="outline">{option}</Badge>)}
+              </div>
+              <p className="text-xs text-muted-foreground">Grade padrão · disponibilidade não confirmada. Publicação com estoque zerado até confirmação do fornecedor.</p>
+            </fieldset>
+          ))}
           <div className="space-y-2 rounded-lg border border-border/80 bg-muted/20 p-4">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-bold flex items-center gap-1.5">

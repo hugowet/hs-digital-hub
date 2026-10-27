@@ -291,8 +291,10 @@ export function ProductCard({
           {/* Botão Adicionar */}
           <Button
             size="sm"
+            disabled={Number(product.stock) <= 0}
             className="mt-3 w-full font-bold"
             onClick={async () => {
+              if (Number(product.stock) <= 0) return;
               const { data, error } = await supabase.auth.getUser();
               if (error || !data.user) {
                 toast.info("Faça login para adicionar produtos ao carrinho.");
