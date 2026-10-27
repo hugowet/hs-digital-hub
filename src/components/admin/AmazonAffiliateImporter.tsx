@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { calculateFinalPrice, getMarginRate } from "@/lib/pricing";
+import { categorizeAmazonProduct } from "@/lib/amazon-category";
 import { fetchAmazonProduct } from "@/lib/amazon.functions";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
@@ -250,7 +251,7 @@ export function AmazonAffiliateImporter() {
         gallery_urls: allGalleryUrls,
         free_shipping: true,
         is_active: true,
-        category: "geral",
+        category: categorizeAmazonProduct({ title: title.trim(), description: finalDescription }),
         stock: 999,
         supplier: "amazon",
         product_type: "physical",
