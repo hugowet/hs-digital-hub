@@ -629,8 +629,8 @@ function ProductDetailPage() {
                       Produto internacional · envio do exterior
                     </span>
                   ) : (product as any)?.supplier === "amazon" ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600">
-                      <Truck className="h-3.5 w-3.5" />
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-success/40 bg-success/10 px-2.5 py-1 text-[11px] font-bold text-success">
+                      <span aria-hidden>🇧🇷</span>
                       Produto nacional · envio do Brasil
                     </span>
                   ) : (
