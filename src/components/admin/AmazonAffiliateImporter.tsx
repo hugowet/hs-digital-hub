@@ -46,7 +46,7 @@ const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
  * 8. R$ 10.000,01 até R$ 30.000,00 -> 5%
  */
 export const getAmazonMarginRate = getMarginRate;
-export const calculateAmazonFinalPrice = calculateFinalPrice;
+export const calculateAmazonFinalPrice = calculateAmazonPrice;
 
 interface SpecItem {
   id: string;
