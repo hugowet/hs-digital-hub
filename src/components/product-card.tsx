@@ -241,25 +241,22 @@ export function ProductCard({
             </span>
           </div>}
 
-          {/* Linha 2: Preço em destaque com centavos sobrescritos */}
-          {isCj && !confirmed && <p className="mt-1 min-h-10 text-xs text-muted-foreground">
-            {delivery.loading ? "Confirmando preço…" : !delivery.userId ? "Entre para ver o preço no seu endereço" : !delivery.postalCode ? "Salve seu endereço para ver o preço" : "Entrega não confirmada"}
-          </p>}
-          {confirmed && <div data-testid="product-price" className="mt-1 flex items-start leading-none text-foreground">
+          {/* Linha 2: Preço em destaque com centavos sobrescritos — sempre estampado */}
+          <div data-testid="product-price" className="mt-1 flex items-start leading-none text-foreground">
             <span className="text-xl md:text-2xl font-normal tracking-tight">
               R$ {priceParts.reais}
             </span>
             <span className="text-[11px] font-semibold tracking-tight ml-0.5">
               {priceParts.centavos}
             </span>
-          </div>}
+          </div>
 
           {/* Linha 3: Parcelamento */}
-          {confirmed && <p className="mt-1.5 text-xs text-foreground/80 font-normal leading-tight">
+          <p className="mt-1.5 text-xs text-foreground/80 font-normal leading-tight">
             {installment.text}
-          </p>}
-          {isCj && confirmed && <p className="mt-1 text-[11px] text-muted-foreground">Entrega no CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")}</p>}
-          {isCj && confirmed && <p className="mt-1 text-[11px] text-muted-foreground">{formatDeliveryRange(delivery.arrivalRange)}{delivery.arrivalRange ? " · se enviado hoje" : ""}</p>}
+          </p>
+          {cjConfirmed && <p className="mt-1 text-[11px] text-muted-foreground">Entrega no CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")}</p>}
+          {cjConfirmed && <p className="mt-1 text-[11px] text-muted-foreground">{formatDeliveryRange(delivery.arrivalRange)}{delivery.arrivalRange ? " · se enviado hoje" : ""}</p>}
 
           {/* Linha 4: Frete Grátis ou com Desconto */}
           {!isDigital && confirmed && (
