@@ -2924,6 +2924,20 @@ export type Database = {
         }
         Returns: string[]
       }
+      search_catalog_supplier_ids: {
+        Args: {
+          _category: string
+          _free: boolean
+          _groups: Json
+          _limit: number
+          _max: number
+          _min: number
+          _offset: number
+          _sort: string
+          _supplier: string
+        }
+        Returns: string[]
+      }
       social_contact_profiles: {
         Args: never
         Returns: {
