@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { calculateFinalPrice, getMarginRate } from "@/lib/pricing";
+import { categorizeAmazonProduct } from "@/lib/amazon-category";
 import { fetchAmazonProduct } from "@/lib/amazon.functions";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
@@ -250,7 +251,7 @@ export function AmazonAffiliateImporter() {
         gallery_urls: allGalleryUrls,
         free_shipping: true,
         is_active: true,
-        category: "geral",
+        category: categorizeAmazonProduct({ title: title.trim(), description: finalDescription }),
         stock: 999,
         supplier: "amazon",
         product_type: "physical",
@@ -290,9 +291,9 @@ export function AmazonAffiliateImporter() {
     }
   };
 
-  // Importação em massa: até 50 produtos por vez.
-  // Cada linha aceita JSON ({"url","costPrice","title","mainImage","description","gallery"})
-  // ou formato com barras: url | custo | título | imagem
+  // Importação em massa: até 50 produtos por vez, publicados de uma só vez.
+  // Cada linha aceita JSON ({"url","costPrice","title","mainImage","description","gallery","category"})
+  // ou formato com barras: url | custo | título | imagem | descrição | fotos... | categoria
   const BULK_LIMIT = 50;
 
   const parseBulkLine = (line: string) => {
@@ -307,17 +308,21 @@ export function AmazonAffiliateImporter() {
         image: String(data.mainImage || data.image || ""),
         description: String(data.description || ""),
         gallery: Array.isArray(data.gallery) ? data.gallery.map(String) : [],
+        category: String(data.category || data.amazonCategory || ""),
       };
     }
     const parts = trimmed.split("|").map((p) => p.trim());
     if (parts.length < 2) return null;
+    const galleryParts = parts.slice(5).filter((p) => p.startsWith("http"));
+    const categoryPart = parts.slice(5).find((p) => p && !p.startsWith("http")) || "";
     return {
       url: parts[0] || "",
       cost: Number(String(parts[1] || "").replace(",", ".")) || 0,
       title: parts[2] || "",
       image: parts[3] || "",
       description: parts[4] || "",
-      gallery: parts.slice(5).filter((p) => p.startsWith("http")),
+      gallery: galleryParts,
+      category: categoryPart,
     };
   };
 
@@ -328,8 +333,9 @@ export function AmazonAffiliateImporter() {
     if (lines.length > BULK_LIMIT) return toast.error(`Máximo de ${BULK_LIMIT} produtos por importação.`);
 
     setBulkRunning(true);
-    let imported = 0;
     const failures: string[] = [];
+    const rows: any[] = [];
+    const usedCategories = new Set<string>();
 
     for (const line of lines) {
       try {
@@ -342,7 +348,13 @@ export function AmazonAffiliateImporter() {
         const title = item.title || "Produto importado Amazon";
         const description = item.description || "Produto oficial importado com garantia e entrega rápida via Amazon.";
         const gallery = Array.from(new Set([item.image, ...item.gallery].filter((u) => u.startsWith("http"))));
-        const { error } = await supabase.from("products").insert({
+        const category = categorizeAmazonProduct({
+          title,
+          description,
+          amazonCategory: item.category,
+        });
+        usedCategories.add(category);
+        rows.push({
           store_id: storeId,
           title,
           description,
@@ -354,7 +366,7 @@ export function AmazonAffiliateImporter() {
           gallery_urls: gallery,
           free_shipping: true,
           is_active: true,
-          category: "geral",
+          category,
           stock: 999,
           supplier: "amazon",
           product_type: "physical",
@@ -364,16 +376,29 @@ export function AmazonAffiliateImporter() {
             affiliate_id: AMAZON_AFFILIATE_TAG,
           },
         });
-        if (error) throw error;
-        imported++;
       } catch (err: any) {
-        failures.push(err?.message || "Falha ao importar uma linha.");
+        failures.push(err?.message || "Falha ao preparar uma linha.");
       }
+    }
+
+    let imported = 0;
+    if (rows.length > 0) {
+      // Publicação em lote: todos os produtos vão para a vitrine de uma só vez.
+      const { error } = await supabase.from("products").insert(rows);
+      if (error) {
+        setBulkRunning(false);
+        toast.error(error.message || "Erro ao publicar os produtos em massa.");
+        return;
+      }
+      imported = rows.length;
     }
 
     setBulkRunning(false);
     if (imported > 0) {
-      toast.success(`${imported} produto(s) importado(s) com a Margem Dinâmica aplicada! Compra 100% dentro da HS Digital.`);
+      toast.success(
+        `Sucesso! ${imported} produtos publicados e organizados em ${usedCategories.size} categoria(s) na vitrine da HS Digital.`,
+        { duration: 6000 },
+      );
       setBulkInput("");
       setShowBulkBox(false);
     }
