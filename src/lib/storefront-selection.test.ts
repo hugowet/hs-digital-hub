@@ -8,7 +8,7 @@ test("a seleção diária se aplica à vitrine inicial Todos", () => {
   assert.equal(usesDailySelection(all), true);
 });
 test("busca e filtros mantêm o catálogo normal", () => {
-  for (const filter of [{ query: "fone" }, { category: "moda" }, { range: "a" }, { sort: "price-asc" }, { onlyFreeShipping: true }]) {
+  for (const filter of [{ supplier: "cj" }, { supplier: "amazon" }, { query: "fone" }, { category: "moda" }, { range: "a" }, { sort: "price-asc" }, { onlyFreeShipping: true }]) {
     assert.equal(usesDailySelection({ ...all, ...filter }), false);
   }
 });
