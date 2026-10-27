@@ -1,3 +1,4 @@
+import { sellerDisplayName } from "@/lib/seller-display";
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
@@ -414,7 +415,7 @@ function ProductDetailPage() {
       {
         productId: product.id,
         storeId: product.store_id,
-        storeName: "Loja JJ Kuster",
+        storeName: sellerDisplayName(product.stores?.name ?? "JJ Kuster", product.category),
         title: product.supplierOptions?.find((option) => option.productId === productId)?.label
           ? `${product.title} — ${product.supplierOptions.find((option) => option.productId === productId)?.label}` : product.title,
         price,
@@ -616,7 +617,7 @@ function ProductDetailPage() {
                 <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span>Vendido e entregue por</span>
                   <span className="font-bold text-primary flex items-center gap-1">
-                    Loja JJ Kuster <BadgeCheck className="h-3.5 w-3.5 text-primary" />
+                    {sellerDisplayName(product.stores?.name ?? "JJ Kuster", product.category)} <BadgeCheck className="h-3.5 w-3.5 text-primary" />
                   </span>
                 </div>
 

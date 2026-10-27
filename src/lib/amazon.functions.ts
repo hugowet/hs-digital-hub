@@ -146,9 +146,11 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
       }
     }
 
-    const images: string[] = Array.isArray(json?.images)
-      ? json.images.filter((u: unknown) => typeof u === "string" && u.startsWith("http"))
+    const extracted: string[] = Array.isArray(json?.images)
+      ? json.images.filter((u: unknown) => typeof u === "string" && u.startsWith("http")).map(amazonFullResImage)
       : [];
+    const hiRes = amazonHiResFromHtml(rawHtml);
+    const images: string[] = Array.from(new Set(hiRes.length ? hiRes : extracted)).slice(0, 10);
 
     return {
       title: String(json?.title ?? htmlTitle ?? ""),

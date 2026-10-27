@@ -1,3 +1,4 @@
+import { sellerDisplayName } from "@/lib/seller-display";
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Package, ShoppingCart, Star, Zap } from "lucide-react";
@@ -222,7 +223,7 @@ export function ProductCard({
         </h3>
 
         <p className="mt-1 text-[11px] text-muted-foreground">
-          {product.stores?.name ?? "HS Digital"}
+          {sellerDisplayName(product.stores?.name, product.category)}
         </p>
 
         {/* Bloco de Preços no Estilo Mercado Livre */}
@@ -317,7 +318,7 @@ export function ProductCard({
                   stock: product.stock ?? 99,
                   freeShipping: isFreeShipping,
                   storeId: product.store_id,
-                  storeName: product.stores?.name ?? "HS Digital",
+                  storeName: sellerDisplayName(product.stores?.name, product.category),
                   productType: (product.product_type as "physical" | "digital") ?? "physical",
                 },
                 1,
