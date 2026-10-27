@@ -1,12 +1,13 @@
 # HS Digital — MVP
 
 ## HS Bank — 27/10
-- [ ] Ajuste solicitado às três travas: espelho de liquidação no Mercado Pago, estimativa de análise de 30% das vendas pagas em 30 dias com referência a 90 dias (sem crédito pré-aprovado), e avaliação do desconto HSBANK50 sem prejudicar fornecedor/vendedor. Não garantir custo zero nem dinheiro liberado automaticamente.
+- [x] Espelho de liquidação Mercado Pago sem API externa; referência de crédito de 30% das vendas pagas em 30 dias calculada por SQL do titular e salva na solicitação, análise de 90 dias sem promessa de aprovação. Doze testes passaram; tela autenticada sem loja aprovada validada sem erros, build OK.
+- [ ] HSBANK50 sem reserva externa: bloqueado porque não há cobertura financeira/identidade verificada/resgate atômico integrado; R$150 de produtos com comissão de 12% gera R$18, não R$50. Não retirar diferença de fornecedor/vendedor nem alegar custo zero.
 - [x] Carteira azul com Loop, saldo interno ocultável, extrato de até 50 registros reais, acesso no menu/painel vendedor. Conta autenticada sem loja e celular validados, sem erro ou transbordamento; build OK.
 - [x] Interesse em crédito persistido via RPC, protegido por loja aprovada e vendas pagas nos últimos 30 dias; sem concessão de dinheiro ou mudança no split. Dez testes de regras passaram.
 - [x] Hugo confirmou manter a comissão de 12%; extrato preserva os valores reais de cada transação.
 - [ ] Validar saldo, extrato e solicitação no fluxo de lojista elegível: a conta disponível no teste não tem loja aprovada; precisa de sessão de um proprietário elegível.
-- [ ] Saque direto para a própria conta Pix cadastrada, solicitado por Hugo em 27/10: sem redirecionamento ao Mercado Pago. Bloqueado até confirmar e habilitar um provedor de transferências com saldo real disponível; integrar reserva atômica, titularidade, idempotência e confirmação antes de baixar o saldo. O botão atual apenas abre o Mercado Pago e não realiza saque.
+- [x] Alternativa autorizada por Hugo: painel espelha liquidação na conta Mercado Pago da loja e botão consulta essa conta; não realiza saque direto nem consulta saldo bancário. Pix automático continua indisponível sem capacidade oficial autorizada.
 - [ ] Crédito real e retenção de 15%: dependem de produto/API habilitado e instituição/contrato autorizados; split atual não confirma essas capacidades.
 - [ ] Ativar HSBANK50: política e testes preparados (primeira compra/R$150/R$50/10/CPF/dispositivo), mas sem emissão ou resgate. Precisa de verba própria, verificação real de identidade e reserva/resgate atômicos integrados ao checkout; desconto não pode consumir margem CJ.
 
