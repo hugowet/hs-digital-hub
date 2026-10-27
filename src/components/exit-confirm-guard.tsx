@@ -23,7 +23,6 @@ export function ExitConfirmGuard() {
   };
 
   useEffect(() => {
-    console.log("guard mounted");
     exitingRef.current = false;
     armedRef.current = false;
     // Wait for the router to settle its initial history entry before arming.

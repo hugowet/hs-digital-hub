@@ -592,11 +592,17 @@ function CartPage() {
               <h3 className="text-sm font-bold border-b pb-2">Resumo do Pedido</h3>
 
               <div className="space-y-1.5 text-xs">
-                {economizou > 0 && <div data-testid="cart-savings" className="flex items-center justify-between gap-2 rounded-md bg-primary/5 p-2 font-semibold text-primary">
-                  <span>Você economizou</span><span>{brl(economizou)}</span>
-                </div>}
+                {economizou > 0 && <>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Preço original</span>
+                    <span className="line-through">{brl(subtotalProdutos + economizou)}</span>
+                  </div>
+                  <div data-testid="cart-savings" className="flex justify-between font-semibold text-success">
+                    <span>Desconto aplicado</span><span>- {brl(economizou)}</span>
+                  </div>
+                </>}
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Subtotal produtos</span>
+                  <span>{economizou > 0 ? "Subtotal com desconto" : "Subtotal produtos"}</span>
                   <span>{brl(subtotalProdutos)}</span>
                 </div>
 
