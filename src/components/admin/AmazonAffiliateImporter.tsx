@@ -591,14 +591,27 @@ export function AmazonAffiliateImporter() {
             <Label htmlFor="prod-url" className="text-sm font-semibold flex items-center gap-1.5">
               <ExternalLink className="h-4 w-4 text-blue-600" /> Link do Produto (SiteStripe da Amazon)
             </Label>
-            <Input
-              id="prod-url"
-              placeholder="Cole o link completo ou amzn.to gerado pelo SiteStripe"
-              value={amazonUrl}
-              onChange={(e) => setAmazonUrl(e.target.value)}
-              className="h-11 font-mono text-xs focus-visible:ring-blue-600"
-              required
-            />
+            <div className="flex gap-2">
+              <Input
+                id="prod-url"
+                placeholder="Cole o link completo ou amzn.to gerado pelo SiteStripe"
+                value={amazonUrl}
+                onChange={(e) => setAmazonUrl(e.target.value)}
+                className="h-11 font-mono text-xs focus-visible:ring-blue-600"
+                required
+              />
+              <Button
+                type="button"
+                onClick={handleFetchFromLink}
+                disabled={fetchingLink || !amazonUrl.trim()}
+                className="h-11 shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+              >
+                {fetchingLink ? "Lendo página..." : "Puxar dados"}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              O botão "Puxar dados" preenche título, fotos, descrição, especificações e preço automaticamente.
+            </p>
           </div>
 
           {/* Preço de Custo e Imagem Principal */}
