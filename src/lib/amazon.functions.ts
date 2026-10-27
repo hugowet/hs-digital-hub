@@ -207,74 +207,77 @@ export const searchAmazonTrends = createServerFn({ method: "POST" })
     const connectionKey = process.env["FIRECRAWL_API_KEY"];
     if (!lovableKey || !connectionKey) throw new Error("Serviço de leitura de páginas não configurado.");
 
-    const response = await fetch(`${GATEWAY_V2}/search`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": connectionKey,
-      },
-      body: JSON.stringify({
-        query: `${data.keyword} site:amazon.com.br`,
-        limit: Math.min(data.limit * 2, 100),
-        lang: "pt-BR",
-        country: "BR",
-        scrapeOptions: {
-          formats: [
-            {
-              type: "json",
-              schema: TREND_SCHEMA,
-              prompt:
-                "Liste os produtos desta página de resultados da Amazon com url, título, nota em estrelas (rating), número de avaliações (reviews) e selo (badge) como 'Escolha da Amazon' ou 'Mais vendido'. Use somente o que estiver visível na página.",
-            },
-          ],
-        },
-      }),
-    });
+    // Varre as páginas de resultados da Amazon em paralelo (cada página rende
+    // poucos produtos extraídos, então várias páginas são lidas ao mesmo tempo).
+    const pages = Math.min(Math.ceil(data.limit / 3), 6);
+    const keyword = encodeURIComponent(data.keyword);
+    const pageUrls = Array.from({ length: pages }, (_, i) =>
+      `https://www.amazon.com.br/s?k=${keyword}${i > 0 ? `&page=${i + 1}` : ""}`,
+    );
 
-    if (!response.ok) {
-      const body = await response.text();
-      console.error(`Firecrawl search falhou [${response.status}]: ${body}`);
-      throw new Error(`Não consegui pesquisar tendências agora (erro ${response.status}). Tente novamente.`);
-    }
-
-    const result = await response.json();
-    const entries: unknown[] = Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];
+    const responses = await Promise.allSettled(
+      pageUrls.map((url) =>
+        fetch(`${GATEWAY_V2}/scrape`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${lovableKey}`,
+            "X-Connection-Api-Key": connectionKey,
+          },
+          body: JSON.stringify({
+            url,
+            formats: [
+              {
+                type: "json",
+                schema: TREND_SCHEMA,
+                prompt:
+                  "Liste os produtos desta página de resultados da Amazon com url (link do produto), título, nota em estrelas (rating), número de avaliações (reviews) e selo (badge) como 'Escolha da Amazon' ou 'Mais vendido'. Use somente o que estiver visível na página.",
+              },
+            ],
+            onlyMainContent: false,
+            waitFor: 3000,
+            location: { country: "BR", languages: ["pt-BR"] },
+          }),
+        }).then(async (res) => {
+          if (!res.ok) throw new Error(`scrape ${res.status}`);
+          return res.json();
+        }),
+      ),
+    );
 
     const seen = new Set<string>();
     const winners: AmazonTrendItem[] = [];
 
-    const consider = (raw: unknown) => {
-      const p = raw as Record<string, unknown>;
-      const url = String(p?.url ?? "");
-      if (!/amazon\./i.test(url) || seen.has(url)) return;
-      const rating = Number(p?.rating) || 0;
-      const reviews = Number(p?.reviews) || 0;
-      const badge = String(p?.badge ?? "");
-      const isWinner =
-        rating >= 4.5 ||
-        /escolha da amazon|mais vendido|best seller|best-seller/i.test(badge) ||
-        reviews >= 1000;
-      if (!isWinner) return;
-      seen.add(url);
-      winners.push({
-        url,
-        title: String(p?.title ?? ""),
-        rating,
-        reviews,
-        badge,
-      });
-    };
-
-    for (const entry of entries) {
-      const e = entry as Record<string, unknown>;
-      // Resultado de busca simples (url direto do resultado)
-      if (typeof e?.url === "string" && /amazon\..*\/(dp|gp\/product)\//i.test(e.url)) {
-        consider({ url: e.url, title: e.title, rating: 0, reviews: 0, badge: "" });
+    for (const res of responses) {
+      if (res.status !== "fulfilled") continue;
+      const payload = res.value?.data && typeof res.value.data === "object" ? res.value.data : res.value;
+      const list = payload?.json?.products;
+      if (!Array.isArray(list)) continue;
+      for (const raw of list) {
+        const p = raw as Record<string, unknown>;
+        let url = String(p?.url ?? "");
+        // Normaliza para o link limpo do produto (/dp/XXXX)
+        const dpMatch = url.match(/\/dp\/([A-Z0-9]{10})/i) ?? url.match(/\/gp\/product\/([A-Z0-9]{10})/i);
+        if (!dpMatch) continue;
+        url = `https://www.amazon.com.br/dp/${dpMatch[1]}`;
+        if (seen.has(url)) continue;
+        const rating = Number(p?.rating) || 0;
+        const reviews = Number(p?.reviews) || 0;
+        const badge = String(p?.badge ?? "");
+        const isWinner =
+          rating >= 4.5 ||
+          /escolha da amazon|mais vendido|best seller|best-seller/i.test(badge) ||
+          reviews >= 1000;
+        if (!isWinner) continue;
+        seen.add(url);
+        winners.push({
+          url,
+          title: String(p?.title ?? ""),
+          rating,
+          reviews,
+          badge,
+        });
       }
-      // Produtos extraídos da página de resultados
-      const list = (e?.json as Record<string, unknown> | undefined)?.products;
-      if (Array.isArray(list)) list.forEach(consider);
     }
 
     // Ordena pelos mais fortes: nota, depois volume de avaliações
