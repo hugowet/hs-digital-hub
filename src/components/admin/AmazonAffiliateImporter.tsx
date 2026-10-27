@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { calculateFinalPrice, getMarginRate } from "@/lib/pricing";
 import { categorizeAmazonProduct } from "@/lib/amazon-category";
-import { fetchAmazonProduct } from "@/lib/amazon.functions";
+import { fetchAmazonProduct, searchAmazonTrends } from "@/lib/amazon.functions";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -79,6 +79,10 @@ export function AmazonAffiliateImporter() {
   const [showBulkBox, setShowBulkBox] = useState(false);
   const [autoFillJson, setAutoFillJson] = useState("");
   const [showAutoFillBox, setShowAutoFillBox] = useState(false);
+  const [trendKeyword, setTrendKeyword] = useState("");
+  const [trendLimit, setTrendLimit] = useState<10 | 20 | 50>(10);
+  const [trendRunning, setTrendRunning] = useState(false);
+  const [showTrendBox, setShowTrendBox] = useState(false);
 
   // Verificação de Autenticação
   useEffect(() => {
@@ -409,14 +413,42 @@ export function AmazonAffiliateImporter() {
     }
   };
 
+  // Rastreador de Tendências: pesquisa uma palavra-chave na Amazon, filtra os
+  // produtos vencedores (nota >= 4.5, selo "Escolha da Amazon"/"Mais vendidos"
+  // ou alto volume de avaliações) e injeta os links na caixa de importação em
+  // massa, já disparando o fluxo completo de publicação.
+  const handleTrendHunt = async () => {
+    const keyword = trendKeyword.trim();
+    if (keyword.length < 2) return toast.error("Digite uma palavra-chave (ex: fone de ouvido bluetooth).");
+    setTrendRunning(true);
+    try {
+      const { items } = await searchAmazonTrends({ data: { keyword, limit: trendLimit } });
+      if (items.length === 0) {
+        toast.info("Nenhum produto vencedor encontrado para essa palavra-chave agora. Tente outro termo.");
+        return;
+      }
+      // Injeta os links minerados na caixa de importação em massa...
+      setBulkInput(items.map((item) => item.url).join("\n"));
+      setShowTrendBox(false);
+      setShowBulkBox(true);
+      toast.success(`${items.length} link(s) vencedor(es) minerados! Puxando dados e publicando...`);
+      // ...e dispara o fluxo automático: dados em paralelo + publicação em lote.
+      await handleBulkFetchAndPublishWithLinks(items.map((item) => item.url));
+    } catch (err: any) {
+      toast.error(err?.message || "Não consegui rastrear tendências agora.");
+    } finally {
+      setTrendRunning(false);
+    }
+  };
+
   // Modo "só links": cola até 50 links da Amazon (um por linha); o sistema puxa
   // título, fotos, descrição, especificações e preço de TODOS em paralelo,
   // categoriza automaticamente e publica tudo em uma única gravação no banco.
-  const handleBulkFetchAndPublish = async () => {
+  const handleBulkFetchAndPublishWithLinks = async (linksOverride?: string[]) => {
     if (!storeId) return toast.error("Nenhuma loja ativa vinculada para receber os produtos.");
-    const links = bulkInput
+    const links = (linksOverride ?? bulkInput
       .split("\n")
-      .map((l) => l.trim())
+      .map((l) => l.trim()))
       .filter((l) => /amazon\.|amzn\./i.test(l));
     if (links.length === 0) return toast.error("Cole pelo menos um link da Amazon (um por linha).");
     if (links.length > BULK_LIMIT) return toast.error(`Máximo de ${BULK_LIMIT} links por importação.`);
@@ -496,6 +528,8 @@ export function AmazonAffiliateImporter() {
       toast.error(`${failed} link(s) não puderam ser lidos pela Amazon agora.`);
     }
   };
+
+  const handleBulkFetchAndPublish = () => handleBulkFetchAndPublishWithLinks();
 
   // Recalcular Preço de Todos os Produtos Amazon Já Cadastrados
   const handleRecalculateAllAmazonProducts = async () => {
@@ -599,6 +633,16 @@ export function AmazonAffiliateImporter() {
               type="button"
               variant="outline"
               size="sm"
+              onClick={() => setShowTrendBox(!showTrendBox)}
+              className="border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-semibold"
+            >
+              <Sparkles className="h-3.5 w-3.5 mr-1" />
+              Rastreador de Tendências
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setShowBulkBox(!showBulkBox)}
               className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs font-semibold"
             >
@@ -620,6 +664,45 @@ export function AmazonAffiliateImporter() {
             </Badge>
           </div>
         </div>
+
+        {/* Caixa do Rastreador de Tendências */}
+        {showTrendBox && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3 space-y-2 dark:border-amber-900 dark:bg-amber-950/40">
+            <Label className="text-xs font-bold text-amber-900 dark:text-amber-200">
+              Rastreador de Tendências Automático — encontra produtos vencedores na Amazon e publica tudo sozinho
+            </Label>
+            <p className="text-[11px] text-amber-900/80 dark:text-amber-200/80">
+              Filtra só produtos com nota 4.5+, selo "Escolha da Amazon"/"Mais vendidos" ou muitas avaliações.
+              Os links entram direto na Importação em Massa com a sua tag de afiliado e são publicados por categoria.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={trendKeyword}
+                onChange={(e) => setTrendKeyword(e.target.value)}
+                placeholder="Ex: fone de ouvido bluetooth"
+                className="h-8 flex-1 min-w-[220px] text-xs bg-white dark:bg-background"
+              />
+              <select
+                value={trendLimit}
+                onChange={(e) => setTrendLimit(Number(e.target.value) as 10 | 20 | 50)}
+                className="h-8 rounded-md border border-input bg-white px-2 text-xs dark:bg-background"
+              >
+                <option value={10}>10 produtos</option>
+                <option value={20}>20 produtos</option>
+                <option value={50}>50 produtos</option>
+              </select>
+              <Button
+                type="button"
+                size="sm"
+                disabled={trendRunning || bulkFetching}
+                onClick={handleTrendHunt}
+                className="bg-amber-600 text-white hover:bg-amber-700 text-xs h-8"
+              >
+                {trendRunning || bulkFetching ? "Rastreando e publicando..." : "Rastrear e Publicar"}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Caixa de Importação em Massa */}
         {showBulkBox && (

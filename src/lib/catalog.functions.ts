@@ -169,21 +169,35 @@ async function queryCatalog(input: CatalogInput) {
   return { products, total, nextPage: hasMore ? input.page + 1 : null };
 }
 
+// A vitrine nunca quebra para o cliente: qualquer falha de banco/coluna
+// retorna lista vazia e a tela mostra "Nenhum produto encontrado".
 export const fetchCatalogPage = createServerFn({ method: "GET" })
   .inputValidator((input) => catalogInput.parse(input))
-  .handler(async ({ data }) => queryCatalog(data));
+  .handler(async ({ data }) => {
+    try {
+      return await queryCatalog(data);
+    } catch (err) {
+      console.error("Falha ao carregar a vitrine:", err);
+      return { products: [] as Product[], total: 0, nextPage: null };
+    }
+  });
 
 export const fetchProducts = createServerFn({ method: "GET" }).handler(async () => {
-  const result = await queryCatalog({
-    page: 0,
-    pageSize: 48,
-    query: "",
-    category: null,
-    range: "all",
-    sort: "popular",
-    onlyFreeShipping: false,
-  });
-  return result.products;
+  try {
+    const result = await queryCatalog({
+      page: 0,
+      pageSize: 48,
+      query: "",
+      category: null,
+      range: "all",
+      sort: "popular",
+      onlyFreeShipping: false,
+    });
+    return result.products;
+  } catch (err) {
+    console.error("Falha ao carregar produtos:", err);
+    return [] as Product[];
+  }
 });
 
 export const fetchProduct = createServerFn({ method: "GET" })

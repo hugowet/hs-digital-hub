@@ -157,3 +157,130 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
       specs,
     };
   });
+
+const TREND_SCHEMA = {
+  type: "object",
+  properties: {
+    products: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "URL do produto na Amazon" },
+          title: { type: "string" },
+          rating: { type: "number", description: "Nota em estrelas (0 a 5)" },
+          reviews: { type: "number", description: "Número de avaliações/comentários" },
+          badge: { type: "string", description: "Selo como 'Escolha da Amazon' ou 'Mais vendido', se houver" },
+        },
+      },
+    },
+  },
+};
+
+export interface AmazonTrendItem {
+  url: string;
+  title: string;
+  rating: number;
+  reviews: number;
+  badge: string;
+}
+
+/**
+ * Rastreador de Tendências: pesquisa produtos na Amazon e filtra os vencedores
+ * (nota >= 4.5, selo "Escolha da Amazon"/"Mais vendidos" ou alto volume de avaliações).
+ */
+export const searchAmazonTrends = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        keyword: z.string().trim().min(2).max(120),
+        limit: z.union([z.literal(10), z.literal(20), z.literal(50)]).default(10),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const email = String(context.claims?.email ?? "").toLowerCase();
+    if (!ALLOWED_EMAILS.includes(email)) throw new Error("Recurso exclusivo da administração.");
+
+    const lovableKey = process.env["LOVABLE_API_KEY"];
+    const connectionKey = process.env["FIRECRAWL_API_KEY"];
+    if (!lovableKey || !connectionKey) throw new Error("Serviço de leitura de páginas não configurado.");
+
+    // Varre as páginas de resultados da Amazon em paralelo (cada página rende
+    // poucos produtos extraídos, então várias páginas são lidas ao mesmo tempo).
+    const pages = Math.min(Math.ceil(data.limit / 3), 6);
+    const keyword = encodeURIComponent(data.keyword);
+    const pageUrls = Array.from({ length: pages }, (_, i) =>
+      `https://www.amazon.com.br/s?k=${keyword}${i > 0 ? `&page=${i + 1}` : ""}`,
+    );
+
+    const responses = await Promise.allSettled(
+      pageUrls.map((url) =>
+        fetch(`${GATEWAY_V2}/scrape`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${lovableKey}`,
+            "X-Connection-Api-Key": connectionKey,
+          },
+          body: JSON.stringify({
+            url,
+            formats: [
+              {
+                type: "json",
+                schema: TREND_SCHEMA,
+                prompt:
+                  "Liste os produtos desta página de resultados da Amazon com url (link do produto), título, nota em estrelas (rating), número de avaliações (reviews) e selo (badge) como 'Escolha da Amazon' ou 'Mais vendido'. Use somente o que estiver visível na página.",
+              },
+            ],
+            onlyMainContent: false,
+            waitFor: 3000,
+            location: { country: "BR", languages: ["pt-BR"] },
+          }),
+        }).then(async (res) => {
+          if (!res.ok) throw new Error(`scrape ${res.status}`);
+          return res.json();
+        }),
+      ),
+    );
+
+    const seen = new Set<string>();
+    const winners: AmazonTrendItem[] = [];
+
+    for (const res of responses) {
+      if (res.status !== "fulfilled") continue;
+      const payload = res.value?.data && typeof res.value.data === "object" ? res.value.data : res.value;
+      const list = payload?.json?.products;
+      if (!Array.isArray(list)) continue;
+      for (const raw of list) {
+        const p = raw as Record<string, unknown>;
+        let url = String(p?.url ?? "");
+        // Normaliza para o link limpo do produto (/dp/XXXX)
+        const dpMatch = url.match(/\/dp\/([A-Z0-9]{10})/i) ?? url.match(/\/gp\/product\/([A-Z0-9]{10})/i);
+        if (!dpMatch) continue;
+        url = `https://www.amazon.com.br/dp/${dpMatch[1]}`;
+        if (seen.has(url)) continue;
+        const rating = Number(p?.rating) || 0;
+        const reviews = Number(p?.reviews) || 0;
+        const badge = String(p?.badge ?? "");
+        const isWinner =
+          rating >= 4.5 ||
+          /escolha da amazon|mais vendido|best seller|best-seller/i.test(badge) ||
+          reviews >= 1000;
+        if (!isWinner) continue;
+        seen.add(url);
+        winners.push({
+          url,
+          title: String(p?.title ?? ""),
+          rating,
+          reviews,
+          badge,
+        });
+      }
+    }
+
+    // Ordena pelos mais fortes: nota, depois volume de avaliações
+    winners.sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
+    return { items: winners.slice(0, data.limit) };
+  });

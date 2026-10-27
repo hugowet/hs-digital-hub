@@ -598,11 +598,20 @@ function Home() {
             </Select>
           </div>
 
-          <div aria-busy={isSearching} className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 transition-opacity ${isSearching ? "opacity-60" : ""}`}>
-            {filtered.map((prod) => (
-              <ProductCard key={prod.id} product={prod} />
-            ))}
-          </div>
+          {filtered.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
+              <p className="text-sm font-semibold text-gray-700">Nenhum produto encontrado</p>
+              <p className="mt-1 text-xs text-gray-500">
+                Tente outro termo ou navegue pelas categorias acima.
+              </p>
+            </div>
+          ) : (
+            <div aria-busy={isSearching} className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 transition-opacity ${isSearching ? "opacity-60" : ""}`}>
+              {filtered.map((prod) => (
+                <ProductCard key={prod.id} product={prod} />
+              ))}
+            </div>
+          )}
 
           {hasNextPage && (
             <div className="mt-8 text-center">
