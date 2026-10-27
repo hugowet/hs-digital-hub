@@ -127,13 +127,34 @@ async function queryCatalog(input: CatalogInput) {
     if (selectionError) throw selectionError;
     const daily = z.object({ ids: z.array(z.string().uuid()), total: z.number(), day: z.string() }).parse(selection);
     if (daily.ids.length === 0) return { products: [] as Product[], total: daily.total, nextPage: null };
-    const { data, error } = await supabasePublic.from("products").select(cardProjection).eq("is_active", true).in("id", daily.ids);
+    const amazonPerPage = Math.max(1, Math.floor(input.pageSize / 3));
+    const [{ data, error }, amazonResult] = await Promise.all([
+      supabasePublic.from("products").select(cardProjection).eq("is_active", true).in("id", daily.ids),
+      supabasePublic
+        .from("products")
+        .select(cardProjection)
+        .eq("is_active", true)
+        .eq("supplier", "amazon")
+        .order("sold_count", { ascending: false })
+        .order("rating", { ascending: false })
+        .order("id", { ascending: true })
+        .range(input.page * amazonPerPage, input.page * amazonPerPage + amazonPerPage - 1),
+    ]);
     if (error) throw error;
     const byId = new Map(((data ?? []) as unknown as Product[]).map((product) => [product.id, product]));
-    const ordered = daily.ids.flatMap((id) => {
+    const base = daily.ids.flatMap((id) => {
       const product = byId.get(id);
-      return product ? [product] : [];
+      return product && product.supplier !== "amazon" ? [product] : [];
     });
+    const amazon = amazonResult.error ? [] : ((amazonResult.data ?? []) as unknown as Product[]);
+    // Mistura: a cada 3 posições, uma é da Amazon enquanto houver itens Amazon.
+    const ordered: Product[] = [];
+    let a = 0;
+    for (const product of base) {
+      if (ordered.length % 3 === 1 && a < amazon.length) ordered.push(amazon[a++]);
+      ordered.push(product);
+    }
+    while (a < amazon.length) ordered.push(amazon[a++]);
     const products = await prepareCards(ordered);
     return { products, total: daily.total, nextPage: from + daily.ids.length < daily.total ? input.page + 1 : null };
   }
