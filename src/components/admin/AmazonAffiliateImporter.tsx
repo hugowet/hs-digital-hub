@@ -413,6 +413,34 @@ export function AmazonAffiliateImporter() {
     }
   };
 
+  // Rastreador de Tendências: pesquisa uma palavra-chave na Amazon, filtra os
+  // produtos vencedores (nota >= 4.5, selo "Escolha da Amazon"/"Mais vendidos"
+  // ou alto volume de avaliações) e injeta os links na caixa de importação em
+  // massa, já disparando o fluxo completo de publicação.
+  const handleTrendHunt = async () => {
+    const keyword = trendKeyword.trim();
+    if (keyword.length < 2) return toast.error("Digite uma palavra-chave (ex: fone de ouvido bluetooth).");
+    setTrendRunning(true);
+    try {
+      const { items } = await searchAmazonTrends({ data: { keyword, limit: trendLimit } });
+      if (items.length === 0) {
+        toast.info("Nenhum produto vencedor encontrado para essa palavra-chave agora. Tente outro termo.");
+        return;
+      }
+      // Injeta os links minerados na caixa de importação em massa...
+      setBulkInput(items.map((item) => item.url).join("\n"));
+      setShowTrendBox(false);
+      setShowBulkBox(true);
+      toast.success(`${items.length} link(s) vencedor(es) minerados! Puxando dados e publicando...`);
+      // ...e dispara o fluxo automático: dados em paralelo + publicação em lote.
+      await handleBulkFetchAndPublishWithLinks(items.map((item) => item.url));
+    } catch (err: any) {
+      toast.error(err?.message || "Não consegui rastrear tendências agora.");
+    } finally {
+      setTrendRunning(false);
+    }
+  };
+
   // Modo "só links": cola até 50 links da Amazon (um por linha); o sistema puxa
   // título, fotos, descrição, especificações e preço de TODOS em paralelo,
   // categoriza automaticamente e publica tudo em uma única gravação no banco.
