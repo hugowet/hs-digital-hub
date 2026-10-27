@@ -18,26 +18,26 @@ export function ExitConfirmGuard() {
 
   const arm = () => {
     if (armedRef.current || exitingRef.current) return;
-    if (!window.history.state?.[SENTINEL_KEY]) {
-      window.history.pushState({ ...(window.history.state || {}), [SENTINEL_KEY]: true }, "");
-    }
+    window.history.pushState({ ...(window.history.state || {}), [SENTINEL_KEY]: true }, "");
     armedRef.current = true;
   };
 
   useEffect(() => {
     exitingRef.current = false;
     armedRef.current = false;
-    arm();
+    // Wait for the router to settle its initial history entry before arming.
+    const timer = window.setTimeout(arm, 800);
     // Re-arm with a real user gesture so Chrome/Android keeps the guard entry.
-    const onGesture = () => { armedRef.current = false; arm(); };
+    const onGesture = () => { if (!armedRef.current) arm(); };
     const onPop = () => {
       if (exitingRef.current || !armedRef.current) return;
       armedRef.current = false;
       setOpen(true);
     };
-    window.addEventListener("pointerdown", onGesture, { once: true, capture: true });
+    window.addEventListener("pointerdown", onGesture, { capture: true });
     window.addEventListener("popstate", onPop);
     return () => {
+      window.clearTimeout(timer);
       window.removeEventListener("pointerdown", onGesture, { capture: true });
       window.removeEventListener("popstate", onPop);
     };
