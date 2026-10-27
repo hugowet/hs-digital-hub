@@ -23,6 +23,7 @@ import { Route as AuthenticatedCarrinhoRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
 import { Route as AuthenticatedContaRouteImport } from './routes/_authenticated/conta'
 import { Route as AuthenticatedCuponsRouteImport } from './routes/_authenticated/cupons'
+import { Route as AuthenticatedHsBankRouteImport } from './routes/_authenticated/hs-bank'
 import { Route as AuthenticatedJogosRouteImport } from './routes/_authenticated/jogos'
 import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
 import { Route as AuthenticatedSocialRouteImport } from './routes/_authenticated/social'
@@ -105,6 +106,11 @@ const AuthenticatedContaRoute = AuthenticatedContaRouteImport.update({
 const AuthenticatedCuponsRoute = AuthenticatedCuponsRouteImport.update({
   id: '/cupons',
   path: '/cupons',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHsBankRoute = AuthenticatedHsBankRouteImport.update({
+  id: '/hs-bank',
+  path: '/hs-bank',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedJogosRoute = AuthenticatedJogosRouteImport.update({
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/compras': typeof AuthenticatedComprasRoute
   '/conta': typeof AuthenticatedContaRoute
   '/cupons': typeof AuthenticatedCuponsRoute
+  '/hs-bank': typeof AuthenticatedHsBankRoute
   '/jogos': typeof AuthenticatedJogosRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/social': typeof AuthenticatedSocialRoute
@@ -230,6 +237,7 @@ export interface FileRoutesByTo {
   '/compras': typeof AuthenticatedComprasRoute
   '/conta': typeof AuthenticatedContaRoute
   '/cupons': typeof AuthenticatedCuponsRoute
+  '/hs-bank': typeof AuthenticatedHsBankRoute
   '/jogos': typeof AuthenticatedJogosRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/social': typeof AuthenticatedSocialRoute
@@ -261,6 +269,7 @@ export interface FileRoutesById {
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
   '/_authenticated/conta': typeof AuthenticatedContaRoute
   '/_authenticated/cupons': typeof AuthenticatedCuponsRoute
+  '/_authenticated/hs-bank': typeof AuthenticatedHsBankRoute
   '/_authenticated/jogos': typeof AuthenticatedJogosRoute
   '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/_authenticated/social': typeof AuthenticatedSocialRoute
@@ -292,6 +301,7 @@ export interface FileRouteTypes {
     | '/compras'
     | '/conta'
     | '/cupons'
+    | '/hs-bank'
     | '/jogos'
     | '/notificacoes'
     | '/social'
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/compras'
     | '/conta'
     | '/cupons'
+    | '/hs-bank'
     | '/jogos'
     | '/notificacoes'
     | '/social'
@@ -351,6 +362,7 @@ export interface FileRouteTypes {
     | '/_authenticated/compras'
     | '/_authenticated/conta'
     | '/_authenticated/cupons'
+    | '/_authenticated/hs-bank'
     | '/_authenticated/jogos'
     | '/_authenticated/notificacoes'
     | '/_authenticated/social'
@@ -488,6 +500,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCuponsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/hs-bank': {
+      id: '/_authenticated/hs-bank'
+      path: '/hs-bank'
+      fullPath: '/hs-bank'
+      preLoaderRoute: typeof AuthenticatedHsBankRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/jogos': {
       id: '/_authenticated/jogos'
       path: '/jogos'
@@ -595,6 +614,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
   AuthenticatedContaRoute: typeof AuthenticatedContaRoute
   AuthenticatedCuponsRoute: typeof AuthenticatedCuponsRoute
+  AuthenticatedHsBankRoute: typeof AuthenticatedHsBankRoute
   AuthenticatedJogosRoute: typeof AuthenticatedJogosRoute
   AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
   AuthenticatedSocialRoute: typeof AuthenticatedSocialRoute
@@ -608,6 +628,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
   AuthenticatedContaRoute: AuthenticatedContaRoute,
   AuthenticatedCuponsRoute: AuthenticatedCuponsRoute,
+  AuthenticatedHsBankRoute: AuthenticatedHsBankRoute,
   AuthenticatedJogosRoute: AuthenticatedJogosRoute,
   AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
   AuthenticatedSocialRoute: AuthenticatedSocialRoute,

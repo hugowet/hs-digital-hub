@@ -13,13 +13,14 @@
 
 - The storefront intro is a home-only, once-per-browser-session presentation so internal navigation remains immediate.
 - Checkout eligibility comes from server-side order history, never browser state.
+- HS Bank is an owner-scoped internal ledger. SQL gates credit interest requests; no debt or payouts. Launch coupons stay inactive without funding, verified identity and atomic checkout redemption.
 
 - O checkout registra o pedido atomicamente, reserva estoque e cobra cada loja separadamente pelo Mercado Pago; a comissão usa `application_fee` e toda confirmação depende de webhook assinado mais consulta à API.
 - Credenciais da plataforma e tokens OAuth dos vendedores ficam criptografados no banco e são lidos apenas no servidor; produtos digitais são liberados pela confirmação idempotente do pagamento.
 - Papéis de comprador/vendedor são criados por trigger a partir do cadastro e nunca são gravados pelo navegador, evitando elevação de privilégio.
 - Eventos de carrinho abandonado são persistidos apenas para usuários autenticados e protegidos por usuário, permitindo automações futuras sem expor contatos.
 - Mídias de produtos ficam em armazenamento privado e são entregues por URLs temporárias geradas no servidor, evitando links públicos permanentes.
-- O checkout bloqueia produtos em ordem determinística e possui limites de espera, evitando travamentos por concorrência.
+- Checkout locks products deterministically with bounded waits.
 - Em lojas da própria conta Mercado Pago da plataforma, a cobrança omite `application_fee`; a comissão permanece no razão interno porque não existe repasse externo.
 - A geração de Pix exige CPF do pagador e bloqueia autopagamento quando comprador e recebedor usam a mesma conta Mercado Pago.
 - Pedidos só podem ser cancelados antes de iniciar uma cobrança; o cancelamento é feito no servidor, devolve estoque e preserva o histórico financeiro.
@@ -37,10 +38,10 @@
 Game rewards are issued and rate-limited atomically in the database; shipping coupons expire after 24 hours and are redeemed atomically during checkout, funded only from platform commission up to R$ 30.
 - Authentication uses email/password and Google; biometric/passkey authentication is intentionally excluded because it caused deployment startup failures.
 - Cart, orders, games, seller tools, and administration live under the authenticated route gate so logout blocks every private surface.
-- Public catalog mutations revalidate the current user before changing private state and redirect unauthenticated attempts with a visible login notice.
+- Public mutations revalidate identity; signed-out users see a login notice.
 - Games and game coupons are buyer-only on both UI and server. Arcade sessions are single-use, coin awards are server-capped, 10% shipping coupons are issued atomically every 1,000 coins, and free shipping is limited to once per user per month.
 - Social media/presence are participant-scoped; profile avatars persist centrally and authorized profile rows get short-lived server signing. Heartbeats/typing use RPCs; receipts require visible chats; one root listener handles alerts. Admin Club access is free; pins use RPCs.
-- Reviews persist via authenticated RPC with paid-order verification; owner-only storage reads and server signing of public-review paths preserve private photos.
+- Reviews use paid-order-verified RPCs and owner-private, server-signed photos.
 - Radio shares one provider; Club suppresses HS announcements. Club Pix uses CPF-validated direct payments, QR/copy-paste and owner-bound API reconciliation plus signed webhooks; browser writes cannot grant access. Installability is manifest-only.
 - Sitemap follows explicit route decisions and paginated public reads; private subtrees are excluded and failures never emit partial XML.
 - Search schema omits destination-unconfirmed CJ offers and invented review statistics.
