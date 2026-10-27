@@ -33,6 +33,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/site-header";
+import { isOrderVisibleToSeller } from "@/lib/order-visibility";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
