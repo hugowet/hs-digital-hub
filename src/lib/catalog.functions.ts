@@ -90,6 +90,7 @@ const catalogInput = z.object({
   pageSize: z.number().int().min(12).max(100).default(60),
   query: z.string().trim().max(100).default(""),
   category: z.string().trim().max(80).nullable().default(null),
+  supplier: z.enum(["cj", "amazon"]).nullable().default(null),
   range: z.enum(["all", "a", "b", "c", "d"]).default("all"),
   sort: z.enum(["popular", "price-asc", "price-desc"]).default("popular"),
   onlyFreeShipping: z.boolean().default(false),
@@ -144,9 +145,10 @@ async function queryCatalog(input: CatalogInput) {
     a: [null, 50], b: [50, 100], c: [100, 200], d: [200, null],
   };
   const [min, max] = bounds[input.range] ?? [null, null];
-  const { data: idRows, error: idError } = await supabasePublic.rpc("search_catalog_ids", {
+  const { data: idRows, error: idError } = await supabasePublic.rpc("search_catalog_supplier_ids", {
     _groups: catalogSearchGroups(input.query),
     _category: input.category || null,
+    _supplier: input.supplier,
     _min: min, _max: max,
     _free: Boolean(input.onlyFreeShipping),
     _sort: input.sort,
@@ -162,7 +164,7 @@ async function queryCatalog(input: CatalogInput) {
     const { data, error } = await supabasePublic.from("products").select(cardProjection).in("id", pageIds);
     if (error) throw error;
     const byId = new Map(((data ?? []) as unknown as Product[]).map((p) => [p.id, p]));
-    rows = pageIds.flatMap((id) => (byId.get(id) ? [byId.get(id)!] : []));
+    rows = pageIds.flatMap((id) => { const product = byId.get(id); return product ? [product] : []; });
   }
   const products = await prepareCards(rows);
   const total = from + products.length + (hasMore ? 1 : 0);
@@ -189,6 +191,7 @@ export const fetchProducts = createServerFn({ method: "GET" }).handler(async () 
       pageSize: 48,
       query: "",
       category: null,
+      supplier: null,
       range: "all",
       sort: "popular",
       onlyFreeShipping: false,

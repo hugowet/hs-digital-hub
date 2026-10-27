@@ -39,6 +39,7 @@ import { IntroAnimation } from "@/components/intro-animation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
@@ -49,6 +50,7 @@ import { useRadio } from "@/lib/radio-context";
 import lupiBannerSquare from "@/assets/lupi-banner-square.jpg";
 
 type HomeSearch = {
+  supplier?: "cj" | "amazon";
   q?: string | undefined;
   category?: string | undefined;
   range?: "a" | "b" | "c" | "d" | undefined;
@@ -57,6 +59,7 @@ type HomeSearch = {
 };
 
 type HomeSearchUpdate = {
+  supplier?: "cj" | "amazon" | null;
   q?: string | undefined;
   category?: string | null | undefined;
   range?: HomeSearch["range"] | "all";
@@ -65,6 +68,7 @@ type HomeSearchUpdate = {
 };
 
 const normalizeSearch = (search: Record<string, unknown>): HomeSearch => ({
+  ...(["cj", "amazon"].includes(String(search["supplier"])) ? { supplier: search["supplier"] as "cj" | "amazon" } : {}),
   ...(typeof search["q"] === "string" && search["q"] ? { q: search["q"].slice(0, 100) } : {}),
   ...(typeof search["category"] === "string" && search["category"] ? { category: search["category"] } : {}),
   ...(["a", "b", "c", "d"].includes(String(search["range"])) ? { range: search["range"] as HomeSearch["range"] } : {}),
@@ -75,6 +79,7 @@ const normalizeSearch = (search: Record<string, unknown>): HomeSearch => ({
 });
 
 const resolveSearch = (search: HomeSearch) => ({
+  supplier: search.supplier ?? null,
   q: search.q ?? "",
   category: search.category ?? null,
   range: search.range ?? ("all" as const),
@@ -93,6 +98,7 @@ const catalogQueryOptions = (search: HomeSearch) =>
           pageSize: 24,
           query: resolved.q,
           category: resolved.category,
+          supplier: resolved.supplier,
           range: resolved.range,
           sort: resolved.sort,
           onlyFreeShipping: resolved.free,
@@ -125,6 +131,7 @@ export const Route = createFileRoute("/")({
     const params = new URLSearchParams();
     if (search.q) params.set("q", search.q);
     if (search.category) params.set("category", search.category);
+    if (search.supplier) params.set("supplier", search.supplier);
     if (search.range !== "all") params.set("range", search.range);
     if (search.sort !== "popular") params.set("sort", search.sort);
     if (search.free) params.set("free", "true");
@@ -343,7 +350,7 @@ function Home() {
 
   // First filter from the clean home adds one history entry (so Back returns to the home);
   // further typing/filter changes replace it instead of stacking entries.
-  const isFiltered = Boolean(search.q || search.category || search.free || search.range !== "all" || search.sort !== "popular");
+  const isFiltered = Boolean(search.supplier || search.q || search.category || search.free || search.range !== "all" || search.sort !== "popular");
   const setSearch = (changes: HomeSearchUpdate, options?: { replace?: boolean }) =>
     navigate({
       replace: options?.replace ?? isFiltered,
@@ -351,6 +358,7 @@ function Home() {
         const next = { ...previous, ...changes } as Record<string, unknown>;
         if (!next["q"]) delete next["q"];
         if (!next["category"]) delete next["category"];
+        if (!next["supplier"]) delete next["supplier"];
         if (next["range"] === "all") delete next["range"];
         if (next["sort"] === "popular") delete next["sort"];
         if (!next["free"]) delete next["free"];
@@ -527,6 +535,13 @@ function Home() {
 </section>
 
         <div className="mx-auto max-w-7xl px-4 py-6">
+          <Tabs value={search.supplier ?? "all"} onValueChange={(value) => setSearch({ supplier: value === "cj" || value === "amazon" ? value : null })} className="mb-6">
+            <TabsList aria-label="Fornecedores da vitrine" className="h-auto flex w-full flex-wrap justify-start gap-1">
+              <TabsTrigger value="all">Todos os fornecedores</TabsTrigger>
+              <TabsTrigger value="cj">Produtos CJ Dropshipping</TabsTrigger>
+              <TabsTrigger value="amazon">Produtos Amazon</TabsTrigger>
+            </TabsList>
+          </Tabs>
           {/* CATEGORIAS EM DESTAQUE */}
           <div className="mb-6">
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
@@ -576,7 +591,7 @@ function Home() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">
-                {activeCategory ? activeCategory.label : search.q ? "Resultados da busca" : "Seleção do dia"}
+                {activeCategory ? activeCategory.label : search.q ? "Resultados da busca" : search.supplier === "cj" ? "Produtos CJ Dropshipping" : search.supplier === "amazon" ? "Produtos Amazon" : "Seleção do dia"}
               </h2>
               <p className="text-xs text-gray-500">
                 {filtered.length} produto{filtered.length === 1 ? "" : "s"} encontrado{filtered.length === 1 ? "" : "s"}
