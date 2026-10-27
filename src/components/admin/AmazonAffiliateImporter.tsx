@@ -75,6 +75,7 @@ export function AmazonAffiliateImporter() {
   const [recalculating, setRecalculating] = useState(false);
   const [bulkInput, setBulkInput] = useState("");
   const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkFetching, setBulkFetching] = useState(false);
   const [showBulkBox, setShowBulkBox] = useState(false);
   const [autoFillJson, setAutoFillJson] = useState("");
   const [showAutoFillBox, setShowAutoFillBox] = useState(false);
