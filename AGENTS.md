@@ -13,7 +13,7 @@
 
 - The storefront intro is a home-only, once-per-browser-session presentation so internal navigation remains immediate.
 - Checkout eligibility comes from server-side order history, never browser state.
-- HS Bank is an owner-scoped internal ledger. SQL gates credit interest requests; no debt or payouts. Launch coupons stay inactive without funding, verified identity and atomic checkout redemption.
+- HS Bank mirrors records, not bank balances. Owner SQL snapshots non-binding credit estimates; no debt/payouts. Coupons require funded atomic identity-bound redemption preserving seller net.
 
 - O checkout registra o pedido atomicamente, reserva estoque e cobra cada loja separadamente pelo Mercado Pago; a comissão usa `application_fee` e toda confirmação depende de webhook assinado mais consulta à API.
 - Credenciais da plataforma e tokens OAuth dos vendedores ficam criptografados no banco e são lidos apenas no servidor; produtos digitais são liberados pela confirmação idempotente do pagamento.
