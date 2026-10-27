@@ -249,6 +249,8 @@ function AdminPage() {
               <TabsTrigger value="shipping" className="flex items-center gap-1.5">
                 <Truck className="h-4 w-4" /> Conceder Frete Grátis
               </TabsTrigger>
+              <TabsTrigger value="amazon-products">Produtos Amazon</TabsTrigger>
+              <TabsTrigger value="cj-products">Produtos CJ Dropshipping</TabsTrigger>
               <TabsTrigger value="sellers">Vendedores</TabsTrigger>
               <TabsTrigger value="messages">Mensagens</TabsTrigger>
               <TabsTrigger value="payments">Mercado Pago</TabsTrigger>

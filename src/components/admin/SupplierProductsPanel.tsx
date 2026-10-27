@@ -4,7 +4,7 @@ import { Package, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { brl } from "@/lib/utils";
+import { brl } from "@/lib/format";
 
 const PAGE_SIZE = 50;
 
