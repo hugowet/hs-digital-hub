@@ -5,8 +5,57 @@ import { useDeliveryAddress } from "./delivery-context";
 import { quoteMarketplaceShipping } from "./shipping.functions";
 import { deliveryDateRange } from "./delivery-estimate";
 
-// Serialize visible-product quotes so catalog rendering never floods the supplier.
+// Serialize visible-product quotes so catalog rendering never floods the supplier,
+// and batch all cards that become visible in the same moment into ONE server call.
+type QuoteGroups = Array<{
+  storeId?: string;
+  options?: Array<{
+    id?: string; amount: number; serviceName: string; expiresAt?: string;
+    deliveryDaysMin: number | null; deliveryDaysMax: number | null;
+    embeddedFreeShipping?: boolean;
+    itemPrices?: Array<{ product_id: string; unit_price: number }>;
+  }>;
+}>;
+type PendingQuote = {
+  productId: string; quantity: number; postalCode: string;
+  resolve: (groups: QuoteGroups) => void; reject: (err: unknown) => void;
+};
 let quoteQueue: Promise<unknown> = Promise.resolve();
+let pendingQuotes: PendingQuote[] = [];
+let flushScheduled = false;
+
+function enqueueQuote(
+  quoteFn: (args: { data: { postalCode: string; items: Array<{ productId: string; quantity: number }> } }) => Promise<QuoteGroups>,
+  postalCode: string, productId: string, quantity: number,
+): Promise<QuoteGroups> {
+  return new Promise((resolve, reject) => {
+    pendingQuotes.push({ productId, quantity, postalCode, resolve, reject });
+    if (flushScheduled) return;
+    flushScheduled = true;
+    setTimeout(() => {
+      flushScheduled = false;
+      const batch = pendingQuotes.splice(0, 24);
+      if (!batch.length) return;
+      const task = quoteQueue.catch(() => undefined).then(async () => {
+        const byCep = new Map<string, PendingQuote[]>();
+        for (const p of batch) {
+          const list = byCep.get(p.postalCode) ?? [];
+          list.push(p);
+          byCep.set(p.postalCode, list);
+        }
+        for (const [cep, items] of byCep) {
+          try {
+            const groups = await quoteFn({ data: { postalCode: cep, items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })) } });
+            for (const p of items) p.resolve(groups);
+          } catch (err) {
+            for (const p of items) p.reject(err);
+          }
+        }
+      });
+      quoteQueue = task;
+    }, 80);
+  });
+}
 type DeliveryPrice = { price: number; shipping: number; service: string; quoteId: string;
   storeId: string; expiresAt: string; embeddedFreeShipping: boolean; postalCode: string;
   deliveryDaysMin: number | null; deliveryDaysMax: number | null; estimatedAt: string };
@@ -35,24 +84,20 @@ export function useCjPrice(productId: string, quantity = 1, enabled = true, visi
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: false,
-    queryFn: ({ signal }) => {
-      const task = quoteQueue.catch(() => undefined).then(async () => {
-        if (signal.aborted || !current.current.visible || current.current.postalCode !== postalCode ||
-            current.current.productId !== productId || current.current.quantity !== quantity ||
-            qc.getQueryData(["delivery-user"]) !== userId) throw new Error("Consulta de entrega interrompida.");
-        const groups = await quote({ data: { postalCode, items: [{ productId, quantity }] } });
-        const option = groups[0]?.options[0];
-        const item = option?.itemPrices?.find((entry: { product_id: string }) => entry.product_id === productId);
-        if (!item || !option) throw new Error("Não foi possível confirmar a entrega para o endereço salvo.");
-        if (!groups[0]?.storeId || !option.expiresAt) throw new Error("Cotação incompleta.");
-        return { price: Number(item.unit_price), shipping: Number(option.amount), service: option.serviceName,
-          quoteId: option.id, storeId: groups[0]?.storeId, expiresAt: option.expiresAt,
-          embeddedFreeShipping: Boolean(option.embeddedFreeShipping), postalCode,
-          deliveryDaysMin: option.deliveryDaysMin, deliveryDaysMax: option.deliveryDaysMax,
-          estimatedAt: new Date().toISOString() };
-      });
-      quoteQueue = task;
-      return task;
+    queryFn: async ({ signal }) => {
+      const groups = await enqueueQuote(quote, postalCode!, productId, quantity);
+      if (signal.aborted || !current.current.visible || current.current.postalCode !== postalCode ||
+          current.current.productId !== productId || current.current.quantity !== quantity ||
+          qc.getQueryData(["delivery-user"]) !== userId) throw new Error("Consulta de entrega interrompida.");
+      const option = groups[0]?.options?.[0];
+      const item = option?.itemPrices?.find((entry) => entry.product_id === productId);
+      if (!item || !option) throw new Error("Não foi possível confirmar a entrega para o endereço salvo.");
+      if (!groups[0]?.storeId || !option.expiresAt || !option.id) throw new Error("Cotação incompleta.");
+      return { price: Number(item.unit_price), shipping: Number(option.amount), service: option.serviceName,
+        quoteId: option.id, storeId: groups[0].storeId, expiresAt: option.expiresAt,
+        embeddedFreeShipping: Boolean(option.embeddedFreeShipping), postalCode: postalCode!,
+        deliveryDaysMin: option.deliveryDaysMin, deliveryDaysMax: option.deliveryDaysMax,
+        estimatedAt: new Date().toISOString() };
     },
   });
   const valid = Boolean(result.data && Date.parse(result.data.expiresAt) > Date.now() + 60_000);
