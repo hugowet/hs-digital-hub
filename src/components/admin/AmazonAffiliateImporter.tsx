@@ -97,6 +97,9 @@ export function AmazonAffiliateImporter() {
         setCurrentUserEmail(email);
 
         if (email && ALLOWED_EMAILS.includes(email) && user) {
+          getAmazonAutoImportStatus()
+            .then((status) => setAutoImport(status))
+            .catch(() => setAutoImport(null));
           const { data: store } = await supabase
             .from("stores")
             .select("id")
