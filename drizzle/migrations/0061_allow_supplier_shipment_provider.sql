@@ -1,0 +1,2 @@
+ALTER TABLE public.order_shipments DROP CONSTRAINT order_shipments_provider_check;
+ALTER TABLE public.order_shipments ADD CONSTRAINT order_shipments_provider_check CHECK (provider = ANY (ARRAY['cj'::text, 'melhor_envio'::text, 'supplier'::text]));
