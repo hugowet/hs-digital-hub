@@ -1,0 +1,4 @@
+ALTER TABLE public.shipping_quotes DROP CONSTRAINT shipping_quotes_provider_check;
+ALTER TABLE public.shipping_quotes ADD CONSTRAINT shipping_quotes_provider_check CHECK (provider = ANY (ARRAY['cj'::text, 'melhor_envio'::text, 'supplier'::text]));
+UPDATE public.products SET image_url = regexp_replace(image_url, '\._[^/]*_\.(jpg|jpeg|png|webp)$', '.\1', 'i') WHERE supplier = 'amazon' AND image_url ~* 'media-amazon\.com/images/.*\._[^/]*_\.(jpg|jpeg|png|webp)$';
+UPDATE public.products SET gallery_urls = ARRAY(SELECT regexp_replace(u, '\._[^/]*_\.(jpg|jpeg|png|webp)$', '.\1', 'i') FROM unnest(gallery_urls) u) WHERE supplier = 'amazon';

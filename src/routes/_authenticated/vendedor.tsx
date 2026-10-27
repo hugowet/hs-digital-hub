@@ -52,7 +52,7 @@ import { CATEGORIES } from "@/lib/catalog";
 import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
-import { processSupplierFulfillment, syncCjProducts, getCjSupplierStatus, updateCjContent } from "@/lib/suppliers.functions";
+import { processSupplierFulfillment, syncCjProducts, getCjSupplierStatus, updateCjContent, setCjAutoImport } from "@/lib/suppliers.functions";
 import { getSellerShippingConfiguration, saveSellerOriginPostalCode, startMelhorEnvioConnection } from "@/lib/shipping.functions";
 
 export const Route = createFileRoute("/_authenticated/vendedor")({
@@ -441,6 +441,17 @@ function CjSupplierPanel({ storeId }: { storeId: string }) {
   const statusFn = useServerFn(getCjSupplierStatus);
   const contentFn = useServerFn(updateCjContent);
   const syncFn = useServerFn(syncCjProducts);
+  const autoFn = useServerFn(setCjAutoImport);
+  const toggleAuto = async (enabled: boolean) => {
+    setBusy("auto");
+    try {
+      await autoFn({ data: { storeId, enabled } });
+      toast.success(enabled ? "Importação automática retomada." : "Importação automática pausada.");
+      await refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível alterar a importação.");
+    } finally { setBusy(null); }
+  };
   const [busy, setBusy] = useState<string | null>(null);
   const { data, isPending, error, refetch } = useQuery({
     queryKey: ["cj-supplier-status", storeId],
@@ -480,6 +491,9 @@ function CjSupplierPanel({ storeId }: { storeId: string }) {
       </div>
     </>}
     <div className="flex flex-wrap gap-3">
+      {data && <Button variant={data.autoImport ? "destructive" : "default"} disabled={!!busy} onClick={() => toggleAuto(!data.autoImport)}>
+        {busy === "auto" ? "Salvando..." : data.autoImport ? "Pausar importação automática" : "Retomar importação automática"}
+      </Button>}
       <Button variant="outline" disabled={!!busy} onClick={() => run("catalog")}><RefreshCw className="h-4 w-4" />{busy === "catalog" ? "Sincronizando..." : "Sincronizar catálogo CJ"}</Button>
       <Button variant="outline" disabled={!!busy} onClick={() => run("titles")}><RefreshCw className="h-4 w-4" />{busy === "titles" ? "Traduzindo..." : "Traduzir títulos"}</Button>
       <Button variant="outline" disabled={!!busy} onClick={() => run("details")}><Package className="h-4 w-4" />{busy === "details" ? "Consultando CJ..." : "Atualizar fichas técnicas"}</Button>

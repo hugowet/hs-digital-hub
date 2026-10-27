@@ -198,9 +198,18 @@ export async function quoteCartShipping(
         continue;
       }
     }
+    if (suppliers.has("amazon") && suppliers.size > 1) {
+      throw new Error("Finalize produtos Amazon e produtos de estoque próprio em pedidos separados.");
+    }
+    // Amazon dropshipping ships straight from the supplier: the margin is already in the price, no store origin CEP.
     let rawOptions = suppliers.has("cj")
       ? await cjQuotes(supabaseAdmin, storeId, postalCode, products)
-      : await melhorEnvioQuotes(supabaseAdmin, store, postalCode, products);
+      : suppliers.has("amazon")
+        ? [{ provider: "supplier", serviceCode: "amazon_direct", serviceName: "Envio direto do fornecedor",
+            carrierName: "Fornecedor nacional", amount: 0, deliveryDaysMin: 5, deliveryDaysMax: 12,
+            providerPayload: { embedded_free_shipping: true, supplier_freight_brl: 0,
+              priced_items: products.map((p: any) => ({ product_id: p.id, unit_price: Number(p.price), quantity: p.quantity })) } } as any]
+        : await melhorEnvioQuotes(supabaseAdmin, store, postalCode, products);
     if (!rawOptions.length) throw new Error("Nenhum envio foi confirmado para este CEP. Não será cobrado frete estimado.");
     if (suppliers.has("cj")) {
       rawOptions = includeFirstPurchaseMargin(rawOptions, firstPurchase && !marginAllocated);

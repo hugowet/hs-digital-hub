@@ -13,7 +13,7 @@ export const Route = createFileRoute("/api/public/suppliers/sync")({
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: integration, error } = await supabaseAdmin
       .from("supplier_integrations")
-      .select("store_id,margin_percent")
+      .select("store_id,margin_percent,auto_sync")
       .eq("provider", "cj")
       .eq("status", "active")
       .order("updated_at", { ascending: false })
@@ -21,6 +21,7 @@ export const Route = createFileRoute("/api/public/suppliers/sync")({
       .maybeSingle();
     if (error) throw error;
     if (!integration) return Response.json({ idle: true });
+    if (operation === "catalog" && !integration.auto_sync) return Response.json({ paused: true, reason: "Importação automática pausada pelo dono." });
 
     const { syncCjCatalog, syncCjStockBatch } = await import("@/lib/suppliers.server");
     try {
