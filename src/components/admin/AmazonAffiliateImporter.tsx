@@ -334,7 +334,7 @@ export function AmazonAffiliateImporter() {
 
     setBulkRunning(true);
     const failures: string[] = [];
-    const rows: Record<string, unknown>[] = [];
+    const rows: any[] = [];
     const usedCategories = new Set<string>();
 
     for (const line of lines) {
