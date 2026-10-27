@@ -136,6 +136,14 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
       htmlTitle = cleanText(document.querySelector("#productTitle")?.textContent);
     }
 
+    // A Amazon carrega a tabela de especificações por demanda; quando o HTML não a traz,
+    // usa a leitura inteligente da página como complemento (somente fatos presentes na página).
+    if (Object.keys(specs).length === 0 && json?.specs && typeof json.specs === "object") {
+      for (const [k, v] of Object.entries(json.specs as Record<string, unknown>)) {
+        addSpec(specs, k, String(v));
+      }
+    }
+
     const images: string[] = Array.isArray(json?.images)
       ? json.images.filter((u: unknown) => typeof u === "string" && u.startsWith("http"))
       : [];
