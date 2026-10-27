@@ -1,0 +1,2 @@
+ALTER TABLE public.products DROP CONSTRAINT products_supplier_check;
+ALTER TABLE public.products ADD CONSTRAINT products_supplier_check CHECK (supplier IS NULL OR supplier = ANY (ARRAY['cj'::text, 'dropi'::text, 'cj_dropshipping'::text, 'amazon'::text]));
