@@ -223,13 +223,33 @@ function ProductDetailPage() {
   const { data: product } = useSuspenseQuery(productQueryOptions(productId));
 
   const { data: relatedProducts = [] } = useQuery({
-    queryKey: ["related-products", product?.category],
+    queryKey: ["related-products", product?.category, productId],
     enabled: !!product?.category,
     queryFn: async () => {
       try {
         const res = await fetchCatalogPage({ data: { category: product?.category, pageSize: 24 } });
-        // Recomendados: somente produtos da MESMA categoria do produto exibido.
-        return res.products.filter((p: Product) => p.id !== productId && p.category === product?.category).slice(0, 12);
+        // Recomendados: somente produtos da MESMA categoria, com prioridade para
+        // itens que compartilham palavras-chave do título (ex: fone -> outros fones).
+        const stopWords = new Set(["de", "da", "do", "com", "para", "sem", "the", "and", "e", "em", "a", "o"]);
+        const keywords = (product?.title ?? "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[̀-ͯ]/g, "")
+          .split(/[^a-z0-9]+/)
+          .filter((w) => w.length >= 4 && !stopWords.has(w));
+        const scored = res.products
+          .filter((p: Product) => p.id !== productId && p.category === product?.category)
+          .map((p: Product) => {
+            const text = `${p.title} ${p.description ?? ""}`.toLowerCase()
+              .normalize("NFD")
+              .replace(/[̀-ͯ]/g, "");
+            const keywordHits = keywords.reduce((acc, w) => acc + (text.includes(w) ? 1 : 0), 0);
+            const sold = Number(p.sold_count ?? 0);
+            const rating = Number(p.rating ?? 0);
+            return { p, score: keywordHits * 1000 + sold * 10 + rating };
+          })
+          .sort((a, b) => b.score - a.score);
+        return scored.slice(0, 8).map((s) => s.p);
       } catch {
         return [];
       }
@@ -1014,7 +1034,7 @@ function ProductDetailPage() {
         {relatedProducts.length > 0 && (
           <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
             <h2 className="text-lg sm:text-xl font-black text-foreground flex items-center gap-2 pb-3 border-b border-border">
-              <ShoppingBag className="h-5 w-5 text-primary" /> Produtos recomendados
+              <ShoppingBag className="h-5 w-5 text-primary" /> Quem viu este produto também viu
             </h2>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 sm:gap-4">
               {relatedProducts.map((p: Product) => (
