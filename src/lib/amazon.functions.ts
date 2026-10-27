@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { parseHTML } from "linkedom";
 import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
+import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
@@ -154,12 +155,12 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
     const images: string[] = Array.from(new Set<string>(hiRes.length ? hiRes : extracted)).slice(0, 10);
 
     return {
-      title: String(json?.title ?? htmlTitle ?? ""),
+      title: sanitizeAmazonText(String(json?.title ?? htmlTitle ?? "")),
       costPrice: Number(json?.price) || 0,
-      description,
+      description: description ? buildAmazonDescription(description) : "",
       mainImage: images[0] ?? "",
       gallery: images.slice(1),
-      specs,
+      specs: sanitizeAmazonSpecs(specs),
       amazonCategory,
     };
   });

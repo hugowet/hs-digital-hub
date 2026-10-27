@@ -152,8 +152,11 @@ export function ProductCard({
 
   const isCj = product.supplier === "cj" && !isDigital;
   const delivery = useCjPrice(product.id, 1, isCj, true);
+  // O preço base já fica estampado no cartão; a cotação confirmada pelo CEP
+  // substitui em segundo plano quando chega, sem deixar o cartão vazio.
   const price = delivery.price ?? catalogDisplayPrice(product);
-  const confirmed = !isCj || delivery.price !== null;
+  const confirmed = true;
+  const cjConfirmed = isCj && delivery.price !== null;
 
   // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
   const discountPercent = !isCj && Number(product.compare_at_price) > price
@@ -238,28 +241,25 @@ export function ProductCard({
             </span>
           </div>}
 
-          {/* Linha 2: Preço em destaque com centavos sobrescritos */}
-          {isCj && !confirmed && <p className="mt-1 min-h-10 text-xs text-muted-foreground">
-            {delivery.loading ? "Confirmando preço…" : !delivery.userId ? "Entre para ver o preço no seu endereço" : !delivery.postalCode ? "Salve seu endereço para ver o preço" : "Entrega não confirmada"}
-          </p>}
-          {confirmed && <div data-testid="product-price" className="mt-1 flex items-start leading-none text-foreground">
+          {/* Linha 2: Preço em destaque com centavos sobrescritos — sempre estampado */}
+          <div data-testid="product-price" className="mt-1 flex items-start leading-none text-foreground">
             <span className="text-xl md:text-2xl font-normal tracking-tight">
               R$ {priceParts.reais}
             </span>
             <span className="text-[11px] font-semibold tracking-tight ml-0.5">
               {priceParts.centavos}
             </span>
-          </div>}
+          </div>
 
           {/* Linha 3: Parcelamento */}
-          {confirmed && <p className="mt-1.5 text-xs text-foreground/80 font-normal leading-tight">
+          <p className="mt-1.5 text-xs text-foreground/80 font-normal leading-tight">
             {installment.text}
-          </p>}
-          {isCj && confirmed && <p className="mt-1 text-[11px] text-muted-foreground">Entrega no CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")}</p>}
-          {isCj && confirmed && <p className="mt-1 text-[11px] text-muted-foreground">{formatDeliveryRange(delivery.arrivalRange)}{delivery.arrivalRange ? " · se enviado hoje" : ""}</p>}
+          </p>
+          {cjConfirmed && <p className="mt-1 text-[11px] text-muted-foreground">Entrega no CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")}</p>}
+          {cjConfirmed && <p className="mt-1 text-[11px] text-muted-foreground">{formatDeliveryRange(delivery.arrivalRange)}{delivery.arrivalRange ? " · se enviado hoje" : ""}</p>}
 
           {/* Linha 4: Frete Grátis ou com Desconto */}
-          {!isDigital && confirmed && (
+          {!isDigital && (
             <div className="mt-1 flex items-baseline gap-1 text-xs">
               {isFreeShipping ? (
                 <>
@@ -271,10 +271,10 @@ export function ProductCard({
               ) : (
                 <>
                   <span className="rounded bg-[#3483fa]/10 px-1.5 py-0.5 text-[10px] font-extrabold text-[#3483fa]">
-                    {isCj ? `Frete ${brl(delivery.shipping ?? 0)}` : "Entrega"}
+                    {cjConfirmed ? `Frete ${brl(delivery.shipping ?? 0)}` : "Entrega"}
                   </span>
                   <span className="text-[11px] text-muted-foreground">
-                    Calculado no seu CEP
+                    {isCj && !cjConfirmed ? "Frete confirmado no seu CEP" : "Calculado no seu CEP"}
                   </span>
                 </>
               )}

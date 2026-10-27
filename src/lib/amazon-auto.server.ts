@@ -14,6 +14,7 @@ import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
 import { categorizeAmazonProduct } from "./amazon-category";
 import { amazonVariationTemplate } from "./amazon-variations";
 import { calculateFinalPrice } from "./pricing";
+import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -32,9 +33,10 @@ export const AMAZON_AUTO_KEYWORDS: { keyword: string; hint: string }[] = [
   { keyword: "suplemento whey", hint: "esporte" },
 ];
 
-const MAX_CATEGORIES_PER_RUN = 3;
-const MAX_TOTAL_PER_RUN = 50;
-const PER_CATEGORY_TARGET = 17; // ~50 por rodada com 3 categorias
+// Rodada a cada 10 minutos: 1 categoria por vez, até 10 produtos por rodada.
+const MAX_CATEGORIES_PER_RUN = 1;
+const MAX_TOTAL_PER_RUN = 10;
+const PER_CATEGORY_TARGET = 10;
 
 /** Piso de preço coerente: abaixo disso, sem oferta comprovada, é sinal de golpe. */
 const MIN_TRUSTWORTHY_COST = 15;
@@ -304,15 +306,16 @@ export async function runAmazonAutoImport(
       }
       const cost = data.costPrice;
       const salePrice = calculateFinalPrice(cost);
-      const description = data.description || "Produto oficial importado com garantia e entrega rápida via Amazon.";
+      const title = sanitizeAmazonText(data.title);
+      const description = buildAmazonDescription(data.description);
       const gallery = Array.from(new Set([data.mainImage, ...data.gallery].filter((u) => u.startsWith("http"))));
-      const category = categorizeAmazonProduct({ title: data.title, description, amazonCategory: data.amazonCategory || candidate.title });
-      const variations = amazonVariationTemplate({ title: data.title, description, amazonCategory: data.amazonCategory });
+      const category = categorizeAmazonProduct({ title, description, amazonCategory: data.amazonCategory || candidate.title });
+      const variations = amazonVariationTemplate({ title, description, amazonCategory: data.amazonCategory });
       const affiliateUrl = new URL(candidate.url);
       affiliateUrl.searchParams.set("tag", AMAZON_AFFILIATE_TAG);
       rows.push({
         store_id: storeId,
-        title: data.title,
+        title,
         description,
         description_long: description,
         price: salePrice,
@@ -328,7 +331,7 @@ export async function runAmazonAutoImport(
         supplier: "amazon",
         product_type: "physical",
         specifications: {
-          ...data.specs,
+          ...sanitizeAmazonSpecs(data.specs),
           affiliate_url: affiliateUrl.toString(),
           partner: "amazon",
           affiliate_id: AMAZON_AFFILIATE_TAG,

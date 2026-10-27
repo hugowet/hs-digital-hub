@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { calculateFinalPrice, getMarginRate } from "@/lib/pricing";
+import { buildAmazonDescription, sanitizeAmazonText } from "@/lib/amazon-text";
 import { categorizeAmazonProduct } from "@/lib/amazon-category";
 import { amazonVariationTemplate } from "@/lib/amazon-variations";
 import { fetchAmazonProduct, searchAmazonTrends, getAmazonAutoImportStatus, setAmazonAutoImport } from "@/lib/amazon.functions";
@@ -250,12 +251,12 @@ export function AmazonAffiliateImporter() {
       }
     });
 
-    const finalDescription = description.trim() || "Produto oficial importado com garantia e entrega rápida via Amazon.";
+    const finalDescription = description.trim() ? buildAmazonDescription(description) : buildAmazonDescription("");
 
     try {
       const payload: any = {
         store_id: storeId,
-        title: title.trim(),
+        title: sanitizeAmazonText(title.trim()),
         description: finalDescription,
         description_long: finalDescription,
         price: calculatedSalePrice,
@@ -265,7 +266,7 @@ export function AmazonAffiliateImporter() {
         gallery_urls: allGalleryUrls,
         free_shipping: true,
         is_active: true,
-        category: categorizeAmazonProduct({ title: title.trim(), description: finalDescription, amazonCategory }),
+        category: categorizeAmazonProduct({ title: sanitizeAmazonText(title.trim()), description: finalDescription, amazonCategory }),
         variations: amazonVariationTemplate({ title, description: finalDescription, amazonCategory }),
         stock: amazonVariationTemplate({ title, description: finalDescription, amazonCategory }).length ? 0 : 999,
         supplier: "amazon",
@@ -362,7 +363,7 @@ export function AmazonAffiliateImporter() {
         }
         const salePrice = calculateAmazonFinalPrice(item.cost);
         const title = item.title || "Produto importado Amazon";
-        const description = item.description || "Produto oficial importado com garantia e entrega rápida via Amazon.";
+        const description = item.description ? buildAmazonDescription(item.description) : buildAmazonDescription("");
         const gallery = Array.from(new Set([item.image, ...item.gallery].filter((u) => u.startsWith("http"))));
         const category = categorizeAmazonProduct({
           title,
@@ -504,13 +505,13 @@ export function AmazonAffiliateImporter() {
         return;
       }
       const salePrice = calculateAmazonFinalPrice(cost);
-      const description = data.description || "Produto oficial importado com garantia e entrega rápida via Amazon.";
+      const description = data.description ? buildAmazonDescription(data.description) : buildAmazonDescription("");
       const gallery = Array.from(new Set([data.mainImage, ...data.gallery].filter((u) => u.startsWith("http"))));
-      const category = categorizeAmazonProduct({ title: data.title, description, amazonCategory: data.amazonCategory });
+      const category = categorizeAmazonProduct({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory });
       usedCategories.add(category);
       rows.push({
         store_id: storeId,
-        title: data.title,
+        title: sanitizeAmazonText(data.title),
         description,
         description_long: description,
         price: salePrice,
@@ -521,8 +522,8 @@ export function AmazonAffiliateImporter() {
         free_shipping: true,
         is_active: true,
         category,
-        variations: amazonVariationTemplate({ title: data.title, description, amazonCategory: data.amazonCategory }),
-        stock: amazonVariationTemplate({ title: data.title, description, amazonCategory: data.amazonCategory }).length ? 0 : 999,
+        variations: amazonVariationTemplate({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }),
+        stock: amazonVariationTemplate({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }).length ? 0 : 999,
         supplier: "amazon",
         product_type: "physical",
         specifications: {
@@ -737,7 +738,7 @@ export function AmazonAffiliateImporter() {
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300/70 bg-white/70 px-2.5 py-2 dark:bg-background/60">
                 <div className="text-[11px] text-amber-900/90 dark:text-amber-200/90">
                   <span className="font-bold">Robô automático diário:</span>{" "}
-                  {autoImport.enabled ? "ativo — puxa até 50 produtos nacionais por dia, só com boa reputação (nota 4.3+, centenas de avaliações, selo oficial ou envio pela Amazon e preço coerente)." : "pausado."}
+                  {autoImport.enabled ? "ativo — a cada 10 minutos puxa até 10 produtos nacionais, só com boa reputação (nota 4.3+, centenas de avaliações, selo oficial ou envio pela Amazon e preço coerente)." : "pausado."}
                   {autoImport.lastRunAt && (
                     <span className="block opacity-70">
                       Última rodada: {new Date(autoImport.lastRunAt).toLocaleString("pt-BR")}
