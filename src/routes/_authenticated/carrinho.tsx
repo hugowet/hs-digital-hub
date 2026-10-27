@@ -13,6 +13,7 @@ import {
   TicketPercent,
   Trash2,
   Truck,
+  X,
   Zap,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
