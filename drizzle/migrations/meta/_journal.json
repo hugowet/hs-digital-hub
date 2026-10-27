@@ -386,6 +386,13 @@
       "when": 1793078212936,
       "tag": "0054_hs_bank_secure_dashboard",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1793079370820,
+      "tag": "0055_hs_bank_credit_analysis_reference",
+      "breakpoints": true
     }
   ]
 }

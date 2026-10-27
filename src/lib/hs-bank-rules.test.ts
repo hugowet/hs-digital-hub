@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { HS_BANK_POLICY, hasRecentPaidSale, launchCouponEligibility, repaymentCents } from "./hs-bank-rules";
+import { HS_BANK_POLICY, creditAnalysisCents, hasRecentPaidSale, launchCouponEligibility, repaymentCents } from "./hs-bank-rules";
 
 const valid = { subtotalCents: 15000, priorPurchases: 0, buyersUsed: 9, verifiedCpf: true, identityAlreadyUsed: false, deviceAlreadyUsed: false, fundedCents: 5000 };
 describe("HS Bank financial safeguards", () => {
+  it("uses 30% of revenue only as an analysis reference", () => {
+    expect(creditAnalysisCents(100000)).toBe(30000);
+    expect(creditAnalysisCents(0)).toBe(0);
+  });
+  it("requires 90 days as the consistency analysis reference", () => expect(HS_BANK_POLICY.consistencyDays).toBe(90));
   it("keeps the confirmed 12% commission", () => expect(HS_BANK_POLICY.commissionRate).toBe(0.12));
   it("requires paid sales within the last 30 days", () => {
     const now = Date.parse("2026-10-27T05:02:00Z");
