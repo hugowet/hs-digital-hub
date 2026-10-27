@@ -1,9 +1,12 @@
 # HS Digital — MVP
 
 ## Fornecedores, grades Amazon e busca — 27/10
-- [ ] Separar CJ/Amazon na vitrine e lista administrativa, com paginação filtrada no servidor.
-- [ ] Preparar grades Amazon P/M/G/GG/XG e 34–44 sem inventar disponibilidade de compra.
-- [ ] Validar busca por título, descrição, ficha e categoria, incluindo acentos e atributos.
+- [x] Separar CJ/Amazon na vitrine e lista administrativa; navegador validou 24 CJ/13 Amazon e Admin com 13 Amazon.
+- [x] Preparar grades Amazon P/M/G/GG/XG e 34–44 em cadastro individual/lotes; 18 testes passaram. Sem disponibilidade oficial, grade bloqueada e novos vestuários com estoque zero; teste visual do importador bloqueado pela conta sem acesso à aba.
+- [x] Busca cruza índice de título, descrições, ficha e categoria; consulta real de fone à prova d'água retornou 20 produtos sem erro; build OK.
+
+## Pressão no Lovable Cloud — 27/10
+- [ ] Conferir recursos atuais, alertas recentes, consultas e tarefas prováveis; comparar custos antes de recomendar aumento, sem alterar tamanho.
 
 ## HS Bank — 27/10
 - [x] Espelho de liquidação Mercado Pago sem API externa; referência de crédito de 30% das vendas pagas em 30 dias calculada por SQL do titular e salva na solicitação, análise de 90 dias sem promessa de aprovação. Doze testes passaram; tela autenticada sem loja aprovada validada sem erros, build OK.
