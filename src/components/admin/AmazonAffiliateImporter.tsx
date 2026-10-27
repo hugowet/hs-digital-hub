@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { calculateFinalPrice, getMarginRate } from "@/lib/pricing";
+import { fetchAmazonProduct } from "@/lib/amazon.functions";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -69,6 +70,7 @@ export function AmazonAffiliateImporter() {
     { id: "3", key: "Voltagem", value: "" },
   ]);
   const [submitting, setSubmitting] = useState(false);
+  const [fetchingLink, setFetchingLink] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
   const [bulkInput, setBulkInput] = useState("");
   const [bulkRunning, setBulkRunning] = useState(false);
@@ -125,6 +127,32 @@ export function AmazonAffiliateImporter() {
 
   const removeSpec = (id: string) => {
     setSpecs((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  // Puxa título, fotos, descrição, especificações e preço direto do link da Amazon
+  const handleFetchFromLink = async () => {
+    const url = amazonUrl.trim();
+    if (!url) return toast.error("Cole primeiro o link do produto da Amazon.");
+    setFetchingLink(true);
+    try {
+      const data = await fetchAmazonProduct({ data: { url } });
+      if (data.title) setTitle(data.title);
+      if (data.costPrice > 0) setCostPrice(String(data.costPrice));
+      if (data.description) setDescription(data.description);
+      if (data.mainImage) setImageUrl(data.mainImage);
+      if (data.gallery.length > 0) setGalleryInput(data.gallery.join("\n"));
+      const newSpecs: SpecItem[] = Object.entries(data.specs).map(([key, value]) => ({
+        id: Math.random().toString(),
+        key,
+        value: String(value),
+      }));
+      if (newSpecs.length > 0) setSpecs(newSpecs);
+      toast.success("Dados do produto puxados da Amazon! Confira e publique.");
+    } catch (err: any) {
+      toast.error(err?.message || "Não consegui ler o link da Amazon.");
+    } finally {
+      setFetchingLink(false);
+    }
   };
 
   // Preenchimento Automático via JSON
@@ -563,14 +591,27 @@ export function AmazonAffiliateImporter() {
             <Label htmlFor="prod-url" className="text-sm font-semibold flex items-center gap-1.5">
               <ExternalLink className="h-4 w-4 text-blue-600" /> Link do Produto (SiteStripe da Amazon)
             </Label>
-            <Input
-              id="prod-url"
-              placeholder="Cole o link completo ou amzn.to gerado pelo SiteStripe"
-              value={amazonUrl}
-              onChange={(e) => setAmazonUrl(e.target.value)}
-              className="h-11 font-mono text-xs focus-visible:ring-blue-600"
-              required
-            />
+            <div className="flex gap-2">
+              <Input
+                id="prod-url"
+                placeholder="Cole o link completo ou amzn.to gerado pelo SiteStripe"
+                value={amazonUrl}
+                onChange={(e) => setAmazonUrl(e.target.value)}
+                className="h-11 font-mono text-xs focus-visible:ring-blue-600"
+                required
+              />
+              <Button
+                type="button"
+                onClick={handleFetchFromLink}
+                disabled={fetchingLink || !amazonUrl.trim()}
+                className="h-11 shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+              >
+                {fetchingLink ? "Lendo página..." : "Puxar dados"}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              O botão "Puxar dados" preenche título, fotos, descrição, especificações e preço automaticamente.
+            </p>
           </div>
 
           {/* Preço de Custo e Imagem Principal */}
