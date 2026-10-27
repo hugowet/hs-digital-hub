@@ -658,6 +658,10 @@ function ProductDetailPage() {
                     <p className="font-semibold text-foreground">{formatDeliveryRange(delivery.arrivalRange)}</p>
                     {delivery.arrivalRange && <p className="mt-1">Estimativa se enviado hoje, em dias corridos. Preparação e fiscalização aduaneira podem alterar as datas; o prazo começa no envio após o pagamento confirmado.</p>}
                   </div>}
+                  {(product as any)?.supplier === "amazon" && <div className="mt-2 text-xs text-muted-foreground" data-testid="delivery-estimate-amazon">
+                    <p className="font-semibold text-foreground">{formatDeliveryRange(deliveryDateRange(5, 12, new Date(), true))}</p>
+                    <p className="mt-1">Produto nacional · estimativa em dias úteis a partir da confirmação do pagamento. O prazo exato é confirmado no checkout pelo seu CEP.</p>
+                  </div>}
                 </div>
 
                 {product.supplierOptions?.length > 1 && (
