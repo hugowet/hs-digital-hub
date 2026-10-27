@@ -32,17 +32,6 @@ export function cjShippingModalities<T extends ShippingOption>(options: T[]): T[
   return result as T[];
 }
 
-export function includeFirstPurchaseMargin<T extends ShippingOption>(options: T[], eligible: boolean): T[] {
-  if (!eligible) return options;
-  return options.map((option) => {
-    if (!option.providerPayload.embedded_free_shipping) return option;
-    const items = [...(option.providerPayload.priced_items ?? [])];
-    const first = items[0];
-    if (!first) return option;
-    items[0] = { ...first, unit_price: Number((Number(first.unit_price) + 10 / first.quantity).toFixed(6)) };
-    // Persist the exact rounded addition, so the ledger and customer total agree.
-    const margin = Number(((items[0].unit_price - first.unit_price) * first.quantity).toFixed(2));
-    return { ...option, providerPayload: { ...option.providerPayload, priced_items: items,
-      first_purchase_margin_included: margin } };
-  });
-}
+// A margem de primeira compra (R$ 15 em ticket baixo) agora é calculada dentro
+// de priceCjShipment e gravada em provider_payload.first_purchase_margin_included,
+// lida pelo checkout atômico para o razão da plataforma.

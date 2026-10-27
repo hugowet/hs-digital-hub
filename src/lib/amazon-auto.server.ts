@@ -13,7 +13,7 @@ import { extractDescription, extractSpecs } from "./amazon.functions";
 import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
 import { categorizeAmazonProduct } from "./amazon-category";
 import { amazonVariationTemplate } from "./amazon-variations";
-import { calculateFinalPrice } from "./pricing";
+import { calculateAmazonPrice } from "./pricing";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
@@ -305,7 +305,7 @@ export async function runAmazonAutoImport(
         return;
       }
       const cost = data.costPrice;
-      const salePrice = calculateFinalPrice(cost);
+      const salePrice = calculateAmazonPrice(cost);
       const title = sanitizeAmazonText(data.title);
       const description = buildAmazonDescription(data.description);
       const gallery = Array.from(new Set([data.mainImage, ...data.gallery].filter((u) => u.startsWith("http"))));

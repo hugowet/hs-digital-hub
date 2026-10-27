@@ -13,6 +13,7 @@ import {
   TicketPercent,
   Trash2,
   Truck,
+  X,
   Zap,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
@@ -97,6 +98,14 @@ function CartPage() {
     .map((item) => [item.productId, item.quantity]).sort(), postalCode.replace(/\D/g, "")]);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Aviso anti-golpe: aparece antes de concluir o pedido; ao fechar no X não volta a aparecer.
+  const [scamNoticeVisible, setScamNoticeVisible] = useState(() => {
+    try { return !window.localStorage.getItem("hs-anti-scam-ack"); } catch { return true; }
+  });
+  const dismissScamNotice = () => {
+    try { window.localStorage.setItem("hs-anti-scam-ack", "1"); } catch { /* armazenamento indisponível */ }
+    setScamNoticeVisible(false);
+  };
   const [quoting, setQuoting] = useState(false);
   const [quotes, setQuotes] = useState<
     Array<{
@@ -661,6 +670,24 @@ function CartPage() {
                 <Button variant="outline" size="sm" onClick={() => void calculateShipping()}>Atualizar cotação</Button>
               </div>}
 
+              {scamNoticeVisible && (
+                <div role="alert" className="relative mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 pr-9 text-left dark:border-amber-800 dark:bg-amber-950/40">
+                  <button
+                    type="button"
+                    onClick={dismissScamNotice}
+                    aria-label="Fechar aviso de segurança"
+                    className="absolute right-2 top-2 rounded p-0.5 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <p className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-200">
+                    <ShieldCheck className="h-4 w-4 shrink-0" /> Atenção: segurança da sua compra
+                  </p>
+                  <p className="mt-1 text-[11px] leading-snug text-amber-900/90 dark:text-amber-200/90">
+                    A HS Digital <strong>nunca entra em contato pelo WhatsApp</strong> pedindo custos adicionais fora do valor do produto no site. Qualquer cobrança desse tipo é <strong>golpe</strong> — pague somente aqui, pelo checkout oficial.
+                  </p>
+                </div>
+              )}
               <Button
                 size="lg"
                 className="w-full font-bold mt-4 shadow-md"

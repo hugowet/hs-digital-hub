@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { calculateFinalPrice, getMarginRate } from "@/lib/pricing";
+import { calculateAmazonPrice, getMarginRate } from "@/lib/pricing";
 import { buildAmazonDescription, sanitizeAmazonText } from "@/lib/amazon-text";
 import { categorizeAmazonProduct } from "@/lib/amazon-category";
 import { amazonVariationTemplate } from "@/lib/amazon-variations";
@@ -46,7 +46,7 @@ const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
  * 8. R$ 10.000,01 até R$ 30.000,00 -> 5%
  */
 export const getAmazonMarginRate = getMarginRate;
-export const calculateAmazonFinalPrice = calculateFinalPrice;
+export const calculateAmazonFinalPrice = calculateAmazonPrice;
 
 interface SpecItem {
   id: string;

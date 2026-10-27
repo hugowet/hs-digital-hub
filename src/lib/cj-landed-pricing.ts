@@ -1,5 +1,5 @@
-import { calculateFinalPrice, getMarginRate } from "./pricing";
-import { protectedCjPrice } from "./cj-profit";
+import { calculateFinalPrice, getMarginRate, lowTicketMargin } from "./pricing";
+import { protectedCjPrice, protectedCjFlatPrice } from "./cj-profit";
 
 export const FREE_SHIPPING_THRESHOLD = 89.9;
 
@@ -8,6 +8,7 @@ export function priceCjShipment(
   freightUsd: number,
   exchangeRate: number,
   commissionRate = 0,
+  firstPurchase = false,
 ) {
   if (!items.length || !Number.isFinite(freightUsd) || freightUsd < 0 ||
       !Number.isFinite(exchangeRate) || exchangeRate <= 0 ||
@@ -17,12 +18,18 @@ export function priceCjShipment(
   const costTotal = items.reduce((sum, item) => sum + item.costUsd * item.quantity, 0);
   const freightBrl = Math.round(freightUsd * exchangeRate * 100) / 100;
   let remainingCents = Math.round(freightBrl * 100);
+  let firstPurchaseMarginTotal = 0;
   const pricedItems = items.map((item, index) => {
     const cents = index === items.length - 1 ? remainingCents : Math.round(freightBrl * 100 * item.costUsd * item.quantity / costTotal);
     remainingCents -= cents;
     const freightPerUnit = cents / 100 / item.quantity;
     const landedCost = Math.round((item.costUsd * exchangeRate + freightPerUnit) * 100) / 100;
-    const landedPrice = protectedCjPrice(landedCost, commissionRate, freightPerUnit);
+    // Ticket baixo: margem fixa R$ 15 (1ª compra) / R$ 20 (demais); acima de R$ 100, tabela dinâmica.
+    const flatMargin = lowTicketMargin(landedCost, firstPurchase);
+    const landedPrice = flatMargin === null
+      ? protectedCjPrice(landedCost, commissionRate, freightPerUnit)
+      : protectedCjFlatPrice(landedCost, commissionRate, freightPerUnit, flatMargin);
+    if (firstPurchase && flatMargin !== null) firstPurchaseMarginTotal += flatMargin * item.quantity;
     return { product_id: item.productId, quantity: item.quantity, landed_price: landedPrice, freight_per_unit: freightPerUnit,
       supplier_item_cost_brl: Math.ceil(item.costUsd * exchangeRate * 100) / 100,
       protected_net_target: Math.max(commissionRate > 0 ? landedCost * (1 + getMarginRate(landedCost)) : calculateFinalPrice(landedCost),landedCost+0.01) };
@@ -34,7 +41,8 @@ export function priceCjShipment(
     unit_price: embedded ? item.landed_price : Number((item.landed_price - item.freight_per_unit).toFixed(2)),
     embedded_freight: embedded ? item.freight_per_unit : 0,
   }));
-  return { items: prices, freightBrl, embedded, amount: embedded ? 0 : freightBrl, landedTotal };
+  return { items: prices, freightBrl, embedded, amount: embedded ? 0 : freightBrl, landedTotal,
+    firstPurchaseMarginTotal: Math.round(firstPurchaseMarginTotal * 100) / 100 };
 }
 
 export function cjFreightUsd(option: Record<string, unknown>): number {
