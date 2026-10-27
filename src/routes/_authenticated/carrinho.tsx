@@ -1,3 +1,4 @@
+import { sellerDisplayName } from "@/lib/seller-display";
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -377,7 +378,7 @@ function CartPage() {
               <section key={group.storeId} className="rounded-xl border border-border bg-card p-4 shadow-2xs">
                 <div className="flex items-center gap-2 border-b pb-3 mb-3 text-xs font-semibold text-muted-foreground">
                   <Store className="h-4 w-4" />
-                  <span>Vendido e entregue por {group.storeName}</span>
+                  <span>Vendido e entregue por {sellerDisplayName(group.storeName)}</span>
                 </div>
 
                 <div className="divide-y divide-border">
@@ -520,7 +521,7 @@ function CartPage() {
                   const currentSelectedId = selectedQuotes[group.storeId] || group.options[0]?.id;
                   return (
                     <div key={group.storeId} className="space-y-2">
-                      <p className="text-xs text-muted-foreground">{group.storeName}</p>
+                      <p className="text-xs text-muted-foreground">{sellerDisplayName(group.storeName)}</p>
                       {group.options[0]?.provider === "cj" && <p className="text-xs font-semibold text-primary">Produtos internacionais · envio do exterior</p>}
                       {group.options.map((option) => (
                         <label key={option.id} className={`flex cursor-pointer items-start justify-between gap-3 rounded-lg border p-3 text-xs ${currentSelectedId === option.id ? "border-primary bg-primary/5" : "border-border"}`}>
@@ -591,9 +592,9 @@ function CartPage() {
               <h3 className="text-sm font-bold border-b pb-2">Resumo do Pedido</h3>
 
               <div className="space-y-1.5 text-xs">
-                <div data-testid="cart-savings" className="flex items-center justify-between gap-2 rounded-md bg-primary/5 p-2 font-semibold text-primary">
+                {economizou > 0 && <div data-testid="cart-savings" className="flex items-center justify-between gap-2 rounded-md bg-primary/5 p-2 font-semibold text-primary">
                   <span>Você economizou</span><span>{brl(economizou)}</span>
-                </div>
+                </div>}
                 <div className="flex justify-between text-muted-foreground">
                   <span>Subtotal produtos</span>
                   <span>{brl(subtotalProdutos)}</span>

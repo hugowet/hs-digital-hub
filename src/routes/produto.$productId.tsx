@@ -415,7 +415,7 @@ function ProductDetailPage() {
       {
         productId: product.id,
         storeId: product.store_id,
-        storeName: sellerDisplayName(product.stores?.name ?? "JJ Kuster", product.category),
+        storeName: sellerDisplayName("JJ Kuster", product.category),
         title: product.supplierOptions?.find((option) => option.productId === productId)?.label
           ? `${product.title} — ${product.supplierOptions.find((option) => option.productId === productId)?.label}` : product.title,
         price,
@@ -617,7 +617,7 @@ function ProductDetailPage() {
                 <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span>Vendido e entregue por</span>
                   <span className="font-bold text-primary flex items-center gap-1">
-                    {sellerDisplayName(product.stores?.name ?? "JJ Kuster", product.category)} <BadgeCheck className="h-3.5 w-3.5 text-primary" />
+                    {sellerDisplayName("JJ Kuster", product.category)} <BadgeCheck className="h-3.5 w-3.5 text-primary" />
                   </span>
                 </div>
 
