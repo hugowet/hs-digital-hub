@@ -427,25 +427,34 @@ export type Database = {
       }
       hs_bank_credit_requests: {
         Row: {
+          consistency_days: number
           created_at: string
+          estimated_amount: number | null
           id: string
           repayment_rate: number
+          revenue_30_days: number | null
           status: string
           store_id: string
           user_id: string
         }
         Insert: {
+          consistency_days?: number
           created_at?: string
+          estimated_amount?: number | null
           id?: string
           repayment_rate?: number
+          revenue_30_days?: number | null
           status?: string
           store_id: string
           user_id: string
         }
         Update: {
+          consistency_days?: number
           created_at?: string
+          estimated_amount?: number | null
           id?: string
           repayment_rate?: number
+          revenue_30_days?: number | null
           status?: string
           store_id?: string
           user_id?: string
@@ -2853,6 +2862,7 @@ export type Database = {
         Returns: boolean
       }
       hs_bank_credit_eligible: { Args: { _store_id: string }; Returns: boolean }
+      hs_bank_credit_summary: { Args: { _store_id: string }; Returns: Json }
       hs_bank_request_credit: { Args: { _store_id: string }; Returns: string }
       normalize_catalog_text: { Args: { value: string }; Returns: string }
       play_daily_game: {
