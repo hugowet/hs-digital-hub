@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { calculateFinalPrice, getMarginRate } from "@/lib/pricing";
+import { buildAmazonDescription, sanitizeAmazonText } from "@/lib/amazon-text";
 import { categorizeAmazonProduct } from "@/lib/amazon-category";
 import { amazonVariationTemplate } from "@/lib/amazon-variations";
 import { fetchAmazonProduct, searchAmazonTrends, getAmazonAutoImportStatus, setAmazonAutoImport } from "@/lib/amazon.functions";
@@ -250,7 +251,7 @@ export function AmazonAffiliateImporter() {
       }
     });
 
-    const finalDescription = description.trim() || "Produto oficial importado com garantia e entrega rápida via Amazon.";
+    const finalDescription = description.trim() || buildAmazonDescription("");
 
     try {
       const payload: any = {
@@ -362,7 +363,7 @@ export function AmazonAffiliateImporter() {
         }
         const salePrice = calculateAmazonFinalPrice(item.cost);
         const title = item.title || "Produto importado Amazon";
-        const description = item.description || "Produto oficial importado com garantia e entrega rápida via Amazon.";
+        const description = item.description || buildAmazonDescription("");
         const gallery = Array.from(new Set([item.image, ...item.gallery].filter((u) => u.startsWith("http"))));
         const category = categorizeAmazonProduct({
           title,
@@ -504,7 +505,7 @@ export function AmazonAffiliateImporter() {
         return;
       }
       const salePrice = calculateAmazonFinalPrice(cost);
-      const description = data.description || "Produto oficial importado com garantia e entrega rápida via Amazon.";
+      const description = data.description || buildAmazonDescription("");
       const gallery = Array.from(new Set([data.mainImage, ...data.gallery].filter((u) => u.startsWith("http"))));
       const category = categorizeAmazonProduct({ title: data.title, description, amazonCategory: data.amazonCategory });
       usedCategories.add(category);
