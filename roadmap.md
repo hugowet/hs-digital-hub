@@ -1,11 +1,12 @@
 # HS Digital — MVP
 
 ## HS Bank — 27/10
-- [ ] Carteira oficial azul com Loop, saldo interno real ocultável, extrato de vendas e acesso pelo painel vendedor.
-- [ ] Solicitações de crédito protegidas por vendas aprovadas nos últimos 30 dias; não conceder dinheiro nem alterar split sem provedor habilitado.
-- [ ] Verificar transferência Pix real, retenção de 15% e operação de crédito com Mercado Pago; bloquear funções não homologadas.
-- [ ] HSBANK50: primeira compra, R$150 mínimo, R$50 desconto, limite global de 10, CPF/dispositivo e financiamento sem consumir margem CJ.
-- [ ] Confirmar alteração da comissão atual para 9% antes de mudar preços, contratos e split.
+- [x] Carteira azul com Loop, saldo interno ocultável, extrato de até 50 registros reais, acesso no menu/painel vendedor. Conta autenticada sem loja e celular validados, sem erro ou transbordamento; build OK.
+- [x] Interesse em crédito persistido via RPC, protegido por loja aprovada e vendas pagas nos últimos 30 dias; sem concessão de dinheiro ou mudança no split. Dez testes de regras passaram.
+- [x] Hugo confirmou manter a comissão de 12%; extrato preserva os valores reais de cada transação.
+- [ ] Validar saldo, extrato e solicitação no fluxo de lojista elegível: a conta disponível no teste não tem loja aprovada; precisa de sessão de um proprietário elegível.
+- [ ] Transferência Pix direta, crédito real e retenção de 15%: dependem de produto/API habilitado e instituição/contrato autorizados; split atual não confirma essas capacidades. Botão direciona ao Mercado Pago, sem simular saque.
+- [ ] Ativar HSBANK50: política e testes preparados (primeira compra/R$150/R$50/10/CPF/dispositivo), mas sem emissão ou resgate. Precisa de verba própria, verificação real de identidade e reserva/resgate atômicos integrados ao checkout; desconto não pode consumir margem CJ.
 
 ## Entrega estimada e boleto — 26/10
 - [x] Verificar Alelo alimentação: não há suporte online confirmado no Mercado Pago; não oferecer como cartão comum. Depende de credenciamento e compras elegíveis de alimentos.
