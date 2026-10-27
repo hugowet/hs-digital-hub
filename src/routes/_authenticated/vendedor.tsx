@@ -33,6 +33,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/site-header";
+import { isOrderVisibleToSeller } from "@/lib/order-visibility";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1005,7 +1006,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
   const qc = useQueryClient();
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
 
-  const { data: orders = [], isLoading } = useQuery({
+  const { data: rawOrders = [], isLoading } = useQuery({
     queryKey: ["store-orders", storeId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1017,6 +1018,9 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
       return data ?? [];
     },
   });
+
+  // Esconde pedidos "Aguardando pagamento" / não aprovados com mais de 72h.
+  const orders = rawOrders.filter((o: any) => isOrderVisibleToSeller(o));
 
   const { data: trackingEvents = [] } = useQuery({
     enabled: orders.length > 0,

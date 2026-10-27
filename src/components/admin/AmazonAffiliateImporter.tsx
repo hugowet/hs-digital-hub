@@ -70,6 +70,9 @@ export function AmazonAffiliateImporter() {
   ]);
   const [submitting, setSubmitting] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
+  const [bulkInput, setBulkInput] = useState("");
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [showBulkBox, setShowBulkBox] = useState(false);
   const [autoFillJson, setAutoFillJson] = useState("");
   const [showAutoFillBox, setShowAutoFillBox] = useState(false);
 
@@ -259,6 +262,99 @@ export function AmazonAffiliateImporter() {
     }
   };
 
+  // Importação em massa: até 50 produtos por vez.
+  // Cada linha aceita JSON ({"url","costPrice","title","mainImage","description","gallery"})
+  // ou formato com barras: url | custo | título | imagem
+  const BULK_LIMIT = 50;
+
+  const parseBulkLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith("{")) {
+      const data = JSON.parse(trimmed);
+      return {
+        url: String(data.url || data.amazonUrl || ""),
+        cost: Number(data.costPrice ?? data.cost ?? 0),
+        title: String(data.title || ""),
+        image: String(data.mainImage || data.image || ""),
+        description: String(data.description || ""),
+        gallery: Array.isArray(data.gallery) ? data.gallery.map(String) : [],
+      };
+    }
+    const parts = trimmed.split("|").map((p) => p.trim());
+    if (parts.length < 2) return null;
+    return {
+      url: parts[0] || "",
+      cost: Number(String(parts[1] || "").replace(",", ".")) || 0,
+      title: parts[2] || "",
+      image: parts[3] || "",
+      description: parts[4] || "",
+      gallery: parts.slice(5).filter((p) => p.startsWith("http")),
+    };
+  };
+
+  const handleBulkImport = async () => {
+    if (!storeId) return toast.error("Nenhuma loja ativa vinculada para receber os produtos.");
+    const lines = bulkInput.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) return toast.error("Cole pelo menos um link ou linha de produto.");
+    if (lines.length > BULK_LIMIT) return toast.error(`Máximo de ${BULK_LIMIT} produtos por importação.`);
+
+    setBulkRunning(true);
+    let imported = 0;
+    const failures: string[] = [];
+
+    for (const line of lines) {
+      try {
+        const item = parseBulkLine(line);
+        if (!item || !item.url || item.cost <= 0) {
+          failures.push("Linha inválida (precisa de link e custo): " + line.slice(0, 60));
+          continue;
+        }
+        const salePrice = calculateAmazonFinalPrice(item.cost);
+        const title = item.title || "Produto importado Amazon";
+        const description = item.description || "Produto oficial importado com garantia e entrega rápida via Amazon.";
+        const gallery = Array.from(new Set([item.image, ...item.gallery].filter((u) => u.startsWith("http"))));
+        const { error } = await supabase.from("products").insert({
+          store_id: storeId,
+          title,
+          description,
+          description_long: description,
+          price: salePrice,
+          compare_at_price: Number((salePrice * 1.25).toFixed(2)),
+          supplier_cost: item.cost,
+          image_url: item.image || null,
+          gallery_urls: gallery,
+          free_shipping: true,
+          is_active: true,
+          category: "geral",
+          stock: 999,
+          supplier: "amazon",
+          product_type: "physical",
+          specifications: {
+            affiliate_url: formatAmazonAffiliateLink(item.url),
+            partner: "amazon",
+            affiliate_id: AMAZON_AFFILIATE_TAG,
+          },
+        });
+        if (error) throw error;
+        imported++;
+      } catch (err: any) {
+        failures.push(err?.message || "Falha ao importar uma linha.");
+      }
+    }
+
+    setBulkRunning(false);
+    if (imported > 0) {
+      toast.success(`${imported} produto(s) importado(s) com a Margem Dinâmica aplicada! Compra 100% dentro da HS Digital.`);
+      setBulkInput("");
+      setShowBulkBox(false);
+    }
+    if (failures.length > 0) {
+      toast.error(`${failures.length} linha(s) não importada(s). Verifique o formato.`);
+      console.warn("Falhas na importação em massa:", failures);
+    }
+  };
+
   // Recalcular Preço de Todos os Produtos Amazon Já Cadastrados
   const handleRecalculateAllAmazonProducts = async () => {
     if (!confirm("Deseja aplicar a nova regra de preços com terminação ,90 ou ,97 em todos os produtos da Amazon já cadastrados?")) {
@@ -361,6 +457,16 @@ export function AmazonAffiliateImporter() {
               type="button"
               variant="outline"
               size="sm"
+              onClick={() => setShowBulkBox(!showBulkBox)}
+              className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs font-semibold"
+            >
+              <Layers className="h-3.5 w-3.5 mr-1" />
+              Importação em Massa (até 50)
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setShowAutoFillBox(!showAutoFillBox)}
               className="border-blue-300 text-blue-700 hover:bg-blue-50 text-xs font-semibold"
             >
@@ -372,6 +478,40 @@ export function AmazonAffiliateImporter() {
             </Badge>
           </div>
         </div>
+
+        {/* Caixa de Importação em Massa */}
+        {showBulkBox && (
+          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 space-y-2 dark:border-emerald-900 dark:bg-emerald-950/40">
+            <Label className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+              Cole até 50 produtos, um por linha. Formatos aceitos:
+            </Label>
+            <p className="text-[11px] text-emerald-900/80 dark:text-emerald-200/80 font-mono">
+              link | custo | título | imagem<br />
+              ou JSON por linha: {"{\"url\",\"costPrice\",\"title\",\"mainImage\",\"description\"}"}
+            </p>
+            <Textarea
+              rows={6}
+              placeholder={"https://www.amazon.com.br/dp/XXXX | 49.90 | Título do produto | https://m.media-amazon.com/images/I/...\nhttps://www.amazon.com.br/dp/YYYY | 129.90 | Outro produto | https://..."}
+              value={bulkInput}
+              onChange={(e) => setBulkInput(e.target.value)}
+              className="text-xs font-mono bg-white dark:bg-background"
+            />
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] text-muted-foreground">
+                A Margem Dinâmica é aplicada automaticamente e a compra fecha 100% no checkout da HS Digital — o cliente nunca sai para a Amazon.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                disabled={bulkRunning}
+                onClick={handleBulkImport}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 text-xs h-8 shrink-0"
+              >
+                {bulkRunning ? "Importando..." : "Importar em Massa"}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Caixa de Preenchimento Rápido */}
         {showAutoFillBox && (
