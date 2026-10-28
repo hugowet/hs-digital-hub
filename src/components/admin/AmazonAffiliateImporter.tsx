@@ -272,7 +272,7 @@ export function AmazonAffiliateImporter() {
         is_active: true,
         category: categorizeAmazonProduct({ title: sanitizeAmazonText(title.trim()), description: finalDescription, amazonCategory }),
         variations: pageOptions.length ? pageOptions : amazonVariationTemplate({ title, description: finalDescription, amazonCategory }),
-        stock: 0,
+        stock: 999,
         supplier: "amazon",
         product_type: "physical",
         specifications: {
@@ -390,7 +390,7 @@ export function AmazonAffiliateImporter() {
           is_active: true,
           category,
           variations: amazonVariationTemplate({ title, description, amazonCategory: item.category }),
-          stock: 0,
+          stock: 999,
           supplier: "amazon",
           product_type: "physical",
           specifications: {
@@ -528,7 +528,7 @@ export function AmazonAffiliateImporter() {
         is_active: true,
         category,
         variations: data.variations.length ? data.variations : amazonVariationTemplate({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }),
-        stock: 0,
+        stock: 999,
         supplier: "amazon",
         product_type: "physical",
         specifications: {
