@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Chat, filtros e voltar — 28/10
+- [ ] Recolher as mensagens do pedido em uma janela “Fale com o vendedor”, preservando envio e respostas no Seller Center.
+- [ ] Posicionar filtros compactos abaixo das categorias, com internacional roxo e nacional verde permanentes; acrescentar “Mais vendidos” à ordenação existente.
+- [ ] Fazer o voltar fechar o menu mantendo página e posição; testar no navegador com largura de celular.
+
 ## Rastreio e fotos em Minhas compras — 28/10
 - [x] Corrigir conflito de salvamento por pedido, loja e fornecedor; função aplicada e definição conferida.
 - [x] Implementar fotos e etapas reais em Minhas compras e no detalhe, com eventos ao vivo e recuperação a cada 15 segundos.
