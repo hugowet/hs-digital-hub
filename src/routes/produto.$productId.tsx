@@ -827,7 +827,21 @@ function ProductDetailPage() {
           </h2>
           <div className="mt-4 space-y-4 text-sm text-foreground/90 leading-relaxed">
             <p className="whitespace-pre-line text-sm sm:text-base text-foreground/90 font-normal">
-              {product.description_long || product.description || "Descrição completa em processamento."}
+              {(() => {
+                const desc = product.description_long || product.description || "Descrição completa em processamento.";
+                const marker = "Método de entrega:";
+                const idx = desc.indexOf(marker);
+                if (idx < 0) return desc;
+                const head = desc.slice(0, idx).trimEnd();
+                const tail = desc.slice(idx).trimStart();
+                return (
+                  <>
+                    {head ? head : null}
+                    {head ? "\n\n" : null}
+                    <span className="font-semibold text-orange-600 dark:text-orange-400">{tail}</span>
+                  </>
+                );
+              })()}
             </p>
           </div>
         </section>
