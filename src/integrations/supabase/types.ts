@@ -583,6 +583,45 @@ export type Database = {
           },
         ]
       }
+      order_item_cost_snapshots: {
+        Row: {
+          captured_at: string
+          order_item_id: string
+          store_id: string
+          supplier: string | null
+          unit_cost_brl: number | null
+        }
+        Insert: {
+          captured_at?: string
+          order_item_id: string
+          store_id: string
+          supplier?: string | null
+          unit_cost_brl?: number | null
+        }
+        Update: {
+          captured_at?: string
+          order_item_id?: string
+          store_id?: string
+          supplier?: string | null
+          unit_cost_brl?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_item_cost_snapshots_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: true
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_cost_snapshots_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           commission_rate: number

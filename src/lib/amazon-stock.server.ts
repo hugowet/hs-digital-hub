@@ -4,6 +4,7 @@ import { extractDescription, extractSpecs } from "./amazon.functions";
 import { extractAmazonOptions, shouldReplaceOptions } from "./amazon-options";
 import { amazonHiResFromHtml } from "./amazon-image";
 import { AMAZON_DELIVERY_METHOD_TEXT, buildAmazonDescription, sanitizeAmazonSpecs } from "./amazon-text";
+import { amazonPricePatch, extractAmazonOfferPrice } from './amazon-price';
 
 export async function checkAmazonStock(supabaseAdmin: any, product: any) {
   const rawUrl = String(product.specifications?.affiliate_url ?? "");
@@ -31,6 +32,8 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
 
   const availability = extractAmazonAvailability(html);
   const patch: Record<string, unknown> = {};
+  const asin = rawUrl.match(/\/(?:dp|gp\/product)\/([a-z0-9]{10})/i)?.[1];
+  if (asin) Object.assign(patch, amazonPricePatch(extractAmazonOfferPrice(html, asin)));
   // Restaura descrição completa / especificações / tamanhos e cores quando faltarem.
   // Corrige a galeria: somente as fotos do próprio anúncio.
   const ownImages = amazonHiResFromHtml(html).slice(0, 10);
@@ -84,5 +87,18 @@ export async function assertAmazonStock(supabaseAdmin: any, items: { productId: 
       const requested = items.filter((item) => item.productId === product.id).reduce((sum, item) => sum + item.quantity, 0);
       if (quantity < requested) throw new Error("Produto indisponível ou quantidade não confirmada pelo fornecedor. Atualize o carrinho antes de pagar.");
     }));
+  }
+}
+
+export async function assertAmazonOrderCosts(db: any, orderId: string, storeId: string) {
+  const { data: items, error } = await db.from('order_items').select('id,product_id,unit_price').eq('order_id', orderId).eq('store_id', storeId);
+  if (error) throw error;
+  const ids = (items ?? []).flatMap((i: any) => i.product_id ? [i.product_id] : []);
+  if (!ids.length) return;
+  const { data: products, error: productError } = await db.from('products').select('id,price,supplier_cost').eq('supplier','amazon').in('id', ids);
+  if (productError) throw productError;
+  for (const item of items ?? []) {
+    const product = products?.find((p: any) => p.id === item.product_id);
+    if (product && Math.abs(Number(product.price) - Number(item.unit_price)) > 0.02) throw new Error('O preço do fornecedor mudou. Cancele este pedido ainda não pago e atualize o carrinho para aceitar o novo preço.');
   }
 }
