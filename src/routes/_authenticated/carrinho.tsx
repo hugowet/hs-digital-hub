@@ -684,7 +684,7 @@ function CartPage() {
                     <ShieldCheck className="h-4 w-4 shrink-0" /> Atenção: segurança da sua compra
                   </p>
                   <p className="mt-1 text-[11px] leading-snug text-amber-900/90 dark:text-amber-200/90">
-                    A HS Digital <strong>nunca entra em contato pelo WhatsApp</strong> pedindo custos adicionais fora do valor do produto no site. Qualquer cobrança desse tipo é <strong>golpe</strong> — pague somente aqui, pelo checkout oficial.
+                    A HS Digital <strong>nunca entra em contato pelo WhatsApp ou por qualquer outro canal</strong> pedindo custos adicionais fora do valor do produto no site. Qualquer cobrança desse tipo é <strong>golpe</strong> — pague somente aqui, pelo checkout oficial.
                   </p>
                 </div>
               )}
