@@ -4,6 +4,7 @@
 - [ ] Corrigir conflito de salvamento por pedido, loja e fornecedor.
 - [ ] Mostrar fotos e etapas reais em Minhas compras e no detalhe, com atualização ao vivo.
 - [ ] Testar regras e conferir o fluxo autenticado disponível.
+- [ ] Registrar previsão real do fornecedor e exibir chegada estimada com dois dias de segurança; rastreio automático depende de integração autorizada.
 
 ## Chamadas HS Social — 28/10
 - [x] Corrigir negociação de áudio/vídeo, SDP antes de ICE, estado síncrono, envio sem inscrição no canal destinatário, encerramento e recuperação de reprodução; três testes passaram. Mensagens de áudio preservadas.
