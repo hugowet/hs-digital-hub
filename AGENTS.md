@@ -11,7 +11,7 @@
 
 <!-- LOVABLE:END -->
 
-- The storefront intro is a home-only, once-per-browser-session presentation so internal navigation remains immediate.
+- Intro runs home-only once per browser session.
 - Checkout eligibility comes from server-side order history, never browser state.
 - HS Bank mirrors records, not bank balances. Owner SQL snapshots non-binding credit estimates; no debt/payouts. Coupons require funded atomic identity-bound redemption preserving seller net.
 
@@ -46,6 +46,7 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Reviews use paid-order-verified RPCs and owner-private, server-signed photos.
 - Radio shares one provider; Club suppresses HS announcements. Club Pix uses CPF-validated direct payments, QR/copy-paste and owner-bound API reconciliation plus signed webhooks; browser writes cannot grant access. Installability is manifest-only.
 - Sitemap follows explicit route decisions and paginated public reads; private subtrees are excluded and failures never emit partial XML.
-- Search schema omits destination-unconfirmed CJ offers and invented review statistics.
-- Todos pages a scheduled daily ranking (category-balanced, sales-first, Boa Vista day); per-request full-catalog ranking timed out.
-- Exit guard uses router history and a home sentinel; internal back stays intact.
+- Search schema excludes unconfirmed CJ offers and invented reviews.
+- Todos uses scheduled sales-first, category-balanced Boa Vista daily ranking to avoid catalog timeouts.
+- Home exit uses a sentinel; menus use a same-URL entry consumed on close/replaced by navigation to keep Back local.
+- Order chat is a dialog over existing seller messages; closing never deletes messages.
