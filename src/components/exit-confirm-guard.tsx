@@ -6,6 +6,9 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const SENTINEL_KEY = "hsExitGuard";
+declare module "@tanstack/react-router" {
+  interface HistoryState { hsExitGuard?: boolean }
+}
 
 /**
  * Home-only exit guard: every device back press on the storefront asks
