@@ -1,8 +1,8 @@
 # HS Digital — MVP
 
 ## Chamadas HS Social — 28/10
-- [ ] Corrigir negociação de áudio/vídeo, envio ordenado dos sinais, encerramento e reprodução; preservar mensagens de áudio.
-- [ ] Validar chamadas nas duas pontas; redes móveis diferentes dependem da disponibilidade do relay externo.
+- [x] Corrigir negociação de áudio/vídeo, SDP antes de ICE, estado síncrono, envio sem inscrição no canal destinatário, encerramento e recuperação de reprodução; três testes passaram. Mensagens de áudio preservadas.
+- [ ] Validar chamadas nas duas pontas: prévia permanece em branco e módulos React não carregam mesmo após recuperação do cache; chamadas entre celulares/redes diferentes não homologadas e dependem do relay externo.
 
 ## Relatório e rastreio do vendedor — 28/10
 - [x] Relatório visível e copiável exclusivo de hugohug12ou@gmail.com no Seller Center; sete testes passaram e build OK, sem alteração de permissões.

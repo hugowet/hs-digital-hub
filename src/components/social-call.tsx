@@ -112,7 +112,7 @@ export function useSocialCalls(userId: string, myName: string) {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         updateCall({ ...callRef.current, status: "connected" });
       }
-      if (pc.connectionState === "failed") { toast.error("Não foi possível conectar a chamada. Verifique a internet e tente de novo."); cleanup(); }
+      if (pc.connectionState === "failed") { void sendTo(peerId, { type: "end", callId }).catch(() => {}); toast.error("Não foi possível conectar a chamada. Verifique a internet e tente de novo."); cleanup(); }
     };
     pcRef.current = pc;
     return pc;
@@ -128,13 +128,20 @@ export function useSocialCalls(userId: string, myName: string) {
       if (sig.type === "offer") {
         if (cur) { void sendTo(sig.from, { type: "end", callId: sig.callId }).catch(() => {}); return; }
         updateCall({ callId: sig.callId, peerId: sig.from, peerName: sig.name, video: sig.video, status: "ringing", incomingSdp: sig.sdp });
+        timeoutRef.current = setTimeout(() => {
+          if (isCurrent(sig.callId) && callRef.current?.status !== "connected") {
+            void sendTo(sig.from, { type: "end", callId: sig.callId }).catch(() => {});
+            toast.info("A chamada expirou. Tente novamente."); cleanup();
+          }
+        }, 60_000);
         return;
       }
       if (!cur || sig.callId !== cur.callId) return;
       if (sig.type === "answer" && pcRef.current) {
+        if (pcRef.current.remoteDescription) return;
+        updateCall({ ...cur, status: "connecting" });
         await pcRef.current.setRemoteDescription(sig.sdp);
-        for (const c of pendingIce.current) await pcRef.current.addIceCandidate(c);
-        pendingIce.current = [];
+        for (const c of pendingIce.current.splice(0)) await pcRef.current?.addIceCandidate(c).catch(() => {});
       } else if (sig.type === "ice") {
         if (pcRef.current?.remoteDescription) await pcRef.current.addIceCandidate(sig.candidate).catch(() => {});
         else pendingIce.current.push(sig.candidate);
@@ -177,8 +184,7 @@ export function useSocialCalls(userId: string, myName: string) {
     try {
       const pc = await makePeer(c.peerId, c.callId, c.video);
       await pc.setRemoteDescription(c.incomingSdp);
-      for (const cand of pendingIce.current) await pc.addIceCandidate(cand).catch(() => {});
-      pendingIce.current = [];
+      for (const cand of pendingIce.current.splice(0)) await pc.addIceCandidate(cand).catch(() => {});
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       await sendSignal(c.peerId, { type: "answer", callId: c.callId, sdp: answer });
