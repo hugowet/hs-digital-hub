@@ -477,6 +477,13 @@
       "when": 1793225125027,
       "tag": "0067_seller_supplier_delivery_estimate",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1793229963336,
+      "tag": "0068_seller_order_cost_snapshots",
+      "breakpoints": true
     }
   ]
 }
