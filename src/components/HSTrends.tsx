@@ -768,7 +768,7 @@ export function HSTrends() {
           )}
 
           {processedFeed.map((post, idx) => {
-            const isActive = idx === currentIndex;
+            const isActive = idx === currentIndex && !commentModalPost && !profileModalUser && !uploadModalOpen && !editProfileOpen && !editPostTarget;
             const isLiked = myLikes.includes(post.id);
             const isFollowing = Boolean(post.author_id && myFollows.includes(post.author_id));
             const isAd = post.post_type === "ad";

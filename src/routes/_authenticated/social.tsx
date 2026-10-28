@@ -176,6 +176,7 @@ function HSSocialPage() {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", stop);
       playback.current.block(true);
+      clearInterval(recTimer.current);
       const recorder = recorderRef.current;
       if (recorder && recorder.state !== "inactive") { recorder.onstop = null; recorder.stop(); recorder.stream.getTracks().forEach(track => track.stop()); }
     };
