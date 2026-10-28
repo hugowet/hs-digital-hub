@@ -1,0 +1,22 @@
+CREATE OR REPLACE FUNCTION public.save_seller_tracking(_store_id uuid, _order_id uuid, _code text, _carrier text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE step text;
+BEGIN
+  IF auth.uid() IS NULL OR NOT EXISTS(SELECT 1 FROM public.stores WHERE id=_store_id AND owner_id=auth.uid()) OR NOT EXISTS(SELECT 1 FROM public.order_items WHERE order_id=_order_id AND store_id=_store_id) THEN RAISE EXCEPTION 'Pedido não pertence à loja.'; END IF;
+  PERFORM 1 FROM public.orders WHERE id=_order_id AND payment_status IN ('paid','approved') FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Aguarde o pagamento aprovado.'; END IF;
+  IF _code IS NULL OR length(trim(_code))<2 OR length(_code)>100 OR _carrier IS NULL OR length(_carrier)>100 THEN RAISE EXCEPTION 'Rastreio inválido.'; END IF;
+  SELECT status INTO step FROM public.order_tracking_events WHERE order_id=_order_id ORDER BY created_at DESC LIMIT 1;
+  step:=coalesce(step,'confirmed');
+  INSERT INTO public.supplier_fulfillments(order_id,store_id,provider,tracking_code,tracking_carrier,status)
+  VALUES(_order_id,_store_id,'manual',trim(_code),trim(_carrier),'submitted')
+  ON CONFLICT(order_id,store_id,provider) DO UPDATE SET tracking_code=EXCLUDED.tracking_code,tracking_carrier=EXCLUDED.tracking_carrier,updated_at=now();
+  INSERT INTO public.order_tracking_events(order_id,status,note,created_by)
+  VALUES(_order_id,step,'Código de rastreio informado: '||trim(_code)||' ('||trim(_carrier)||')',auth.uid());
+END $function$;
+DO $block$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='supplier_fulfillments') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.supplier_fulfillments;
+  END IF;
+END $block$;
