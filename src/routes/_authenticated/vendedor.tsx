@@ -1,9 +1,3 @@
-import {
-  getSellerShippingConfiguration,
-  saveSellerOriginPostalCode,
-  startMelhorEnvioConnection,
-  saveOrderTracking,
-} from "@/lib/shipping.functions";
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -1022,7 +1016,13 @@ const DELIVERY_STEPS = [
   ["delivered", "Entregue"],
 ] as const;
 
-function SellerOrdersTab({ storeId }: { storeId: string }) {
+import {
+  getSellerShippingConfiguration,
+  saveSellerOriginPostalCode,
+  startMelhorEnvioConnection,
+  saveOrderTracking,
+} from "@/lib/shipping.functions";
+
   const qc = useQueryClient();
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
 
