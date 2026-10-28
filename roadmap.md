@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## Avisos e reprodução — 28/10
+- [ ] Verificar execuções reais do robô Amazon e motivo da contagem estagnada em 96, sem afrouxar critérios de segurança.
 - [ ] Corrigir escolha de tamanhos CJ/Amazon que abre produto não encontrado; mostrar somente variantes com estoque confirmado, sem promessa de dados instantâneos indisponíveis.
 - [ ] Melhorar seleção CJ para categorias de interesse (celulares, relógios, fones, calçados, ferramentas), usando sinais reais sem inventar tendências.
 - [ ] Mostrar respostas não lidas para comprador e vendedor com pontinho vermelho.
