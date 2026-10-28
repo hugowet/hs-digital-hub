@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Rastreio e fotos em Minhas compras — 28/10
+- [ ] Corrigir conflito de salvamento por pedido, loja e fornecedor.
+- [ ] Mostrar fotos e etapas reais em Minhas compras e no detalhe, com atualização ao vivo.
+- [ ] Testar regras e conferir o fluxo autenticado disponível.
+
 ## Chamadas HS Social — 28/10
 - [x] Corrigir negociação de áudio/vídeo, SDP antes de ICE, estado síncrono, envio sem inscrição no canal destinatário, encerramento e recuperação de reprodução; três testes passaram. Mensagens de áudio preservadas.
 - [ ] Validar chamadas nas duas pontas: prévia permanece em branco e módulos React não carregam mesmo após recuperação do cache; chamadas entre celulares/redes diferentes não homologadas e dependem do relay externo.
