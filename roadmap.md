@@ -1,7 +1,8 @@
 # HS Digital — MVP
 
 ## Lucro e preços dos fornecedores — 28/10
-- [ ] Mostrar lucro estimado de cada venda somente para hugohug12ou@gmail.com, com custos históricos e despesas não confirmadas explícitas.
+- [ ] Correção de Hugo: margem no card de produto só para hugohug12ou@gmail.com; retirar de Pedidos e envios.
+- [ ] Digital solicitada novamente: verificar suporte seguro antes de qualquer alteração no acesso.
 - [ ] Acompanhar aumentos e reduções de custos confirmados Amazon/CJ mantendo a regra de margem vigente e pedidos fechados intactos.
 - [ ] Testar cálculos, atualização de preços e visibilidade na conta solicitada.
 
