@@ -5,6 +5,11 @@ export const deliverySteps = [
   ["delivered", "Entregue"],
 ] as const;
 
+// Presentation only: order access remains protected by store ownership and RLS.
+export function showsManualPurchaseReport(email: string | null | undefined) {
+  return email?.trim().toLowerCase() === "hugohug12ou@gmail.com";
+}
+
 export function deliveryFields(address: Record<string, unknown> = {}) {
   const value = (...keys: string[]) => keys.map(k => address[k]).find(v => typeof v === "string" && v.trim()) as string | undefined;
   return {

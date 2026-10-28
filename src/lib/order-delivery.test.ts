@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { assertTrackableOrder, deliveryFields, deliveryReport } from "./order-delivery";
+import { assertTrackableOrder, deliveryFields, deliveryReport, showsManualPurchaseReport } from "./order-delivery";
+describe("relatório exclusivo da conta solicitada", () => {
+  it("exibe para hugohug12ou@gmail.com", () => {
+    expect(showsManualPurchaseReport("hugohug12ou@gmail.com")).toBe(true);
+    expect(showsManualPurchaseReport(" HUGOHUG12OU@gmail.com ")).toBe(true);
+  });
+  it("não exibe para outra conta ou visitante", () => {
+    expect(showsManualPurchaseReport("hugoet373@gmail.com")).toBe(false);
+    expect(showsManualPurchaseReport("vendedor@example.com")).toBe(false);
+    expect(showsManualPurchaseReport(null)).toBe(false);
+  });
+});
 describe("relatório de entrega", () => {
   it("preserva CPF, número e bairro no relatório", () => {
     const a = { cpf: "12345678900", number: "42", neighborhood: "Centro" };
