@@ -3,7 +3,14 @@ import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImpor
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import {
+  getSellerShippingConfiguration,
+  saveSellerOriginPostalCode,
+  startMelhorEnvioConnection,
+  saveOrderTracking,
+} from "@/lib/shipping.functions";
+
   AlertCircle,
   BadgeCheck,
   CheckCircle2,
