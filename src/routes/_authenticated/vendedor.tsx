@@ -1,3 +1,4 @@
+import { deliveryFields, deliveryReport, deliverySteps } from "@/lib/order-delivery";
  // @ts-nocheck -- types out of sync with backend schema; see build log
 import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -9,6 +10,7 @@ import {
   saveSellerOriginPostalCode,
   startMelhorEnvioConnection,
   saveOrderTracking,
+  getSellerOrderPhotos,
 } from "@/lib/shipping.functions";
 
  import {
@@ -274,7 +276,7 @@ function SellerCenterPage() {
         <Button variant="bank" asChild><Link to="/hs-bank"><WalletCards className="size-4" />HS Bank</Link></Button>
       </div>
 
-      <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-600">
+      <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-success/10 px-4 py-2.5 text-sm font-semibold text-success">
         <BadgeCheck className="h-4 w-4 shrink-0" />
         Loja aprovada! Você já pode conectar seu Mercado Pago e cadastrar produtos.
       </div>
@@ -1015,17 +1017,12 @@ function SellerRequestForm({ userId, onCreated }: { userId: string | null; onCre
   );
 }
 
-const DELIVERY_STEPS = [
-  ["confirmed", "Pedido confirmado"],
-  ["preparing", "Em separação"],
-  ["shipped", "Enviado"],
-  ["out_for_delivery", "Saiu para entrega"],
-  ["delivered", "Entregue"],
-] as const;
+const DELIVERY_STEPS = deliverySteps;
 
 function SellerOrdersTab({ storeId }: { storeId: string }) {
   const qc = useQueryClient();
   const saveTracking = useServerFn(saveOrderTracking);
+  const loadPhotos = useServerFn(getSellerOrderPhotos);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const [savingTracking, setSavingTracking] = useState<string | null>(null);
   const [trackingInputs, setTrackingInputs] = useState<Record<string, { code: string; carrier: string }>>({});
@@ -1043,7 +1040,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
           total,
           shipping_address,
           created_at,
-          order_items!inner(store_id,title,quantity,unit_price,seller_amount)
+          order_items!inner(store_id,product_id,title,quantity,unit_price,seller_amount)
         `)
         .eq("order_items.store_id", storeId)
         .order("created_at", { ascending: false });
@@ -1054,6 +1051,13 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
 
   const orders = rawOrders.filter((o: any) => isOrderVisibleToSeller(o));
 
+  const productIds = [...new Set(orders.flatMap((o: any) => o.order_items.map((i: any) => i.product_id).filter(Boolean)))] as string[];
+  const { data: photos = [] } = useQuery({
+    queryKey: ["seller-order-photos", storeId, productIds.join(",")],
+    enabled: productIds.length > 0,
+    queryFn: () => loadPhotos({ data: { storeId, productIds: productIds.slice(0, 500) } }),
+    staleTime: 30 * 60_000,
+  });
   // Busca eventos de rastreio existentes
   const { data: trackingEvents = [] } = useQuery({
     enabled: orders.length > 0,
@@ -1133,7 +1137,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
           orderId,
           storeId,
           trackingCode: input.code.trim(),
-          trackingCarrier: input.carrier?.trim() || "Amazon Logistics",
+          trackingCarrier: input.carrier?.trim() || "Transportadora",
         },
       });
       toast.success("Código de rastreio enviado com sucesso! O cliente já pode acompanhar.");
@@ -1146,23 +1150,11 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
     }
   };
 
-  const copyAddressToClipboard = (order: any) => {
-    const addr = order.shipping_address;
-    if (!addr) {
-      toast.error("Dados de endereço não encontrados.");
-      return;
-    }
-    const text = [
-      `Nome: ${addr.name || "Cliente"}`,
-      `Telefone/Celular: ${addr.phone || "Não informado"}`,
-      `Endereço: ${addr.address || ""}`,
-      addr.note ? `Complemento/Ref: ${addr.note}` : null,
-      `Cidade/UF: ${addr.city || ""} ${addr.state || ""}`,
-      `CEP: ${addr.postal_code || ""}`,
-    ].filter(Boolean).join("\n");
-
-    navigator.clipboard.writeText(text);
-    toast.success("Dados de entrega copiados para a área de transferência!");
+  const copyAddressToClipboard = async (order: any) => {
+    try {
+      await navigator.clipboard.writeText(deliveryReport({ ...order, order_items: order.order_items.filter((i: any) => i.store_id === storeId) }));
+      toast.success("Relatório de entrega copiado!");
+    } catch { toast.error("Não foi possível copiar. Tente novamente."); }
   };
 
   if (isLoading) {
@@ -1189,16 +1181,17 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
         const storeItems = order.order_items.filter((i: any) => i.store_id === storeId);
         const storeTotal = storeItems.reduce((s: number, i: any) => s + Number(i.seller_amount), 0);
         const addr = order.shipping_address || {};
-        const isPaid = order.payment_status === "paid";
+        const fields = deliveryFields(addr);
+        const isPaid = ["paid", "approved"].includes(order.payment_status);
         const currentTracking = trackingInputs[order.id] || {
           code: fulfillment?.tracking_code || "",
-          carrier: fulfillment?.tracking_carrier || "Amazon Logistics",
+          carrier: fulfillment?.tracking_carrier || "Transportadora",
         };
 
         const cleanPhone = (addr.phone || "").replace(/\D/g, "");
 
         return (
-          <div key={order.id} className="surface-card p-5 space-y-4 rounded-xl border border-border shadow-xs">
+          <div key={order.id} className="surface-card p-5 space-y-4 rounded-lg border border-border shadow-xs">
             {/* Cabeçalho do Pedido */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
               <div>
@@ -1219,19 +1212,19 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
                   <span>{new Date(order.created_at).toLocaleString("pt-BR")}</span>
                   <span>•</span>
                   {isPaid ? (
-                    <span className="font-semibold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded">
+                    <span className="font-semibold text-success bg-success/10 px-2 py-0.5 rounded">
                       Pagamento Aprovado
                     </span>
                   ) : (
-                    <span className="font-semibold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded">
+                    <span className="font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded">
                       Aguardando Pagamento
                     </span>
                   )}
                   <span>•</span>
                   {order.payout_status === "released" ? (
-                    <span className="font-medium text-emerald-600">Repasse liberado</span>
+                    <span className="font-medium text-success">Repasse liberado</span>
                   ) : (
-                    <span className="font-medium text-amber-600">Repasse retido até a entrega</span>
+                    <span className="font-medium text-muted-foreground">Repasse retido até a entrega</span>
                   )}
                 </div>
               </div>
@@ -1249,8 +1242,9 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
               </p>
               <div className="space-y-1.5 bg-muted/30 p-3 rounded-lg border border-border/50">
                 {storeItems.map((item: any, idx: number) => (
-                  <div key={idx} className="flex justify-between items-center text-sm">
-                    <span className="font-medium">
+                  <div key={idx} className="flex gap-3 items-center text-sm">
+                    {photos.find((p: any) => p.id === item.product_id)?.image_url ? <img src={photos.find((p: any) => p.id === item.product_id)?.image_url ?? ""} alt={item.title} loading="lazy" className="h-16 w-16 shrink-0 object-contain rounded-md bg-background" /> : <ImageIcon className="h-12 w-12 shrink-0 text-muted-foreground" /> }
+                    <span className="font-medium flex-1 min-w-0 break-words">
                       {item.quantity}x {item.title}
                     </span>
                     <span className="text-muted-foreground">{brl(Number(item.unit_price))}</span>
@@ -1261,7 +1255,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
 
             {/* Dados do Comprador e Entrega (para você comprar na Amazon) */}
             <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap gap-2 items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-wider text-primary">
                   Dados do Comprador e Endereço de Entrega
                 </p>
@@ -1276,20 +1270,24 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
               </div>
 
               <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                <div><span className="text-xs text-muted-foreground block">CPF:</span><span className="font-semibold">{fields.cpf}</span></div>
+                <div><span className="text-xs text-muted-foreground block">Número da casa:</span><span>{fields.number}</span></div>
+                <div><span className="text-xs text-muted-foreground block">Bairro:</span><span>{fields.neighborhood}</span></div>
+
                 <div>
                   <span className="text-xs text-muted-foreground block">Nome do Comprador:</span>
-                  <span className="font-semibold">{addr.name || "Não informado"}</span>
+                  <span className="font-semibold">{fields.name}</span>
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground block">Celular / Telefone:</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold">{addr.phone || "Não informado"}</span>
+                    <span className="font-semibold">{fields.phone}</span>
                     {cleanPhone && (
                       <a
                         href={`https://wa.me/55${cleanPhone}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs text-emerald-600 hover:underline font-medium"
+                        className="text-xs text-success hover:underline font-medium"
                       >
                         (WhatsApp)
                       </a>
@@ -1299,7 +1297,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
                 <div className="sm:col-span-2">
                   <span className="text-xs text-muted-foreground block">Endereço completo:</span>
                   <span className="font-medium">
-                    {addr.address || "Endereço não informado"}
+                    {fields.street}
                     {addr.note ? ` • Complemento/Ref: ${addr.note}` : ""}
                   </span>
                 </div>
@@ -1342,11 +1340,11 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
               {/* Formulário para colar o código de rastreio */}
               <div className="pt-2 border-t border-border/40">
                 <span className="text-xs text-muted-foreground block mb-2">
-                  Cole o código de envio gerado pela Amazon/transportadora para o cliente acompanhar em tempo real:
+                  Código da transportadora:
                 </span>
                 <div className="flex flex-wrap gap-2">
                   <Input
-                    placeholder="Código de Rastreio (ex: AMZ123456BR ou Correios)"
+                    placeholder="Código de rastreio"
                     value={currentTracking.code}
                     disabled={!isPaid || savingTracking === order.id}
                     onChange={(e) =>
@@ -1361,7 +1359,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
                     className="h-8 text-xs flex-1 min-w-[200px]"
                   />
                   <Input
-                    placeholder="Transportadora (ex: Amazon Logistics)"
+                    placeholder="Transportadora"
                     value={currentTracking.carrier}
                     disabled={!isPaid || savingTracking === order.id}
                     onChange={(e) =>
@@ -1386,8 +1384,8 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
                 </div>
 
                 {fulfillment?.tracking_code && (
-                  <div className="mt-2 text-xs text-emerald-600 flex items-center gap-1 font-medium">
-                    ✓ Rastreio ativo: {fulfillment.tracking_carrier} — {fulfillment.tracking_code}
+                  <div className="mt-2 text-xs text-success flex items-center gap-1 font-medium">
+                    Código salvo: {fulfillment.tracking_carrier} — {fulfillment.tracking_code}
                   </div>
                 )}
               </div>
