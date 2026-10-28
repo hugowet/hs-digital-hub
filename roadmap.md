@@ -1,9 +1,10 @@
 # HS Digital — MVP
 
 ## Chat, filtros e voltar — 28/10
-- [ ] Recolher as mensagens do pedido em uma janela “Fale com o vendedor”, preservando envio e respostas no Seller Center.
-- [ ] Posicionar filtros compactos abaixo das categorias, com internacional roxo e nacional verde permanentes; acrescentar “Mais vendidos” à ordenação existente.
-- [ ] Fazer o voltar fechar o menu mantendo página e posição; testar no navegador com largura de celular.
+- [x] Recolher as mensagens do pedido em uma janela “Fale com o vendedor”, preservando envio e respostas no Seller Center.
+- [x] Posicionar filtros compactos abaixo das categorias, com internacional roxo e nacional verde permanentes; acrescentar “Mais vendidos” à ordenação existente. Posição e cores conferidas no celular; catálogo paginado preservado e lista memorizada.
+- [x] Separar o histórico do menu da confirmação de saída, mantendo página e posição; três testes de voltar passaram.
+- [ ] Validar cliques do menu/filtros e conversa num pedido real: a prévia exibe a página mas não ativa os cliques; sessão não foi carregada pelo navegador. Aparência dos filtros conferida, interação ainda não homologada.
 
 ## Rastreio e fotos em Minhas compras — 28/10
 - [x] Corrigir conflito de salvamento por pedido, loja e fornecedor; função aplicada e definição conferida.

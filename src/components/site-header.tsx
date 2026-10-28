@@ -80,6 +80,7 @@ export function SiteHeader({
     router.history.push(location.href, { hsMobileMenu: true, hsExitGuard: location.state.hsExitGuard }, { ignoreBlocker: true });
     router.history.flush();
     setOpen(true);
+    window.requestAnimationFrame(() => window.scrollTo({ top: menuScroll.current, behavior: "instant" }));
   };
   const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);

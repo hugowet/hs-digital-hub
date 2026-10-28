@@ -605,7 +605,7 @@ function Home() {
               }}
             >
               <SelectTrigger aria-label="Ordenar produtos" className="w-[150px] h-9 text-xs bg-background">
-                <SelectValue placeholder="Ordenar por" />
+                <SelectValue placeholder="Mais populares" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="best-selling">Mais vendidos</SelectItem>
