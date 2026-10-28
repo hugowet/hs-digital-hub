@@ -1,8 +1,8 @@
 # HS Digital — MVP
 
 ## Segurança administrativa de frete — 28/10
-- [ ] Proteger alterações individuais e em massa com sessão validada e papel admin no servidor; bloquear update com HTTP 403 para não administradores.
-- [ ] Testar negação, falha de consulta de papel e execução autorizada nas duas ações, sem alterar fretes reais nos testes.
+- [x] Proteger alterações individuais e em massa com sessão validada e papel admin no servidor; bloquear update com HTTP 403 para não administradores.
+- [x] 16 testes passaram: sessão ausente/revogada/divergente, papel negado/nulo/erro, ordem de checagens e update autorizado nas duas ações. API real aceitou sessão admin em ID inexistente sem alterar catálogo; recusa não-admin testada com contexto simulado. Build OK.
 
 ## Lucro e preços dos fornecedores — 28/10
 - [x] Correção de Hugo: margem no card de produto só para hugohug12ou@gmail.com, verificada no servidor e limitada às próprias lojas; retirada de Pedidos e envios. Quatro testes passaram.
