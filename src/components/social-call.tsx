@@ -21,13 +21,32 @@ type CallState = {
   incomingSdp?: RTCSessionDescriptionInit;
 };
 
-const ICE = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }] };
+// STUN + TURN relay: sem relay, chamadas entre redes móveis (4G/5G) costumam não conectar.
+const ICE: RTCConfiguration = {
+  iceServers: [
+    { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+    { urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443", "turn:openrelay.metered.ca:443?transport=tcp"], username: "openrelayproject", credential: "openrelayproject" },
+  ],
+  iceCandidatePoolSize: 4,
+};
 
+// Reaproveita um canal por destinatário; abrir/fechar canal a cada sinal perdia candidatos e atrasava a conexão.
+const outChannels = new Map<string, Promise<ReturnType<typeof supabase.channel>>>();
+function channelTo(userId: string) {
+  let ready = outChannels.get(userId);
+  if (!ready) {
+    ready = new Promise((resolve) => {
+      const ch = supabase.channel(`social-call:${userId}`);
+      ch.subscribe((s) => { if (s === "SUBSCRIBED") resolve(ch); });
+    });
+    outChannels.set(userId, ready);
+    setTimeout(() => { const c = outChannels.get(userId); outChannels.delete(userId); void c?.then((ch) => supabase.removeChannel(ch)); }, 5 * 60_000);
+  }
+  return ready;
+}
 async function sendTo(userId: string, payload: Signal) {
-  const ch = supabase.channel(`social-call:${userId}`);
-  await new Promise<void>((resolve) => ch.subscribe((s) => { if (s === "SUBSCRIBED") resolve(); }));
+  const ch = await channelTo(userId);
   await ch.send({ type: "broadcast", event: "signal", payload });
-  void supabase.removeChannel(ch);
 }
 
 export function useSocialCalls(userId: string, myName: string) {
@@ -52,16 +71,28 @@ export function useSocialCalls(userId: string, myName: string) {
   }
 
   async function makePeer(peerId: string, callId: string, video: boolean) {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video ? { facingMode: "user" } : false });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      video: video ? { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24, max: 30 } } : false,
+    });
     localRef.current = stream;
     setLocal(stream);
     const pc = new RTCPeerConnection(ICE);
-    stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-    pc.ontrack = (ev) => setRemote(ev.streams[0]);
+    stream.getTracks().forEach((t) => {
+      const sender = pc.addTrack(t, stream);
+      if (t.kind === "video") {
+        // Limita a taxa do vídeo para não travar em internet móvel.
+        const params = sender.getParameters();
+        params.encodings = [{ ...(params.encodings?.[0] ?? {}), maxBitrate: 600_000, maxFramerate: 24 }];
+        params.degradationPreference = "maintain-framerate" as any;
+        void sender.setParameters(params).catch(() => {});
+      }
+    });
+    pc.ontrack = (ev) => setRemote(ev.streams[0] ?? new MediaStream([ev.track]));
     pc.onicecandidate = (ev) => { if (ev.candidate) void sendTo(peerId, { type: "ice", callId, candidate: ev.candidate.toJSON() }); };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "connected") setCall((c) => (c ? { ...c, status: "connected" } : c));
-      if (pc.connectionState === "failed") { toast.error("A chamada caiu."); cleanup(); }
+      if (pc.connectionState === "failed") { toast.error("Não foi possível conectar a chamada. Verifique a internet e tente de novo."); cleanup(); }
     };
     pcRef.current = pc;
     return pc;
@@ -164,8 +195,8 @@ export function CallScreen({ calls }: { calls: ReturnType<typeof useSocialCalls>
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-foreground text-background">
-      <video ref={remoteVideo} autoPlay playsInline className={`absolute inset-0 h-full w-full object-cover ${call.video && remote ? "" : "hidden"}`} />
-      {!call.video && <audio ref={(el) => { if (el) el.srcObject = remote; }} autoPlay />}
+      <video ref={remoteVideo} autoPlay playsInline muted className={`absolute inset-0 h-full w-full object-cover ${call.video && remote ? "" : "hidden"}`} />
+      <audio ref={(el) => { if (el && el.srcObject !== remote) { el.srcObject = remote; void el.play().catch(() => {}); } }} autoPlay playsInline className="hidden" />
       <div className="relative z-10 flex flex-1 flex-col items-center justify-start gap-2 pt-20 text-center">
         <p className="text-2xl font-semibold drop-shadow">{call.peerName}</p>
         <p className="text-sm opacity-80 drop-shadow">{label}</p>
