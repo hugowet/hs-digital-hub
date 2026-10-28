@@ -10,6 +10,7 @@ import {
   saveSellerOriginPostalCode,
   startMelhorEnvioConnection,
   saveOrderTracking,
+  saveSellerDeliveryEstimate,
   getSellerOrderPhotos,
 } from "@/lib/shipping.functions";
 
@@ -1022,6 +1023,9 @@ const DELIVERY_STEPS = deliverySteps;
 function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: string; showManualReport?: boolean }) {
   const qc = useQueryClient();
   const saveTracking = useServerFn(saveOrderTracking);
+  const saveEstimate = useServerFn(saveSellerDeliveryEstimate);
+  const [estimateInputs, setEstimateInputs] = useState<Record<string, string>>({});
+  const [savingEstimate, setSavingEstimate] = useState<string | null>(null);
   const loadPhotos = useServerFn(getSellerOrderPhotos);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const [savingTracking, setSavingTracking] = useState<string | null>(null);
@@ -1080,7 +1084,7 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
     queryFn: async () => {
       const { data, error } = await supabase
         .from("supplier_fulfillments")
-        .select("order_id,tracking_code,tracking_carrier,status")
+        .select("order_id,tracking_code,tracking_carrier,status,supplier_expected_delivery")
         .eq("store_id", storeId)
         .in("order_id", orders.map((o: any) => o.id));
       if (error) throw error;
@@ -1094,7 +1098,7 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
   };
 
   const getFulfillment = (orderId: string) => {
-    return fulfillments.find((f: any) => f.order_id === orderId);
+    return fulfillments.find((f: any) => f.order_id === orderId && (f.tracking_code || f.supplier_expected_delivery)) ?? fulfillments.find((f: any) => f.order_id === orderId);
   };
 
   const handleStepChange = async (orderId: string, step: string) => {
@@ -1368,6 +1372,21 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
                   </select>
                 </div>
               </div>
+
+              {showManualReport && <div className="border-t border-border pt-3">
+                <Label htmlFor={`supplier-estimate-${order.id}`} className="text-xs">Data de chegada informada pela Amazon</Label>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Input id={`supplier-estimate-${order.id}`} type="date" className="w-44" value={estimateInputs[order.id] ?? fulfillment?.supplier_expected_delivery ?? ""} disabled={!isPaid || savingEstimate === order.id} onChange={event => setEstimateInputs(prev => ({ ...prev, [order.id]: event.target.value }))} />
+                  <Button size="sm" variant="outline" disabled={!isPaid || savingEstimate === order.id || !(estimateInputs[order.id] ?? fulfillment?.supplier_expected_delivery)} onClick={async () => {
+                    const supplierDate = estimateInputs[order.id] ?? fulfillment?.supplier_expected_delivery;
+                    if (!supplierDate) return;
+                    setSavingEstimate(order.id);
+                    try { await saveEstimate({ data: { storeId, orderId: order.id, supplierDate } }); await qc.invalidateQueries({ queryKey: ["store-orders-fulfillments", storeId] }); toast.success("Previsão salva com dois dias de segurança para o cliente."); }
+                    catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível salvar a previsão."); }
+                    finally { setSavingEstimate(null); }
+                  }}>{savingEstimate === order.id ? "Salvando…" : "Salvar previsão"}</Button>
+                </div>
+              </div>}
 
               {/* Formulário para colar o código de rastreio */}
               <div className="pt-2 border-t border-border/40">

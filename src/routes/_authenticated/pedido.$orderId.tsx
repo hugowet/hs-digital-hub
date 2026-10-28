@@ -59,7 +59,7 @@ function OrderPaymentPage() {
         supabase.from("digital_deliveries").select("*").eq("order_id", orderId),
         supabase.from("order_tracking_events").select("*").eq("order_id", orderId).order("created_at"),
         supabase.from("order_conversations").select("id,order_messages(id,body,sender_id,created_at)").eq("order_id", orderId).maybeSingle(),
-        supabase.from("supplier_fulfillments").select("status,tracking_code,tracking_carrier,updated_at").eq("order_id", orderId),
+        supabase.from("supplier_fulfillments").select("status,tracking_code,tracking_carrier,updated_at,supplier_expected_delivery").eq("order_id", orderId),
       ]);
       if (error) throw error;
       if (!order) return null;
