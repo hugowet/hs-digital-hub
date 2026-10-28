@@ -1,5 +1,6 @@
 import { OrderPhoto, OrderTracking } from "@/components/order-tracking";
 import { getBuyerOrderPhotos } from "@/lib/shipping.functions";
+import { sendSellerMessage } from "@/lib/seller-chat.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -43,6 +44,7 @@ function OrderPaymentPage() {
   const reconcilePayment = useServerFn(reconcileMercadoPagoPayment);
   const getPublicConfig = useServerFn(getMercadoPagoPublicConfig);
   const loadPhotos = useServerFn(getBuyerOrderPhotos);
+  const sendToSeller = useServerFn(sendSellerMessage);
   const [creatingPix, setCreatingPix] = useState<string | null>(null);
   const [pixCpf, setPixCpf] = useState("");
   const [message, setMessage] = useState("");
@@ -63,7 +65,10 @@ function OrderPaymentPage() {
       ]);
       if (error) throw error;
       if (!order) return null;
-      return { order, items: items ?? [], transactions: transactions ?? [], deliveries: deliveries ?? [], tracking: tracking ?? [], conversation, fulfillments: fulfillments ?? [] };
+      const orderProductIds = [...new Set((items ?? []).flatMap((item) => item.product_id ? [item.product_id] : []))];
+      const { data: productChats } = orderProductIds.length ? await supabase.from("product_conversations").select("id,product_messages(id,body,sender_id,created_at)").eq("buyer_id", user.user.id).in("product_id", orderProductIds) : { data: [] };
+      const chatMessages = [...(conversation?.order_messages ?? []), ...(productChats ?? []).flatMap((chat) => chat.product_messages ?? [])];
+      return { chatMessages, order, items: items ?? [], transactions: transactions ?? [], deliveries: deliveries ?? [], tracking: tracking ?? [], conversation, fulfillments: fulfillments ?? [] };
     },
     refetchInterval: (query) => ["approved", "paid"].includes(query.state.data?.order.payment_status ?? "") ? 15000 : 5000,
   });
@@ -166,7 +171,7 @@ function OrderPaymentPage() {
         })}
         {data.deliveries.length > 0 && <section className="surface-card p-4"><h2 className="flex items-center gap-2 font-semibold"><Download className="h-5 w-5 text-success" />Acessos digitais liberados</h2><div className="mt-3 space-y-3">{data.deliveries.map((delivery) => <div key={delivery.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"><div><p className="font-medium">{delivery.title}</p>{delivery.delivery_instructions && <p className="text-sm text-muted-foreground">{delivery.delivery_instructions}</p>}</div><Button asChild><a href={delivery.delivery_url} target="_blank" rel="noreferrer">Acessar produto</a></Button></div>)}</div></section>}
         <section className="surface-card p-4"><OrderTracking events={data.tracking} paid={["approved", "paid"].includes(data.order.payment_status)} fulfillments={data.fulfillments} /></section>
-        <section className="surface-card p-4"><h2 className="flex items-center gap-2 font-semibold"><MessageCircle className="h-5 w-5 text-primary" />Mensagem sobre a compra</h2><div className="mt-3 max-h-64 space-y-2 overflow-y-auto">{(data.conversation?.order_messages ?? []).sort((a, b) => a.created_at.localeCompare(b.created_at)).map((item) => <div key={item.id} className="rounded-lg bg-muted p-3 text-sm">{item.body}<p className="mt-1 text-[10px] text-muted-foreground">{new Date(item.created_at).toLocaleString("pt-BR")}</p></div>)}</div><form className="mt-3 flex gap-2" onSubmit={async (event) => { event.preventDefault(); const body = message.trim(); if (!body) return; const { data: user } = await supabase.auth.getUser(); if (!user.user) return; let conversationId = data.conversation?.id; if (!conversationId) { const { data: created, error } = await supabase.from("order_conversations").insert({ order_id: orderId, buyer_id: user.user.id }).select("id").single(); if (error) { toast.error(error.message); return; } conversationId = created.id; } const { error } = await supabase.from("order_messages").insert({ conversation_id: conversationId, sender_id: user.user.id, body }); if (error) toast.error(error.message); else { setMessage(""); await qc.invalidateQueries({ queryKey: ["buyer-order", orderId] }); } }}><Input value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} placeholder="Escreva para o atendimento sobre este pedido" /><Button type="submit" size="icon" aria-label="Enviar mensagem"><Send /></Button></form></section>
+        <section className="surface-card p-4"><h2 className="flex items-center gap-2 font-semibold"><MessageCircle className="h-5 w-5 text-primary" />Mensagem sobre a compra</h2><div className="mt-3 max-h-64 space-y-2 overflow-y-auto">{[...data.chatMessages].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((item) => <div key={item.id} className="rounded-lg bg-muted p-3 text-sm">{item.body}<p className="mt-1 text-[10px] text-muted-foreground">{new Date(item.created_at).toLocaleString("pt-BR")}</p></div>)}</div><form className="mt-3 flex gap-2" onSubmit={async (event) => { event.preventDefault(); const body = message.trim(); if (!body) return; const productId = data.items.find((item) => item.product_id)?.product_id; if (!productId) { toast.error("Produto do pedido não encontrado."); return; } try { await sendToSeller({ data: { productId, body: `Pedido #${orderId.slice(0, 8).toUpperCase()}: ${body}` } }); setMessage(""); toast.success("Mensagem enviada ao vendedor"); await qc.invalidateQueries({ queryKey: ["buyer-order", orderId] }); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível enviar."); } }}><Input value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} placeholder="Escreva para o vendedor sobre este pedido" /><Button type="submit" size="icon" aria-label="Enviar mensagem"><Send /></Button></form></section>
       </div>
       <aside className="surface-card h-fit p-4 lg:sticky lg:top-28"><h2 className="font-semibold">Resumo</h2><div className="mt-3 flex justify-between border-b border-border pb-3 text-sm"><span className="text-muted-foreground">{data.items.reduce((sum, item) => sum + item.quantity, 0)} itens</span><strong>{brl(Number(data.order.total))}</strong></div><p className="mt-3 text-xs text-muted-foreground">Em carrinhos com várias lojas, cada pagamento é confirmado separadamente. O pedido fica pago após todas as lojas receberem.</p><Button variant="outline" className="mt-4 w-full" onClick={() => navigate({ to: "/" })}>Continuar comprando</Button></aside>
     </div>
