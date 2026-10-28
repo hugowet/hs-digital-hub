@@ -90,47 +90,26 @@ export const saveOrderTracking = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await requireOwnedStore(context, data.storeId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const code = data.trackingCode.trim().toUpperCase();
-    const carrier = data.trackingCarrier?.trim() || "Amazon Logistics";
-
-    // 1. Atualiza ou insere o código na tabela de envios do pedido
-    const { data: existing } = await supabaseAdmin
-      .from("supplier_fulfillments")
-      .select("id")
-      .eq("order_id", data.orderId)
-      .eq("store_id", data.storeId)
-      .maybeSingle();
-
-    if (existing) {
-      await supabaseAdmin
-        .from("supplier_fulfillments")
-        .update({
-          tracking_code: code,
-          tracking_carrier: carrier,
-          status: "shipped",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existing.id);
-    } else {
-      await supabaseAdmin.from("supplier_fulfillments").insert({
-        order_id: data.orderId,
-        store_id: data.storeId,
-        provider: "manual",
-        tracking_code: code,
-        tracking_carrier: carrier,
-        status: "shipped",
-      });
-    }
-
-    // 2. Insere evento de rastreio para o cliente acompanhar em tempo real
-    await supabaseAdmin.from("order_tracking_events").insert({
-      order_id: data.orderId,
-      status: "in_transit",
-      note: `Código de rastreio informado: ${code} (${carrier})`,
-      created_by: context.userId,
+    const { error } = await context.supabase.rpc("save_seller_tracking", {
+      _store_id: data.storeId, _order_id: data.orderId,
+      _code: data.trackingCode.trim(), _carrier: data.trackingCarrier?.trim() || "Transportadora",
     });
-
+    if (error) throw error;
     return { ok: true };
+  });
+
+export const getSellerOrderPhotos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ storeId: z.string().uuid(), productIds: z.array(z.string().uuid()).max(500) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireOwnedStore(context, data.storeId);
+    if (!data.productIds.length) return [];
+    const { data: products, error } = await context.supabase.from("products").select("id,image_url").eq("store_id", data.storeId).in("id", data.productIds);
+    if (error) throw error;
+    const paths = (products ?? []).flatMap(p => p.image_url && !/^(https?:\/\/|\/)/.test(p.image_url) ? [p.image_url] : []);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const signed = paths.length ? await supabaseAdmin.storage.from("product-images").createSignedUrls(paths, 3600) : null;
+    if (signed?.error) throw signed.error;
+    const urls = new Map(paths.map((path, i) => [path, signed?.data?.[i]?.signedUrl]));
+    return (products ?? []).map(p => ({ id: p.id, image_url: p.image_url ? urls.get(p.image_url) ?? p.image_url : null }));
   });
