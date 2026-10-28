@@ -272,7 +272,7 @@ async function fetchProductData(url: string) {
     ? json.images.filter((u: unknown) => typeof u === "string" && u.startsWith("http")).map(amazonFullResImage)
     : [];
   const hiRes = amazonHiResFromHtml(rawHtml);
-  const images: string[] = Array.from(new Set<string>(hiRes.length ? hiRes : extracted)).slice(0, 10);
+  const images: string[] = Array.from(new Set<string>(hiRes.length ? hiRes : extracted.slice(0, 1))).slice(0, 10);
   return {
     title: String(json?.title ?? htmlTitle ?? ""),
     costPrice: Number(json?.price) || 0,

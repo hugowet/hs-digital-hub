@@ -168,7 +168,7 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
       ? json.images.filter((u: unknown) => typeof u === "string" && u.startsWith("http")).map(amazonFullResImage)
       : [];
     const hiRes = amazonHiResFromHtml(rawHtml);
-    const images: string[] = Array.from(new Set<string>(hiRes.length ? hiRes : extracted)).slice(0, 10);
+    const images: string[] = Array.from(new Set<string>(hiRes.length ? hiRes : extracted.slice(0, 1))).slice(0, 10);
 
     return {
       title: sanitizeAmazonText(String(json?.title ?? htmlTitle ?? "")),
