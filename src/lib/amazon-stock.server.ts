@@ -5,7 +5,9 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
   let html = "";
   try {
     const url = new URL(rawUrl);
-    if (url.protocol !== "https:" || !["amazon.com.br", "www.amazon.com.br"].includes(url.hostname) || !/\/(?:dp|gp\/product)\/[a-z0-9]{10}/i.test(url.pathname)) throw new Error("Invalid product URL");
+    if (url.protocol !== "https:" || !["amazon.com.br", "www.amazon.com.br"].includes(url.hostname) || !/\/(?:dp|gp\/product)\/[a-z0-9]{10}/i.test(url.pathname)) {
+      throw new Error("Invalid product URL");
+    }
     const key = process.env["LOVABLE_API_KEY"];
     const connection = process.env["FIRECRAWL_API_KEY"];
     if (!key || !connection) throw new Error("Missing reader configuration");
@@ -17,20 +19,28 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
     if (!response.ok) throw new Error("Supplier read failed");
     const payload = await response.json();
     html = String(payload?.data?.rawHtml ?? payload?.rawHtml ?? "");
-  } catch { /* Unreadable pages fail closed, never become available. */ }
+  } catch {
+    // Se a leitura falhar (captcha ou timeout), preserva o estoque atual sem zerar
+    return product.stock ?? 999;
+  }
+
   const availability = extractAmazonAvailability(html);
   const quantity = confirmedAmazonStock(availability, Boolean(product.variations?.length));
+
   const { error } = await supabaseAdmin.from("products").update({
-    supplier_availability: availability, supplier_stock_checked_at: new Date().toISOString(),
-    supplier_confirmed_quantity: quantity, stock: quantity,
+    stock: quantity,
+    supplier_availability: availability,
+    supplier_confirmed_quantity: quantity,
+    supplier_stock_checked_at: new Date().toISOString(),
   }).eq("id", product.id).eq("supplier", "amazon");
+
   if (error) throw error;
   return quantity;
 }
 
 export async function refreshAmazonStockBatch(supabaseAdmin: any, storeId: string) {
   const { data, error } = await supabaseAdmin.from("products")
-    .select("id,specifications,variations").eq("supplier", "amazon").eq("store_id", storeId)
+    .select("id,specifications,variations,stock").eq("supplier", "amazon").eq("store_id", storeId)
     .order("supplier_stock_checked_at", { ascending: true, nullsFirst: true }).order("id").limit(6);
   if (error) throw error;
   const results = await Promise.allSettled((data ?? []).map((p: any) => checkAmazonStock(supabaseAdmin, p)));
@@ -38,7 +48,7 @@ export async function refreshAmazonStockBatch(supabaseAdmin: any, storeId: strin
 }
 
 export async function assertAmazonStock(supabaseAdmin: any, items: { productId: string; quantity: number }[]) {
-  const { data, error } = await supabaseAdmin.from("products").select("id,specifications,variations")
+  const { data, error } = await supabaseAdmin.from("products").select("id,specifications,variations,stock")
     .eq("supplier", "amazon").in("id", items.map((item) => item.productId));
   if (error) throw error;
   for (let i = 0; i < (data ?? []).length; i += 6) {
