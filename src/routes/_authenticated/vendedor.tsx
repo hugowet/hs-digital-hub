@@ -1,5 +1,5 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
-import { deliveryFields, deliveryReport, deliverySteps } from "@/lib/order-delivery";
+import { deliveryFields, deliveryReport, deliverySteps, showsManualPurchaseReport } from "@/lib/order-delivery";
 import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -295,7 +295,7 @@ function SellerCenterPage() {
 
         {/* Aba de Pedidos e Rastreio */}
         <TabsContent value="orders" className="pt-4">
-          <SellerOrdersTab storeId={store.id} />
+          <SellerOrdersTab storeId={store.id} showManualReport={showsManualPurchaseReport(userEmail)} />
         </TabsContent>
 
         {/* Aba de Mensagens dos compradores */}
@@ -1019,7 +1019,7 @@ function SellerRequestForm({ userId, onCreated }: { userId: string | null; onCre
 
 const DELIVERY_STEPS = deliverySteps;
 
-function SellerOrdersTab({ storeId }: { storeId: string }) {
+function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: string; showManualReport?: boolean }) {
   const qc = useQueryClient();
   const saveTracking = useServerFn(saveOrderTracking);
   const loadPhotos = useServerFn(getSellerOrderPhotos);
@@ -1027,7 +1027,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
   const [savingTracking, setSavingTracking] = useState<string | null>(null);
   const [trackingInputs, setTrackingInputs] = useState<Record<string, { code: string; carrier: string }>>({});
 
-  const { data: rawOrders = [], isLoading } = useQuery({
+  const { data: rawOrders = [], isLoading, error: ordersError, refetch: refetchOrders } = useQuery({
     queryKey: ["store-orders", storeId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1054,7 +1054,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
   const productIds = [...new Set(orders.flatMap((o: any) => o.order_items.map((i: any) => i.product_id).filter(Boolean)))] as string[];
   const { data: photos = [] } = useQuery({
     queryKey: ["seller-order-photos", storeId, productIds.join(",")],
-    enabled: productIds.length > 0,
+    enabled: showManualReport && productIds.length > 0,
     queryFn: () => loadPhotos({ data: { storeId, productIds: productIds.slice(0, 500) } }),
     staleTime: 30 * 60_000,
   });
@@ -1152,8 +1152,12 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
 
   const copyAddressToClipboard = async (order: any) => {
     try {
-      await navigator.clipboard.writeText(deliveryReport({ ...order, order_items: order.order_items.filter((i: any) => i.store_id === storeId) }));
-      toast.success("Relatório de entrega copiado!");
+      const fields = deliveryFields(order.shipping_address || {});
+      const text = showManualReport
+        ? deliveryReport({ ...order, order_items: order.order_items.filter((i: any) => i.store_id === storeId) })
+        : [`Nome: ${fields.name}`, `Telefone: ${fields.phone}`, `Endereço: ${fields.street}`, `Cidade: ${fields.city} / ${fields.state}`, `CEP: ${fields.zip}`].join("\n");
+      await navigator.clipboard.writeText(text);
+      toast.success(showManualReport ? "Relatório de entrega copiado!" : "Dados de envio copiados!");
     } catch { toast.error("Não foi possível copiar. Tente novamente."); }
   };
 
@@ -1163,6 +1167,13 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
+  }
+
+  if (ordersError) {
+    return <div role="alert" className="space-y-3 border border-destructive/30 p-4 rounded-lg">
+      <p className="text-sm text-destructive">Não foi possível carregar os pedidos.</p>
+      <Button variant="outline" onClick={() => refetchOrders()}><RefreshCw className="size-4" />Tentar novamente</Button>
+    </div>;
   }
 
   if (orders.length === 0) {
@@ -1243,7 +1254,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
               <div className="space-y-1.5 bg-muted/30 p-3 rounded-lg border border-border/50">
                 {storeItems.map((item: any, idx: number) => (
                   <div key={idx} className="flex gap-3 items-center text-sm">
-                    {photos.find((p: any) => p.id === item.product_id)?.image_url ? <img src={photos.find((p: any) => p.id === item.product_id)?.image_url ?? ""} alt={item.title} loading="lazy" className="h-16 w-16 shrink-0 object-contain rounded-md bg-background" /> : <ImageIcon className="h-12 w-12 shrink-0 text-muted-foreground" /> }
+                    {showManualReport && (photos.find((p: any) => p.id === item.product_id)?.image_url ? <img src={photos.find((p: any) => p.id === item.product_id)?.image_url ?? ""} alt={item.title} loading="lazy" className="h-16 w-16 shrink-0 object-contain rounded-md bg-background" /> : <ImageIcon className="h-12 w-12 shrink-0 text-muted-foreground" />)}
                     <span className="font-medium flex-1 min-w-0 break-words">
                       {item.quantity}x {item.title}
                     </span>
@@ -1257,7 +1268,7 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
             <div className="rounded-lg border border-border bg-card p-4 space-y-3">
               <div className="flex flex-wrap gap-2 items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                  Dados do Comprador e Endereço de Entrega
+                  {showManualReport ? "Relatório para compra manual · Amazon" : "Dados do Comprador e Endereço de Entrega"}
                 </p>
                 <Button
                   size="sm"
@@ -1265,14 +1276,16 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
                   onClick={() => copyAddressToClipboard(order)}
                   className="h-7 text-xs gap-1"
                 >
-                  Copiar dados de envio
+                  {showManualReport ? "Copiar relatório completo" : "Copiar dados de envio"}
                 </Button>
               </div>
 
               <div className="grid gap-2 sm:grid-cols-2 text-sm">
-                <div><span className="text-xs text-muted-foreground block">CPF:</span><span className="font-semibold">{fields.cpf}</span></div>
-                <div><span className="text-xs text-muted-foreground block">Número da casa:</span><span>{fields.number}</span></div>
-                <div><span className="text-xs text-muted-foreground block">Bairro:</span><span>{fields.neighborhood}</span></div>
+                {showManualReport && <>
+                  <div><span className="text-xs text-muted-foreground block">CPF:</span><span className="font-semibold">{fields.cpf}</span></div>
+                  <div><span className="text-xs text-muted-foreground block">Número da casa:</span><span>{fields.number}</span></div>
+                  <div><span className="text-xs text-muted-foreground block">Bairro:</span><span>{fields.neighborhood}</span></div>
+                </>}
 
                 <div>
                   <span className="text-xs text-muted-foreground block">Nome do Comprador:</span>
@@ -1313,6 +1326,18 @@ function SellerOrdersTab({ storeId }: { storeId: string }) {
                 </div>
               </div>
             </div>
+
+            {showManualReport && <div className="space-y-2">
+              <Label htmlFor={`delivery-report-${order.id}`}>Relatório completo de entrega</Label>
+              <Textarea
+                id={`delivery-report-${order.id}`}
+                readOnly
+                rows={Math.max(13, storeItems.length + 12)}
+                value={deliveryReport({ ...order, order_items: storeItems })}
+                className="text-sm leading-6"
+                onFocus={(event) => event.currentTarget.select()}
+              />
+            </div>}
 
             {/* Controle de Rastreamento e Envio */}
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
