@@ -75,3 +75,62 @@ export const startMelhorEnvioConnection = createServerFn({ method: "POST" })
     });
     return { url: `https://melhorenvio.com.br/oauth/authorize?${query.toString()}` };
   });
+export const saveOrderTracking = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input) =>
+      z
+        .object({
+          orderId: z.string().uuid(),
+          storeId: z.string().uuid(),
+          trackingCode: z.string().min(2).max(100),
+          trackingCarrier: z.string().max(100).optional(),
+        })
+        .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await requireOwnedStore(context, data.storeId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const code = data.trackingCode.trim().toUpperCase();
+    const carrier = data.trackingCarrier?.trim() || "Amazon Logistics";
+
+    // 1. Atualiza ou insere o código na tabela de envios do pedido
+    const { data: existing } = await supabaseAdmin
+      .from("supplier_fulfillments")
+      .select("id")
+      .eq("order_id", data.orderId)
+      .eq("store_id", data.storeId)
+      .maybeSingle();
+
+    if (existing) {
+      await supabaseAdmin
+        .from("supplier_fulfillments")
+        .update({
+          tracking_code: code,
+          tracking_carrier: carrier,
+          status: "shipped",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+    } else {
+      await supabaseAdmin.from("supplier_fulfillments").insert({
+        order_id: data.orderId,
+        store_id: data.storeId,
+        provider: "manual",
+        tracking_code: code,
+        tracking_carrier: carrier,
+        status: "shipped",
+      });
+    }
+
+    // 2. Insere evento de rastreio para o cliente acompanhar em tempo real
+    await supabaseAdmin.from("order_tracking_events").insert({
+      order_id: data.orderId,
+      status: "in_transit",
+      note: `Código de rastreio informado: ${code} (${carrier})`,
+      created_by: context.userId,
+    });
+
+    return { ok: true };
+  });
