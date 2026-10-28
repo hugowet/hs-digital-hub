@@ -8,7 +8,7 @@
   saveSellerOriginPostalCode,
   startMelhorEnvioConnection,
   saveOrderTracking,
-} from "@/lib/shipping.functions";
+from "@/lib/shipping.functions";
 
  import {
    AlertCircle,
