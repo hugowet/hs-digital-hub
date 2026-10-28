@@ -89,3 +89,16 @@ export async function assertAmazonStock(supabaseAdmin: any, items: { productId: 
     }));
   }
 }
+
+export async function assertAmazonOrderCosts(db: any, orderId: string, storeId: string) {
+  const { data: items, error } = await db.from('order_items').select('id,product_id,unit_price').eq('order_id', orderId).eq('store_id', storeId);
+  if (error) throw error;
+  const ids = (items ?? []).flatMap((i: any) => i.product_id ? [i.product_id] : []);
+  if (!ids.length) return;
+  const { data: products, error: productError } = await db.from('products').select('id,price,supplier_cost').eq('supplier','amazon').in('id', ids);
+  if (productError) throw productError;
+  for (const item of items ?? []) {
+    const product = products?.find((p: any) => p.id === item.product_id);
+    if (product && Math.abs(Number(product.price) - Number(item.unit_price)) > 0.02) throw new Error('O preço do fornecedor mudou. Cancele este pedido ainda não pago e atualize o carrinho para aceitar o novo preço.');
+  }
+}

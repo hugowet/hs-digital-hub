@@ -330,6 +330,8 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     if (itemsError || !orderItems?.length) throw new Error("Não foi possível confirmar os produtos do pedido.");
     const { assertAmazonStock } = await import("@/lib/amazon-stock.server");
     await assertAmazonStock(supabaseAdmin, orderItems.flatMap((item) => item.product_id ? [{ productId: item.product_id, quantity: item.quantity }] : []));
+    const { assertAmazonOrderCosts } = await import('@/lib/amazon-stock.server');
+    await assertAmazonOrderCosts(supabaseAdmin, transaction.order_id, transaction.store_id);
     const accessToken = await decryptSecret(account.access_token_encrypted);
     const platformAccessToken = await decryptSecret(settings.access_token_encrypted);
     const [platformUser, collectorUser] = await Promise.all([
