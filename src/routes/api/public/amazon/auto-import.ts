@@ -38,7 +38,7 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
       const { error: saveError } = await supabaseAdmin
         .from("supplier_integrations")
         .update({
-          product_mapping: { ...mapping, auto_cursor: nextCursor, auto_last_result: result },
+          product_mapping: { ...mapping, auto_cursor: nextCursor, auto_last_result: { ...result } },
           last_catalog_sync_at: new Date().toISOString(),
           last_error: summary,
         })
