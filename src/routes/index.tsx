@@ -537,8 +537,8 @@ function Home() {
           <Tabs value={search.supplier ?? "all"} onValueChange={(value) => setSearch({ supplier: value === "cj" || value === "amazon" ? value : null })} className="mb-6">
             <TabsList aria-label="Origem dos produtos" className="h-auto flex w-full flex-wrap justify-start gap-1">
               <TabsTrigger value="all">Todos os produtos</TabsTrigger>
-              <TabsTrigger value="cj">Produtos internacionais</TabsTrigger>
-              <TabsTrigger value="amazon">Produtos nacionais</TabsTrigger>
+              <TabsTrigger value="cj" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Produtos internacionais</TabsTrigger>
+              <TabsTrigger value="amazon" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">Produtos nacionais</TabsTrigger>
             </TabsList>
           </Tabs>
           {/* CATEGORIAS EM DESTAQUE */}
