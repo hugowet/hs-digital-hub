@@ -2,6 +2,7 @@ import { OrderPhoto, OrderTracking } from "@/components/order-tracking";
 import { getBuyerOrderPhotos } from "@/lib/shipping.functions";
 import { sendSellerMessage, listSellerChatMessages } from "@/lib/seller-chat.functions";
 import { UnreadDot } from "@/components/unread-dot";
+import { isUnreadReply } from "@/lib/message-unread";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -95,7 +96,7 @@ function OrderPaymentPage() {
   }, []);
   useEffect(() => {
     if (!chatOpen || !visible || !data) return;
-    const unreadChats = data.productChats.filter(chat => chat.product_messages.some(msg => msg.sender_id !== data.order.buyer_id && !msg.read_at));
+    const unreadChats = data.productChats.filter(chat => chat.product_messages.some(msg => isUnreadReply(msg, data.order.buyer_id)));
     if (!unreadChats.length) return;
     let active = true;
     void Promise.all(unreadChats.map(chat => readChat({ data: { conversationId: chat.id } }))).then(() => {
@@ -199,7 +200,7 @@ function OrderPaymentPage() {
         {data.deliveries.length > 0 && <section className="surface-card p-4"><h2 className="flex items-center gap-2 font-semibold"><Download className="h-5 w-5 text-success" />Acessos digitais liberados</h2><div className="mt-3 space-y-3">{data.deliveries.map((delivery) => <div key={delivery.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"><div><p className="font-medium">{delivery.title}</p>{delivery.delivery_instructions && <p className="text-sm text-muted-foreground">{delivery.delivery_instructions}</p>}</div><Button asChild><a href={delivery.delivery_url} target="_blank" rel="noreferrer">Acessar produto</a></Button></div>)}</div></section>}
         <section className="surface-card p-4"><OrderTracking events={data.tracking} paid={["approved", "paid"].includes(data.order.payment_status)} fulfillments={data.fulfillments} /></section>
         <Dialog open={chatOpen} onOpenChange={(next) => { setChatOpen(next); if (next) void qc.invalidateQueries({ queryKey: ["buyer-order", orderId] }); }}>
-          <DialogTrigger asChild><Button variant="outline" className="h-12 w-full justify-start gap-3"><MessageCircle className="h-5 w-5 text-primary" />Fale com o vendedor <UnreadDot show={data.productChats.some(chat => chat.product_messages.some(msg => msg.sender_id !== data.order.buyer_id && !msg.read_at))} /></Button></DialogTrigger>
+          <DialogTrigger asChild><Button variant="outline" className="h-12 w-full justify-start gap-3"><MessageCircle className="h-5 w-5 text-primary" />Fale com o vendedor <UnreadDot show={data.productChats.some(chat => chat.product_messages.some(msg => isUnreadReply(msg, data.order.buyer_id)))} /></Button></DialogTrigger>
           <DialogContent className="flex max-h-[85dvh] w-[calc(100%-2rem)] flex-col rounded-lg p-4 sm:p-6">
             <DialogHeader className="pr-6 text-left"><DialogTitle>Fale com o vendedor</DialogTitle><DialogDescription>Pedido #{orderId.slice(0, 8).toUpperCase()}</DialogDescription></DialogHeader>
             <div role="log" aria-label="Mensagens com o vendedor" aria-live="polite" className="flex min-h-32 flex-1 flex-col-reverse overflow-y-auto overscroll-contain">

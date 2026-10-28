@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## Avisos e reprodução — 28/10
+- [ ] Corrigir escolha de tamanhos CJ/Amazon que abre produto não encontrado; mostrar somente variantes com estoque confirmado, sem promessa de dados instantâneos indisponíveis.
 - [ ] Melhorar seleção CJ para categorias de interesse (celulares, relógios, fones, calçados, ferramentas), usando sinais reais sem inventar tendências.
 - [ ] Mostrar respostas não lidas para comprador e vendedor com pontinho vermelho.
 - [ ] Pausar áudio anterior ao ouvir outro ou começar uma gravação na HS Social.

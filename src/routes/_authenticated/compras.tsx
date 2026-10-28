@@ -451,7 +451,7 @@ export function PurchasesPage() {
 
                                 <Button asChild size="sm">
                                   <Link to="/pedido/$orderId" params={{ orderId: order.id }}>
-                                    Acompanhar pedido <ChevronRight className="h-4 w-4" />
+                                    Acompanhar pedido <UnreadDot show={order.order_items.some((item: any) => unread?.products.includes(item.product_id))} /> <ChevronRight className="h-4 w-4" />
                                   </Link>
                                 </Button>
                               </div>
