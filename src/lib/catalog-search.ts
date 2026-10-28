@@ -9,9 +9,10 @@ export function catalogSearchGroups(value: string) {
   const synonyms: Record<string, string[]> = {
     fone: ["fone", "fones", "headphone", "earphone", "earbuds", "headset"],
     fones: ["fone", "headphone", "earphone", "earbuds", "headset"],
-    relogio: ["relogio", "watch", "smartwatch"], relogios: ["relogio", "watch", "smartwatch"],
+    relogio: ["relogio", "watch", "smartwatch", "smartband", "pulseira inteligente"], relogios: ["relogio", "watch", "smartwatch", "smartband"],
+    smartwatch: ["smartwatch", "relogio", "watch", "smartband"], celulares: ["celular", "celulares", "smartphone", "smartphones", "telefone", "phone", "iphone", "android"],
     celular: ["celular", "celulares", "smartphone", "smartphones", "telefone", "phone", "iphone", "android"],
-    smartphone: ["smartphone", "celular", "telefone", "phone"], telefone: ["telefone", "celular", "smartphone", "phone"],
+    smartphone: ["smartphone", "celular", "telefone", "phone", "iphone", "android"], telefone: ["telefone", "celular", "smartphone", "phone"],
     carregador: ["carregador", "charger", "fonte"],
     furadeira: ["furadeira", "drill"], martelete: ["martelete", "rotary hammer", "hammer drill"],
     som: ["som", "speaker", "sound", "caixa"], ouvido: ["ouvido", "earphone", "earbuds", "headphone", "headset"],
