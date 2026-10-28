@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { UnreadDot } from "@/components/unread-dot";
 import {
   listSellerConversations,
   listSellerChatMessages,
@@ -30,7 +31,8 @@ export function SellerMessagesTab() {
   }, []);
 
   const { data: conversations = [], isLoading } = useQuery({
-    queryKey: ["seller-conversations"],
+    queryKey: ["seller-conversations", userId],
+    enabled: Boolean(userId),
     queryFn: () => listConversations(),
     refetchInterval: 15000,
   });
@@ -38,7 +40,13 @@ export function SellerMessagesTab() {
   const { data: messages = [] } = useQuery({
     queryKey: ["seller-conversation", activeConversation?.id],
     enabled: !!activeConversation,
-    queryFn: () => listMessages({ data: { conversationId: activeConversation!.id } }),
+    queryFn: async () => {
+      if (!activeConversation || document.visibilityState !== "visible") return [];
+      const result = await listMessages({ data: { conversationId: activeConversation.id } });
+      void queryClient.invalidateQueries({ queryKey: ["message-unread"] });
+      void queryClient.invalidateQueries({ queryKey: ["seller-conversations"] });
+      return result;
+    },
     refetchInterval: 8000,
   });
 
@@ -146,11 +154,7 @@ export function SellerMessagesTab() {
             <p className="truncate text-xs text-muted-foreground">{c.productTitle}</p>
             <p className="mt-0.5 truncate text-xs text-foreground/80">{c.lastMessage}</p>
           </div>
-          {c.unread > 0 && (
-            <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-              {c.unread}
-            </span>
-          )}
+          <UnreadDot show={c.unread > 0} />
         </button>
       ))}
     </div>

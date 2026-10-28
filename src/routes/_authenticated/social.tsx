@@ -21,6 +21,7 @@ import {
 } from "@/lib/social.functions";
 import { CallScreen, useSocialCalls } from "@/components/social-call";
 import { isActiveStory, isSocialOnline, isSocialTyping } from "@/lib/social";
+import { createExclusivePlayback } from "@/lib/media-playback";
 
 export const Route = createFileRoute("/_authenticated/social")({
   staticData: { sitemap: false },
@@ -143,6 +144,8 @@ function HSSocialPage() {
   const typingLastSent = useRef(0);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [recording, setRecording] = useState(false);
+  const playback = useRef(createExclusivePlayback());
+  const socialMediaRoot = useRef<HTMLDivElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const chatImageRef = useRef<HTMLInputElement | null>(null);
@@ -157,6 +160,28 @@ function HSSocialPage() {
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const profilePhotoRef = useRef<HTMLInputElement | null>(null);
   const end = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const root = socialMediaRoot.current;
+    const onPlay = (event: Event) => {
+      if (event.target instanceof HTMLAudioElement) playback.current.play(event.target);
+    };
+    const stop = () => playback.current.stop();
+    const onVisibility = () => { if (document.visibilityState !== "visible") stop(); };
+    root?.addEventListener("play", onPlay, true);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", stop);
+    return () => {
+      root?.removeEventListener("play", onPlay, true);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", stop);
+      playback.current.block(true);
+      clearInterval(recTimer.current);
+      const recorder = recorderRef.current;
+      if (recorder && recorder.state !== "inactive") { recorder.onstop = null; recorder.stop(); recorder.stream.getTracks().forEach(track => track.stop()); }
+    };
+  }, []);
+  useEffect(() => { playback.current.stop(); }, [roomId, groupId]);
 
   // Native back button closes the open chat/group/story first, then leaves HS Social.
   const panelOpen = !!(roomId || groupId || storyView);
@@ -399,6 +424,7 @@ function HSSocialPage() {
   }
   async function toggleRecording() {
     if (recording) { stopRecording(false); return; }
+    playback.current.block(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
       const mime = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/aac", "audio/webm;codecs=opus", "audio/webm", "audio/ogg"].find((m) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(m)) ?? "";
@@ -408,6 +434,7 @@ function HSSocialPage() {
       cancelRecRef.current = false;
       recorder.ondataavailable = (ev) => { if (ev.data.size) chunksRef.current.push(ev.data); };
       recorder.onstop = async () => {
+        playback.current.block(false);
         stream.getTracks().forEach((t) => t.stop());
         clearInterval(recTimer.current);
         setRecording(false);
@@ -432,6 +459,7 @@ function HSSocialPage() {
         return v + 1;
       }), 1000);
     } catch {
+      playback.current.block(false);
       toast.error("Permita o acesso ao microfone para gravar áudio.");
     }
   }
@@ -508,7 +536,7 @@ function HSSocialPage() {
 
   const groupMembersOf = (gid: string) => (groups.data?.members ?? []).filter((m: any) => m.group_id === gid);
 
-  return <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+  return <div ref={socialMediaRoot} className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
     <CallScreen calls={calls} />
     <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b bg-card px-4">
       <div className="flex items-center gap-3">

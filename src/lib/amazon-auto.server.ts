@@ -208,6 +208,8 @@ async function searchCategoryWinners(keyword: string, target: number, cycle = 0)
       ]),
     ),
   );
+  const failedSearches = responses.filter(response => response.status === "rejected");
+  if (failedSearches.length === responses.length) throw new Error("Nenhuma página de busca Amazon pôde ser lida nesta rodada.");
 
   const seen = new Set<string>();
   const winners: TrendCandidate[] = [];
@@ -292,6 +294,7 @@ function asinFromUrl(url: string): string | null {
 }
 
 export interface AmazonAutoImportResult {
+  searchFailures: number;
   scanned: number;
   candidates: number;
   published: number;
@@ -312,15 +315,16 @@ export async function runAmazonAutoImport(
   cursor = 0,
 ): Promise<AmazonAutoImportResult> {
   const result: AmazonAutoImportResult = {
-    scanned: 0, candidates: 0, published: 0, skippedExisting: 0, rejectedPrice: 0, failed: 0, categories: [],
+    scanned: 0, candidates: 0, published: 0, skippedExisting: 0, rejectedPrice: 0, failed: 0, categories: [], searchFailures: 0,
   };
 
   // ASINs já importados (dedupe idempotente)
-  const { data: existing } = await supabaseAdmin
+  const { data: existing, error: existingError } = await supabaseAdmin
     .from("products")
     .select("specifications")
     .eq("supplier", "amazon")
     .limit(5000);
+  if (existingError) throw existingError;
   const knownAsins = new Set<string>();
   for (const row of existing ?? []) {
     const url = String((row.specifications as Record<string, unknown> | null)?.affiliate_url ?? "");
@@ -341,7 +345,7 @@ export async function runAmazonAutoImport(
     if (res.status === "fulfilled") {
       result.categories.push(batch[i].hint);
       candidates.push(...res.value);
-    }
+    } else result.searchFailures++;
   });
   result.candidates = candidates.length;
 

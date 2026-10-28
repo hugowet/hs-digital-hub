@@ -34,14 +34,16 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
     try {
       const result = await runAmazonAutoImport(supabaseAdmin, integration.store_id, cursor);
       const nextCursor = (cursor + 2) % (AMAZON_AUTO_KEYWORDS.length * 10);
-      await supabaseAdmin
+      const summary = result.searchFailures ? `${result.searchFailures} busca(s) falharam; ${result.published} publicados.` : result.failed ? `${result.failed} página(s) de produto falharam; ${result.published} publicados.` : result.published === 0 ? `Sem novos produtos: ${result.candidates} candidatos, ${result.skippedExisting} repetidos, ${result.rejectedPrice} preços rejeitados.` : null;
+      const { error: saveError } = await supabaseAdmin
         .from("supplier_integrations")
         .update({
-          product_mapping: { ...mapping, auto_cursor: nextCursor },
+          product_mapping: { ...mapping, auto_cursor: nextCursor, auto_last_result: { ...result } },
           last_catalog_sync_at: new Date().toISOString(),
-          last_error: null,
+          last_error: summary,
         })
         .eq("id", integration.id);
+      if (saveError) throw saveError;
       return Response.json({ ...result, nextCursor, stock });
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Falha na importação automática Amazon.";

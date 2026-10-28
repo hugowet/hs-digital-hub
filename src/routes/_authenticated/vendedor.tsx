@@ -50,6 +50,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SellerMessagesTab } from "@/components/seller-messages-tab";
+import { UnreadDot } from "@/components/unread-dot";
+import { useMessageUnread } from "@/hooks/use-message-unread";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -98,6 +100,7 @@ function SellerCenterPage() {
   const qc = useQueryClient();
   const syncCj = useServerFn(syncCjProducts);
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
+  const { data: unread } = useMessageUnread(userId);
   const cjBatchRunning = useRef(false);
 
   // Estado para Edição de Produto
@@ -285,7 +288,7 @@ function SellerCenterPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <TabsList className="h-auto w-full justify-start overflow-x-auto border-b">
           <TabsTrigger value="orders">Pedidos e Envios</TabsTrigger>
-          <TabsTrigger value="messages">Mensagens</TabsTrigger>
+          <TabsTrigger value="messages">Mensagens <UnreadDot show={Boolean(unread?.seller)} /></TabsTrigger>
           <TabsTrigger value="products">Meus produtos</TabsTrigger>
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e extrato</TabsTrigger>

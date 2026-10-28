@@ -3,6 +3,7 @@ import { translateCjFreeText } from "./cj-free-translation.server";
 import { calculateFinalPrice } from "@/lib/pricing";
 import { decryptSecret, encryptSecret } from "@/lib/mercado-pago.server";
 import { mapCjEconomicalDetails } from "@/lib/cj-content";
+import { cjCategoryPriority, cjInterestGroup, chooseCjCategory } from "./cj-selection";
 
 const CJ_API = "https://developers.cjdropshipping.com/api2.0/v1";
 
@@ -370,46 +371,7 @@ export function categoryFor(name: string) {
 }
 
 function priorityForCjCategory(path: string) {
-  const normalized = path.toLowerCase();
-  if (
-    [
-      "power tool",
-      "hand tool",
-      "electric drill",
-      "hammer drill",
-      "rotary hammer",
-      "cell phone",
-      "mobile phone",
-      "smartphone",
-      "television",
-      "automobiles & motorcycles",
-      "auto replacement parts",
-      "motorcycle accessories & parts",
-      "car electronics",
-    ].some((term) => normalized.includes(term))
-  )
-    return 120;
-  if (
-    [
-      "earphone",
-      "headphone",
-      "headset",
-      "bluetooth",
-      "smart watch",
-      "smartwatch",
-      "speaker",
-      "portable audio",
-      "wearable",
-    ].some((term) => normalized.includes(term))
-  )
-    return 100;
-  if (
-    ["consumer electronics", "phone accessories", "computer accessories", "electronic"].some(
-      (term) => normalized.includes(term),
-    )
-  )
-    return 50;
-  return 0;
+  return cjCategoryPriority(path);
 }
 
 function flattenCjCategories(tree: CjCategoryTree) {
@@ -434,7 +396,7 @@ function flattenCjCategories(tree: CjCategoryTree) {
 export async function startCjCatalogImport(supabaseAdmin: any, storeId: string) {
   const token = await getCjAccessToken(supabaseAdmin, storeId);
   const tree = await cjRequest<CjCategoryTree>("/product/getCategory", token);
-  const categories = flattenCjCategories(tree);
+  const categories = flattenCjCategories(tree).filter(category => cjInterestGroup(category.category_path));
   if (categories.length === 0) throw new Error("A CJ não retornou categorias para importar.");
 
   const rows = categories.map((category) => ({
@@ -604,26 +566,26 @@ export async function processCjCatalogBatch(
     const token = await getCjAccessToken(supabaseAdmin, storeId);
     const { data: activeCategory } = await supabaseAdmin
       .from("supplier_catalog_categories")
-      .select("id,category_id,product_ids,next_product_index,imported_count")
+      .select("id,category_id,category_path,product_ids,next_product_index,imported_count")
       .eq("store_id", storeId)
       .eq("provider", "cj")
       .eq("status", "processing")
       .order("created_at")
       .limit(1)
       .maybeSingle();
-    const { data: pendingCategory } = activeCategory
-      ? { data: null }
-      : await supabaseAdmin
+    const { data: queueRows, error: queueError } = await supabaseAdmin
           .from("supplier_catalog_categories")
-          .select("id,category_id,product_ids,next_product_index,imported_count")
+          .select("id,category_id,category_path,status,product_ids,next_product_index,imported_count")
           .eq("store_id", storeId)
           .eq("provider", "cj")
-          .eq("status", "pending")
-          .order("priority", { ascending: false })
-          .order("created_at")
-          .limit(1)
-          .maybeSingle();
-    const category = activeCategory ?? pendingCategory;
+          .order("category_path")
+          .limit(2000);
+    if (queueError) throw queueError;
+    const selectedRows = (queueRows ?? []).filter((row: any) => cjInterestGroup(row.category_path));
+    const category: any = activeCategory && cjInterestGroup(activeCategory.category_path) ? activeCategory : chooseCjCategory(
+      selectedRows.filter((row: any) => row.status === "pending"),
+      selectedRows.filter((row: any) => row.status === "completed"),
+    );
 
     if (!category) {
       await supabaseAdmin
@@ -692,7 +654,7 @@ export async function processCjCatalogBatch(
         .eq("id", category.id);
     }
 
-    let completedCategories = claimed.completed_categories;
+    let completedCategories = selectedRows.filter((row: any) => row.status === "completed").length;
     if (nextIndex >= queued.length) {
       completedCategories += 1;
       await supabaseAdmin
@@ -704,12 +666,13 @@ export async function processCjCatalogBatch(
         })
         .eq("id", category.id);
     }
-    const done = completedCategories >= claimed.total_categories;
+    const done = completedCategories >= selectedRows.length;
     await supabaseAdmin
       .from("supplier_import_jobs")
       .update({
         status: done ? "completed" : "pending",
         completed_categories: completedCategories,
+        total_categories: selectedRows.length,
         imported_products: claimed.imported_products + imported,
         skipped_products: claimed.skipped_products + skipped,
         lock_expires_at: null,
@@ -730,7 +693,7 @@ export async function processCjCatalogBatch(
       imported,
       skipped,
       completedCategories,
-      totalCategories: claimed.total_categories,
+      totalCategories: selectedRows.length,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha na sincronização da CJ.";

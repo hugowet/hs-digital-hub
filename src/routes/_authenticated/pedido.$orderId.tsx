@@ -1,6 +1,8 @@
 import { OrderPhoto, OrderTracking } from "@/components/order-tracking";
 import { getBuyerOrderPhotos } from "@/lib/shipping.functions";
-import { sendSellerMessage } from "@/lib/seller-chat.functions";
+import { sendSellerMessage, listSellerChatMessages } from "@/lib/seller-chat.functions";
+import { UnreadDot } from "@/components/unread-dot";
+import { isUnreadReply } from "@/lib/message-unread";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -46,6 +48,8 @@ function OrderPaymentPage() {
   const getPublicConfig = useServerFn(getMercadoPagoPublicConfig);
   const loadPhotos = useServerFn(getBuyerOrderPhotos);
   const sendToSeller = useServerFn(sendSellerMessage);
+  const readChat = useServerFn(listSellerChatMessages);
+  const [visible, setVisible] = useState(true);
   const [creatingPix, setCreatingPix] = useState<string | null>(null);
   const [pixCpf, setPixCpf] = useState("");
   const [message, setMessage] = useState("");
@@ -63,15 +67,15 @@ function OrderPaymentPage() {
         supabase.from("payment_transactions").select("*,stores(name)").eq("order_id", orderId).order("created_at"),
         supabase.from("digital_deliveries").select("*").eq("order_id", orderId),
         supabase.from("order_tracking_events").select("*").eq("order_id", orderId).order("created_at"),
-        supabase.from("order_conversations").select("id,order_messages(id,body,sender_id,created_at)").eq("order_id", orderId).maybeSingle(),
+        supabase.from("order_conversations").select("id,order_messages(id,body,sender_id,created_at,read_at)").eq("order_id", orderId).maybeSingle(),
         supabase.from("supplier_fulfillments").select("status,tracking_code,tracking_carrier,updated_at,supplier_expected_delivery").eq("order_id", orderId),
       ]);
       if (error) throw error;
       if (!order) return null;
       const orderProductIds = [...new Set((items ?? []).flatMap((item) => item.product_id ? [item.product_id] : []))];
-      const { data: productChats } = orderProductIds.length ? await supabase.from("product_conversations").select("id,product_messages(id,body,sender_id,created_at)").eq("buyer_id", user.user.id).in("product_id", orderProductIds) : { data: [] };
+      const { data: productChats } = orderProductIds.length ? await supabase.from("product_conversations").select("id,product_messages(id,body,sender_id,created_at,read_at)").eq("buyer_id", user.user.id).in("product_id", orderProductIds) : { data: [] };
       const chatMessages = [...(conversation?.order_messages ?? []), ...(productChats ?? []).flatMap((chat) => chat.product_messages ?? [])];
-      return { chatMessages, order, items: items ?? [], transactions: transactions ?? [], deliveries: deliveries ?? [], tracking: tracking ?? [], conversation, fulfillments: fulfillments ?? [] };
+      return { chatMessages, productChats: productChats ?? [], order, items: items ?? [], transactions: transactions ?? [], deliveries: deliveries ?? [], tracking: tracking ?? [], conversation, fulfillments: fulfillments ?? [] };
     },
     refetchInterval: (query) => ["approved", "paid"].includes(query.state.data?.order.payment_status ?? "") ? 15000 : 5000,
   });
@@ -84,6 +88,24 @@ function OrderPaymentPage() {
     refetchInterval: 30 * 60_000,
   });
   const { data: mpConfig } = useQuery({ queryKey: ["mp-public-config"], queryFn: () => getPublicConfig() });
+
+  useEffect(() => {
+    const sync = () => setVisible(document.visibilityState === "visible");
+    sync(); document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
+  useEffect(() => {
+    if (!chatOpen || !visible || !data) return;
+    const unreadChats = data.productChats.filter(chat => chat.product_messages.some(msg => isUnreadReply(msg, data.order.buyer_id)));
+    if (!unreadChats.length) return;
+    let active = true;
+    void Promise.all(unreadChats.map(chat => readChat({ data: { conversationId: chat.id } }))).then(() => {
+      if (!active) return;
+      void qc.invalidateQueries({ queryKey: ["buyer-order", orderId] });
+      void qc.invalidateQueries({ queryKey: ["message-unread"] });
+    }).catch(() => { if (active) toast.error("Não foi possível confirmar a leitura das mensagens."); });
+    return () => { active = false; };
+  }, [chatOpen, visible, data, readChat, qc, orderId]);
 
   useEffect(() => {
     if (data?.order.payment_status === "approved") clear();
@@ -99,11 +121,11 @@ function OrderPaymentPage() {
         void qc.invalidateQueries({ queryKey: ["buyer-order", orderId] });
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "product_messages" }, () => {
-        if (chatOpen) void qc.invalidateQueries({ queryKey: ["buyer-order", orderId] });
+        void qc.invalidateQueries({ queryKey: ["buyer-order", orderId] });
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [orderId, qc, chatOpen]);
+  }, [orderId, qc]);
 
   useEffect(() => {
     if (!data || data.order.payment_status === "approved") return;
@@ -178,7 +200,7 @@ function OrderPaymentPage() {
         {data.deliveries.length > 0 && <section className="surface-card p-4"><h2 className="flex items-center gap-2 font-semibold"><Download className="h-5 w-5 text-success" />Acessos digitais liberados</h2><div className="mt-3 space-y-3">{data.deliveries.map((delivery) => <div key={delivery.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"><div><p className="font-medium">{delivery.title}</p>{delivery.delivery_instructions && <p className="text-sm text-muted-foreground">{delivery.delivery_instructions}</p>}</div><Button asChild><a href={delivery.delivery_url} target="_blank" rel="noreferrer">Acessar produto</a></Button></div>)}</div></section>}
         <section className="surface-card p-4"><OrderTracking events={data.tracking} paid={["approved", "paid"].includes(data.order.payment_status)} fulfillments={data.fulfillments} /></section>
         <Dialog open={chatOpen} onOpenChange={(next) => { setChatOpen(next); if (next) void qc.invalidateQueries({ queryKey: ["buyer-order", orderId] }); }}>
-          <DialogTrigger asChild><Button variant="outline" className="h-12 w-full justify-start gap-3"><MessageCircle className="h-5 w-5 text-primary" />Fale com o vendedor</Button></DialogTrigger>
+          <DialogTrigger asChild><Button variant="outline" className="h-12 w-full justify-start gap-3"><MessageCircle className="h-5 w-5 text-primary" />Fale com o vendedor <UnreadDot show={data.productChats.some(chat => chat.product_messages.some(msg => isUnreadReply(msg, data.order.buyer_id)))} /></Button></DialogTrigger>
           <DialogContent className="flex max-h-[85dvh] w-[calc(100%-2rem)] flex-col rounded-lg p-4 sm:p-6">
             <DialogHeader className="pr-6 text-left"><DialogTitle>Fale com o vendedor</DialogTitle><DialogDescription>Pedido #{orderId.slice(0, 8).toUpperCase()}</DialogDescription></DialogHeader>
             <div role="log" aria-label="Mensagens com o vendedor" aria-live="polite" className="flex min-h-32 flex-1 flex-col-reverse overflow-y-auto overscroll-contain">

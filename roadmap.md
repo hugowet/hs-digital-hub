@@ -1,5 +1,17 @@
 # HS Digital — MVP
 
+## Avisos e reprodução — 28/10
+- [x] Robô Amazon ativo a cada 10 minutos; última execução 22:50 UTC, última criação 10h UTC. Registrar resultados/repetidos/falhas nas próximas rodadas sem afrouxar filtros.
+- [ ] Confirmar causa exata da falta de novos produtos Amazon: histórico anterior não guardou resultados; depende da próxima rodada com diagnóstico atualizado.
+- [x] Tamanhos CJ só ativos/com estoque e confirmação antes de navegar; opções Amazon não confirmadas ocultas, estoque genérico 999 removido das novas conferências; testes passaram.
+- [x] Novas importações CJ filtradas por categorias relevantes e equilibradas, inclusive fila antiga; estoque/preços/pausa Amazon preservados. Produtos antigos não excluídos; próxima execução ainda não observada.
+- [x] Pontinho vermelho no chat do comprador, compras, menu e aba/conversas do vendedor; leitura só com conversa visível.
+- [x] Interromper áudio anterior ao ouvir outro ou iniciar gravação; pausa ao sair e esconder Social.
+- [x] Trends com guarda de visibilidade/interseção, limpeza ao sair e bloqueio de solicitações atrasadas; mídia inativa sem carregamento automático.
+- [x] 32 testes Vitest, 9 testes Social/CJ e 4 de opções Amazon passaram; prévia compilou sem erros.
+- [x] Reprodução com mídia real em tela isolada: vídeo visível toca; oculto/inativo pausa; segundo áudio interrompe primeiro e gravação pausa todos. Tela real ainda não homologada.
+- [ ] Homologar conversa nas duas pontas, tamanhos e mídia nas telas reais: navegador não carregou sessão/HS Social e Trends apresentou apenas anúncio, sem vídeos para exercitar.
+
 ## Chat, filtros e voltar — 28/10
 - [x] Recolher as mensagens do pedido em uma janela “Fale com o vendedor”, preservando envio e respostas no Seller Center.
 - [x] Posicionar filtros compactos abaixo das categorias, com internacional roxo e nacional verde permanentes; acrescentar “Mais vendidos” à ordenação existente. Posição e cores conferidas no celular; catálogo paginado preservado e lista memorizada.

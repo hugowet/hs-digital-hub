@@ -31,6 +31,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { brl } from "@/lib/format";
 import { cancelUnpaidMarketplaceOrder } from "@/lib/payments.functions";
+import { useMessageUnread } from "@/hooks/use-message-unread";
+import { UnreadDot } from "@/components/unread-dot";
 
 export const Route = createFileRoute("/_authenticated/compras")({
   staticData: { sitemap: false },
@@ -49,6 +51,8 @@ export const Route = createFileRoute("/_authenticated/compras")({
 });
 
 export function PurchasesPage() {
+  const { user } = Route.useRouteContext();
+  const { data: unread } = useMessageUnread(user.id);
   const qc = useQueryClient();
   const cancelOrder = useServerFn(cancelUnpaidMarketplaceOrder);
   const loadPhotos = useServerFn(getBuyerOrderPhotos);
@@ -161,7 +165,7 @@ export function PurchasesPage() {
               <ShoppingBag className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold font-display">Minhas Compras</h1>
+              <h1 className="flex items-center gap-2 text-2xl font-bold font-display">Minhas Compras <UnreadDot show={Boolean(unread?.buyer)} /></h1>
               <p className="text-sm text-muted-foreground">Acompanhe o status dos seus pedidos, entregas e suporte.</p>
             </div>
           </div>
@@ -447,7 +451,7 @@ export function PurchasesPage() {
 
                                 <Button asChild size="sm">
                                   <Link to="/pedido/$orderId" params={{ orderId: order.id }}>
-                                    Acompanhar pedido <ChevronRight className="h-4 w-4" />
+                                    Acompanhar pedido <UnreadDot show={order.order_items.some((item: any) => unread?.products.includes(item.product_id))} /> <ChevronRight className="h-4 w-4" />
                                   </Link>
                                 </Button>
                               </div>

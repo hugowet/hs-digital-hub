@@ -23,6 +23,12 @@ export function AccountNotificationListener() {
         .on("postgres_changes", { event: "*", schema: "public", table: "account_notifications", filter: `user_id=eq.${data.user.id}` }, (payload) => {
           void qc.invalidateQueries({ queryKey: ["account-notifications"] }); void qc.invalidateQueries({ queryKey: ["notification-count"] });
           if (payload.eventType === "INSERT") { const row = payload.new as { title: string; body: string }; toast.info(row.title, { description: row.body }); }
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "product_messages" }, () => {
+          void qc.invalidateQueries({ queryKey: ["message-unread"] });
+          void qc.invalidateQueries({ queryKey: ["seller-conversations"] });
+          void qc.invalidateQueries({ queryKey: ["seller-conversation"] });
+          void qc.invalidateQueries({ queryKey: ["buyer-order"] });
         }).subscribe();
     };
     void connect();
