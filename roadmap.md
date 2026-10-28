@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Origem na vitrine e pedidos Amazon — 28/10
+- [x] Trocar somente rótulos públicos CJ/Amazon por Produtos internacionais/Produtos nacionais, preservando identificação no Admin e filtros existentes.
+- [ ] Verificar filtros na vitrine e explicar o envio de pedidos Amazon e as condições para automação oficial, sem realizar compra.
+
 ## Fornecedores, grades Amazon e busca — 27/10
 - [x] Separar CJ/Amazon na vitrine e lista administrativa; navegador validou 24 CJ/13 Amazon e Admin com 13 Amazon.
 - [x] Preparar grades Amazon P/M/G/GG/XG e 34–44 em cadastro individual/lotes; 18 testes passaram. Sem disponibilidade oficial, grade bloqueada e novos vestuários com estoque zero; teste visual do importador bloqueado pela conta sem acesso à aba.
