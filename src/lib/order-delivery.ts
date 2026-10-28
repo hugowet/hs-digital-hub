@@ -1,13 +1,15 @@
 export const deliverySteps = [
-  ["confirmed", "Pedido confirmado"], ["preparing", "Em separação"],
-  ["packed", "Embalado"], ["shipped", "Despachado"],
-  ["arrived_in_city", "Chegou à cidade"], ["out_for_delivery", "Saiu para entrega"],
-  ["delivered", "Entregue"],
+  ["confirmed", "Pedido feito"], ["shipped", "Enviado"],
+  ["out_for_delivery", "Saiu para entrega"], ["delivered", "Entregue"],
 ] as const;
+
+// Older intermediate events map to the nearest Amazon-style step.
+const legacySteps: Record<string, string> = { preparing: "confirmed", packed: "confirmed", arrived_in_city: "shipped" };
 
 export function currentDeliveryStep(events: Array<{ status: string; created_at?: string }>, paid: boolean) {
   const latest = [...events].sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "")).at(-1);
-  return deliverySteps.findIndex(([status]) => status === (latest?.status ?? (paid ? "confirmed" : "")));
+  const status = latest ? (legacySteps[latest.status] ?? latest.status) : (paid ? "confirmed" : "");
+  return deliverySteps.findIndex(([s]) => s === status);
 }
 
 export function bufferedDeliveryDate(supplierDate: string | null | undefined) {

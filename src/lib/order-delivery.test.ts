@@ -24,8 +24,9 @@ describe("relatório de entrega", () => {
     expect(currentDeliveryStep([{ status: "confirmed" }], true)).toBe(0);
   });
   it("acompanha a etapa real mais recente até a entrega", () => {
-    expect(currentDeliveryStep([{ status: "delivered", created_at: "2026-10-28T22:00:00Z" }, { status: "packed", created_at: "2026-10-28T21:00:00Z" }], true)).toBe(6);
-    expect(currentDeliveryStep([{ status: "packed" }], true)).toBe(2);
+    expect(currentDeliveryStep([{ status: "delivered", created_at: "2026-10-28T22:00:00Z" }, { status: "shipped", created_at: "2026-10-28T21:00:00Z" }], true)).toBe(3);
+    expect(currentDeliveryStep([{ status: "packed" }], true)).toBe(0);
+    expect(currentDeliveryStep([{ status: "arrived_in_city" }], true)).toBe(1);
   });
   it("não confirma pedido não pago sem eventos", () => expect(currentDeliveryStep([], false)).toBe(-1));
   it("preserva CPF, número e bairro no relatório", () => {
