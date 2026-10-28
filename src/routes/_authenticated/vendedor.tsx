@@ -1,9 +1,8 @@
-// @ts-nocheck -- types out of sync with backend schema; see build log
-import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
-
+ // @ts-nocheck -- types out of sync with backend schema; see build log
+  import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
+  import { create someFileRoute, Link } from "@tanstack/react-router";
+  import { useQuery, useQueryClient } from "@tanstack/react-query";
+  import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getSellerShippingConfiguration,
   saveSellerOriginPostalCode,
@@ -11,7 +10,9 @@ import {
   saveOrderTracking,
 } from "@/lib/shipping.functions";
 
-  AlertCircle,
+ import {
+   AlertCircle,
+
   BadgeCheck,
   CheckCircle2,
   Clock,
