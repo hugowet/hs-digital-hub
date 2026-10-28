@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Origem na vitrine e pedidos Amazon — 28/10
+- [x] Trocar somente rótulos públicos CJ/Amazon por Produtos internacionais/Produtos nacionais, preservando identificação no Admin e filtros existentes.
+- [x] Novos nomes conferidos visualmente no celular e build OK; cliques no navegador de teste não alteraram seleção/URL, então a interação não foi validada. Conferido que Amazon não envia pedidos automaticamente: integração com auto_fulfill=false e processadores exclusivos CJ. Automação de compra Amazon depende de fornecimento/API oficialmente autorizados; nenhuma compra realizada.
+
 ## Fornecedores, grades Amazon e busca — 27/10
 - [x] Separar CJ/Amazon na vitrine e lista administrativa; navegador validou 24 CJ/13 Amazon e Admin com 13 Amazon.
 - [x] Preparar grades Amazon P/M/G/GG/XG e 34–44 em cadastro individual/lotes; 18 testes passaram. Sem disponibilidade oficial, grade bloqueada e novos vestuários com estoque zero; teste visual do importador bloqueado pela conta sem acesso à aba.

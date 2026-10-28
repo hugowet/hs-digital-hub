@@ -536,10 +536,10 @@ function Home() {
 
         <div className="mx-auto max-w-7xl px-4 py-6">
           <Tabs value={search.supplier ?? "all"} onValueChange={(value) => setSearch({ supplier: value === "cj" || value === "amazon" ? value : null })} className="mb-6">
-            <TabsList aria-label="Fornecedores da vitrine" className="h-auto flex w-full flex-wrap justify-start gap-1">
-              <TabsTrigger value="all">Todos os fornecedores</TabsTrigger>
-              <TabsTrigger value="cj">Produtos CJ Dropshipping</TabsTrigger>
-              <TabsTrigger value="amazon">Produtos Amazon</TabsTrigger>
+            <TabsList aria-label="Origem dos produtos" className="h-auto flex w-full flex-wrap justify-start gap-1">
+              <TabsTrigger value="all">Todos os produtos</TabsTrigger>
+              <TabsTrigger value="cj">Produtos internacionais</TabsTrigger>
+              <TabsTrigger value="amazon">Produtos nacionais</TabsTrigger>
             </TabsList>
           </Tabs>
           {/* CATEGORIAS EM DESTAQUE */}
@@ -591,7 +591,7 @@ function Home() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">
-                {activeCategory ? activeCategory.label : search.q ? "Resultados da busca" : search.supplier === "cj" ? "Produtos CJ Dropshipping" : search.supplier === "amazon" ? "Produtos Amazon" : "Seleção do dia"}
+                {activeCategory ? activeCategory.label : search.q ? "Resultados da busca" : search.supplier === "cj" ? "Produtos internacionais" : search.supplier === "amazon" ? "Produtos nacionais" : "Seleção do dia"}
               </h2>
               <p className="text-xs text-gray-500">
                 {filtered.length} produto{filtered.length === 1 ? "" : "s"} encontrado{filtered.length === 1 ? "" : "s"}
