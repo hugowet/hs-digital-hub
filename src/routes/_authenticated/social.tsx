@@ -49,6 +49,14 @@ function Avatar({ name, url, size = "h-11 w-11" }: { name: string; url?: string 
   return <span className={`grid ${size} shrink-0 place-items-center rounded-full bg-success/10 font-semibold text-success`} aria-hidden="true">{name.trim().slice(0, 1).toUpperCase() || <User className="h-5 w-5" />}</span>;
 }
 
+// Áudio: carrega antes de tocar e avisa quando o aparelho não suporta o formato.
+function VoiceNote({ url, onFail }: { url: string; onFail: () => void }) {
+  const [failed, setFailed] = useState(0);
+  if (failed > 1) return <a href={url} target="_blank" rel="noreferrer" className="text-sm font-medium text-primary underline">Abrir áudio</a>;
+  return <audio key={url + failed} controls preload="auto" playsInline src={url} className="w-52 max-w-full"
+    onError={() => { setFailed((f) => f + 1); onFail(); }} />;
+}
+
 // Bolha de mensagem: texto, áudio ou foto
 function MessageBubble({ msg, mine, mediaUrl, onEdit, onDelete }: {
   msg: any; mine: boolean; mediaUrl?: string;
@@ -64,7 +72,7 @@ function MessageBubble({ msg, mine, mediaUrl, onEdit, onDelete }: {
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"} group`}>
       <div className={`max-w-[85%] rounded-lg px-3 py-2 md:max-w-[70%] ${mine ? "bg-success/15" : "border bg-card"}`}>
-        {msg.kind === "audio" && url && <audio controls src={url} className="w-52 max-w-full" />}
+        {msg.kind === "audio" && url && <VoiceNote url={url} onFail={() => void media.refetch()} />}
         {msg.kind === "image" && url && <img src={url} alt="Foto enviada" className="max-h-60 rounded-md object-contain" onError={() => void media.refetch()} />}
         {msg.media_path && !url && (media.isError ? <Button size="sm" variant="outline" onClick={() => void media.refetch()}>Tentar abrir mídia</Button> : <Loader2 aria-label="Carregando mídia" className="h-6 w-6 animate-spin" />)}
         {msg.kind !== "audio" && msg.kind !== "image" && (
@@ -393,7 +401,7 @@ function HSSocialPage() {
     if (recording) { stopRecording(false); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-      const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].find((m) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(m)) ?? "";
+      const mime = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/aac", "audio/webm;codecs=opus", "audio/webm", "audio/ogg"].find((m) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(m)) ?? "";
       const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       const type = (recorder.mimeType || mime || "audio/webm").split(";")[0];
       chunksRef.current = [];
