@@ -363,7 +363,7 @@ function HSSocialPage() {
 
   async function uploadChatMedia(mediaFile: File, kind: "audio" | "image") {
     if (!roomId && !groupId) throw new Error("Selecione uma conversa.");
-    const ext = kind === "audio" ? (mediaFile.type.includes("mp4") ? "m4a" : mediaFile.type.includes("ogg") ? "ogg" : "webm") : (mediaFile.type === "image/png" ? "png" : "jpg");
+    const ext = kind === "audio" ? (mediaFile.(type.includes("mp4") || type.includes("aac")) ? "m4a" : mediaFile.type.includes("ogg") ? "ogg" : "webm") : (mediaFile.type === "image/png" ? "png" : "jpg");
     const path = `${user.id}/chat-${crypto.randomUUID()}.${ext}`;
     const upload = await supabase.storage.from("social-stories").upload(path, mediaFile, { contentType: mediaFile.type });
     if (upload.error) throw new Error("Não foi possível enviar a mídia.");
@@ -417,7 +417,7 @@ function HSSocialPage() {
         if (blob.size < 1000) { toast.info("Áudio muito curto."); return; }
         setBusy(true);
         try {
-          const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
+          const ext = (type.includes("mp4") || type.includes("aac")) ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
           await uploadChatMedia(new File([blob], `audio.${ext}`, { type }), "audio");
           toast.success("Áudio enviado");
         } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível enviar o áudio."); }
