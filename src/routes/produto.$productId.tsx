@@ -709,6 +709,7 @@ function ProductDetailPage() {
                   </fieldset>
                 )}
                 {/* Estoque e Quantidade */}
+                {maxAvailableStock === 0 && <p className="mt-4 text-sm font-semibold text-destructive" role="status">Produto indisponível no momento</p>}
                 {product.supplier === "amazon" && product.variations?.map((variation) => (
                   <fieldset key={variation.name} className="mt-4">
                     <legend className="mb-2 text-sm font-semibold">{variation.name}</legend>

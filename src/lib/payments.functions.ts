@@ -143,6 +143,9 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => checkoutSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { assertAmazonStock } = await import("@/lib/amazon-stock.server");
+    await assertAmazonStock(supabaseAdmin, data.items);
     const rpcArguments = {
       _items: data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
       _shipping_address: data.shippingAddress
@@ -318,6 +321,11 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     ]);
     if (!account) throw new Error("A loja ainda não conectou a carteira Mercado Pago.");
     if (!settings) throw new Error("O Mercado Pago ainda não foi configurado pelo administrador.");
+    const { data: orderItems, error: itemsError } = await context.supabase.from("order_items")
+      .select("product_id,quantity").eq("order_id", transaction.order_id).eq("store_id", transaction.store_id);
+    if (itemsError || !orderItems?.length) throw new Error("Não foi possível confirmar os produtos do pedido.");
+    const { assertAmazonStock } = await import("@/lib/amazon-stock.server");
+    await assertAmazonStock(supabaseAdmin, orderItems.map((item) => ({ productId: item.product_id, quantity: item.quantity })));
     const accessToken = await decryptSecret(account.access_token_encrypted);
     const platformAccessToken = await decryptSecret(settings.access_token_encrypted);
     const [platformUser, collectorUser] = await Promise.all([

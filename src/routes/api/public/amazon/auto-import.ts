@@ -22,7 +22,10 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
       .maybeSingle();
     if (error) throw error;
     if (!integration) return Response.json({ idle: true, reason: "Integração Amazon não configurada." });
-    if (!integration.auto_sync) return Response.json({ paused: true, reason: "Importação automática Amazon pausada pelo dono." });
+    // Stock protection stays active even when new imports are paused.
+    const { refreshAmazonStockBatch } = await import("@/lib/amazon-stock.server");
+    const stock = await refreshAmazonStockBatch(supabaseAdmin, integration.store_id);
+    if (!integration.auto_sync) return Response.json({ paused: true, stock });
 
     const mapping = (integration.product_mapping ?? {}) as Record<string, unknown>;
     const cursor = Number(mapping.auto_cursor ?? 0) || 0;
@@ -39,7 +42,7 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
           last_error: null,
         })
         .eq("id", integration.id);
-      return Response.json({ ...result, nextCursor });
+      return Response.json({ ...result, nextCursor, stock });
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Falha na importação automática Amazon.";
       await supabaseAdmin
