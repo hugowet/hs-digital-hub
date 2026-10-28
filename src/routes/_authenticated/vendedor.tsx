@@ -1253,13 +1253,20 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
               </p>
               <div className="space-y-1.5 bg-muted/30 p-3 rounded-lg border border-border/50">
                 {storeItems.map((item: any, idx: number) => (
-                  <div key={idx} className="flex gap-3 items-center text-sm">
-                    {showManualReport && (photos.find((p: any) => p.id === item.product_id)?.image_url ? <img src={photos.find((p: any) => p.id === item.product_id)?.image_url ?? ""} alt={item.title} loading="lazy" className="h-16 w-16 shrink-0 object-contain rounded-md bg-background" /> : <ImageIcon className="h-12 w-12 shrink-0 text-muted-foreground" />)}
-                    <span className="font-medium flex-1 min-w-0 break-words">
-                      {item.quantity}x {item.title}
-                    </span>
-                    <span className="text-muted-foreground">{brl(Number(item.unit_price))}</span>
-                  </div>
+                  (() => {
+                    const info: any = photos.find((p: any) => p.id === item.product_id);
+                    const href = showManualReport ? info?.source_url : null;
+                    const inner = <>
+                      {showManualReport && (info?.image_url ? <img src={info.image_url} alt={item.title} loading="lazy" className="h-16 w-16 shrink-0 object-contain rounded-md bg-background" /> : <ImageIcon className="h-12 w-12 shrink-0 text-muted-foreground" />)}
+                      <span className={`font-medium flex-1 min-w-0 break-words ${href ? "text-primary underline" : ""}`}>
+                        {item.quantity}x {item.title}{href ? " ↗" : ""}
+                      </span>
+                      <span className="text-muted-foreground">{brl(Number(item.unit_price))}</span>
+                    </>;
+                    return href
+                      ? <a key={idx} href={href} target="_blank" rel="noopener noreferrer" title="Abrir no site do fornecedor" className="flex gap-3 items-center text-sm rounded-md hover:bg-muted">{inner}</a>
+                      : <div key={idx} className="flex gap-3 items-center text-sm">{inner}</div>;
+                  })()
                 ))}
               </div>
             </div>
