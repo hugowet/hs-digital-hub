@@ -10,6 +10,14 @@ export function currentDeliveryStep(events: Array<{ status: string; created_at?:
   return deliverySteps.findIndex(([status]) => status === (latest?.status ?? (paid ? "confirmed" : "")));
 }
 
+export function bufferedDeliveryDate(supplierDate: string | null | undefined) {
+  if (!supplierDate || !/^\d{4}-\d{2}-\d{2}$/.test(supplierDate)) return null;
+  const date = new Date(`${supplierDate}T12:00:00Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== supplierDate) return null;
+  date.setUTCDate(date.getUTCDate() + 2);
+  return date.toISOString().slice(0, 10);
+}
+
 // Presentation only: order access remains protected by store ownership and RLS.
 export function showsManualPurchaseReport(email: string | null | undefined) {
   return email?.trim().toLowerCase() === "hugohug12ou@gmail.com";

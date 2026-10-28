@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertTrackableOrder, currentDeliveryStep, deliveryFields, deliveryReport, showsManualPurchaseReport } from "./order-delivery";
+import { assertTrackableOrder, bufferedDeliveryDate, currentDeliveryStep, deliveryFields, deliveryReport, showsManualPurchaseReport } from "./order-delivery";
 describe("relatório exclusivo da conta solicitada", () => {
   it("exibe para hugohug12ou@gmail.com", () => {
     expect(showsManualPurchaseReport("hugohug12ou@gmail.com")).toBe(true);
@@ -12,6 +12,14 @@ describe("relatório exclusivo da conta solicitada", () => {
   });
 });
 describe("relatório de entrega", () => {
+  it("acrescenta dois dias corridos à previsão real do fornecedor", () => {
+    expect(bufferedDeliveryDate("2026-11-02")).toBe("2026-11-04");
+    expect(bufferedDeliveryDate("2026-12-31")).toBe("2027-01-02");
+  });
+  it("não inventa previsão quando ausente ou inválida", () => {
+    expect(bufferedDeliveryDate(null)).toBeNull();
+    expect(bufferedDeliveryDate("2026-02-30")).toBeNull();
+  });
   it("código informado não inventa despacho", () => {
     expect(currentDeliveryStep([{ status: "confirmed" }], true)).toBe(0);
   });

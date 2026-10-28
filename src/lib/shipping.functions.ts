@@ -142,3 +142,14 @@ export const getBuyerOrderPhotos = createServerFn({ method: "POST" })
     const urls = new Map(paths.map((path, i) => [path, signed?.data?.[i]?.signedUrl]));
     return (products ?? []).map(p => ({ id: p.id, image_url: p.image_url ? (/^(https?:\/\/|\/)/.test(p.image_url) ? p.image_url : urls.get(p.image_url) ?? null) : null }));
   });
+
+export const saveSellerDeliveryEstimate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ storeId: z.string().uuid(), orderId: z.string().uuid(), supplierDate: z.string().date() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("save_seller_delivery_estimate", {
+      _store_id: data.storeId, _order_id: data.orderId, _date: data.supplierDate,
+    });
+    if (error) throw error;
+    return { ok: true };
+  });
