@@ -24,21 +24,81 @@ const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
 /** Categorias varridas automaticamente (produtos nacionais vendidos na Amazon BR). */
 export const AMAZON_AUTO_KEYWORDS: { keyword: string; hint: string }[] = [
   { keyword: "fone de ouvido bluetooth", hint: "eletronicos-gadgets" },
-  { keyword: "caixa de som bluetooth", hint: "eletronicos-gadgets" },
-  { keyword: "smartwatch", hint: "eletronicos-gadgets" },
-  { keyword: "carregador turbo usb c", hint: "eletronicos-gadgets" },
   { keyword: "air fryer", hint: "casa-setup" },
-  { keyword: "organizador cozinha", hint: "casa-setup" },
-  { keyword: "luminária led", hint: "casa-setup" },
   { keyword: "mochila executiva", hint: "moda" },
   { keyword: "kit skincare", hint: "beleza" },
   { keyword: "suplemento whey", hint: "esporte" },
+  { keyword: "caixa de som bluetooth", hint: "eletronicos-gadgets" },
+  { keyword: "organizador cozinha", hint: "casa-setup" },
+  { keyword: "tênis masculino", hint: "moda" },
+  { keyword: "protetor solar", hint: "beleza" },
+  { keyword: "creatina", hint: "esporte" },
+  { keyword: "smartwatch", hint: "eletronicos-gadgets" },
+  { keyword: "luminária led", hint: "casa-setup" },
+  { keyword: "tênis feminino", hint: "moda" },
+  { keyword: "sérum vitamina c", hint: "beleza" },
+  { keyword: "garrafa academia", hint: "esporte" },
+  { keyword: "carregador turbo usb c", hint: "eletronicos-gadgets" },
+  { keyword: "fita led", hint: "casa-setup" },
+  { keyword: "chinelo", hint: "moda" },
+  { keyword: "perfume", hint: "beleza" },
+  { keyword: "halteres", hint: "esporte" },
+  { keyword: "power bank", hint: "eletronicos-gadgets" },
+  { keyword: "panela antiaderente", hint: "casa-setup" },
+  { keyword: "relógio masculino", hint: "moda" },
+  { keyword: "máscara capilar", hint: "beleza" },
+  { keyword: "elástico exercício", hint: "esporte" },
+  { keyword: "fone tws", hint: "eletronicos-gadgets" },
+  { keyword: "cafeteira", hint: "casa-setup" },
+  { keyword: "óculos de sol", hint: "moda" },
+  { keyword: "kit maquiagem", hint: "beleza" },
+  { keyword: "tapete yoga", hint: "esporte" },
+  { keyword: "mouse sem fio", hint: "eletronicos-gadgets" },
+  { keyword: "liquidificador portátil", hint: "casa-setup" },
+  { keyword: "bolsa feminina", hint: "moda" },
+  { keyword: "prancha cabelo", hint: "beleza" },
+  { keyword: "corda de pular", hint: "esporte" },
+  { keyword: "teclado gamer", hint: "eletronicos-gadgets" },
+  { keyword: "mop giratório", hint: "casa-setup" },
+  { keyword: "carteira masculina", hint: "moda" },
+  { keyword: "barbeador elétrico", hint: "beleza" },
+  { keyword: "bicicleta ergométrica", hint: "esporte" },
+  { keyword: "headset gamer", hint: "eletronicos-gadgets" },
+  { keyword: "aspirador vertical", hint: "casa-setup" },
+  { keyword: "camiseta masculina", hint: "moda" },
+  { keyword: "hidratante corporal", hint: "beleza" },
+  { keyword: "luva academia", hint: "esporte" },
+  { keyword: "webcam full hd", hint: "eletronicos-gadgets" },
+  { keyword: "garrafa térmica", hint: "casa-setup" },
+  { keyword: "legging feminina", hint: "moda" },
+  { keyword: "escova de dente elétrica", hint: "beleza" },
+  { keyword: "pré treino", hint: "esporte" },
+  { keyword: "suporte celular carro", hint: "eletronicos-gadgets" },
+  { keyword: "jogo de facas", hint: "casa-setup" },
+  { keyword: "cabo usb c", hint: "eletronicos-gadgets" },
+  { keyword: "umidificador", hint: "casa-setup" },
+  { keyword: "ring light", hint: "eletronicos-gadgets" },
+  { keyword: "ventilador portátil", hint: "casa-setup" },
+  { keyword: "tripé celular", hint: "eletronicos-gadgets" },
+  { keyword: "organizador guarda roupa", hint: "casa-setup" },
+  { keyword: "echo dot", hint: "eletronicos-gadgets" },
+  { keyword: "kit potes herméticos", hint: "casa-setup" },
+  { keyword: "fire tv stick", hint: "eletronicos-gadgets" },
+  { keyword: "tapete banheiro", hint: "casa-setup" },
+  { keyword: "câmera wifi segurança", hint: "eletronicos-gadgets" },
+  { keyword: "jogo de cama", hint: "casa-setup" },
+  { keyword: "lâmpada inteligente", hint: "eletronicos-gadgets" },
+  { keyword: "travesseiro", hint: "casa-setup" },
+  { keyword: "hub usb", hint: "eletronicos-gadgets" },
+  { keyword: "mixer", hint: "casa-setup" },
+  { keyword: "ssd externo", hint: "eletronicos-gadgets" },
+  { keyword: "escova secadora", hint: "casa-setup" },
 ];
 
-// Rodada a cada 10 minutos: 1 categoria por vez, até 10 produtos por rodada.
-const MAX_CATEGORIES_PER_RUN = 1;
-const MAX_TOTAL_PER_RUN = 10;
-const PER_CATEGORY_TARGET = 10;
+// Rodada a cada 10 minutos: 2 buscas por vez, até 24 produtos novos por rodada.
+const MAX_CATEGORIES_PER_RUN = 2;
+const MAX_TOTAL_PER_RUN = 24;
+const PER_CATEGORY_TARGET = 48;
 
 /** Piso de preço coerente: abaixo disso, sem oferta comprovada, é sinal de golpe. */
 const MIN_TRUSTWORTHY_COST = 15;
@@ -126,11 +186,15 @@ async function scrapePage(url: string, formats: unknown[]) {
   return json?.data && typeof json.data === "object" ? json.data : json;
 }
 
-async function searchCategoryWinners(keyword: string, target: number): Promise<TrendCandidate[]> {
+async function searchCategoryWinners(keyword: string, target: number, cycle = 0): Promise<TrendCandidate[]> {
   const pages = 3;
+  // Each full keyword cycle goes deeper (pages 1-3, 4-6, ... up to 15) and
+  // alternates best-seller / review ordering so dedupe never starves the robot.
+  const firstPage = ((cycle % 5) * pages) + 1;
+  const sort = cycle % 2 === 0 ? "" : "&s=review-rank";
   const encoded = encodeURIComponent(keyword);
   const urls = Array.from({ length: pages }, (_, i) =>
-    `https://www.amazon.com.br/s?k=${encoded}${i > 0 ? `&page=${i + 1}` : ""}`,
+    `https://www.amazon.com.br/s?k=${encoded}${sort}&page=${firstPage + i}`,
   );
   const responses = await Promise.allSettled(
     urls.map((url) =>
@@ -270,7 +334,7 @@ export async function runAmazonAutoImport(
   );
 
   // 1) Busca vencedores por categoria (em paralelo entre categorias)
-  const perCategory = await Promise.allSettled(batch.map((b) => searchCategoryWinners(b.keyword, PER_CATEGORY_TARGET)));
+  const perCategory = await Promise.allSettled(batch.map((b) => searchCategoryWinners(b.keyword, PER_CATEGORY_TARGET, Math.floor((cursor + MAX_CATEGORIES_PER_RUN - 1) / keywords.length))));
   const candidates: TrendCandidate[] = [];
   perCategory.forEach((res, i) => {
     result.scanned++;
