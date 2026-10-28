@@ -35,7 +35,7 @@ import {
 import { useCart } from "@/lib/cart";
 import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
-import { normalizeCatalogSearch } from "@/lib/catalog-search";
+import { catalogSearchGroups, normalizeCatalogSearch } from "@/lib/catalog-search";
 
 export function SiteHeader({
   query = "",
@@ -92,11 +92,12 @@ export function SiteHeader({
   const matches = useMemo(() => {
     const raw = normalizeCatalogSearch(localQuery ?? "");
     if (!raw || raw.length < 2) return [];
-    const words = raw.split(/\s+/).filter(Boolean);
+    const groups = catalogSearchGroups(raw);
+    if (!groups.length) return [];
     return suggestions
       .filter((item) => {
         const text = normalizeCatalogSearch(`${item.title} ${item.category}`);
-        return words.every((w) => text.includes(w));
+        return groups.every((g) => g.some((w) => text.includes(w)));
       })
       .slice(0, 6);
   }, [localQuery, suggestions]);
