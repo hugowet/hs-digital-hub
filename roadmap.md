@@ -1,5 +1,11 @@
 # HS Digital — MVP
 
+## Avisos e reprodução — 28/10
+- [ ] Mostrar respostas não lidas para comprador e vendedor com pontinho vermelho.
+- [ ] Pausar áudio anterior ao ouvir outro ou começar uma gravação na HS Social.
+- [ ] Impedir vídeos HS Trends de tocar fora da tela, ao sair ou em segundo plano.
+- [ ] Executar testes e conferir os fluxos disponíveis na prévia.
+
 ## Chat, filtros e voltar — 28/10
 - [x] Recolher as mensagens do pedido em uma janela “Fale com o vendedor”, preservando envio e respostas no Seller Center.
 - [x] Posicionar filtros compactos abaixo das categorias, com internacional roxo e nacional verde permanentes; acrescentar “Mais vendidos” à ordenação existente. Posição e cores conferidas no celular; catálogo paginado preservado e lista memorizada.
