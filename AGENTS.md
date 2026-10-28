@@ -26,7 +26,7 @@
 - A geração de Pix exige CPF do pagador e bloqueia autopagamento quando comprador e recebedor usam a mesma conta Mercado Pago.
 - Pedidos só podem ser cancelados antes de iniciar uma cobrança; o cancelamento é feito no servidor, devolve estoque e preserva o histórico financeiro.
 - Pagamentos iniciados são reconciliados com o Mercado Pago pela página do pedido, além do webhook assinado, para recuperar avisos atrasados.
-- Supplier products use stable provider variant IDs; CJ USD costs are converted with the latest validated BCB USD/BRL selling rate before applying margin; CJ full-catalog imports use a persistent bounded queue; Dropi catalog contracts use admin-configured server-only mappings with SSRF-safe URLs; paid orders enter an idempotent fulfillment queue; all supplier credentials stay server-only.
+- Supplier variants keep stable IDs; CJ USD uses validated BCB selling rates before margin. CJ imports use a bounded interest-filtered, category-balanced queue, never invented popularity; stock sync stays separate. Dropi uses server-only mappings and SSRF-safe URLs; paid orders use idempotent fulfillment; credentials stay server-only.
 - Catalog lists use cover-only paginated SSR DTOs; details share a prefetched Query cache. Supplier synchronization never runs on storefront load.
 - CJ translation jobs send an explicitly authorized MyMemory contact server-side and reserve an atomic conservative identified byte budget shared with anonymous usage; retain SHA-256 cache, leases, deferrals and per-product progress, with no paid fallback or storefront calls.
 - Catalog search intersects synonyms/attributes over indexed title, descriptions, specs and category; supplier filters precede pagination and persist in URL/cache; admin uses exact counts.
@@ -42,7 +42,7 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Cart, orders, games, seller tools, and administration live under the authenticated route gate so logout blocks every private surface.
 - Public mutations revalidate identity; signed-out users see a login notice.
 - Games and game coupons are buyer-only on both UI and server. Arcade sessions are single-use, coin awards are server-capped, 10% shipping coupons are issued atomically every 1,000 coins, and free shipping is limited to once per user per month.
-- Social media/presence are participant-scoped; avatars use signed URLs. Presence/pins use RPCs; receipts require visible chats; one root listener handles alerts. Admin Club is free. Calls serialize SDP before ICE, avoid joining recipient listeners, and track WebRTC connection.
+- Social media/presence are participant-scoped; avatars are signed. Receipts require visible chats; root listener handles alerts/unread dots. Voice notes interrupt playback/recording; Trends guards visibility and play teardown. Admin Club is free; calls serialize SDP before ICE without recipient listeners.
 - Reviews use paid-order-verified RPCs and owner-private, server-signed photos.
 - Radio shares one provider; Club suppresses HS announcements. Club Pix uses CPF-validated direct payments, QR/copy-paste and owner-bound API reconciliation plus signed webhooks; browser writes cannot grant access. Installability is manifest-only.
 - Sitemap follows explicit route decisions and paginated public reads; private subtrees are excluded and failures never emit partial XML.
