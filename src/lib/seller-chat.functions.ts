@@ -129,20 +129,22 @@ export const listSellerChatMessages = createServerFn({ method: "GET" })
     const isParticipant = conversation.buyer_id === userId || (conversation as any).stores?.owner_id === userId;
     if (!isParticipant) throw new Error("Você não participa desta conversa.");
 
-    const { data: messages } = await supabase
+    const { data: messages, error: messagesError } = await supabase
       .from("product_messages")
       .select("id, sender_id, body, created_at")
       .eq("conversation_id", data.conversationId)
       .order("created_at", { ascending: true })
       .limit(200);
+    if (messagesError) throw new Error("Não foi possível ler as mensagens.");
 
     // Marca como lidas as mensagens enviadas pela outra parte.
-    await supabase
+    const { error: readError } = await supabase
       .from("product_messages")
       .update({ read_at: new Date().toISOString() })
       .eq("conversation_id", data.conversationId)
       .neq("sender_id", userId)
       .is("read_at", null);
+    if (readError) throw new Error("Não foi possível confirmar a leitura das mensagens.");
 
     return (messages ?? []).map((m) => ({ id: m.id, senderId: m.sender_id, body: m.body, createdAt: m.created_at }));
   });

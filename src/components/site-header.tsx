@@ -36,6 +36,8 @@ import { useCart } from "@/lib/cart";
 import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { catalogSearchGroups, normalizeCatalogSearch } from "@/lib/catalog-search";
+import { useMessageUnread } from "@/hooks/use-message-unread";
+import { UnreadDot } from "@/components/unread-dot";
 
 declare module "@tanstack/react-router" {
   interface HistoryState { hsMobileMenu?: boolean }
@@ -83,6 +85,8 @@ export function SiteHeader({
     window.requestAnimationFrame(() => window.scrollTo({ top: menuScroll.current, behavior: "instant" }));
   };
   const [signedIn, setSignedIn] = useState(false);
+  const [messageUserId, setMessageUserId] = useState<string | null>(null);
+  const { data: chatUnread } = useMessageUnread(messageUserId);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBuyer, setIsBuyer] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -137,6 +141,7 @@ export function SiteHeader({
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       setSignedIn(!!data.user);
+      setMessageUserId(data.user?.id ?? null);
       if (data.user) {
         const { data: roles } = await supabase
           .from("user_roles")
@@ -165,6 +170,7 @@ export function SiteHeader({
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
         setSignedIn(!!session?.user);
+        setMessageUserId(session?.user.id ?? null);
         if (!session?.user) {
           setIsAdmin(false);
           setIsBuyer(false);
@@ -453,7 +459,7 @@ export function SiteHeader({
             <span className="ml-auto flex items-center gap-2">
               <Store className="h-4 w-4" />
               <Link to="/vendedor" className="hover:text-white">
-                Venda na HS Digital
+                Venda na HS Digital <UnreadDot show={Boolean(chatUnread?.seller)} />
               </Link>
             </span>
           </div>
@@ -490,7 +496,7 @@ export function SiteHeader({
                   className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
                 >
                   <ShoppingBag className="h-4 w-4" />
-                  Minhas compras
+                  Minhas compras <UnreadDot show={Boolean(chatUnread?.buyer)} />
                 </Link>
                 {isBuyer && (
                   <Link
