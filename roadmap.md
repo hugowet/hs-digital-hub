@@ -1,5 +1,8 @@
 # HS Digital — MVP
 
+## Estoque Amazon — 28/10
+- [ ] Detectar indisponibilidade na importação, revisar catálogo em lotes programados e bloquear checkout sem confirmação atual; manter variantes sem confirmação bloqueadas.
+
 ## Varredura cirúrgica — 28/10
 - [x] Corrigir fila CJ que abandonava itens após os primeiros 24 e selecionar cotação da loja/produto certo; remover atualização automática de todas as páginas do catálogo. Banco sem pressão (47% memória, 13/60 conexões); preços/pagamentos preservados; testes passaram.
 - [ ] Voltar migrado para histórico do roteador com sentinela por gesto e regras testadas; validação visual bloqueada porque módulos da prévia não terminam de carregar, mesmo após recuperação e teste novo de 120 segundos. Não declarar comportamento nativo homologado.
