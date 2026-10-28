@@ -29,7 +29,8 @@ function balancedArray(html: string, from: number): string {
  * become this product's photos. Falls back to the single main image.
  */
 export function amazonHiResFromHtml(html: string): string[] {
-  const initial = html.match(/['"]colorImages['"]\s*:\s*\{\s*['"]initial['"]\s*:\s*\[/);
+  // Amazon writes either `'initial': [...]` or `'initial': A.$.parseJSON('[...]')`.
+  const initial = html.match(/['"]colorImages['"]\s*:\s*\{\s*['"]initial['"]\s*:\s*(?:[\w.$]+\(\s*['"])?\[/);
   if (initial?.index !== undefined) {
     const arr = balancedArray(html, initial.index + initial[0].length - 1);
     const list = collectHiRes(arr);
