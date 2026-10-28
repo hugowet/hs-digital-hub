@@ -334,7 +334,7 @@ export async function runAmazonAutoImport(
   );
 
   // 1) Busca vencedores por categoria (em paralelo entre categorias)
-  const perCategory = await Promise.allSettled(batch.map((b) => searchCategoryWinners(b.keyword, PER_CATEGORY_TARGET, Math.floor((cursor + MAX_CATEGORIES_PER_RUN - 1) / keywords.length))));
+  const perCategory = await Promise.allSettled(batch.map((b) => searchCategoryWinners(b.keyword, PER_CATEGORY_TARGET, Math.floor(cursor / keywords.length))));
   const candidates: TrendCandidate[] = [];
   perCategory.forEach((res, i) => {
     result.scanned++;

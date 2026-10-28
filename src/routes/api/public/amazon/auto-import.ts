@@ -33,7 +33,7 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
     const { runAmazonAutoImport, AMAZON_AUTO_KEYWORDS } = await import("@/lib/amazon-auto.server");
     try {
       const result = await runAmazonAutoImport(supabaseAdmin, integration.store_id, cursor);
-      const nextCursor = (cursor + 1) % AMAZON_AUTO_KEYWORDS.length;
+      const nextCursor = (cursor + 2) % (AMAZON_AUTO_KEYWORDS.length * 10);
       await supabaseAdmin
         .from("supplier_integrations")
         .update({
