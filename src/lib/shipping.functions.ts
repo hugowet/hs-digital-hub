@@ -109,12 +109,16 @@ export const getSellerOrderPhotos = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireOwnedStore(context, data.storeId);
     if (!data.productIds.length) return [];
-    const { data: products, error } = await context.supabase.from("products").select("id,image_url").eq("store_id", data.storeId).in("id", data.productIds);
+    const { data: products, error } = await context.supabase.from("products").select("id,image_url,specifications").eq("store_id", data.storeId).in("id", data.productIds);
     if (error) throw error;
     const paths = (products ?? []).flatMap(p => p.image_url && !/^(https?:\/\/|\/)/.test(p.image_url) ? [p.image_url] : []);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const signed = paths.length ? await supabaseAdmin.storage.from("product-images").createSignedUrls(paths, 3600) : null;
     if (signed?.error) throw signed.error;
     const urls = new Map(paths.map((path, i) => [path, signed?.data?.[i]?.signedUrl]));
-    return (products ?? []).map(p => ({ id: p.id, image_url: p.image_url ? urls.get(p.image_url) ?? p.image_url : null }));
+    return (products ?? []).map(p => {
+      const raw = (p.specifications as any)?.affiliate_url;
+      const source_url = typeof raw === "string" && /^https:\/\/(www\.)?amazon\.com\.br\//.test(raw) ? raw : null;
+      return { id: p.id, image_url: p.image_url ? urls.get(p.image_url) ?? p.image_url : null, source_url };
+    });
   });
