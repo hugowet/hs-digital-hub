@@ -56,11 +56,14 @@ export function SiteHeader({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const menuScroll = useRef(0);
+  const menuEntry = useRef(false);
 
   useEffect(() => router.history.subscribe(({ location, action }) => {
-    if (location.state.hsMobileMenu) return;
+    if (location.state.hsMobileMenu) { menuEntry.current = true; return; }
+    const wasMenu = menuEntry.current;
+    menuEntry.current = false;
     setOpen(false);
-    if (action.type === "BACK") {
+    if (wasMenu && action.type === "BACK") {
       const scroll = menuScroll.current;
       window.requestAnimationFrame(() => window.scrollTo({ top: scroll, behavior: "instant" }));
     }
