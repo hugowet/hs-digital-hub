@@ -29,10 +29,10 @@
 - Catalog lists use cover-only paginated SSR DTOs; details share a prefetched Query cache. Supplier synchronization never runs on storefront load.
 - CJ translation jobs send an explicitly authorized MyMemory contact server-side and reserve an atomic conservative identified byte budget shared with anonymous usage; retain SHA-256 cache, leases, deferrals and per-product progress, with no paid fallback or storefront calls.
 - Catalog search intersects synonyms/attributes over indexed title, descriptions, specs and category; supplier filters precede pagination and persist in URL/cache; admin uses exact counts.
-- Amazon size templates are unconfirmed, not stock or official variants; apparel imports stay stock-zero pending supplier confirmation.
+- Amazon options use a shared parser; templates and labels never confirm stock. Apparel stays stock-zero pending supplier confirmation.
 - Physical checkout uses short-lived, buyer-bound server quotes per store; CJ quotes are converted from USD and own-stock products use each seller's Melhor Envio OAuth account, while platform commission never applies to shipping.
 - CJ base prices have a database cost/markup/commission floor; CEP quotes store protected net targets and exact costs, with a transaction trigger rejecting underfunded CJ orders. Freight is allocated once outside commission; payment fees remain unverified.
-- CJ cards/detail serialize visible quotes for saved CEP; cart reuses valid exact quotes and requires acceptance of changes. Official variants, server-priced add-ons and atomic profit/quote guards remain authoritative.
+- CJ quotes drain a bounded queue, match product/store and reuse saved-CEP quotes in cart; changes need acceptance. Official variants, server add-ons and profit guards remain authoritative.
 - One delivery provider shares identity/address across cards and cart, avoiding duplicate auth listeners.
 - Savings use recorded comparable prices, never generated discounts, CJ base references or embedded freight.
 - CJ delivery exposes only Express and Premium mapped to confirmed services; buyer-bound quotes are reused across product and cart, Premium shows only its real difference, and first-purchase margin is in quoted prices and allocated atomically to the platform ledger, never re-added.
@@ -46,4 +46,5 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Radio shares one provider; Club suppresses HS announcements. Club Pix uses CPF-validated direct payments, QR/copy-paste and owner-bound API reconciliation plus signed webhooks; browser writes cannot grant access. Installability is manifest-only.
 - Sitemap follows explicit route decisions and paginated public reads; private subtrees are excluded and failures never emit partial XML.
 - Search schema omits destination-unconfirmed CJ offers and invented review statistics.
-- Unfiltered Todos pages a per-day ranking table precomputed by a scheduled SQL job (category-balanced, sales-first, Boa Vista day), because computing it per request over the full catalog timed out.
+- Todos pages a scheduled daily ranking (category-balanced, sales-first, Boa Vista day); per-request full-catalog ranking timed out.
+- Exit guard uses router history and a home-only gesture sentinel, preserving internal back navigation.
