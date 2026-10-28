@@ -2,6 +2,7 @@ import { parseHTML } from "linkedom";
 import { confirmedAmazonStock, extractAmazonAvailability } from "./amazon-availability";
 import { extractDescription, extractSpecs } from "./amazon.functions";
 import { extractAmazonOptions } from "./amazon-options";
+import { amazonHiResFromHtml } from "./amazon-image";
 import { AMAZON_DELIVERY_METHOD_TEXT, buildAmazonDescription, sanitizeAmazonSpecs } from "./amazon-text";
 
 export async function checkAmazonStock(supabaseAdmin: any, product: any) {
@@ -31,6 +32,12 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
   const availability = extractAmazonAvailability(html);
   const patch: Record<string, unknown> = {};
   // Restaura descrição completa / especificações / tamanhos e cores quando faltarem.
+  // Corrige a galeria: somente as fotos do próprio anúncio.
+  const ownImages = amazonHiResFromHtml(html).slice(0, 10);
+  if (ownImages.length) {
+    patch.image_url = ownImages[0];
+    patch.gallery_urls = ownImages.slice(1);
+  }
   try {
     const { document } = parseHTML(html);
     const desc = extractDescription(document);
