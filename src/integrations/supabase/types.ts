@@ -2015,6 +2015,7 @@ export type Database = {
           status: string
           store_id: string
           submitted_at: string | null
+          supplier_expected_delivery: string | null
           tracking_carrier: string | null
           tracking_code: string | null
           updated_at: string
@@ -2037,6 +2038,7 @@ export type Database = {
           status?: string
           store_id: string
           submitted_at?: string | null
+          supplier_expected_delivery?: string | null
           tracking_carrier?: string | null
           tracking_code?: string | null
           updated_at?: string
@@ -2059,6 +2061,7 @@ export type Database = {
           status?: string
           store_id?: string
           submitted_at?: string | null
+          supplier_expected_delivery?: string | null
           tracking_carrier?: string | null
           tracking_code?: string | null
           updated_at?: string
@@ -2929,6 +2932,10 @@ export type Database = {
       reserve_cj_identified_free_translation: {
         Args: { _bytes: number }
         Returns: boolean
+      }
+      save_seller_delivery_estimate: {
+        Args: { _date: string; _order_id: string; _store_id: string }
+        Returns: undefined
       }
       save_seller_tracking: {
         Args: {
