@@ -1,13 +1,15 @@
 # HS Digital — MVP
 
 ## Avisos e reprodução — 28/10
-- [ ] Verificar execuções reais do robô Amazon e motivo da contagem estagnada em 96, sem afrouxar critérios de segurança.
-- [ ] Corrigir escolha de tamanhos CJ/Amazon que abre produto não encontrado; mostrar somente variantes com estoque confirmado, sem promessa de dados instantâneos indisponíveis.
-- [ ] Melhorar seleção CJ para categorias de interesse (celulares, relógios, fones, calçados, ferramentas), usando sinais reais sem inventar tendências.
-- [ ] Mostrar respostas não lidas para comprador e vendedor com pontinho vermelho.
-- [ ] Pausar áudio anterior ao ouvir outro ou começar uma gravação na HS Social.
-- [ ] Impedir vídeos HS Trends de tocar fora da tela, ao sair ou em segundo plano.
-- [ ] Executar testes e conferir os fluxos disponíveis na prévia.
+- [x] Robô Amazon ativo a cada 10 minutos; última execução 22:50 UTC, última criação 10h UTC. Registrar resultados/repetidos/falhas nas próximas rodadas sem afrouxar filtros.
+- [ ] Confirmar causa exata da falta de novos produtos Amazon: histórico anterior não guardou resultados; depende da próxima rodada com diagnóstico atualizado.
+- [x] Tamanhos CJ só ativos/com estoque e confirmação antes de navegar; opções Amazon não confirmadas ocultas, estoque genérico 999 removido das novas conferências; testes passaram.
+- [x] Novas importações CJ filtradas por categorias relevantes e equilibradas, inclusive fila antiga; estoque/preços/pausa Amazon preservados. Produtos antigos não excluídos; próxima execução ainda não observada.
+- [x] Pontinho vermelho no chat do comprador, compras, menu e aba/conversas do vendedor; leitura só com conversa visível.
+- [x] Interromper áudio anterior ao ouvir outro ou iniciar gravação; pausa ao sair e esconder Social.
+- [x] Trends com guarda de visibilidade/interseção, limpeza ao sair e bloqueio de solicitações atrasadas; mídia inativa sem carregamento automático.
+- [x] 32 testes Vitest, 9 testes Social/CJ e 4 de opções Amazon passaram; prévia compilou sem erros.
+- [ ] Homologar conversa nas duas pontas, tamanhos e mídia nas telas reais: navegador não carregou sessão/HS Social e Trends apresentou apenas anúncio, sem vídeos para exercitar.
 
 ## Chat, filtros e voltar — 28/10
 - [x] Recolher as mensagens do pedido em uma janela “Fale com o vendedor”, preservando envio e respostas no Seller Center.
