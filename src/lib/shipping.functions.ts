@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { safeOrigin, sha256 } from "@/lib/mercado-pago.server";
+import { assertTrackableOrder } from "@/lib/order-delivery";
 
 const quoteSchema = z.object({
   postalCode: z.string().transform((value) => value.replace(/\D/g, "")).pipe(z.string().length(8)),
@@ -90,6 +91,10 @@ export const saveOrderTracking = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await requireOwnedStore(context, data.storeId);
+    const { data: order, error: orderError } = await context.supabase.from("orders")
+      .select("payment_status,order_items(store_id)").eq("id", data.orderId).maybeSingle();
+    if (orderError) throw orderError;
+    assertTrackableOrder(order, data.storeId);
     const { error } = await context.supabase.rpc("save_seller_tracking", {
       _store_id: data.storeId, _order_id: data.orderId,
       _code: data.trackingCode.trim(), _carrier: data.trackingCarrier?.trim() || "Transportadora",
