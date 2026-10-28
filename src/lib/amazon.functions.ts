@@ -5,6 +5,7 @@ import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { extractAmazonOptions } from "./amazon-options";
+import { extractAmazonAvailability } from "./amazon-availability";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
@@ -164,6 +165,7 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
       specs: sanitizeAmazonSpecs(specs),
       amazonCategory,
       variations: extractAmazonOptions(rawHtml),
+      availability: extractAmazonAvailability(rawHtml),
     };
   });
 

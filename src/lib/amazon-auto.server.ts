@@ -14,6 +14,7 @@ import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
 import { categorizeAmazonProduct } from "./amazon-category";
 import { amazonVariationTemplate } from "./amazon-variations";
 import { extractAmazonOptions } from "./amazon-options";
+import { extractAmazonAvailability, confirmedAmazonStock } from "./amazon-availability";
 import { calculateAmazonPrice } from "./pricing";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 
@@ -217,6 +218,7 @@ async function fetchProductData(url: string) {
     specs,
     amazonCategory,
     variations: extractAmazonOptions(rawHtml),
+    availability: extractAmazonAvailability(rawHtml),
   };
 }
 
@@ -329,7 +331,10 @@ export async function runAmazonAutoImport(
         is_active: true,
         category,
         variations,
-        stock: variations.length ? 0 : 999,
+        stock: confirmedAmazonStock(data.availability, Boolean(variations.length)),
+        supplier_availability: data.availability,
+        supplier_stock_checked_at: new Date().toISOString(),
+        supplier_confirmed_quantity: confirmedAmazonStock(data.availability, Boolean(variations.length)),
         supplier: "amazon",
         product_type: "physical",
         specifications: {
