@@ -2930,6 +2930,15 @@ export type Database = {
         Args: { _bytes: number }
         Returns: boolean
       }
+      save_seller_tracking: {
+        Args: {
+          _carrier: string
+          _code: string
+          _order_id: string
+          _store_id: string
+        }
+        Returns: undefined
+      }
       search_catalog_ids: {
         Args: {
           _category: string
