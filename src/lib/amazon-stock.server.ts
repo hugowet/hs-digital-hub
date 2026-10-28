@@ -4,6 +4,7 @@ import { extractDescription, extractSpecs } from "./amazon.functions";
 import { extractAmazonOptions, shouldReplaceOptions } from "./amazon-options";
 import { amazonHiResFromHtml } from "./amazon-image";
 import { AMAZON_DELIVERY_METHOD_TEXT, buildAmazonDescription, sanitizeAmazonSpecs } from "./amazon-text";
+import { amazonPricePatch, extractAmazonOfferPrice } from './amazon-price';
 
 export async function checkAmazonStock(supabaseAdmin: any, product: any) {
   const rawUrl = String(product.specifications?.affiliate_url ?? "");
@@ -31,6 +32,8 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
 
   const availability = extractAmazonAvailability(html);
   const patch: Record<string, unknown> = {};
+  const asin = rawUrl.match(/\/(?:dp|gp\/product)\/([a-z0-9]{10})/i)?.[1];
+  if (asin) Object.assign(patch, amazonPricePatch(extractAmazonOfferPrice(html, asin)));
   // Restaura descrição completa / especificações / tamanhos e cores quando faltarem.
   // Corrige a galeria: somente as fotos do próprio anúncio.
   const ownImages = amazonHiResFromHtml(html).slice(0, 10);
