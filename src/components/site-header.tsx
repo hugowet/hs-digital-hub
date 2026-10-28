@@ -358,7 +358,7 @@ export function SiteHeader({
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => navigate({ to: "/compras" })}>
                       <ShoppingBag className="mr-2 h-4 w-4" />
-                      Minhas compras
+                      Minhas compras <UnreadDot show={Boolean(chatUnread?.buyer)} />
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => navigate({ to: "/afiliados" })}>
                       <Share2 className="mr-2 h-4 w-4 text-emerald-500" />
@@ -382,7 +382,7 @@ export function SiteHeader({
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => navigate({ to: "/vendedor" })}>
                       <Store className="mr-2 h-4 w-4" />
-                      Seller Center
+                      Seller Center <UnreadDot show={Boolean(chatUnread?.seller)} />
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => navigate({ to: "/hs-bank" })}>
                       <Landmark className="mr-2 h-4 w-4" />
@@ -550,7 +550,7 @@ export function SiteHeader({
               className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
             >
               <Store className="h-4 w-4" />
-              Venda na HS Digital
+              Venda na HS Digital <UnreadDot show={Boolean(chatUnread?.seller)} />
             </Link>
 
             {/* ADICIONE ESTE BLOCO AQUI */}
