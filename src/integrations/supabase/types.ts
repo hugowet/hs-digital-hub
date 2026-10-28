@@ -1236,6 +1236,8 @@ export type Database = {
           stock: number
           store_id: string
           supplier: string | null
+          supplier_availability: string
+          supplier_confirmed_quantity: number
           supplier_content_version: number
           supplier_cost: number | null
           supplier_cost_currency: string | null
@@ -1247,6 +1249,7 @@ export type Database = {
           supplier_locale: string | null
           supplier_product_id: string | null
           supplier_sku: string | null
+          supplier_stock_checked_at: string | null
           supplier_title_original: string | null
           supplier_translation_version: number
           supplier_variant_id: string | null
@@ -1280,6 +1283,8 @@ export type Database = {
           stock?: number
           store_id: string
           supplier?: string | null
+          supplier_availability?: string
+          supplier_confirmed_quantity?: number
           supplier_content_version?: number
           supplier_cost?: number | null
           supplier_cost_currency?: string | null
@@ -1291,6 +1296,7 @@ export type Database = {
           supplier_locale?: string | null
           supplier_product_id?: string | null
           supplier_sku?: string | null
+          supplier_stock_checked_at?: string | null
           supplier_title_original?: string | null
           supplier_translation_version?: number
           supplier_variant_id?: string | null
@@ -1324,6 +1330,8 @@ export type Database = {
           stock?: number
           store_id?: string
           supplier?: string | null
+          supplier_availability?: string
+          supplier_confirmed_quantity?: number
           supplier_content_version?: number
           supplier_cost?: number | null
           supplier_cost_currency?: string | null
@@ -1335,6 +1343,7 @@ export type Database = {
           supplier_locale?: string | null
           supplier_product_id?: string | null
           supplier_sku?: string | null
+          supplier_stock_checked_at?: string | null
           supplier_title_original?: string | null
           supplier_translation_version?: number
           supplier_variant_id?: string | null

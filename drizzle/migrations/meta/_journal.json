@@ -435,6 +435,13 @@
       "when": 1793137490938,
       "tag": "0061_allow_supplier_shipment_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1793158647873,
+      "tag": "0062_amazon_verified_availability",
+      "breakpoints": true
     }
   ]
 }
