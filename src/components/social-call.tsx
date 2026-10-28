@@ -56,6 +56,7 @@ export function useSocialCalls(userId: string, myName: string) {
   function sendSignal(peerId: string, signal: Signal) {
     return sendQueue.current(() => sendTo(peerId, signal));
   }
+  function isCurrent(callId: string) { return callRef.current?.callId === callId; }
   async function flushIce(peerId: string, callId: string) {
     sdpSent.current = true;
     const candidates = outgoingIce.current.splice(0);
@@ -164,7 +165,7 @@ export function useSocialCalls(userId: string, myName: string) {
         if (c?.callId === callId && c.status !== "connected") { void sendTo(peerId, { type: "end", callId }).catch(() => {}); toast.info("Chamada não conectada ou não atendida."); cleanup(); }
       }, 45_000);
     } catch (error) {
-      if (callRef.current?.callId !== callId) return;
+      if (!isCurrent(callId)) return;
       toast.error(callErrorMessage(error)); cleanup();
     }
   }
