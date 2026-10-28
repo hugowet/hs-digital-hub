@@ -108,7 +108,6 @@ const catalogQueryOptions = (search: HomeSearch) =>
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
     staleTime: 5 * 60_000,
-    refetchInterval: 5 * 60_000,
     gcTime: 10 * 60_000,
   });
 

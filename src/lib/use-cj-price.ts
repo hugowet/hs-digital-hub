@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useDeliveryAddress } from "./delivery-context";
 import { quoteMarketplaceShipping } from "./shipping.functions";
 import { deliveryDateRange } from "./delivery-estimate";
+import { createQuoteBatcher } from "./quote-batcher";
 
 // Serialize visible-product quotes so catalog rendering never floods the supplier,
 // and batch all cards that become visible in the same moment into ONE server call.
@@ -18,43 +19,29 @@ type QuoteGroups = Array<{
 }>;
 type PendingQuote = {
   productId: string; quantity: number; postalCode: string;
-  resolve: (groups: QuoteGroups) => void; reject: (err: unknown) => void;
+  quoteFn: (args: { data: { postalCode: string; items: Array<{ productId: string; quantity: number }> } }) => Promise<QuoteGroups>;
 };
-let quoteQueue: Promise<unknown> = Promise.resolve();
-let pendingQuotes: PendingQuote[] = [];
-let flushScheduled = false;
+const queueQuote = createQuoteBatcher<PendingQuote, QuoteGroups>(async (batch) => {
+  const groups: QuoteGroups = [];
+  const byCep = new Map<string, PendingQuote[]>();
+  for (const item of batch) {
+    const items = byCep.get(item.postalCode) ?? [];
+    items.push(item);
+    byCep.set(item.postalCode, items);
+  }
+  for (const [postalCode, items] of byCep) {
+    const first = items[0];
+    if (!first) continue;
+    groups.push(...await first.quoteFn({ data: { postalCode, items: items.map(({ productId, quantity }) => ({ productId, quantity })) } }));
+  }
+  return groups;
+});
 
 function enqueueQuote(
   quoteFn: (args: { data: { postalCode: string; items: Array<{ productId: string; quantity: number }> } }) => Promise<QuoteGroups>,
   postalCode: string, productId: string, quantity: number,
 ): Promise<QuoteGroups> {
-  return new Promise((resolve, reject) => {
-    pendingQuotes.push({ productId, quantity, postalCode, resolve, reject });
-    if (flushScheduled) return;
-    flushScheduled = true;
-    setTimeout(() => {
-      flushScheduled = false;
-      const batch = pendingQuotes.splice(0, 24);
-      if (!batch.length) return;
-      const task = quoteQueue.catch(() => undefined).then(async () => {
-        const byCep = new Map<string, PendingQuote[]>();
-        for (const p of batch) {
-          const list = byCep.get(p.postalCode) ?? [];
-          list.push(p);
-          byCep.set(p.postalCode, list);
-        }
-        for (const [cep, items] of byCep) {
-          try {
-            const groups = await quoteFn({ data: { postalCode: cep, items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })) } });
-            for (const p of items) p.resolve(groups);
-          } catch (err) {
-            for (const p of items) p.reject(err);
-          }
-        }
-      });
-      quoteQueue = task;
-    }, 80);
-  });
+  return queueQuote({ productId, quantity, postalCode, quoteFn });
 }
 type DeliveryPrice = { price: number; shipping: number; service: string; quoteId: string;
   storeId: string; expiresAt: string; embeddedFreeShipping: boolean; postalCode: string;
@@ -85,17 +72,19 @@ export function useCjPrice(productId: string, quantity = 1, enabled = true, visi
     refetchOnReconnect: false,
     retry: false,
     queryFn: async ({ signal }) => {
-      const groups = await enqueueQuote(quote, postalCode!, productId, quantity);
+      if (!postalCode || !userId) throw new Error("Endereço não informado.");
+      const groups = await enqueueQuote(quote, postalCode, productId, quantity);
       if (signal.aborted || !current.current.visible || current.current.postalCode !== postalCode ||
           current.current.productId !== productId || current.current.quantity !== quantity ||
           qc.getQueryData(["delivery-user"]) !== userId) throw new Error("Consulta de entrega interrompida.");
-      const option = groups[0]?.options?.[0];
+      const group = groups.find((entry) => entry.options?.some((option) => option.itemPrices?.some((item) => item.product_id === productId)));
+      const option = group?.options?.find((entry) => entry.itemPrices?.some((item) => item.product_id === productId));
       const item = option?.itemPrices?.find((entry) => entry.product_id === productId);
       if (!item || !option) throw new Error("Não foi possível confirmar a entrega para o endereço salvo.");
-      if (!groups[0]?.storeId || !option.expiresAt || !option.id) throw new Error("Cotação incompleta.");
+      if (!group?.storeId || !option.expiresAt || !option.id) throw new Error("Cotação incompleta.");
       return { price: Number(item.unit_price), shipping: Number(option.amount), service: option.serviceName,
-        quoteId: option.id, storeId: groups[0].storeId, expiresAt: option.expiresAt,
-        embeddedFreeShipping: Boolean(option.embeddedFreeShipping), postalCode: postalCode!,
+        quoteId: option.id, storeId: group.storeId, expiresAt: option.expiresAt,
+        embeddedFreeShipping: Boolean(option.embeddedFreeShipping), postalCode,
         deliveryDaysMin: option.deliveryDaysMin, deliveryDaysMax: option.deliveryDaysMax,
         estimatedAt: new Date().toISOString() };
     },
