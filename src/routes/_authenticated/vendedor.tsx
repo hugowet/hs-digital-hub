@@ -1,6 +1,5 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { deliveryFields, deliveryReport, deliverySteps, showsManualPurchaseReport } from "@/lib/order-delivery";
-import { getSellerSaleProfits } from '@/lib/seller-profit.functions';
 import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1058,12 +1057,6 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
   });
 
   const orders = rawOrders.filter((o: any) => isOrderVisibleToSeller(o));
-  const loadProfits = useServerFn(getSellerSaleProfits);
-  const { data: profits = [], error: profitError } = useQuery({
-    queryKey: ['seller-sale-profits', storeId, orders.map((o: any) => o.id).join(',')],
-    enabled: showManualReport && orders.length > 0,
-    queryFn: () => loadProfits({ data: { storeId, orderIds: orders.map((o: any) => o.id).slice(0,500) } }),
-  });
 
   const productIds = [...new Set(orders.flatMap((o: any) => o.order_items.map((i: any) => i.product_id).filter(Boolean)))] as string[];
   const { data: photos = [] } = useQuery({
@@ -1205,7 +1198,6 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
         const fulfillment = getFulfillment(order.id);
         const storeItems = order.order_items.filter((i: any) => i.store_id === storeId);
         const storeTotal = storeItems.reduce((s: number, i: any) => s + Number(i.seller_amount), 0);
-        const profit = profits.find((p: any) => p.orderId === order.id);
         const addr = order.shipping_address || {};
         const fields = deliveryFields(addr);
         const isPaid = ["paid", "approved"].includes(order.payment_status);
@@ -1262,11 +1254,6 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
             </div>
 
             {/* Itens Comprados */}
-            {showManualReport && <section className="border-b border-border pb-4 space-y-2" aria-label="Lucro da venda">
-              <div className="flex flex-wrap justify-between gap-2"><span className="font-semibold">Lucro estimado</span><strong className={profit?.estimate?.profit < 0 ? 'text-destructive' : 'text-success'}>{profit?.estimate ? brl(profit.estimate.profit) : 'A confirmar'}</strong></div>
-              {profit && <dl className="grid grid-cols-2 gap-2 text-sm"><dt>Valor da venda</dt><dd className="text-right">{brl(profit.gross)}</dd><dt>Comissão registrada</dt><dd className="text-right">{brl(profit.commission)}</dd><dt>Custo dos produtos</dt><dd className="text-right">{profit.productCost == null ? 'Não registrado' : brl(profit.productCost)}</dd><dt>Frete do fornecedor</dt><dd className="text-right">{profit.estimate ? brl(profit.estimate.freight) : 'Não confirmado'}</dd></dl>}
-              <p className="text-xs text-muted-foreground">{profitError ? 'Não foi possível consultar os custos desta venda.' : !profit?.estimate ? 'Faltam custos históricos ou frete confirmado para calcular o lucro.' : 'Estimativa antes de taxas do pagamento, impostos e despesas não registradas.'}</p>
-            </section>}
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">
                 Produtos do Pedido ({storeItems.length})

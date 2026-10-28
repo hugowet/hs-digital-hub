@@ -20,7 +20,7 @@
 - Credenciais da plataforma e tokens OAuth dos vendedores ficam criptografados no banco e são lidos apenas no servidor; produtos digitais são liberados pela confirmação idempotente do pagamento.
 - Papéis de comprador/vendedor são criados por trigger a partir do cadastro e nunca são gravados pelo navegador, evitando elevação de privilégio.
 - Eventos de carrinho abandonado são persistidos apenas para usuários autenticados e protegidos por usuário, permitindo automações futuras sem expor contatos.
-- Product media stays private with server-signed temporary URLs, never permanent public links.
+- Product media stays private with temporary signed URLs.
 - Checkout locks deterministically with bounded waits.
 - Em lojas da própria conta Mercado Pago da plataforma, a cobrança omite `application_fee`; a comissão permanece no razão interno porque não existe repasse externo.
 - A geração de Pix exige CPF do pagador e bloqueia autopagamento quando comprador e recebedor usam a mesma conta Mercado Pago.
@@ -49,4 +49,4 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Search schema excludes unconfirmed CJ offers and invented reviews.
 - Todos uses scheduled sales-first, category-balanced Boa Vista daily ranking to avoid catalog timeouts.
 - Home exit uses a sentinel; menus use a same-URL entry consumed on close/replaced by navigation to keep Back local.
-- Order chat is a dialog over existing seller messages; closing never deletes messages.
+- Order chat preserves messages. Private card margins use one bounded, identity-scoped batch and server-verified store ownership.
