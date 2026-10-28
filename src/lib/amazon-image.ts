@@ -4,10 +4,14 @@ export function amazonFullResImage(url: string): string {
   return url.replace(/\._[^/]*_\.(jpg|jpeg|png|webp)$/i, ".$1");
 }
 
+const IMG = String.raw`"(https:\/\/[^"]+media-amazon\.com\/images\/I\/[^"]+)"`;
 function collectHiRes(chunk: string): string[] {
   const found: string[] = [];
-  for (const match of chunk.matchAll(/"(?:hiRes|large)":"(https:\/\/[^"]+media-amazon\.com\/images\/I\/[^"]+)"/g)) {
-    const url = amazonFullResImage(match[1]);
+  // One entry per photo: prefer "hiRes", use "large" only when hiRes is missing.
+  for (const entry of chunk.split(/(?=\{\s*"hiRes"\s*:)/)) {
+    const hi = entry.match(new RegExp(`"hiRes":${IMG}`)) ?? entry.match(new RegExp(`"large":${IMG}`));
+    if (!hi) continue;
+    const url = amazonFullResImage(hi[1]);
     if (!found.includes(url)) found.push(url);
   }
   return found;
