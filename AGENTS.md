@@ -42,7 +42,7 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Cart, orders, games, seller tools, and administration live under the authenticated route gate so logout blocks every private surface.
 - Public mutations revalidate identity; signed-out users see a login notice.
 - Games and game coupons are buyer-only on both UI and server. Arcade sessions are single-use, coin awards are server-capped, 10% shipping coupons are issued atomically every 1,000 coins, and free shipping is limited to once per user per month.
-- Social media/presence are participant-scoped; profile avatars persist centrally and authorized profile rows get short-lived server signing. Heartbeats/typing use RPCs; receipts require visible chats; one root listener handles alerts. Admin Club access is free; pins use RPCs.
+- Social media/presence are participant-scoped; avatars use signed URLs. Presence/pins use RPCs; receipts require visible chats; one root listener handles alerts. Admin Club is free. Calls serialize SDP before ICE, avoid joining recipient listeners, and track WebRTC connection.
 - Reviews use paid-order-verified RPCs and owner-private, server-signed photos.
 - Radio shares one provider; Club suppresses HS announcements. Club Pix uses CPF-validated direct payments, QR/copy-paste and owner-bound API reconciliation plus signed webhooks; browser writes cannot grant access. Installability is manifest-only.
 - Sitemap follows explicit route decisions and paginated public reads; private subtrees are excluded and failures never emit partial XML.
