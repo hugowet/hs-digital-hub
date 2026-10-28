@@ -6,6 +6,7 @@ import type { Database } from "@/integrations/supabase/types";
 import type { Product, ProductMedia } from "@/lib/catalog";
 import { catalogSearchGroups } from "@/lib/catalog-search";
 import { usesDailySelection } from "@/lib/storefront-selection";
+import { isPurchasableVariant } from "./variant-availability";
 
 const MEDIA_BUCKET = "product-images";
 
@@ -249,7 +250,7 @@ export const fetchProduct = createServerFn({ method: "GET" })
         .eq("supplier", "cj").or(`id.eq.${productRow.supplier_variant_parent_id ?? productRow.id},supplier_variant_parent_id.eq.${productRow.supplier_variant_parent_id ?? productRow.id}`)
         .order("supplier_variant_label");
       if (optionsError) throw optionsError;
-      return { ...signed, supplierOptions: (options ?? []).flatMap((option) => option.supplier_variant_label
+      return { ...signed, supplierOptions: (options ?? []).filter(isPurchasableVariant).flatMap((option) => option.supplier_variant_label
         ? [{ productId: option.id, label: option.supplier_variant_label, stock: option.stock }] : []) };
     }
     return signed;

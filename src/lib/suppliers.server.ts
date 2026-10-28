@@ -582,7 +582,7 @@ export async function processCjCatalogBatch(
           .limit(2000);
     if (queueError) throw queueError;
     const selectedRows = (queueRows ?? []).filter((row: any) => cjInterestGroup(row.category_path));
-    const category = activeCategory && cjInterestGroup(activeCategory.category_path) ? activeCategory : chooseCjCategory(
+    const category: any = activeCategory && cjInterestGroup(activeCategory.category_path) ? activeCategory : chooseCjCategory(
       selectedRows.filter((row: any) => row.status === "pending"),
       selectedRows.filter((row: any) => row.status === "completed"),
     );
