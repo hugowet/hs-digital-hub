@@ -1,10 +1,12 @@
 # HS Digital — MVP
 
 ## Lucro e preços dos fornecedores — 28/10
-- [ ] Correção de Hugo: margem no card de produto só para hugohug12ou@gmail.com; retirar de Pedidos e envios.
-- [ ] Digital solicitada novamente: verificar suporte seguro antes de qualquer alteração no acesso.
+- [x] Correção de Hugo: margem no card de produto só para hugohug12ou@gmail.com, verificada no servidor e limitada às próprias lojas; retirada de Pedidos e envios. Quatro testes passaram.
+- [ ] Digital: bloqueada por falta de suporte de passkeys no acesso hospedado; navegador não garante digital exclusiva (pode usar PIN/rosto). Entrada existente preservada.
 - [ ] Acompanhar aumentos e reduções de custos confirmados Amazon/CJ mantendo a regra de margem vigente e pedidos fechados intactos.
 - [ ] Testar cálculos, atualização de preços e visibilidade na conta solicitada.
+- [x] Margens: quatro testes; preços Amazon: três testes; precificação/CJ: doze testes passaram. Conferência automática Amazon agora atualiza custo/preço, CJ conserva fila existente.
+- [ ] Verificação visual da margem: prévia exibiu 32 cards, mas sessão não carregou e nenhum valor privado apareceu; não confirmado na conta real.
 
 ## Avisos e reprodução — 28/10
 - [x] Robô Amazon ativo a cada 10 minutos; última execução 22:50 UTC, última criação 10h UTC. Registrar resultados/repetidos/falhas nas próximas rodadas sem afrouxar filtros.
