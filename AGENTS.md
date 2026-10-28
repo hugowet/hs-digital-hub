@@ -15,12 +15,13 @@
 - Checkout eligibility comes from server-side order history, never browser state.
 - HS Bank mirrors records, not bank balances. Owner SQL snapshots non-binding credit estimates; no debt/payouts. Coupons require funded atomic identity-bound redemption preserving seller net.
 
-- O checkout registra o pedido atomicamente, reserva estoque e cobra cada loja separadamente pelo Mercado Pago; a comissão usa `application_fee` e toda confirmação depende de webhook assinado mais consulta à API.
+- Checkout reserves stock atomically; Mercado Pago splits stores with application_fee and verified webhooks/API.
+- Delivery fields persist atomically; tracking RPCs verify owner/payment, never infer progress; seller/buyer share milestones.
 - Credenciais da plataforma e tokens OAuth dos vendedores ficam criptografados no banco e são lidos apenas no servidor; produtos digitais são liberados pela confirmação idempotente do pagamento.
 - Papéis de comprador/vendedor são criados por trigger a partir do cadastro e nunca são gravados pelo navegador, evitando elevação de privilégio.
 - Eventos de carrinho abandonado são persistidos apenas para usuários autenticados e protegidos por usuário, permitindo automações futuras sem expor contatos.
 - Mídias de produtos ficam em armazenamento privado e são entregues por URLs temporárias geradas no servidor, evitando links públicos permanentes.
-- Checkout locks products deterministically with bounded waits.
+- Checkout locks deterministically with bounded waits.
 - Em lojas da própria conta Mercado Pago da plataforma, a cobrança omite `application_fee`; a comissão permanece no razão interno porque não existe repasse externo.
 - A geração de Pix exige CPF do pagador e bloqueia autopagamento quando comprador e recebedor usam a mesma conta Mercado Pago.
 - Pedidos só podem ser cancelados antes de iniciar uma cobrança; o cancelamento é feito no servidor, devolve estoque e preserva o histórico financeiro.
@@ -47,4 +48,4 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Sitemap follows explicit route decisions and paginated public reads; private subtrees are excluded and failures never emit partial XML.
 - Search schema omits destination-unconfirmed CJ offers and invented review statistics.
 - Todos pages a scheduled daily ranking (category-balanced, sales-first, Boa Vista day); per-request full-catalog ranking timed out.
-- Exit guard uses router history and a home-only gesture sentinel, preserving internal back navigation.
+- Exit guard uses router history and a home sentinel; internal back stays intact.
