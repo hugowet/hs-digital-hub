@@ -23,6 +23,13 @@ export function extractAmazonOptions(html: string): AmazonOptionGroup[] {
       // Selected option can be the only exposed variant on simplified pages.
       add(container.querySelector(".selection")?.textContent);
     }
+    if (!values.size) {
+      // Twister moderno: opções vêm no JSON "variationValues" do script da página.
+      const match = html.match(new RegExp(`"${dimension}_name"\\s*:\\s*\\[([^\\]]*)\\]`));
+      if (match?.[1]) {
+        for (const raw of match[1].match(/"((?:[^"\\]|\\.)*)"/g) ?? []) add(raw.slice(1, -1).replace(/\\"/g, '"'));
+      }
+    }
     if (values.size) groups.push({ name: name ?? dimension ?? "Opção", options: [...values], availability: "unconfirmed", source: "page" });
   }
   return groups;
