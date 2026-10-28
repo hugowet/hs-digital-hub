@@ -4,10 +4,14 @@ export function amazonFullResImage(url: string): string {
   return url.replace(/\._[^/]*_\.(jpg|jpeg|png|webp)$/i, ".$1");
 }
 
+const IMG = String.raw`"(https:\/\/[^"]+media-amazon\.com\/images\/I\/[^"]+)"`;
 function collectHiRes(chunk: string): string[] {
   const found: string[] = [];
-  for (const match of chunk.matchAll(/"(?:hiRes|large)":"(https:\/\/[^"]+media-amazon\.com\/images\/I\/[^"]+)"/g)) {
-    const url = amazonFullResImage(match[1]);
+  // One entry per photo: prefer "hiRes", use "large" only when hiRes is missing.
+  for (const entry of chunk.split(/(?=\{\s*"hiRes"\s*:)/)) {
+    const hi = entry.match(new RegExp(`"hiRes":${IMG}`)) ?? entry.match(new RegExp(`"large":${IMG}`));
+    if (!hi) continue;
+    const url = amazonFullResImage(hi[1]);
     if (!found.includes(url)) found.push(url);
   }
   return found;
@@ -29,7 +33,8 @@ function balancedArray(html: string, from: number): string {
  * become this product's photos. Falls back to the single main image.
  */
 export function amazonHiResFromHtml(html: string): string[] {
-  const initial = html.match(/['"]colorImages['"]\s*:\s*\{\s*['"]initial['"]\s*:\s*\[/);
+  // Amazon writes either `'initial': [...]` or `'initial': A.$.parseJSON('[...]')`.
+  const initial = html.match(/['"]colorImages['"]\s*:\s*\{\s*['"]initial['"]\s*:\s*(?:[\w.$]+\(\s*['"])?\[/);
   if (initial?.index !== undefined) {
     const arr = balancedArray(html, initial.index + initial[0].length - 1);
     const list = collectHiRes(arr);
