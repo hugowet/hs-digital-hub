@@ -2,21 +2,38 @@ import { parseHTML } from "linkedom";
 
 export type AmazonOptionGroup = { name: string; options: string[]; availability: "unconfirmed"; source: "page" };
 
+const order = (name: string) => { const i = ["Cor", "Tamanho", "Armazenamento", "Modelo"].indexOf(name); return i < 0 ? 9 : i; };
+
+/** Replace saved options when the page exposes more real choices (e.g. only one color saved). */
+export function shouldReplaceOptions(saved: unknown, fresh: AmazonOptionGroup[]) {
+  if (!fresh.length) return false;
+  const count = (g: unknown) => Array.isArray(g) ? g.reduce((n, x: any) => n + (Array.isArray(x?.options) ? x.options.length : 0), 0) : 0;
+  const broken = Array.isArray(saved) && saved.some((g: any) => g?.options?.some((o: string) => /^(B0[A-Z0-9]{8}|indexInDimList|defaultAsin|\/dp\/)/.test(o)));
+  return broken || count(fresh) > count(saved);
+}
+
 /** Extract actual page options; a swatch is NOT an inventory confirmation. */
 export function extractAmazonOptions(html: string): AmazonOptionGroup[] {
   if (!html) return [];
   const { document } = parseHTML(html);
   const groups: AmazonOptionGroup[] = [];
-  // Twister moderno: "variationValues" é a fonte mais limpa de tamanhos/cores.
+  // Twister moderno: "variationValues" é a fonte mais limpa de tamanhos/cores/capacidade etc.
   const vv = html.match(/"variationValues"\s*:\s*(\{[^{}]*\})/);
   if (vv) {
     try {
       const parsed = JSON.parse(vv[1]) as Record<string, unknown>;
-      const names: Record<string, string> = { size_name: "Tamanho", color_name: "Cor", style_name: "Modelo" };
-      for (const [key, label] of Object.entries(names)) {
-        const list = Array.isArray(parsed[key]) ? (parsed[key] as unknown[]).map((v) => String(v).trim()).filter((v) => v && v.length <= 80 && !/^selecione$/i.test(v)) : [];
+      const labels: Record<string, string> = {
+        color_name: "Cor", size_name: "Tamanho", style_name: "Modelo", pattern_name: "Estampa",
+        flavor_name: "Sabor", scent_name: "Fragrância", material_type: "Material", configuration: "Configuração",
+        item_package_quantity: "Quantidade por pacote", memory_storage_capacity: "Armazenamento",
+        number_of_items: "Quantidade de itens", edition: "Edição", platform_for_display: "Plataforma",
+      };
+      for (const [key, value] of Object.entries(parsed)) {
+        const list = Array.isArray(value) ? value.map((v) => String(v).trim()).filter((v) => v && v.length <= 80 && !/^selecione$/i.test(v)) : [];
+        const label = labels[key] ?? key.replace(/_name$/, "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
         if (list.length) groups.push({ name: label, options: [...new Set(list)], availability: "unconfirmed", source: "page" });
       }
+      groups.sort((a, b) => order(a.name) - order(b.name));
       if (groups.length) return groups;
     } catch { /* cai para leitura da página */ }
   }
