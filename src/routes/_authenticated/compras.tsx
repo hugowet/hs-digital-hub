@@ -18,7 +18,9 @@ import {
   Truck,
   XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { OrderPhoto, OrderTracking } from "@/components/order-tracking";
+import { getBuyerOrderPhotos } from "@/lib/shipping.functions";
 import { toast } from "sonner";
 
 import { SiteHeader } from "@/components/site-header";
@@ -49,6 +51,7 @@ export const Route = createFileRoute("/_authenticated/compras")({
 export function PurchasesPage() {
   const qc = useQueryClient();
   const cancelOrder = useServerFn(cancelUnpaidMarketplaceOrder);
+  const loadPhotos = useServerFn(getBuyerOrderPhotos);
 
   const [mainTab, setMainTab] = useState<"processadas" | "pendentes">("processadas");
   const [showMissions, setShowMissions] = useState(false);
@@ -61,6 +64,9 @@ export function PurchasesPage() {
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["my-purchases-detailed"],
     queryFn: async () => {
+      const { data: identity, error: identityError } = await supabase.auth.getUser();
+      if (identityError) throw identityError;
+      if (!identity.user) return [];
       const { data, error } = await supabase
         .from("orders")
         .select(
@@ -71,6 +77,8 @@ export function PurchasesPage() {
           payment_status,
           shipping_address,
           created_at,
+          order_tracking_events(status,note,created_at),
+          supplier_fulfillments(tracking_code,tracking_carrier,supplier_expected_delivery),
           order_items (
             id,
             title,
@@ -80,12 +88,35 @@ export function PurchasesPage() {
           )
         `,
         )
+        .eq("buyer_id", identity.user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
       return (data ?? []) as any[];
     },
+    refetchInterval: 15000,
   });
+
+  const productIds = [...new Set(orders.flatMap(order => order.order_items.map((item: any) => item.product_id).filter(Boolean)))] as string[];
+  const { data: photos = [] } = useQuery({
+    queryKey: ["buyer-order-photos", productIds.join(",")],
+    enabled: productIds.length > 0,
+    queryFn: async () => {
+      const batches = [];
+      for (let i = 0; i < productIds.length; i += 500) batches.push(await loadPhotos({ data: { productIds: productIds.slice(i, i + 500) } }));
+      return batches.flat();
+    },
+    staleTime: 30 * 60_000,
+    refetchInterval: 30 * 60_000,
+  });
+  useEffect(() => {
+    const refresh = () => { void qc.invalidateQueries({ queryKey: ["my-purchases-detailed"] }); };
+    const channel = supabase.channel(`buyer-purchases-${crypto.randomUUID()}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_tracking_events" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "supplier_fulfillments" }, refresh)
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [qc]);
 
   const handleSaveReview = () => {
     if (!reviewOrder) return;
@@ -284,7 +315,7 @@ export function PurchasesPage() {
         )}
 
         <div className="mt-8">
-          <div className="flex border-b border-border">
+          <div className="flex flex-wrap border-b border-border">
             <button
               onClick={() => setMainTab("processadas")}
               className={`flex items-center gap-2 border-b-2 px-6 py-3 font-semibold text-sm transition-colors ${
@@ -341,7 +372,7 @@ export function PurchasesPage() {
                       {processedOrders.map((order) => (
                         <article
                           key={order.id}
-                          className="surface-card overflow-hidden rounded-2xl border border-border p-6 shadow-sm"
+                          className="surface-card overflow-hidden rounded-md border border-border p-4 sm:p-6 shadow-sm"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
                             <div>
@@ -372,13 +403,13 @@ export function PurchasesPage() {
                           <Tabs defaultValue="pedido" className="mt-4">
                             <TabsList className="grid w-full grid-cols-3">
                               <TabsTrigger value="pedido" className="text-xs sm:text-sm">
-                                <Package className="mr-1.5 h-4 w-4" /> Detalhes do Pedido
+                                <Package className="mr-1.5 hidden h-4 w-4 sm:block" /> Produtos
                               </TabsTrigger>
                               <TabsTrigger value="rastreio" className="text-xs sm:text-sm">
-                                <Truck className="mr-1.5 h-4 w-4" /> Pedido a Caminho
+                                <Truck className="mr-1.5 hidden h-4 w-4 sm:block" /> Entrega
                               </TabsTrigger>
                               <TabsTrigger value="devolucao" className="text-xs sm:text-sm">
-                                <RotateCcw className="mr-1.5 h-4 w-4" /> Devolução e Garantia
+                                <RotateCcw className="mr-1.5 hidden h-4 w-4 sm:block" /> Garantia
                               </TabsTrigger>
                             </TabsList>
 
@@ -389,8 +420,9 @@ export function PurchasesPage() {
                                 </h4>
                                 <div className="divide-y divide-border rounded-xl border border-border bg-card p-3">
                                   {order.order_items.map((item: any) => (
-                                    <div key={item.id} className="flex items-center justify-between py-2 text-sm">
-                                      <div>
+                                    <div key={item.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
+                                      <OrderPhoto src={photos.find(photo => photo.id === item.product_id)?.image_url} title={item.title} />
+                                      <div className="min-w-0 flex-1">
                                         <p className="font-semibold text-foreground">{item.title}</p>
                                         <p className="text-xs text-muted-foreground">Quantidade: {item.quantity}</p>
                                       </div>
@@ -415,48 +447,15 @@ export function PurchasesPage() {
 
                                 <Button asChild size="sm">
                                   <Link to="/pedido/$orderId" params={{ orderId: order.id }}>
-                                    Ver Comprovante e Chat <ChevronRight className="h-4 w-4" />
+                                    Acompanhar pedido <ChevronRight className="h-4 w-4" />
                                   </Link>
                                 </Button>
                               </div>
                             </TabsContent>
 
                             <TabsContent value="rastreio" className="pt-4">
-                              <div className="rounded-xl border border-border bg-card p-4">
-                                <div className="flex items-center justify-between border-b border-border pb-3">
-                                  <div className="flex items-center gap-2">
-                                    <Truck className="h-5 w-5 text-primary" />
-                                    <span className="font-semibold text-sm">Status do Envio</span>
-                                  </div>
-                                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                                    Aguardando Envio / Em Separação
-                                  </span>
-                                </div>
-
-                                <div className="mt-4 space-y-3">
-                                  <div className="grid gap-2 sm:grid-cols-2 text-sm">
-                                    <div>
-                                      <p className="text-xs text-muted-foreground">Transportadora / Modo:</p>
-                                      <p className="font-medium text-foreground">Correios (PAC / SEDEX)</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-muted-foreground">Código de Rastreamento:</p>
-                                      <p className="text-xs italic text-muted-foreground">
-                                        O vendedor fornecerá o código assim que postar.
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  {order.shipping_address && (
-                                    <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
-                                      <span className="font-semibold text-foreground">Endereço de Entrega: </span>
-                                      {typeof order.shipping_address === "string"
-                                        ? order.shipping_address
-                                        : `${order.shipping_address.street || ""}, ${order.shipping_address.number || ""} - ${order.shipping_address.neighborhood || ""}, ${order.shipping_address.city || ""}/${order.shipping_address.state || ""} - CEP ${order.shipping_address.postal_code || ""}`}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
+                              <OrderTracking events={order.order_tracking_events ?? []} paid={true} fulfillments={order.supplier_fulfillments ?? []} />
+                              <Button asChild variant="outline" className="mt-4"><Link to="/pedido/$orderId" params={{ orderId: order.id }}>Detalhes e atendimento <ChevronRight className="h-4 w-4" /></Link></Button>
                             </TabsContent>
 
                             <TabsContent value="devolucao" className="pt-4">
@@ -573,9 +572,7 @@ export function PurchasesPage() {
                             </div>
 
                             <div className="mt-4 border-t border-border pt-3">
-                              <p className="text-xs text-muted-foreground">
-                                {order.order_items.map((i: any) => `${i.quantity}x ${i.title}`).join(" · ")}
-                              </p>
+                              <div className="space-y-3">{order.order_items.map((item: any) => <div key={item.id} className="flex items-center gap-3"><OrderPhoto src={photos.find(photo => photo.id === item.product_id)?.image_url} title={item.title} /><p className="min-w-0 text-sm">{item.quantity}x {item.title}</p></div>)}</div>
 
                               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                                 <Button
@@ -642,7 +639,7 @@ export function PurchasesPage() {
                           </div>
 
                           <div className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
-                            {order.order_items.map((i: any) => `${i.quantity}x ${i.title}`).join(" · ")}
+                            {order.order_items.map((item: any) => <div key={item.id} className="flex items-center gap-3 py-2"><OrderPhoto src={photos.find(photo => photo.id === item.product_id)?.image_url} title={item.title} /><span>{item.quantity}x {item.title}</span></div>)}
                           </div>
                         </article>
                       ))

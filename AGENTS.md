@@ -16,11 +16,11 @@
 - HS Bank mirrors records, not bank balances. Owner SQL snapshots non-binding credit estimates; no debt/payouts. Coupons require funded atomic identity-bound redemption preserving seller net.
 
 - Checkout reserves stock atomically; Mercado Pago splits stores with application_fee and verified webhooks/API.
-- Delivery persists atomically; tracking verifies owner/payment. Account-scoped report UI never grants order access or invents progress.
+- Delivery is atomic; tracking checks owner/payment and shares latest real events via Realtime/polling. Buyer photos verify purchases before signing; reports never grant access.
 - Credenciais da plataforma e tokens OAuth dos vendedores ficam criptografados no banco e são lidos apenas no servidor; produtos digitais são liberados pela confirmação idempotente do pagamento.
 - Papéis de comprador/vendedor são criados por trigger a partir do cadastro e nunca são gravados pelo navegador, evitando elevação de privilégio.
 - Eventos de carrinho abandonado são persistidos apenas para usuários autenticados e protegidos por usuário, permitindo automações futuras sem expor contatos.
-- Mídias de produtos ficam em armazenamento privado e são entregues por URLs temporárias geradas no servidor, evitando links públicos permanentes.
+- Product media stays private with server-signed temporary URLs, never permanent public links.
 - Checkout locks deterministically with bounded waits.
 - Em lojas da própria conta Mercado Pago da plataforma, a cobrança omite `application_fee`; a comissão permanece no razão interno porque não existe repasse externo.
 - A geração de Pix exige CPF do pagador e bloqueia autopagamento quando comprador e recebedor usam a mesma conta Mercado Pago.

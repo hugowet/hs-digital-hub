@@ -1,5 +1,13 @@
 # HS Digital — MVP
 
+## Rastreio e fotos em Minhas compras — 28/10
+- [x] Corrigir conflito de salvamento por pedido, loja e fornecedor; função aplicada e definição conferida.
+- [x] Implementar fotos e etapas reais em Minhas compras e no detalhe, com eventos ao vivo e recuperação a cada 15 segundos.
+- [x] Testar regras: 17 testes passaram e prévia compilou sem erros.
+- [x] Registrar previsão real do fornecedor no Seller Center da conta solicitada e mostrar dia/data estimada com dois dias corridos de segurança.
+- [ ] Conferir vendedor → comprador e aparência: navegador autenticado permaneceu em branco sem erro exposto; não homologado com pedido real.
+- [ ] Rastreio automático Amazon: depende de integração autorizada; código isolado não consulta eventos, vendedor ainda registra etapas e previsão.
+
 ## Chamadas HS Social — 28/10
 - [x] Corrigir negociação de áudio/vídeo, SDP antes de ICE, estado síncrono, envio sem inscrição no canal destinatário, encerramento e recuperação de reprodução; três testes passaram. Mensagens de áudio preservadas.
 - [ ] Validar chamadas nas duas pontas: prévia permanece em branco e módulos React não carregam mesmo após recuperação do cache; chamadas entre celulares/redes diferentes não homologadas e dependem do relay externo.

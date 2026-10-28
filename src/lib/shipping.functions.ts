@@ -122,3 +122,34 @@ export const getSellerOrderPhotos = createServerFn({ method: "POST" })
       return { id: p.id, image_url: p.image_url ? urls.get(p.image_url) ?? p.image_url : null, source_url };
     });
   });
+
+export const getBuyerOrderPhotos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ productIds: z.array(z.string().uuid()).max(500) }).parse(input))
+  .handler(async ({ data, context }) => {
+    if (!data.productIds.length) return [];
+    const { data: items, error } = await context.supabase.from("order_items")
+      .select("product_id,orders!inner(buyer_id)").eq("orders.buyer_id", context.userId).in("product_id", data.productIds);
+    if (error) throw error;
+    const ids = [...new Set((items ?? []).flatMap(item => item.product_id ? [item.product_id] : []))];
+    if (!ids.length) return [];
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: products, error: productError } = await supabaseAdmin.from("products").select("id,image_url").in("id", ids);
+    if (productError) throw productError;
+    const paths = [...new Set((products ?? []).flatMap(p => p.image_url && !/^(https?:\/\/|\/)/.test(p.image_url) ? [p.image_url] : []))];
+    const signed = paths.length ? await supabaseAdmin.storage.from("product-images").createSignedUrls(paths, 3600) : null;
+    if (signed?.error) throw signed.error;
+    const urls = new Map(paths.map((path, i) => [path, signed?.data?.[i]?.signedUrl]));
+    return (products ?? []).map(p => ({ id: p.id, image_url: p.image_url ? (/^(https?:\/\/|\/)/.test(p.image_url) ? p.image_url : urls.get(p.image_url) ?? null) : null }));
+  });
+
+export const saveSellerDeliveryEstimate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ storeId: z.string().uuid(), orderId: z.string().uuid(), supplierDate: z.string().date() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("save_seller_delivery_estimate", {
+      _store_id: data.storeId, _order_id: data.orderId, _date: data.supplierDate,
+    });
+    if (error) throw error;
+    return { ok: true };
+  });
