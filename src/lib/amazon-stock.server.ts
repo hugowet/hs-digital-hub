@@ -25,9 +25,26 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
   }
 
   const availability = extractAmazonAvailability(html);
-  const quantity = confirmedAmazonStock(availability, Boolean(product.variations?.length));
+  const patch: Record<string, unknown> = {};
+  // Restaura descrição completa / especificações / tamanhos e cores quando faltarem.
+  try {
+    const { document } = parseHTML(html);
+    const desc = extractDescription(document);
+    const current = String(product.description ?? "").replace(AMAZON_DELIVERY_METHOD_TEXT, "").trim();
+    if (desc && desc.length > current.length + 40) patch.description = buildAmazonDescription(desc);
+    const options = extractAmazonOptions(html);
+    const hasPageOptions = Array.isArray(product.variations) && product.variations.some((g: any) => g?.source === "page");
+    if (options.length && !hasPageOptions) patch.variations = options;
+    const specs = sanitizeAmazonSpecs(extractSpecs(document));
+    const oldSpecs = product.specifications ?? {};
+    const userSpecCount = Object.keys(oldSpecs).filter((k) => k !== "affiliate_url" && !k.startsWith("_")).length;
+    if (Object.keys(specs).length > userSpecCount) patch.specifications = { ...specs, ...oldSpecs };
+  } catch { /* conteúdo opcional */ }
+  const variations = (patch.variations as any[]) ?? product.variations;
+  const quantity = confirmedAmazonStock(availability, Boolean(variations?.length));
 
   const { error } = await supabaseAdmin.from("products").update({
+    ...patch,
     stock: quantity,
     supplier_availability: availability,
     supplier_confirmed_quantity: quantity,
