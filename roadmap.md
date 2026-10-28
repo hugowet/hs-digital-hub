@@ -1,7 +1,8 @@
 # HS Digital — MVP
 
 ## Relatório e rastreio do vendedor — 28/10
-- [ ] Exibir relatório completo e copiável exclusivamente no Seller Center de hugohug12ou@gmail.com; conferir a aba na conta correta.
+- [x] Relatório visível e copiável exclusivo de hugohug12ou@gmail.com no Seller Center; sete testes passaram e build OK, sem alteração de permissões.
+- [ ] Conferir visualmente a aba na conta correta: sessão foi preparada, mas /vendedor permanece em branco na prévia e impede conferir um pedido real.
 - [x] Corrigir duplicação que bloqueava abertura; relatório com fotos assinadas, CPF, número e bairro capturados nos próximos pedidos, relatório copiável e ausência explícita nos antigos; dez testes passaram.
 - [x] Rastreio atômico validado por loja/pedido pago; sete etapas compartilhadas com comprador e atualização por eventos com recuperação periódica; código não inventa despacho. Estrutura conferida no banco.
 - [ ] Conferência completa vendedor → comprador: sessão disponível não possui loja aprovada, portanto aba com pedido real não foi validada.

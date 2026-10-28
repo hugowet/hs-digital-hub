@@ -16,7 +16,7 @@
 - HS Bank mirrors records, not bank balances. Owner SQL snapshots non-binding credit estimates; no debt/payouts. Coupons require funded atomic identity-bound redemption preserving seller net.
 
 - Checkout reserves stock atomically; Mercado Pago splits stores with application_fee and verified webhooks/API.
-- Delivery fields persist atomically; tracking RPCs verify owner/payment, never infer progress; seller/buyer share milestones.
+- Delivery persists atomically; tracking verifies owner/payment. Account-scoped report UI never grants order access or invents progress.
 - Credenciais da plataforma e tokens OAuth dos vendedores ficam criptografados no banco e são lidos apenas no servidor; produtos digitais são liberados pela confirmação idempotente do pagamento.
 - Papéis de comprador/vendedor são criados por trigger a partir do cadastro e nunca são gravados pelo navegador, evitando elevação de privilégio.
 - Eventos de carrinho abandonado são persistidos apenas para usuários autenticados e protegidos por usuário, permitindo automações futuras sem expor contatos.
