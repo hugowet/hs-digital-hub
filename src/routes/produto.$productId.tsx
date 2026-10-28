@@ -44,6 +44,7 @@ import { catalogDisplayPrice } from "@/lib/product-price";
 import { useCjPrice } from "@/lib/use-cj-price";
 import { deliveryDateRange, formatDeliveryRange } from "@/lib/delivery-estimate";
 import { confirmCjOption } from "@/lib/cj-option.functions";
+import { isPurchasableVariant } from "@/lib/variant-availability";
 import { sendSellerMessage } from "@/lib/seller-chat.functions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -170,6 +171,7 @@ function ProductDetailPage() {
   const navigate = useNavigate();
   const { add } = useCart();
   const confirmOption=useServerFn(confirmCjOption);
+  const [checkingOption, setCheckingOption] = useState<string | null>(null);
   const sendToSeller=useServerFn(sendSellerMessage);
   const [sellerChatOpen,setSellerChatOpen]=useState(false);
   const [sellerMessage,setSellerMessage]=useState("");
@@ -689,18 +691,20 @@ function ProductDetailPage() {
                   <fieldset className="mt-4">
                     <legend className="mb-2 text-sm font-semibold">Cor / Tamanho / Modelo</legend>
                     <div className="flex flex-wrap gap-2">
-                      {product.supplierOptions.map((option) => (
+                      {product.supplierOptions.filter(isPurchasableVariant).map((option) => (
                         <Button key={option.productId} size="sm" variant={option.productId === productId ? "default" : "outline"}
                           aria-pressed={option.productId === productId}
-                          title={option.stock <= 0 ? "Estoque será confirmado no checkout" : option.label}
-                          onClick={() => {
-                            // Troca instantânea: navega já e confirma o estoque da CJ em segundo plano.
-                            setQuantity(1);
-                            setSelectedImage(0);
-                            if (option.stock <= 0) {
-                              void confirmOption({ data: { parentId: productId, productId: option.productId } }).catch(() => {});
-                            }
-                            void navigate({ to: "/produto/$productId", params: { productId: option.productId } });
+                          title={option.label}
+                          disabled={Boolean(checkingOption)}
+                          onClick={async () => {
+                            if (option.productId === productId || checkingOption) return;
+                            setCheckingOption(option.productId);
+                            try {
+                              if (product.supplier === "cj") await confirmOption({ data: { parentId: productId, productId: option.productId } });
+                              setQuantity(1); setSelectedImage(0);
+                              await navigate({ to: "/produto/$productId", params: { productId: option.productId } });
+                            } catch { toast.error("Esta opção não tem estoque confirmado. Escolha outra."); }
+                            finally { setCheckingOption(null); }
                           }}>
                           {option.label}
                         </Button>
@@ -710,15 +714,6 @@ function ProductDetailPage() {
                 )}
                 {/* Estoque e Quantidade */}
                 {maxAvailableStock === 0 && <p className="mt-4 text-sm font-semibold text-destructive" role="status">Produto indisponível no momento</p>}
-                {product.supplier === "amazon" && product.variations?.map((variation) => (
-                  <fieldset key={variation.name} className="mt-4">
-                    <legend className="mb-2 text-sm font-semibold">{variation.name}</legend>
-                    <div className="flex flex-wrap gap-2">
-                      {variation.options.map((option) => <Button key={option} variant="outline" size="sm" disabled title="Disponibilidade não confirmada pelo fornecedor">{option}</Button>)}
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">{variation.source === "page" ? "Opções do produto aguardando confirmação de disponibilidade." : "Grade de referência; tamanhos disponíveis ainda não confirmados."}</p>
-                  </fieldset>
-                ))}
                 <div className="mt-4 flex items-center justify-between border-y border-border py-3">
                   <span className="text-xs text-muted-foreground">Quantidade:</span>
                   <div className="flex items-center gap-2">

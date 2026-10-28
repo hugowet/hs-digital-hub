@@ -18,14 +18,10 @@ export function extractAmazonAvailability(html: string): AmazonAvailability {
     return "unavailable";
   }
   
-  return "available";
+  if (/em estoque|in stock|dispon[ií]vel para compra|pronta entrega/i.test(text) && document.querySelector("#add-to-cart-button, #buy-now-button")) return "available";
+  return "unknown";
 }
 
-export function confirmedAmazonStock(availability: AmazonAvailability, _hasVariations?: boolean): number {
-  // Só zera o estoque se a Amazon disser explicitamente que acabou
-  if (availability === "unavailable") {
-    return 0;
-  }
-  // Variações e checagens normais mantêm o produto ativo com estoque disponível
-  return 999;
+export function confirmedAmazonStock(availability: AmazonAvailability, hasVariations = false): number {
+  return availability === "available" && !hasVariations ? 1 : 0;
 }

@@ -242,10 +242,10 @@ export const fetchProduct = createServerFn({ method: "GET" })
     const [signed] = await signProductBatch([productRow as unknown as Product]);
     if (!signed) return null;
     if (productRow.supplier === "cj" && productRow.supplier_product_id) {
-      // Only safe option fields of this already-public product family, including unconfirmed options.
-      const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
-      const { data: options, error: optionsError } = await supabaseAdmin.from("products")
+      // Public, active, in-stock family variants only; no privileged read bypass.
+      const { data: options, error: optionsError } = await supabasePublic.from("products")
         .select("id,supplier_variant_label,stock").eq("store_id", productRow.store_id)
+        .eq("is_active", true).gt("stock", 0)
         .eq("supplier", "cj").or(`id.eq.${productRow.supplier_variant_parent_id ?? productRow.id},supplier_variant_parent_id.eq.${productRow.supplier_variant_parent_id ?? productRow.id}`)
         .order("supplier_variant_label");
       if (optionsError) throw optionsError;

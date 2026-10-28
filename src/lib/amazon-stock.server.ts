@@ -25,8 +25,8 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
     const payload = await response.json();
     html = String(payload?.data?.rawHtml ?? payload?.rawHtml ?? "");
   } catch {
-    // Se a leitura falhar (captcha ou timeout), preserva o estoque atual sem zerar
-    return product.stock ?? 999;
+    // Failed reads never authorize checkout from stale or invented stock.
+    return 0;
   }
 
   const availability = extractAmazonAvailability(html);
