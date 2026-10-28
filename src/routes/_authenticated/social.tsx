@@ -363,7 +363,7 @@ function HSSocialPage() {
 
   async function uploadChatMedia(mediaFile: File, kind: "audio" | "image") {
     if (!roomId && !groupId) throw new Error("Selecione uma conversa.");
-    const ext = kind === "audio" ? (mediaFile.(type.includes("mp4") || type.includes("aac")) ? "m4a" : mediaFile.type.includes("ogg") ? "ogg" : "webm") : (mediaFile.type === "image/png" ? "png" : "jpg");
+    const ext = kind === "audio" ? ((mediaFile.type.includes("mp4") || mediaFile.type.includes("aac")) ? "m4a" : mediaFile.type.includes("ogg") ? "ogg" : "webm") : (mediaFile.type === "image/png" ? "png" : "jpg");
     const path = `${user.id}/chat-${crypto.randomUUID()}.${ext}`;
     const upload = await supabase.storage.from("social-stories").upload(path, mediaFile, { contentType: mediaFile.type });
     if (upload.error) throw new Error("Não foi possível enviar a mídia.");
