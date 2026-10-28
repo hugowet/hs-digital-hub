@@ -9,6 +9,7 @@
 - [x] Interromper áudio anterior ao ouvir outro ou iniciar gravação; pausa ao sair e esconder Social.
 - [x] Trends com guarda de visibilidade/interseção, limpeza ao sair e bloqueio de solicitações atrasadas; mídia inativa sem carregamento automático.
 - [x] 32 testes Vitest, 9 testes Social/CJ e 4 de opções Amazon passaram; prévia compilou sem erros.
+- [x] Reprodução com mídia real em tela isolada: vídeo visível toca; oculto/inativo pausa; segundo áudio interrompe primeiro e gravação pausa todos. Tela real ainda não homologada.
 - [ ] Homologar conversa nas duas pontas, tamanhos e mídia nas telas reais: navegador não carregou sessão/HS Social e Trends apresentou apenas anúncio, sem vídeos para exercitar.
 
 ## Chat, filtros e voltar — 28/10
