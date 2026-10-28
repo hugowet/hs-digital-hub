@@ -37,7 +37,7 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
     const current = String(product.description ?? "").replace(AMAZON_DELIVERY_METHOD_TEXT, "").trim();
     if (desc && desc.length > current.length + 40) patch.description = buildAmazonDescription(desc);
     const options = extractAmazonOptions(html);
-    const hasPageOptions = Array.isArray(product.variations) && product.variations.some((g: any) => g?.source === "page");
+    const hasPageOptions = Array.isArray(product.variations) && product.variations.some((g: any) => g?.source === "page" && g.options?.every((o: string) => !/^(B0[A-Z0-9]{8}|indexInDimList|defaultAsin|\/dp\/)/.test(o)));
     if (options.length && !hasPageOptions) patch.variations = options;
     const specs = sanitizeAmazonSpecs(extractSpecs(document));
     const oldSpecs = product.specifications ?? {};
@@ -61,7 +61,7 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
 
 export async function refreshAmazonStockBatch(supabaseAdmin: any, storeId: string) {
   const { data, error } = await supabaseAdmin.from("products")
-    .select("id,specifications,variations,stock").eq("supplier", "amazon").eq("store_id", storeId)
+    .select("id,description,specifications,variations,stock").eq("supplier", "amazon").eq("store_id", storeId)
     .order("supplier_stock_checked_at", { ascending: true, nullsFirst: true }).order("id").limit(6);
   if (error) throw error;
   const results = await Promise.allSettled((data ?? []).map((p: any) => checkAmazonStock(supabaseAdmin, p)));
@@ -69,7 +69,7 @@ export async function refreshAmazonStockBatch(supabaseAdmin: any, storeId: strin
 }
 
 export async function assertAmazonStock(supabaseAdmin: any, items: { productId: string; quantity: number }[]) {
-  const { data, error } = await supabaseAdmin.from("products").select("id,specifications,variations,stock")
+  const { data, error } = await supabaseAdmin.from("products").select("id,description,specifications,variations,stock")
     .eq("supplier", "amazon").in("id", items.map((item) => item.productId));
   if (error) throw error;
   for (let i = 0; i < (data ?? []).length; i += 6) {

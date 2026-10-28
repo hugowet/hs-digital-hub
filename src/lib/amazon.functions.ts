@@ -30,13 +30,27 @@ export function extractDescription(doc: Document): string {
     doc.querySelector("#feature-bullets") ??
     doc.querySelector(".a-unordered-list.a-vertical.a-spacing-mini") ??
     doc.querySelector("#feature-bullets_feature_div");
-  if (!container) return "";
+  if (!container) return extractLongDescription(doc);
   const bullets = Array.from(container.querySelectorAll("li .a-list-item, li"))
     .map((li) => cleanText(li.textContent))
     .filter((t) => t.length > 2 && !/certifique-se|verifique se/i.test(t));
   const unique = [...new Set(bullets)];
-  if (!unique.length) return "";
+  if (!unique.length) return extractLongDescription(doc);
   return unique.map((t) => `• ${t}`).join("\n");
+}
+
+/** Páginas sem "Sobre este item": usa a "Descrição do produto" e os destaques. */
+function extractLongDescription(doc: Document): string {
+  const parts: string[] = [];
+  const facts = Array.from(doc.querySelectorAll("#productFactsDesktopExpander .product-facts-detail"))
+    .map((row) => Array.from(row.querySelectorAll(".a-col-left, .a-col-right")).map((c) => cleanText(c.textContent)).filter(Boolean).join(": "))
+    .filter((t) => t.length > 3);
+  const box = doc.querySelector("div#productDescription");
+  const paragraphs = box ? Array.from(box.querySelectorAll("p, li")).map((p) => cleanText(p.textContent)).filter((t) => t.length > 2) : [];
+  if (box && !paragraphs.length) { const t = cleanText(box.textContent); if (t) paragraphs.push(t); }
+  if (paragraphs.length) parts.push(...[...new Set(paragraphs)]);
+  if (facts.length) parts.push(...[...new Set(facts)].map((t) => `• ${t}`));
+  return parts.join("\n").slice(0, 6000);
 }
 
 function addSpec(specs: Record<string, string>, key: string, value: string) {
