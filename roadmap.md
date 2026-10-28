@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Relatório e rastreio do vendedor — 28/10
+- [ ] Corrigir abertura do painel; exibir produtos com fotos e relatório copiável com nome, CPF, telefone e endereço disponível.
+- [ ] Salvar rastreio com validação da loja/pedido pago e refletir etapas reais no acompanhamento do comprador.
+- [ ] Rastreio automático por transportadora depende de API autorizada; não deduzir etapas apenas do código.
+
 ## Estoque Amazon — 28/10
 - [ ] Detectar indisponibilidade na importação, revisar catálogo em lotes programados e bloquear checkout sem confirmação atual; manter variantes sem confirmação bloqueadas.
 
