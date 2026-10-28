@@ -1016,12 +1016,381 @@ const DELIVERY_STEPS = [
   ["delivered", "Entregue"],
 ] as const;
 
-import {
-  getSellerShippingConfiguration,
-  saveSellerOriginPostalCode,
-  startMelhorEnvioConnection,
-  saveOrderTracking,
-} from "@/lib/shipping.functions";
+function SellerOrdersTab({ storeId }: { storeId: string }) {
+  const qc = useQueryClient();
+  const saveTracking = useServerFn(saveOrderTracking);
+  const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+  const [savingTracking, setSavingTracking] = useState<string | null>(null);
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, { code: string; carrier: string }>>({});
+
+  const { data: rawOrders = [], isLoading } = useQuery({
+    queryKey: ["store-orders", storeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(`
+          id,
+          status,
+          payment_status,
+          payout_status,
+          total,
+          shipping_address,
+          created_at,
+          order_items!inner(store_id,title,quantity,unit_price,seller_amount)
+        `)
+        .eq("order_items.store_id", storeId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const orders = rawOrders.filter((o: any) => isOrderVisibleToSeller(o));
+
+  // Busca eventos de rastreio existentes
+  const { data: trackingEvents = [] } = useQuery({
+    enabled: orders.length > 0,
+    queryKey: ["store-orders-tracking", storeId, orders.map((o: any) => o.id).join(",")],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_tracking_events")
+        .select("order_id,status,created_at,note")
+        .in("order_id", orders.map((o: any) => o.id))
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Busca códigos de rastreio salvos
+  const { data: fulfillments = [] } = useQuery({
+    enabled: orders.length > 0,
+    queryKey: ["store-orders-fulfillments", storeId, orders.map((o: any) => o.id).join(",")],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("supplier_fulfillments")
+        .select("order_id,tracking_code,tracking_carrier,status")
+        .eq("store_id", storeId)
+        .in("order_id", orders.map((o: any) => o.id));
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const currentStep = (orderId: string) => {
+    const evt = trackingEvents.find((e: any) => e.order_id === orderId);
+    return evt?.status ?? "confirmed";
+  };
+
+  const getFulfillment = (orderId: string) => {
+    return fulfillments.find((f: any) => f.order_id === orderId);
+  };
+
+  const handleStepChange = async (orderId: string, step: string) => {
+    setUpdatingOrder(orderId);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const label = DELIVERY_STEPS.find(([value]) => value === step)?.[1] ?? step;
+      const { error } = await supabase.from("order_tracking_events").insert({
+        order_id: orderId,
+        status: step,
+        note: `Status atualizado pelo vendedor: ${label}`,
+        created_by: userData.user?.id,
+      });
+      if (error) throw error;
+      toast.success(
+        step === "delivered"
+          ? "Pedido entregue! O repasse foi liberado."
+          : "Etapa de entrega atualizada.",
+      );
+      await qc.invalidateQueries({ queryKey: ["store-orders-tracking", storeId] });
+      await qc.invalidateQueries({ queryKey: ["store-orders", storeId] });
+      await qc.invalidateQueries({ queryKey: ["store-payouts", storeId] });
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível atualizar o status.");
+    } finally {
+      setUpdatingOrder(null);
+    }
+  };
+
+  const handleSaveTracking = async (orderId: string) => {
+    const input = trackingInputs[orderId];
+    if (!input?.code?.trim()) {
+      toast.error("Informe o código de rastreio.");
+      return;
+    }
+    setSavingTracking(orderId);
+    try {
+      await saveTracking({
+        data: {
+          orderId,
+          storeId,
+          trackingCode: input.code.trim(),
+          trackingCarrier: input.carrier?.trim() || "Amazon Logistics",
+        },
+      });
+      toast.success("Código de rastreio enviado com sucesso! O cliente já pode acompanhar.");
+      await qc.invalidateQueries({ queryKey: ["store-orders-fulfillments", storeId] });
+      await qc.invalidateQueries({ queryKey: ["store-orders-tracking", storeId] });
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao salvar código de rastreio.");
+    } finally {
+      setSavingTracking(null);
+    }
+  };
+
+  const copyAddressToClipboard = (order: any) => {
+    const addr = order.shipping_address;
+    if (!addr) {
+      toast.error("Dados de endereço não encontrados.");
+      return;
+    }
+    const text = [
+      `Nome: ${addr.name || "Cliente"}`,
+      `Telefone/Celular: ${addr.phone || "Não informado"}`,
+      `Endereço: ${addr.address || ""}`,
+      addr.note ? `Complemento/Ref: ${addr.note}` : null,
+      `Cidade/UF: ${addr.city || ""} ${addr.state || ""}`,
+      `CEP: ${addr.postal_code || ""}`,
+    ].filter(Boolean).join("\n");
+
+    navigator.clipboard.writeText(text);
+    toast.success("Dados de entrega copiados para a área de transferência!");
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-32 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className="surface-card p-5 text-sm text-muted-foreground">
+        Nenhum pedido recente registrado.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {orders.map((order: any) => {
+        const step = currentStep(order.id);
+        const fulfillment = getFulfillment(order.id);
+        const storeItems = order.order_items.filter((i: any) => i.store_id === storeId);
+        const storeTotal = storeItems.reduce((s: number, i: any) => s + Number(i.seller_amount), 0);
+        const addr = order.shipping_address || {};
+        const isPaid = order.payment_status === "paid";
+        const currentTracking = trackingInputs[order.id] || {
+          code: fulfillment?.tracking_code || "",
+          carrier: fulfillment?.tracking_carrier || "Amazon Logistics",
+        };
+
+        const cleanPhone = (addr.phone || "").replace(/\D/g, "");
+
+        return (
+          <div key={order.id} className="surface-card p-5 space-y-4 rounded-xl border border-border shadow-xs">
+            {/* Cabeçalho do Pedido */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-base">Pedido #{order.id.slice(0, 8).toUpperCase()}</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(order.id);
+                      toast.success("ID completo do pedido copiado!");
+                    }}
+                    title="Copiar ID"
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
+                  >
+                    copiar
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
+                  <span>{new Date(order.created_at).toLocaleString("pt-BR")}</span>
+                  <span>•</span>
+                  {isPaid ? (
+                    <span className="font-semibold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded">
+                      Pagamento Aprovado
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded">
+                      Aguardando Pagamento
+                    </span>
+                  )}
+                  <span>•</span>
+                  {order.payout_status === "released" ? (
+                    <span className="font-medium text-emerald-600">Repasse liberado</span>
+                  ) : (
+                    <span className="font-medium text-amber-600">Repasse retido até a entrega</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-xs text-muted-foreground block">Seu repasse líquido</span>
+                <span className="text-xl font-bold text-foreground">{brl(storeTotal)}</span>
+              </div>
+            </div>
+
+            {/* Itens Comprados */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">
+                Produtos do Pedido ({storeItems.length})
+              </p>
+              <div className="space-y-1.5 bg-muted/30 p-3 rounded-lg border border-border/50">
+                {storeItems.map((item: any, idx: number) => (
+                  <div key={idx} className="flex justify-between items-center text-sm">
+                    <span className="font-medium">
+                      {item.quantity}x {item.title}
+                    </span>
+                    <span className="text-muted-foreground">{brl(Number(item.unit_price))}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Dados do Comprador e Entrega (para você comprar na Amazon) */}
+            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                  Dados do Comprador e Endereço de Entrega
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copyAddressToClipboard(order)}
+                  className="h-7 text-xs gap-1"
+                >
+                  Copiar dados de envio
+                </Button>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                <div>
+                  <span className="text-xs text-muted-foreground block">Nome do Comprador:</span>
+                  <span className="font-semibold">{addr.name || "Não informado"}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Celular / Telefone:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{addr.phone || "Não informado"}</span>
+                    {cleanPhone && (
+                      <a
+                        href={`https://wa.me/55${cleanPhone}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-emerald-600 hover:underline font-medium"
+                      >
+                        (WhatsApp)
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-xs text-muted-foreground block">Endereço completo:</span>
+                  <span className="font-medium">
+                    {addr.address || "Endereço não informado"}
+                    {addr.note ? ` • Complemento/Ref: ${addr.note}` : ""}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Cidade / UF:</span>
+                  <span className="font-medium">
+                    {addr.city || "Cidade"} {addr.state ? `• ${addr.state}` : ""}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">CEP:</span>
+                  <span className="font-medium font-mono">{addr.postal_code || "Não informado"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Controle de Rastreamento e Envio */}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  Rastreamento & Dinâmica de Entrega
+                </p>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs">Etapa:</Label>
+                  <select
+                    className="rounded-md border border-border bg-background px-2.5 py-1 text-xs"
+                    value={step}
+                    disabled={updatingOrder === order.id || !isPaid}
+                    onChange={(e) => handleStepChange(order.id, e.target.value)}
+                  >
+                    {DELIVERY_STEPS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Formulário para colar o código de rastreio */}
+              <div className="pt-2 border-t border-border/40">
+                <span className="text-xs text-muted-foreground block mb-2">
+                  Cole o código de envio gerado pela Amazon/transportadora para o cliente acompanhar em tempo real:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    placeholder="Código de Rastreio (ex: AMZ123456BR ou Correios)"
+                    value={currentTracking.code}
+                    disabled={!isPaid || savingTracking === order.id}
+                    onChange={(e) =>
+                      setTrackingInputs((prev) => ({
+                        ...prev,
+                        [order.id]: {
+                          ...currentTracking,
+                          code: e.target.value,
+                        },
+                      }))
+                    }
+                    className="h-8 text-xs flex-1 min-w-[200px]"
+                  />
+                  <Input
+                    placeholder="Transportadora (ex: Amazon Logistics)"
+                    value={currentTracking.carrier}
+                    disabled={!isPaid || savingTracking === order.id}
+                    onChange={(e) =>
+                      setTrackingInputs((prev) => ({
+                        ...prev,
+                        [order.id]: {
+                          ...currentTracking,
+                          carrier: e.target.value,
+                        },
+                      }))
+                    }
+                    className="h-8 text-xs w-44"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={!isPaid || savingTracking === order.id || !currentTracking.code.trim()}
+                    onClick={() => handleSaveTracking(order.id)}
+                    className="h-8 text-xs"
+                  >
+                    {savingTracking === order.id ? "Salvando..." : "Salvar Rastreio"}
+                  </Button>
+                </div>
+
+                {fulfillment?.tracking_code && (
+                  <div className="mt-2 text-xs text-emerald-600 flex items-center gap-1 font-medium">
+                    ✓ Rastreio ativo: {fulfillment.tracking_carrier} — {fulfillment.tracking_code}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
   const qc = useQueryClient();
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
