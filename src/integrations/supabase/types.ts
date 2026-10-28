@@ -2777,6 +2777,16 @@ export type Database = {
         }
       }
       club_has_access: { Args: { _user_id: string }; Returns: boolean }
+      create_checkout_with_delivery: {
+        Args: {
+          _coupon_id?: string
+          _items: Json
+          _shipping_address: Json
+          _shipping_quote_ids: Json
+          _warranty_id?: string
+        }
+        Returns: string
+      }
       create_marketplace_checkout: {
         Args: {
           _coupon_id?: string
