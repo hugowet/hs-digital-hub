@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
+import { shouldConfirmHomeBack } from "@/lib/exit-navigation";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -34,8 +35,8 @@ export function ExitConfirmGuard({ active = true }: { active?: boolean }) {
     const unblock = router.history.block({
       enableBeforeUnload: () => !exitingRef.current,
       blockerFn: ({ currentLocation, nextLocation, action }) => {
-        if (exitingRef.current || action !== "BACK" || !currentLocation.state[SENTINEL_KEY] ||
-            nextLocation.pathname !== "/") return false;
+        if (exitingRef.current || !shouldConfirmHomeBack(action, Boolean(currentLocation.state[SENTINEL_KEY]),
+            currentLocation.href, nextLocation.href)) return false;
         return new Promise<boolean>((resolve) => {
           decision.current = resolve;
           setOpen(true);

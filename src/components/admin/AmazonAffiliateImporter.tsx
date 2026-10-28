@@ -868,7 +868,7 @@ export function AmazonAffiliateImporter() {
                 id="prod-url"
                 placeholder="Cole o link completo ou amzn.to gerado pelo SiteStripe"
                 value={amazonUrl}
-                onChange={(e) => setAmazonUrl(e.target.value)}
+                onChange={(e) => { setAmazonUrl(e.target.value); setPageOptions([]); }}
                 className="h-11 font-mono text-xs focus-visible:ring-blue-600"
                 required
               />

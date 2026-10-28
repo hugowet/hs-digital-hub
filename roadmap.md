@@ -1,9 +1,10 @@
 # HS Digital — MVP
 
 ## Varredura cirúrgica — 28/10
-- [ ] Corrigir gargalos comprovados da vitrine, sem alterar margens ou pagamentos.
-- [ ] Corrigir e testar voltar nativo: páginas internas retornam normalmente; saída da vitrine pede confirmação.
-- [ ] Extrair tamanhos e cores Amazon oficiais; não inventar variantes ou estoque; validar seletores e limitações do catálogo antigo.
+- [x] Corrigir fila CJ que abandonava itens após os primeiros 24 e selecionar cotação da loja/produto certo; remover atualização automática de todas as páginas do catálogo. Banco sem pressão (47% memória, 13/60 conexões); preços/pagamentos preservados; testes passaram.
+- [ ] Voltar migrado para histórico do roteador com sentinela por gesto e regras testadas; validação visual bloqueada porque módulos da prévia não terminam de carregar, mesmo após recuperação e teste novo de 120 segundos. Não declarar comportamento nativo homologado.
+- [x] Manual, lote de links e robô extraem cores/tamanhos/modelos presentes no HTML; testes passaram. Estoque continua não confirmado e opções bloqueadas; catálogo antigo não foi recapturado. JSON/manual sem HTML mantém grade explicitamente de referência.
+- [ ] Liberar escolha comprável das variantes Amazon e atualizar catálogo antigo: depende de dados confirmados de cada variante, preço/estoque e fornecimento autorizado; rótulos extraídos não bastam para garantir entrega.
 
 ## Origem na vitrine e pedidos Amazon — 28/10
 - [x] Trocar somente rótulos públicos CJ/Amazon por Produtos internacionais/Produtos nacionais, preservando identificação no Admin e filtros existentes.
