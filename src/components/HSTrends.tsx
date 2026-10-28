@@ -40,6 +40,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useVisibleMedia } from "@/hooks/use-visible-media";
 
 const MAX_VIDEO_SECONDS = 120;
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
@@ -791,7 +792,7 @@ export function HSTrends() {
                 ) : post.post_type === "photo" ? (
                   <>
                     <img src={post.video_url} alt={post.description} className="absolute inset-0 w-full h-full object-cover" />
-                    {isActive && post.audio_url && <audio src={post.audio_url} autoPlay loop />}
+                    {post.audio_url && <TrendAudio src={post.audio_url} isActive={isActive} isMuted={isMuted} />}
                   </>
                 ) : (
                   <>
@@ -801,7 +802,7 @@ export function HSTrends() {
                       isMuted={isMuted || Boolean(post.audio_url)}
                       onToggleMute={() => setIsMuted((prev) => !prev)}
                     />
-                    {isActive && post.audio_url && <audio src={post.audio_url} autoPlay loop muted={isMuted} />}
+                    {post.audio_url && <TrendAudio src={post.audio_url} isActive={isActive} isMuted={isMuted} />}
                   </>
                 )}
 
@@ -1392,92 +1393,12 @@ function HTML5VideoPlayer({
   isMuted: boolean;
   onToggleMute: () => void;
 }) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isWaitingGesture, setIsWaitingGesture] = useState(false);
-
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.muted = isMuted;
-      videoRef.current.defaultMuted = isMuted;
-    }
-  }, [isMuted]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !src) return;
-
-    if (isActive) {
-      video.muted = isMuted;
-      video.defaultMuted = isMuted;
-
-      const start = () => {
-        const playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              setIsPlaying(true);
-              setIsWaitingGesture(false);
-            })
-            .catch(() => {
-              video.muted = true;
-              video.defaultMuted = true;
-              video
-                .play()
-                .then(() => {
-                  setIsPlaying(true);
-                  setIsWaitingGesture(false);
-                })
-                .catch(() => {
-                  setIsPlaying(false);
-                  setIsWaitingGesture(true);
-                });
-            });
-        }
-      };
-
-      if (video.readyState >= 2) {
-        start();
-      } else {
-        video.oncanplay = () => {
-          start();
-          video.oncanplay = null;
-        };
-      }
-    } else {
-      video.pause();
-      setIsPlaying(false);
-    }
-  }, [isActive, isMuted, src]);
-
-  const handleToggle = () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (isPlaying) {
-      video.pause();
-      setIsPlaying(false);
-    } else {
-      video.muted = isMuted;
-      video
-        .play()
-        .then(() => {
-          setIsPlaying(true);
-          setIsWaitingGesture(false);
-        })
-        .catch(() => {
-          video.muted = true;
-          video.play().then(() => {
-            setIsPlaying(true);
-            setIsWaitingGesture(false);
-          });
-        });
-    }
-  };
+  const { ref: videoRef, playing: isPlaying, toggle: handleToggle } = useVisibleMedia<HTMLVideoElement>(src, isActive, isMuted);
+  const isWaitingGesture = !isPlaying;
 
   return (
     <div onClick={handleToggle} className="relative w-full h-full cursor-pointer flex items-center justify-center bg-black">
-      <video ref={videoRef} src={src} loop playsInline muted={isMuted} preload="auto" className="w-full h-full object-cover" />
+      <video ref={videoRef} src={isActive ? src : undefined} loop playsInline muted={isMuted} preload={isActive ? "auto" : "none"} className="w-full h-full object-cover" />
 
       {(!isPlaying || isWaitingGesture) && isActive && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-xs z-15">
@@ -1495,4 +1416,9 @@ function HTML5VideoPlayer({
       )}
     </div>
   );
+}
+
+function TrendAudio({ src, isActive, isMuted }: { src: string; isActive: boolean; isMuted: boolean }) {
+  const { ref } = useVisibleMedia<HTMLAudioElement>(src, isActive, isMuted);
+  return <audio ref={ref} src={isActive ? src : undefined} loop muted={isMuted} preload={isActive ? "auto" : "none"} className="pointer-events-none absolute inset-0 h-full w-full opacity-0" />;
 }
