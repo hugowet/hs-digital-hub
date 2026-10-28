@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Lucro e preços dos fornecedores — 28/10
+- [ ] Mostrar lucro estimado de cada venda somente para hugohug12ou@gmail.com, com custos históricos e despesas não confirmadas explícitas.
+- [ ] Acompanhar aumentos e reduções de custos confirmados Amazon/CJ mantendo a regra de margem vigente e pedidos fechados intactos.
+- [ ] Testar cálculos, atualização de preços e visibilidade na conta solicitada.
+
 ## Avisos e reprodução — 28/10
 - [x] Robô Amazon ativo a cada 10 minutos; última execução 22:50 UTC, última criação 10h UTC. Registrar resultados/repetidos/falhas nas próximas rodadas sem afrouxar filtros.
 - [ ] Confirmar causa exata da falta de novos produtos Amazon: histórico anterior não guardou resultados; depende da próxima rodada com diagnóstico atualizado.
