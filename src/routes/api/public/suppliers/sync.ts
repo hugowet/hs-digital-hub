@@ -22,6 +22,19 @@ export const Route = createFileRoute("/api/public/suppliers/sync")({
     if (error) throw error;
     if (!integration) return Response.json({ idle: true });
     if (operation === "catalog" && !integration.auto_sync) return Response.json({ paused: true, reason: "Importação automática pausada pelo dono." });
+    if (operation === "catalog") {
+      // Enquanto o robô da Amazon estiver ligado, a importação da CJ fica em espera
+      // para não sobrecarregar o banco com as duas importações ao mesmo tempo.
+      const { data: amazon } = await supabaseAdmin
+        .from("supplier_integrations")
+        .select("id")
+        .eq("provider", "amazon")
+        .eq("status", "active")
+        .eq("auto_sync", true)
+        .limit(1)
+        .maybeSingle();
+      if (amazon) return Response.json({ paused: true, reason: "Importação CJ em espera enquanto o robô da Amazon está ligado." });
+    }
 
     const { syncCjCatalog, syncCjStockBatch } = await import("@/lib/suppliers.server");
     try {
