@@ -3,7 +3,7 @@
   import { create someFileRoute, Link } from "@tanstack/react-router";
   import { useQuery, useQueryClient } from "@tanstack/react-query";
   import { useCallback, useEffect, useRef, useState } from "react";
-import {
+
   getSellerShippingConfiguration,
   saveSellerOriginPostalCode,
   startMelhorEnvioConnection,
