@@ -3,9 +3,10 @@ import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { callErrorMessage, createSignalQueue } from "@/lib/call-signaling";
 
 // Peer-to-peer audio/video calls. Signaling goes over realtime broadcast channels,
-// one per user ("social-call:<userId>"); media flows directly between browsers (STUN only).
+// one receiver per user; media uses STUN with an external TURN fallback.
 type Signal =
   | { type: "offer"; callId: string; from: string; name: string; video: boolean; sdp: RTCSessionDescriptionInit }
   | { type: "answer"; callId: string; sdp: RTCSessionDescriptionInit }
@@ -17,7 +18,7 @@ type CallState = {
   peerId: string;
   peerName: string;
   video: boolean;
-  status: "calling" | "ringing" | "connected";
+  status: "calling" | "ringing" | "connecting" | "connected";
   incomingSdp?: RTCSessionDescriptionInit;
 };
 
@@ -30,44 +31,53 @@ const ICE: RTCConfiguration = {
   iceCandidatePoolSize: 4,
 };
 
-// Reaproveita um canal por destinatário; abrir/fechar canal a cada sinal perdia candidatos e atrasava a conexão.
-const outChannels = new Map<string, Promise<ReturnType<typeof supabase.channel>>>();
-function channelTo(userId: string) {
-  let ready = outChannels.get(userId);
-  if (!ready) {
-    ready = new Promise((resolve) => {
-      const ch = supabase.channel(`social-call:${userId}`);
-      ch.subscribe((s) => { if (s === "SUBSCRIBED") resolve(ch); });
-    });
-    outChannels.set(userId, ready);
-    setTimeout(() => { const c = outChannels.get(userId); outChannels.delete(userId); void c?.then((ch) => supabase.removeChannel(ch)); }, 5 * 60_000);
-  }
-  return ready;
-}
+// REST broadcast sends to a receiver without joining/removing its listening channel.
 async function sendTo(userId: string, payload: Signal) {
-  const ch = await channelTo(userId);
-  await ch.send({ type: "broadcast", event: "signal", payload });
+  const ch = supabase.channel(`social-call:${userId}`);
+  const result = await ch.send({ type: "broadcast", event: "signal", payload }, { timeout: 8_000 });
+  if (result !== "ok") throw new Error("Falha ao enviar sinal da chamada");
 }
 
 export function useSocialCalls(userId: string, myName: string) {
   const [call, setCall] = useState<CallState | null>(null);
   const callRef = useRef<CallState | null>(null);
-  callRef.current = call;
+  function updateCall(next: CallState | null) { callRef.current = next; setCall(next); }
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localRef = useRef<MediaStream | null>(null);
   const [remote, setRemote] = useState<MediaStream | null>(null);
   const [local, setLocal] = useState<MediaStream | null>(null);
   const pendingIce = useRef<RTCIceCandidateInit[]>([]);
+  const outgoingIce = useRef<RTCIceCandidateInit[]>([]);
+  const sdpSent = useRef(false);
+  const sendQueue = useRef(createSignalQueue());
+  const readyRef = useRef(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function sendSignal(peerId: string, signal: Signal) {
+    return sendQueue.current(() => sendTo(peerId, signal));
+  }
+  async function flushIce(peerId: string, callId: string) {
+    sdpSent.current = true;
+    const candidates = outgoingIce.current.splice(0);
+    for (const candidate of candidates) await sendSignal(peerId, { type: "ice", callId, candidate });
+  }
 
   function cleanup() {
+    updateCall(null);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+    const pc = pcRef.current;
+    if (pc) { pc.ontrack = null; pc.onicecandidate = null; pc.onconnectionstatechange = null; }
     pcRef.current?.close();
     pcRef.current = null;
     localRef.current?.getTracks().forEach((t) => t.stop());
     localRef.current = null;
     pendingIce.current = [];
+    outgoingIce.current = [];
+    sdpSent.current = false;
+    sendQueue.current = createSignalQueue();
     setLocal(null);
     setRemote(null);
-    setCall(null);
   }
 
   async function makePeer(peerId: string, callId: string, video: boolean) {
@@ -75,6 +85,7 @@ export function useSocialCalls(userId: string, myName: string) {
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: video ? { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24, max: 30 } } : false,
     });
+    if (callRef.current?.callId !== callId) { stream.getTracks().forEach((t) => t.stop()); throw new Error("Chamada encerrada"); }
     localRef.current = stream;
     setLocal(stream);
     const pc = new RTCPeerConnection(ICE);
@@ -84,14 +95,22 @@ export function useSocialCalls(userId: string, myName: string) {
         // Limita a taxa do vídeo para não travar em internet móvel.
         const params = sender.getParameters();
         params.encodings = [{ ...(params.encodings?.[0] ?? {}), maxBitrate: 600_000, maxFramerate: 24 }];
-        params.degradationPreference = "maintain-framerate" as any;
+        params.degradationPreference = "maintain-framerate";
         void sender.setParameters(params).catch(() => {});
       }
     });
     pc.ontrack = (ev) => setRemote(ev.streams[0] ?? new MediaStream([ev.track]));
-    pc.onicecandidate = (ev) => { if (ev.candidate) void sendTo(peerId, { type: "ice", callId, candidate: ev.candidate.toJSON() }); };
+    pc.onicecandidate = (ev) => {
+      if (!ev.candidate || callRef.current?.callId !== callId) return;
+      const candidate = ev.candidate.toJSON();
+      if (!sdpSent.current) outgoingIce.current.push(candidate);
+      else void sendSignal(peerId, { type: "ice", callId, candidate }).catch(() => {});
+    };
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "connected") setCall((c) => (c ? { ...c, status: "connected" } : c));
+      if (pc.connectionState === "connected" && callRef.current?.callId === callId) {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        updateCall({ ...callRef.current, status: "connected" });
+      }
       if (pc.connectionState === "failed") { toast.error("Não foi possível conectar a chamada. Verifique a internet e tente de novo."); cleanup(); }
     };
     pcRef.current = pc;
@@ -100,13 +119,14 @@ export function useSocialCalls(userId: string, myName: string) {
 
   useEffect(() => {
     if (!userId) return;
+    const receive = createSignalQueue();
     const ch = supabase.channel(`social-call:${userId}`);
-    ch.on("broadcast", { event: "signal" }, async ({ payload }) => {
+    ch.on("broadcast", { event: "signal" }, ({ payload }) => { void receive(async () => {
       const sig = payload as Signal;
       const cur = callRef.current;
       if (sig.type === "offer") {
-        if (cur) { void sendTo(sig.from, { type: "end", callId: sig.callId }); return; }
-        setCall({ callId: sig.callId, peerId: sig.from, peerName: sig.name, video: sig.video, status: "ringing", incomingSdp: sig.sdp });
+        if (cur) { void sendTo(sig.from, { type: "end", callId: sig.callId }).catch(() => {}); return; }
+        updateCall({ callId: sig.callId, peerId: sig.from, peerName: sig.name, video: sig.video, status: "ringing", incomingSdp: sig.sdp });
         return;
       }
       if (!cur || sig.callId !== cur.callId) return;
@@ -121,32 +141,38 @@ export function useSocialCalls(userId: string, myName: string) {
         toast.info(cur.status === "calling" ? "Chamada não atendida." : "Chamada encerrada.");
         cleanup();
       }
-    }).subscribe();
-    return () => { void supabase.removeChannel(ch); };
+    }).catch(() => { toast.error("A conexão da chamada foi interrompida. Tente novamente."); cleanup(); }); }).subscribe((status) => {
+      readyRef.current = status === "SUBSCRIBED";
+      if ((status === "CHANNEL_ERROR" || status === "TIMED_OUT") && callRef.current) { toast.error("A conexão da chamada foi interrompida. Tente novamente."); cleanup(); }
+    });
+    return () => { readyRef.current = false; cleanup(); void supabase.removeChannel(ch); };
   }, [userId]);
 
   async function startCall(peerId: string, peerName: string, video: boolean) {
     if (callRef.current) return;
+    if (!readyRef.current) { toast.error("A conexão do HS Social está sendo restabelecida. Tente novamente em instantes."); return; }
     const callId = crypto.randomUUID();
-    setCall({ callId, peerId, peerName, video, status: "calling" });
+    updateCall({ callId, peerId, peerName, video, status: "calling" });
     try {
       const pc = await makePeer(peerId, callId, video);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      await sendTo(peerId, { type: "offer", callId, from: userId, name: myName, video, sdp: offer });
-      window.setTimeout(() => {
+      await sendSignal(peerId, { type: "offer", callId, from: userId, name: myName, video, sdp: offer });
+      await flushIce(peerId, callId);
+      timeoutRef.current = setTimeout(() => {
         const c = callRef.current;
-        if (c?.callId === callId && c.status === "calling") { void sendTo(peerId, { type: "end", callId }); toast.info("Ninguém atendeu."); cleanup(); }
+        if (c?.callId === callId && c.status !== "connected") { void sendTo(peerId, { type: "end", callId }).catch(() => {}); toast.info("Chamada não conectada ou não atendida."); cleanup(); }
       }, 45_000);
-    } catch {
-      toast.error("Permita o acesso ao microfone/câmera para ligar.");
-      cleanup();
+    } catch (error) {
+      if (callRef.current?.callId !== callId) return;
+      toast.error(callErrorMessage(error)); cleanup();
     }
   }
 
   async function accept() {
     const c = callRef.current;
-    if (!c?.incomingSdp) return;
+    if (!c?.incomingSdp || c.status !== "ringing") return;
+    updateCall({ ...c, status: "connecting" });
     try {
       const pc = await makePeer(c.peerId, c.callId, c.video);
       await pc.setRemoteDescription(c.incomingSdp);
@@ -154,18 +180,19 @@ export function useSocialCalls(userId: string, myName: string) {
       pendingIce.current = [];
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      await sendTo(c.peerId, { type: "answer", callId: c.callId, sdp: answer });
-      setCall({ ...c, status: "connected", incomingSdp: undefined });
-    } catch {
-      toast.error("Permita o acesso ao microfone/câmera para atender.");
-      void sendTo(c.peerId, { type: "end", callId: c.callId });
+      await sendSignal(c.peerId, { type: "answer", callId: c.callId, sdp: answer });
+      await flushIce(c.peerId, c.callId);
+    } catch (error) {
+      if (callRef.current?.callId !== c.callId) return;
+      toast.error(callErrorMessage(error));
+      void sendTo(c.peerId, { type: "end", callId: c.callId }).catch(() => {});
       cleanup();
     }
   }
 
   function hangUp() {
     const c = callRef.current;
-    if (c) void sendTo(c.peerId, { type: "end", callId: c.callId });
+    if (c) void sendTo(c.peerId, { type: "end", callId: c.callId }).catch(() => {});
     cleanup();
   }
 
@@ -176,12 +203,21 @@ export function CallScreen({ calls }: { calls: ReturnType<typeof useSocialCalls>
   const { call, local, remote, accept, hangUp } = calls;
   const remoteVideo = useRef<HTMLVideoElement>(null);
   const localVideo = useRef<HTMLVideoElement>(null);
+  const remoteAudio = useRef<HTMLAudioElement>(null);
+  const [playbackBlocked, setPlaybackBlocked] = useState(false);
   const [muted, setMuted] = useState(false);
   const [camOff, setCamOff] = useState(false);
   const [seconds, setSeconds] = useState(0);
 
   useEffect(() => { if (remoteVideo.current) remoteVideo.current.srcObject = remote; }, [remote]);
   useEffect(() => { if (localVideo.current) localVideo.current.srcObject = local; }, [local]);
+  useEffect(() => {
+    const audio = remoteAudio.current;
+    if (!audio) return;
+    audio.srcObject = remote;
+    if (remote) void audio.play().then(() => setPlaybackBlocked(false)).catch(() => setPlaybackBlocked(true));
+    else setPlaybackBlocked(false);
+  }, [remote, call?.callId]);
   useEffect(() => {
     if (call?.status !== "connected") { setSeconds(0); return; }
     const t = setInterval(() => setSeconds((s) => s + 1), 1000);
@@ -191,15 +227,16 @@ export function CallScreen({ calls }: { calls: ReturnType<typeof useSocialCalls>
 
   if (!call) return null;
   const label = call.status === "ringing" ? (call.video ? "Chamada de vídeo recebida" : "Chamada de voz recebida")
-    : call.status === "calling" ? "Chamando…" : `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+    : call.status === "calling" ? "Chamando…" : call.status === "connecting" ? "Conectando…" : `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-foreground text-background">
       <video ref={remoteVideo} autoPlay playsInline muted className={`absolute inset-0 h-full w-full object-cover ${call.video && remote ? "" : "hidden"}`} />
-      <audio ref={(el) => { if (el && el.srcObject !== remote) { el.srcObject = remote; void el.play().catch(() => {}); } }} autoPlay playsInline className="hidden" />
+      <audio ref={remoteAudio} autoPlay playsInline className="hidden" />
       <div className="relative z-10 flex flex-1 flex-col items-center justify-start gap-2 pt-20 text-center">
         <p className="text-2xl font-semibold drop-shadow">{call.peerName}</p>
         <p className="text-sm opacity-80 drop-shadow">{label}</p>
+        {playbackBlocked && <Button variant="secondary" onClick={() => { void remoteAudio.current?.play().then(() => setPlaybackBlocked(false)).catch(() => toast.error("Não foi possível ativar o som.")); }}><Mic className="h-4 w-4" />Ativar som da chamada</Button>}
       </div>
       {call.video && local && (
         <video ref={localVideo} autoPlay playsInline muted className="absolute right-4 top-4 z-10 h-40 w-28 rounded-xl object-cover ring-2 ring-background/40" />
