@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Chamadas HS Social — 28/10
+- [ ] Corrigir negociação de áudio/vídeo, envio ordenado dos sinais, encerramento e reprodução; preservar mensagens de áudio.
+- [ ] Validar chamadas nas duas pontas; redes móveis diferentes dependem da disponibilidade do relay externo.
+
 ## Relatório e rastreio do vendedor — 28/10
 - [x] Relatório visível e copiável exclusivo de hugohug12ou@gmail.com no Seller Center; sete testes passaram e build OK, sem alteração de permissões.
 - [ ] Conferir visualmente a aba na conta correta: sessão foi preparada, mas /vendedor permanece em branco na prévia e impede conferir um pedido real.
