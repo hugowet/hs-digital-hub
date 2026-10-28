@@ -245,3 +245,4 @@
 - [x] Avaliações: 3-4 comentários por produto com nomes/cidades únicos (testado em 2 produtos, sem repetição)
 - [x] Recomendados: seção criada na página do produto, só mesma categoria (testado)
 - [ ] Biometria no login (cadastro de digital + entrada sem senha)
+- [ ] Varredura de desempenho geral (lentidão/travamentos)
