@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## Avisos e reprodução — 28/10
+- [ ] Melhorar seleção CJ para categorias de interesse (celulares, relógios, fones, calçados, ferramentas), usando sinais reais sem inventar tendências.
 - [ ] Mostrar respostas não lidas para comprador e vendedor com pontinho vermelho.
 - [ ] Pausar áudio anterior ao ouvir outro ou começar uma gravação na HS Social.
 - [ ] Impedir vídeos HS Trends de tocar fora da tela, ao sair ou em segundo plano.
