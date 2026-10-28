@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createServerFn, useServerFn } from "@tanstack/react-start";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { z } from "zod";
 import { 
   CheckCircle2, 
   CreditCard, 
@@ -41,30 +40,7 @@ import { getAudienceStats } from "@/lib/audience.functions";
 import { AudienceAccountsDialog } from "@/components/admin/audience-accounts-dialog";
 import { SupplierProductsPanel } from "@/components/admin/SupplierProductsPanel";
 
-// Funções de servidor que salvam direto no banco com permissão total de administrador (sem travar no RLS)
-const setProductShippingAdmin = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ productId: z.string().uuid(), freeShipping: z.boolean() }).parse(input))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("products")
-      .update({ free_shipping: data.freeShipping })
-      .eq("id", data.productId);
-    if (error) throw new Error(error.message);
-    return { success: true };
-  });
-
-const setAllProductsShippingAdmin = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ freeShipping: z.boolean() }).parse(input))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("products")
-      .update({ free_shipping: data.freeShipping })
-      .neq("id", "00000000-0000-0000-0000-000000000000");
-    if (error) throw new Error(error.message);
-    return { success: true };
-  });
+import { setProductShippingAdmin, setAllProductsShippingAdmin } from "@/lib/admin-shipping.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   staticData: { sitemap: false },
