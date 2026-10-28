@@ -40,7 +40,7 @@
 Game rewards are issued and rate-limited atomically in the database; shipping coupons expire after 24 hours and are redeemed atomically during checkout, funded only from platform commission up to R$ 30.
 - Authentication uses email/password and Google; biometric/passkey authentication is intentionally excluded because it caused deployment startup failures.
 - Cart, orders, games, seller tools, and administration live under the authenticated route gate so logout blocks every private surface.
-- Public mutations revalidate identity; signed-out users see a login notice.
+- Freight admin functions validate session and has_role before privileged updates; deny non-admins with HTTP 403.
 - Games and game coupons are buyer-only on both UI and server. Arcade sessions are single-use, coin awards are server-capped, 10% shipping coupons are issued atomically every 1,000 coins, and free shipping is limited to once per user per month.
 - Social media/presence are participant-scoped; avatars are signed. Receipts require visible chats; root listener handles alerts/unread dots. Voice notes interrupt playback/recording; Trends guards visibility and play teardown. Admin Club is free; calls serialize SDP before ICE without recipient listeners.
 - Reviews use paid-order-verified RPCs and owner-private, server-signed photos.
@@ -49,4 +49,4 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Search schema excludes unconfirmed CJ offers and invented reviews.
 - Todos uses scheduled sales-first, category-balanced Boa Vista daily ranking to avoid catalog timeouts.
 - Home exit uses a sentinel; menus use a same-URL entry consumed on close/replaced by navigation to keep Back local.
-- Order chat preserves messages. Private card margins use one bounded, identity-scoped batch and server-verified store ownership.
+- Order chats persist. Private card margins use bounded identity-scoped batches and verified store ownership.
