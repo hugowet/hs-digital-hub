@@ -715,7 +715,7 @@ function ProductDetailPage() {
                     <div className="flex flex-wrap gap-2">
                       {variation.options.map((option) => <Button key={option} variant="outline" size="sm" disabled title="Disponibilidade não confirmada pelo fornecedor">{option}</Button>)}
                     </div>
-                    <p className="mt-2 text-xs text-muted-foreground">Tamanhos aguardando confirmação de disponibilidade do fornecedor.</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{variation.source === "page" ? "Opções do produto aguardando confirmação de disponibilidade." : "Grade de referência; tamanhos disponíveis ainda não confirmados."}</p>
                   </fieldset>
                 ))}
                 <div className="mt-4 flex items-center justify-between border-y border-border py-3">

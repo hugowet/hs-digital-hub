@@ -29,6 +29,7 @@ import { calculateAmazonPrice, getMarginRate } from "@/lib/pricing";
 import { buildAmazonDescription, sanitizeAmazonText } from "@/lib/amazon-text";
 import { categorizeAmazonProduct } from "@/lib/amazon-category";
 import { amazonVariationTemplate } from "@/lib/amazon-variations";
+import type { AmazonOptionGroup } from "@/lib/amazon-options";
 import { fetchAmazonProduct, searchAmazonTrends, getAmazonAutoImportStatus, setAmazonAutoImport } from "@/lib/amazon.functions";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
@@ -65,6 +66,7 @@ export function AmazonAffiliateImporter() {
   const [costPrice, setCostPrice] = useState("");
   const [description, setDescription] = useState("");
   const [amazonCategory, setAmazonCategory] = useState("");
+  const [pageOptions, setPageOptions] = useState<AmazonOptionGroup[]>([]);
   const [imageUrl, setImageUrl] = useState("");
   const [galleryInput, setGalleryInput] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
@@ -152,6 +154,7 @@ export function AmazonAffiliateImporter() {
       const data = await fetchAmazonProduct({ data: { url } });
       if (data.title) setTitle(data.title);
       setAmazonCategory(data.amazonCategory);
+      setPageOptions(data.variations);
       if (data.costPrice > 0) setCostPrice(String(data.costPrice));
       if (data.description) setDescription(data.description);
       if (data.mainImage) setImageUrl(data.mainImage);
@@ -178,6 +181,7 @@ export function AmazonAffiliateImporter() {
       const data = JSON.parse(raw);
       if (data.title) setTitle(data.title);
       setAmazonCategory(String(data.amazonCategory || data.category || ""));
+      setPageOptions([]);
       if (data.costPrice) setCostPrice(String(data.costPrice));
       if (data.description) setDescription(data.description);
       if (data.mainImage) setImageUrl(data.mainImage);
@@ -267,8 +271,8 @@ export function AmazonAffiliateImporter() {
         free_shipping: true,
         is_active: true,
         category: categorizeAmazonProduct({ title: sanitizeAmazonText(title.trim()), description: finalDescription, amazonCategory }),
-        variations: amazonVariationTemplate({ title, description: finalDescription, amazonCategory }),
-        stock: amazonVariationTemplate({ title, description: finalDescription, amazonCategory }).length ? 0 : 999,
+        variations: pageOptions.length ? pageOptions : amazonVariationTemplate({ title, description: finalDescription, amazonCategory }),
+        stock: pageOptions.length || amazonVariationTemplate({ title, description: finalDescription, amazonCategory }).length ? 0 : 999,
         supplier: "amazon",
         product_type: "physical",
         specifications: {
@@ -289,6 +293,7 @@ export function AmazonAffiliateImporter() {
 
       toast.success("Produto Amazon com especificações publicado na vitrine!");
       setTitle("");
+      setPageOptions([]);
       setAmazonCategory("");
       setAmazonUrl("");
       setCostPrice("");
@@ -522,8 +527,8 @@ export function AmazonAffiliateImporter() {
         free_shipping: true,
         is_active: true,
         category,
-        variations: amazonVariationTemplate({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }),
-        stock: amazonVariationTemplate({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }).length ? 0 : 999,
+        variations: data.variations.length ? data.variations : amazonVariationTemplate({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }),
+        stock: data.variations.length || amazonVariationTemplate({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }).length ? 0 : 999,
         supplier: "amazon",
         product_type: "physical",
         specifications: {
@@ -863,7 +868,7 @@ export function AmazonAffiliateImporter() {
                 id="prod-url"
                 placeholder="Cole o link completo ou amzn.to gerado pelo SiteStripe"
                 value={amazonUrl}
-                onChange={(e) => setAmazonUrl(e.target.value)}
+                onChange={(e) => { setAmazonUrl(e.target.value); setPageOptions([]); }}
                 className="h-11 font-mono text-xs focus-visible:ring-blue-600"
                 required
               />
@@ -930,13 +935,13 @@ export function AmazonAffiliateImporter() {
           </div>
 
           {/* ESPECIFICAÇÕES DO PRODUTO */}
-          {amazonVariationTemplate({ title, description, amazonCategory }).map((variation) => (
+          {(pageOptions.length ? pageOptions : amazonVariationTemplate({ title, description, amazonCategory })).map((variation) => (
             <fieldset key={variation.name} className="space-y-2 border-t border-border pt-4">
               <legend className="text-sm font-semibold">{variation.name}</legend>
               <div className="flex flex-wrap gap-2">
                 {variation.options.map((option) => <Badge key={option} variant="outline">{option}</Badge>)}
               </div>
-              <p className="text-xs text-muted-foreground">Grade padrão · disponibilidade não confirmada. Publicação com estoque zerado até confirmação do fornecedor.</p>
+              <p className="text-xs text-muted-foreground">{pageOptions.length ? "Opções extraídas da página" : "Grade padrão"} · disponibilidade não confirmada. Estoque zerado até confirmação do fornecedor.</p>
             </fieldset>
           ))}
           <div className="space-y-2 rounded-lg border border-border/80 bg-muted/20 p-4">

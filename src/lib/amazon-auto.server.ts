@@ -13,6 +13,7 @@ import { extractDescription, extractSpecs } from "./amazon.functions";
 import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
 import { categorizeAmazonProduct } from "./amazon-category";
 import { amazonVariationTemplate } from "./amazon-variations";
+import { extractAmazonOptions } from "./amazon-options";
 import { calculateAmazonPrice } from "./pricing";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 
@@ -215,6 +216,7 @@ async function fetchProductData(url: string) {
     gallery: images.slice(1),
     specs,
     amazonCategory,
+    variations: extractAmazonOptions(rawHtml),
   };
 }
 
@@ -287,10 +289,10 @@ export async function runAmazonAutoImport(
     return true;
   }).slice(0, MAX_TOTAL_PER_RUN);
 
-  // 3) Puxa dados completos em paralelo (lotes de 8 para não sufocar o serviço)
+  // 3) Worker outbound concurrency is bounded to six requests.
   const rows: Record<string, unknown>[] = [];
-  for (let i = 0; i < fresh.length; i += 8) {
-    const chunk = fresh.slice(i, i + 8);
+  for (let i = 0; i < fresh.length; i += 6) {
+    const chunk = fresh.slice(i, i + 6);
     const details = await Promise.allSettled(chunk.map((c) => fetchProductData(c.url)));
     details.forEach((res, j) => {
       const candidate = chunk[j];
@@ -310,7 +312,7 @@ export async function runAmazonAutoImport(
       const description = buildAmazonDescription(data.description);
       const gallery = Array.from(new Set([data.mainImage, ...data.gallery].filter((u) => u.startsWith("http"))));
       const category = categorizeAmazonProduct({ title, description, amazonCategory: data.amazonCategory || candidate.title });
-      const variations = amazonVariationTemplate({ title, description, amazonCategory: data.amazonCategory });
+      const variations = data.variations.length ? data.variations : amazonVariationTemplate({ title, description, amazonCategory: data.amazonCategory });
       const affiliateUrl = new URL(candidate.url);
       affiliateUrl.searchParams.set("tag", AMAZON_AFFILIATE_TAG);
       rows.push({
