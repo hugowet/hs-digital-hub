@@ -1,8 +1,8 @@
  // @ts-nocheck -- types out of sync with backend schema; see build log
-  import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
-  import { create someFileRoute, Link } from "@tanstack/react-router";
-  import { useQuery, useQueryClient } from "@tanstack/react-query";
-  import { useCallback, useEffect, useRef, useState } from "react";
+import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   getSellerShippingConfiguration,
