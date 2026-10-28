@@ -1,4 +1,8 @@
+import { parseHTML } from "linkedom";
 import { confirmedAmazonStock, extractAmazonAvailability } from "./amazon-availability";
+import { extractDescription, extractSpecs } from "./amazon.functions";
+import { extractAmazonOptions } from "./amazon-options";
+import { AMAZON_DELIVERY_METHOD_TEXT, buildAmazonDescription, sanitizeAmazonSpecs } from "./amazon-text";
 
 export async function checkAmazonStock(supabaseAdmin: any, product: any) {
   const rawUrl = String(product.specifications?.affiliate_url ?? "");
