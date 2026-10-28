@@ -5,6 +5,11 @@ export const deliverySteps = [
   ["delivered", "Entregue"],
 ] as const;
 
+export function currentDeliveryStep(events: Array<{ status: string; created_at?: string }>, paid: boolean) {
+  const latest = [...events].sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "")).at(-1);
+  return deliverySteps.findIndex(([status]) => status === (latest?.status ?? (paid ? "confirmed" : "")));
+}
+
 // Presentation only: order access remains protected by store ownership and RLS.
 export function showsManualPurchaseReport(email: string | null | undefined) {
   return email?.trim().toLowerCase() === "hugohug12ou@gmail.com";

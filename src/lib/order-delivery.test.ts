@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertTrackableOrder, deliveryFields, deliveryReport, showsManualPurchaseReport } from "./order-delivery";
+import { assertTrackableOrder, currentDeliveryStep, deliveryFields, deliveryReport, showsManualPurchaseReport } from "./order-delivery";
 describe("relatório exclusivo da conta solicitada", () => {
   it("exibe para hugohug12ou@gmail.com", () => {
     expect(showsManualPurchaseReport("hugohug12ou@gmail.com")).toBe(true);
@@ -12,6 +12,14 @@ describe("relatório exclusivo da conta solicitada", () => {
   });
 });
 describe("relatório de entrega", () => {
+  it("código informado não inventa despacho", () => {
+    expect(currentDeliveryStep([{ status: "confirmed" }], true)).toBe(0);
+  });
+  it("acompanha a etapa real mais recente até a entrega", () => {
+    expect(currentDeliveryStep([{ status: "delivered", created_at: "2026-10-28T22:00:00Z" }, { status: "packed", created_at: "2026-10-28T21:00:00Z" }], true)).toBe(6);
+    expect(currentDeliveryStep([{ status: "packed" }], true)).toBe(2);
+  });
+  it("não confirma pedido não pago sem eventos", () => expect(currentDeliveryStep([], false)).toBe(-1));
   it("preserva CPF, número e bairro no relatório", () => {
     const a = { cpf: "12345678900", number: "42", neighborhood: "Centro" };
     expect(deliveryFields(a)).toMatchObject(a);
