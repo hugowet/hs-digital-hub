@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { catalogDisplayPrice } from "@/lib/product-price";
 import { useCjPrice } from "@/lib/use-cj-price";
 import { formatDeliveryRange } from "@/lib/delivery-estimate";
+import { useProductMargin } from '@/lib/product-margin-context';
 
 // Faixas de desconto conforme solicitado: 5, 6, 7, 12, 22, 35, 50, 66, 71%
 export const DISCOUNT_TIERS = [5, 6, 7, 12, 22, 35, 50, 66, 71] as const;
@@ -144,6 +145,7 @@ export function ProductCard({
   const { add } = useCart();
   const navigate = useNavigate();
   const displayTitle = cleanTitle(product.title);
+  const margin = useProductMargin(product.id);
 
   const isDigital =
     product.product_type === "digital" ||
@@ -252,6 +254,10 @@ export function ProductCard({
           </div>
 
           {/* Linha 3: Parcelamento */}
+          {margin && <div className="mt-2 border-t border-border pt-2 text-xs" aria-label="Sua margem estimada">
+            <p className="font-semibold text-success">Margem estimada: {margin.margin == null ? 'A confirmar' : brl(margin.margin)}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">Sobre {brl(margin.price)} · após comissão, antes de frete, taxas e impostos.</p>
+          </div>}
           <p className="mt-1.5 text-xs text-foreground/80 font-normal leading-tight">
             {installment.text}
           </p>

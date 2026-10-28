@@ -15,6 +15,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "../lib/cart";
 import { DeliveryProvider } from "../lib/delivery-context";
+import { ProductMarginProvider } from '../lib/product-margin-context';
 import { RadioProvider } from "../lib/radio-context";
 import { Toaster } from "../components/ui/sonner";
 import { AuraChatWidget } from "../components/aura-chat-widget";
@@ -142,6 +143,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <DeliveryProvider>
+      <ProductMarginProvider>
       <CartProvider>
         <RadioProvider>
           <Outlet />
@@ -152,6 +154,7 @@ function RootComponent() {
           <ExitConfirmGuard active={pathname === "/"} />
         </RadioProvider>
       </CartProvider>
+      </ProductMarginProvider>
       </DeliveryProvider>
     </QueryClientProvider>
   );
