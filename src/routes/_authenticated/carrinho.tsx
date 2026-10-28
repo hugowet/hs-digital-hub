@@ -89,6 +89,9 @@ function CartPage() {
   const [clock, setClock] = useState(Date.now());
 
   const [name, setName] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -296,7 +299,7 @@ function CartPage() {
     const hasPhysical = items.some((i) => i.productType !== "digital");
 
     if (hasPhysical) {
-      if (!name || !phone || !address || !city || !state || !postalCode) {
+      if (!name || !phone || !address || !city || !state || !postalCode || !cpf || !houseNumber || !neighborhood) {
         toast.error("Preencha todos os campos do endereço de entrega.");
         return;
       }
@@ -321,6 +324,9 @@ function CartPage() {
           shippingAddress: hasPhysical
             ? {
                 name,
+                cpf,
+                number: houseNumber,
+                neighborhood,
                 phone,
                 address,
                 city,
@@ -495,11 +501,14 @@ function CartPage() {
                   className="text-xs"
                 />
                 <Input
-                  placeholder="Endereço e número *"
+                  placeholder="Rua / endereço *"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   className="text-xs"
                 />
+                <Input aria-label="CPF para entrega" placeholder="CPF para entrega *" value={cpf} onChange={e => setCpf(e.target.value)} inputMode="numeric" maxLength={14} className="text-xs" />
+                <Input aria-label="Número da casa" placeholder="Número da casa (ou S/N) *" value={houseNumber} onChange={e => setHouseNumber(e.target.value)} className="text-xs" />
+                <Input aria-label="Bairro" placeholder="Bairro *" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} className="text-xs" />
                 <div className="grid grid-cols-[1fr_64px] gap-2">
                   <Input
                     placeholder="Cidade *"

@@ -442,6 +442,20 @@
       "when": 1793158647873,
       "tag": "0062_amazon_verified_availability",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1793175467496,
+      "tag": "0063_seller_manual_tracking_and_delivery_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1793175513439,
+      "tag": "0064_atomic_seller_tracking",
+      "breakpoints": true
     }
   ]
 }

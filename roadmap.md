@@ -1,5 +1,11 @@
 # HS Digital — MVP
 
+## Relatório e rastreio do vendedor — 28/10
+- [x] Corrigir duplicação que bloqueava abertura; relatório com fotos assinadas, CPF, número e bairro capturados nos próximos pedidos, relatório copiável e ausência explícita nos antigos; dez testes passaram.
+- [x] Rastreio atômico validado por loja/pedido pago; sete etapas compartilhadas com comprador e atualização por eventos com recuperação periódica; código não inventa despacho. Estrutura conferida no banco.
+- [ ] Conferência completa vendedor → comprador: sessão disponível não possui loja aprovada, portanto aba com pedido real não foi validada.
+- [ ] Rastreio automático por transportadora depende de API autorizada/credenciais; só o código Amazon não fornece eventos. Atualização de etapas permanece manual.
+
 ## Estoque Amazon — 28/10
 - [ ] Detectar indisponibilidade na importação, revisar catálogo em lotes programados e bloquear checkout sem confirmação atual; manter variantes sem confirmação bloqueadas.
 

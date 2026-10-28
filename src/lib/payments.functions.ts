@@ -1,3 +1,4 @@
+import { validPixCpf } from "@/lib/club-pix";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -119,6 +120,9 @@ const checkoutSchema = z.object({
     .max(50),
   shippingAddress: z
     .object({
+      cpf: z.string().transform(v => v.replace(/\D/g, "")).refine(validPixCpf, "Informe um CPF válido."),
+      number: z.string().trim().min(1).max(20),
+      neighborhood: z.string().trim().min(2).max(100),
       name: z.string().trim().min(2).max(100),
       phone: z.string().trim().max(20),
       address: z.string().trim().min(5).max(200),
@@ -155,7 +159,7 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
       ...(data.couponId ? { _coupon_id: data.couponId } : {}),
       ...(data.warranty ? { _warranty_id: data.warranty.id } : {}),
     };
-    const request = context.supabase.rpc("create_marketplace_checkout", rpcArguments);
+    const request = context.supabase.rpc("create_checkout_with_delivery", rpcArguments);
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(
