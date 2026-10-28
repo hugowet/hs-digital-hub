@@ -13,6 +13,7 @@ import { BoletoForm, BoletoPayment } from "@/components/boleto-payment";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +49,8 @@ function OrderPaymentPage() {
   const [creatingPix, setCreatingPix] = useState<string | null>(null);
   const [pixCpf, setPixCpf] = useState("");
   const [message, setMessage] = useState("");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["buyer-order", orderId],
@@ -95,9 +98,12 @@ function OrderPaymentPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "supplier_fulfillments", filter: `order_id=eq.${orderId}` }, () => {
         void qc.invalidateQueries({ queryKey: ["buyer-order", orderId] });
       })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "product_messages" }, () => {
+        if (chatOpen) void qc.invalidateQueries({ queryKey: ["buyer-order", orderId] });
+      })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [orderId, qc]);
+  }, [orderId, qc, chatOpen]);
 
   useEffect(() => {
     if (!data || data.order.payment_status === "approved") return;
@@ -171,7 +177,16 @@ function OrderPaymentPage() {
         })}
         {data.deliveries.length > 0 && <section className="surface-card p-4"><h2 className="flex items-center gap-2 font-semibold"><Download className="h-5 w-5 text-success" />Acessos digitais liberados</h2><div className="mt-3 space-y-3">{data.deliveries.map((delivery) => <div key={delivery.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"><div><p className="font-medium">{delivery.title}</p>{delivery.delivery_instructions && <p className="text-sm text-muted-foreground">{delivery.delivery_instructions}</p>}</div><Button asChild><a href={delivery.delivery_url} target="_blank" rel="noreferrer">Acessar produto</a></Button></div>)}</div></section>}
         <section className="surface-card p-4"><OrderTracking events={data.tracking} paid={["approved", "paid"].includes(data.order.payment_status)} fulfillments={data.fulfillments} /></section>
-        <section className="surface-card p-4"><h2 className="flex items-center gap-2 font-semibold"><MessageCircle className="h-5 w-5 text-primary" />Mensagem sobre a compra</h2><div className="mt-3 max-h-64 space-y-2 overflow-y-auto">{[...data.chatMessages].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((item) => <div key={item.id} className="rounded-lg bg-muted p-3 text-sm">{item.body}<p className="mt-1 text-[10px] text-muted-foreground">{new Date(item.created_at).toLocaleString("pt-BR")}</p></div>)}</div><form className="mt-3 flex gap-2" onSubmit={async (event) => { event.preventDefault(); const body = message.trim(); if (!body) return; const productId = data.items.find((item) => item.product_id)?.product_id; if (!productId) { toast.error("Produto do pedido não encontrado."); return; } try { await sendToSeller({ data: { productId, body: `Pedido #${orderId.slice(0, 8).toUpperCase()}: ${body}` } }); setMessage(""); toast.success("Mensagem enviada ao vendedor"); await qc.invalidateQueries({ queryKey: ["buyer-order", orderId] }); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível enviar."); } }}><Input value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} placeholder="Escreva para o vendedor sobre este pedido" /><Button type="submit" size="icon" aria-label="Enviar mensagem"><Send /></Button></form></section>
+        <Dialog open={chatOpen} onOpenChange={(next) => { setChatOpen(next); if (next) void qc.invalidateQueries({ queryKey: ["buyer-order", orderId] }); }}>
+          <DialogTrigger asChild><Button variant="outline" className="h-12 w-full justify-start gap-3"><MessageCircle className="h-5 w-5 text-primary" />Fale com o vendedor</Button></DialogTrigger>
+          <DialogContent className="flex max-h-[85dvh] w-[calc(100%-2rem)] flex-col rounded-lg p-4 sm:p-6">
+            <DialogHeader className="pr-6 text-left"><DialogTitle>Fale com o vendedor</DialogTitle><DialogDescription>Pedido #{orderId.slice(0, 8).toUpperCase()}</DialogDescription></DialogHeader>
+            <div role="log" aria-label="Mensagens com o vendedor" aria-live="polite" className="flex min-h-32 flex-1 flex-col-reverse overflow-y-auto overscroll-contain">
+              <div className="space-y-2 py-2">{data.chatMessages.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma mensagem ainda.</p> : [...data.chatMessages].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((item) => <div key={item.id} className={`max-w-[90%] rounded-lg p-3 text-sm ${item.sender_id === data.order.buyer_id ? "ml-auto bg-primary/10" : "bg-muted"}`}><p className="whitespace-pre-wrap break-words">{item.body}</p><p className="mt-1 text-[10px] text-muted-foreground">{new Date(item.created_at).toLocaleString("pt-BR")}</p></div>)}</div>
+            </div>
+            <form className="flex shrink-0 gap-2 border-t border-border pt-3" onSubmit={async (event) => { event.preventDefault(); const body = message.trim(); if (!body || sendingMessage) return; const productId = data.items.find((item) => item.product_id)?.product_id; if (!productId) { toast.error("Produto do pedido não encontrado."); return; } setSendingMessage(true); try { await sendToSeller({ data: { productId, body: `Pedido #${orderId.slice(0, 8).toUpperCase()}: ${body}` } }); setMessage(""); await qc.invalidateQueries({ queryKey: ["buyer-order", orderId] }); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível enviar."); } finally { setSendingMessage(false); } }}><Input aria-label="Mensagem para o vendedor" className="min-w-0 flex-1" value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} placeholder="Escreva sua mensagem" /><Button type="submit" size="icon" disabled={sendingMessage || !message.trim()} aria-label="Enviar mensagem"><Send /></Button></form>
+          </DialogContent>
+        </Dialog>
       </div>
       <aside className="surface-card h-fit p-4 lg:sticky lg:top-28"><h2 className="font-semibold">Resumo</h2><div className="mt-3 flex justify-between border-b border-border pb-3 text-sm"><span className="text-muted-foreground">{data.items.reduce((sum, item) => sum + item.quantity, 0)} itens</span><strong>{brl(Number(data.order.total))}</strong></div><p className="mt-3 text-xs text-muted-foreground">Em carrinhos com várias lojas, cada pagamento é confirmado separadamente. O pedido fica pago após todas as lojas receberem.</p><Button variant="outline" className="mt-4 w-full" onClick={() => navigate({ to: "/" })}>Continuar comprando</Button></aside>
     </div>

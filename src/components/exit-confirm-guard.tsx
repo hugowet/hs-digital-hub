@@ -36,7 +36,7 @@ export function ExitConfirmGuard({ active = true }: { active?: boolean }) {
       enableBeforeUnload: () => !exitingRef.current,
       blockerFn: ({ currentLocation, nextLocation, action }) => {
         if (exitingRef.current || !shouldConfirmHomeBack(action, Boolean(currentLocation.state[SENTINEL_KEY]),
-            currentLocation.href, nextLocation.href)) return false;
+            currentLocation.href, nextLocation.href, Boolean(currentLocation.state.hsMobileMenu))) return false;
         return new Promise<boolean>((resolve) => {
           decision.current = resolve;
           setOpen(true);

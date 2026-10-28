@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
@@ -37,6 +37,10 @@ import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { catalogSearchGroups, normalizeCatalogSearch } from "@/lib/catalog-search";
 
+declare module "@tanstack/react-router" {
+  interface HistoryState { hsMobileMenu?: boolean }
+}
+
 export function SiteHeader({
   query = "",
   onQueryChange,
@@ -48,8 +52,36 @@ export function SiteHeader({
 }) {
   const { count, clear } = useCart();
   const navigate = useNavigate();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const menuScroll = useRef(0);
+  const menuEntry = useRef(false);
+
+  useEffect(() => router.history.subscribe(({ location, action }) => {
+    if (location.state.hsMobileMenu) { menuEntry.current = true; return; }
+    const wasMenu = menuEntry.current;
+    menuEntry.current = false;
+    setOpen(false);
+    if (wasMenu && action.type === "BACK") {
+      const scroll = menuScroll.current;
+      window.requestAnimationFrame(() => window.scrollTo({ top: scroll, behavior: "instant" }));
+    }
+  }), [router]);
+
+  const toggleMenu = () => {
+    if (open) {
+      setOpen(false);
+      if (router.history.location.state.hsMobileMenu) router.history.back({ ignoreBlocker: true });
+      return;
+    }
+    menuScroll.current = window.scrollY;
+    const location = router.history.location;
+    router.history.push(location.href, { hsMobileMenu: true, hsExitGuard: location.state.hsExitGuard }, { ignoreBlocker: true });
+    router.history.flush();
+    setOpen(true);
+    window.requestAnimationFrame(() => window.scrollTo({ top: menuScroll.current, behavior: "instant" }));
+  };
   const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBuyer, setIsBuyer] = useState(false);
@@ -377,11 +409,13 @@ export function SiteHeader({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setOpen((v) => !v)}
+              onClick={toggleMenu}
               className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground sm:hidden"
               aria-label="Menu"
+              aria-expanded={open}
+              aria-controls="mobile-account-menu"
             >
-              <Menu className="h-5 w-5" />
+              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </nav>
         </div>
@@ -427,9 +461,10 @@ export function SiteHeader({
 
         {/* Menu Gaveta Mobile */}
         {open && (
-          <div className="mt-3 grid gap-1 rounded-lg border border-primary-foreground/10 bg-black/80 p-2 text-sm shadow-xl backdrop-blur sm:hidden">
+          <div id="mobile-account-menu" className="absolute left-3 right-3 top-full mt-1 grid max-h-[calc(100dvh-5rem)] gap-1 overflow-y-auto overscroll-contain rounded-lg border border-primary-foreground/10 bg-ink p-2 text-sm text-ink-foreground shadow-xl sm:hidden">
             <Link
               to="/"
+              replace
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
             >
@@ -441,6 +476,7 @@ export function SiteHeader({
               <>
                 <Link
                   to="/conta"
+                  replace
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
                 >
@@ -449,6 +485,7 @@ export function SiteHeader({
                 </Link>
                 <Link
                   to="/compras"
+                  replace
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
                 >
@@ -458,6 +495,7 @@ export function SiteHeader({
                 {isBuyer && (
                   <Link
                     to="/cupons"
+                    replace
                     onClick={() => setOpen(false)}
                     className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
                   >
@@ -467,6 +505,7 @@ export function SiteHeader({
                 )}
                 <Link
                   to="/notificacoes"
+                  replace
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
                 >
@@ -478,6 +517,7 @@ export function SiteHeader({
 
             <Link
               to="/afiliados"
+              replace
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 rounded-md px-3 py-2.5 text-emerald-400 hover:bg-primary-foreground/10 font-medium"
             >
@@ -488,6 +528,7 @@ export function SiteHeader({
             {isBuyer && (
               <Link
                 to="/jogos"
+                replace
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
               >
@@ -498,6 +539,7 @@ export function SiteHeader({
 
                <Link
               to="/vendedor"
+              replace
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
             >
@@ -509,6 +551,7 @@ export function SiteHeader({
             {isAdmin && (
               <Link
                 to="/admin"
+                replace
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 rounded-md px-3 py-2.5 text-primary hover:bg-primary-foreground/10 font-medium"
               >
@@ -532,6 +575,7 @@ export function SiteHeader({
             ) : (
               <Link
                 to="/auth"
+                replace
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-primary-foreground/10"
               >
