@@ -54,7 +54,7 @@ type HomeSearch = {
   q?: string | undefined;
   category?: string | undefined;
   range?: "a" | "b" | "c" | "d" | undefined;
-  sort?: "price-asc" | "price-desc" | undefined;
+  sort?: "best-selling" | "price-asc" | "price-desc" | undefined;
   free?: true | undefined;
 };
 
@@ -72,7 +72,7 @@ const normalizeSearch = (search: Record<string, unknown>): HomeSearch => ({
   ...(typeof search["q"] === "string" && search["q"] ? { q: search["q"].slice(0, 100) } : {}),
   ...(typeof search["category"] === "string" && search["category"] ? { category: search["category"] } : {}),
   ...(["a", "b", "c", "d"].includes(String(search["range"])) ? { range: search["range"] as HomeSearch["range"] } : {}),
-  ...(["price-asc", "price-desc"].includes(String(search["sort"]))
+  ...(["best-selling", "price-asc", "price-desc"].includes(String(search["sort"]))
     ? { sort: search["sort"] as HomeSearch["sort"] }
     : {}),
   ...(search["free"] === true || search["free"] === "true" ? { free: true as const } : {}),
@@ -100,7 +100,7 @@ const catalogQueryOptions = (search: HomeSearch) =>
           category: resolved.category,
           supplier: resolved.supplier,
           range: resolved.range,
-          sort: resolved.sort,
+          sort: resolved.sort === "best-selling" ? "popular" : resolved.sort,
           onlyFreeShipping: resolved.free,
         },
       });
@@ -312,7 +312,7 @@ function Home() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
     catalogQueryOptions(deferredSearch),
   );
-  const products = data.pages.flatMap((page) => page.products);
+  const products = useMemo(() => data.pages.flatMap((page) => page.products), [data.pages]);
 
   const [bannerSlide, setBannerSlide] = useState(0);
   const [isBuyer, setIsBuyer] = useState(false);
@@ -534,13 +534,6 @@ function Home() {
 </section>
 
         <div className="mx-auto max-w-7xl px-4 py-6">
-          <Tabs value={search.supplier ?? "all"} onValueChange={(value) => setSearch({ supplier: value === "cj" || value === "amazon" ? value : null })} className="mb-6">
-            <TabsList aria-label="Origem dos produtos" className="h-auto flex w-full flex-wrap justify-start gap-1">
-              <TabsTrigger value="all">Todos os produtos</TabsTrigger>
-              <TabsTrigger value="cj" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Produtos internacionais</TabsTrigger>
-              <TabsTrigger value="amazon" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">Produtos nacionais</TabsTrigger>
-            </TabsList>
-          </Tabs>
           {/* CATEGORIAS EM DESTAQUE */}
           <div className="mb-6">
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
@@ -586,8 +579,16 @@ function Home() {
             </div>
           </div>
 
+          <Tabs value={search.supplier ?? "all"} onValueChange={(value) => setSearch({ supplier: value === "cj" || value === "amazon" ? value : null })} className="mb-5">
+            <TabsList aria-label="Origem dos produtos" className="grid h-auto w-full grid-cols-3 gap-1.5 bg-transparent p-0 sm:max-w-xl">
+              <TabsTrigger value="all" className="h-11 min-w-0 whitespace-normal px-1.5 text-[11px] leading-tight bg-secondary text-secondary-foreground data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:ring-2 data-[state=active]:ring-ring data-[state=active]:ring-offset-2 sm:text-sm">Todos os produtos</TabsTrigger>
+              <TabsTrigger value="cj" className="h-11 min-w-0 whitespace-normal px-1.5 text-[11px] leading-tight bg-primary text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:ring-2 data-[state=active]:ring-ring data-[state=active]:ring-offset-2 sm:text-sm">Produtos internacionais</TabsTrigger>
+              <TabsTrigger value="amazon" className="h-11 min-w-0 whitespace-normal px-1.5 text-[11px] leading-tight bg-success text-success-foreground data-[state=active]:bg-success data-[state=active]:text-success-foreground data-[state=active]:ring-2 data-[state=active]:ring-success data-[state=active]:ring-offset-2 sm:text-sm">Produtos nacionais</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           {/* LISTA DE PRODUTOS */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">
                 {activeCategory ? activeCategory.label : search.q ? "Resultados da busca" : search.supplier === "cj" ? "Produtos internacionais" : search.supplier === "amazon" ? "Produtos nacionais" : "Seleção do dia"}
@@ -599,12 +600,15 @@ function Home() {
 
             <Select
               value={search.sort}
-              onValueChange={(val: any) => setSearch({ sort: val })}
+              onValueChange={(val) => {
+                if (val === "popular" || val === "best-selling" || val === "price-asc" || val === "price-desc") setSearch({ sort: val });
+              }}
             >
-              <SelectTrigger className="w-[160px] h-9 text-xs bg-white">
+              <SelectTrigger aria-label="Ordenar produtos" className="w-[150px] h-9 text-xs bg-background">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="best-selling">Mais vendidos</SelectItem>
                 <SelectItem value="popular">Mais populares</SelectItem>
                 <SelectItem value="price-asc">Menor preço</SelectItem>
                 <SelectItem value="price-desc">Maior preço</SelectItem>
