@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "@tanstack/react-router";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -11,40 +12,47 @@ const SENTINEL_KEY = "hsExitGuard";
  * "Deseja sair da HS Digital?" before leaving. Mobile browsers ignore history
  * entries added without a user gesture, so the guard re-arms on the first touch.
  */
-export function ExitConfirmGuard() {
+export function ExitConfirmGuard({ active = true }: { active?: boolean }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const armedRef = useRef(false);
   const exitingRef = useRef(false);
-
-  const arm = () => {
-    if (armedRef.current || exitingRef.current) return;
-    window.history.pushState({ ...(window.history.state || {}), [SENTINEL_KEY]: true }, "");
-    armedRef.current = true;
-  };
+  const decision = useRef<((blocked: boolean) => void) | null>(null);
 
   useEffect(() => {
     exitingRef.current = false;
-    armedRef.current = false;
-    // Wait for the router to settle its initial history entry before arming.
-    const timer = window.setTimeout(arm, 800);
-    // Re-arm with a real user gesture so Chrome/Android keeps the guard entry.
-    const onGesture = () => { if (!armedRef.current) arm(); };
-    const onPop = () => {
-      if (exitingRef.current || !armedRef.current) return;
-      armedRef.current = false;
-      setOpen(true);
+    if (!active) return;
+    // Use the router's history API: copying native state duplicates its index/key
+    // and breaks BACK direction detection. Arm within a real user gesture.
+    const onGesture = () => {
+      if (exitingRef.current || router.history.location.state[SENTINEL_KEY]) return;
+      router.history.push(router.history.location.href, { [SENTINEL_KEY]: true }, { ignoreBlocker: true });
+      router.history.flush();
     };
+    const unblock = router.history.block({
+      enableBeforeUnload: () => !exitingRef.current,
+      blockerFn: ({ currentLocation, nextLocation, action }) => {
+        if (exitingRef.current || action !== "BACK" || !currentLocation.state[SENTINEL_KEY] ||
+            nextLocation.pathname !== "/") return false;
+        return new Promise<boolean>((resolve) => {
+          decision.current = resolve;
+          setOpen(true);
+        });
+      },
+    });
     window.addEventListener("pointerdown", onGesture, { capture: true });
-    window.addEventListener("popstate", onPop);
     return () => {
-      window.clearTimeout(timer);
+      decision.current?.(true);
+      decision.current = null;
+      unblock();
       window.removeEventListener("pointerdown", onGesture, { capture: true });
-      window.removeEventListener("popstate", onPop);
     };
-  }, []);
+  }, [active, router]);
 
   return (
-    <AlertDialog open={open} onOpenChange={(next) => { setOpen(next); if (!next && !exitingRef.current) arm(); }}>
+    <AlertDialog open={open} onOpenChange={(next) => {
+      setOpen(next);
+      if (!next && !exitingRef.current) { decision.current?.(true); decision.current = null; }
+    }}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Deseja sair da HS Digital?</AlertDialogTitle>
@@ -52,7 +60,13 @@ export function ExitConfirmGuard() {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Não, continuar</AlertDialogCancel>
-          <AlertDialogAction onClick={() => { exitingRef.current = true; armedRef.current = false; window.history.back(); }}>
+          <AlertDialogAction onClick={() => {
+            exitingRef.current = true;
+            decision.current?.(false);
+            decision.current = null;
+            // BACK has already landed on the base entry; skip only the guard.
+            window.setTimeout(() => router.history.back({ ignoreBlocker: true }), 0);
+          }}>
             Sim, sair
           </AlertDialogAction>
         </AlertDialogFooter>
