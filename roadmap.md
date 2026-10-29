@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Proteção das consultas Amazon — 29/10
+- [ ] Salvar fila e intervalo aleatório de 5–12 segundos entre consultas, com um produto por rodada; manter agendamento de 10 minutos.
+- [ ] Aplicar perfis de navegação no leitor, detectar CAPTCHA/Dogs sem confundir imagens normais e interromper a rodada com diagnóstico seguro.
+- [ ] Testar fila, intervalos e interrupção; preservar precificação vigente, dedupe e filtros de confiança. Publicação não solicitada.
+
 ## Alternativa nacional à Amazon — 29/10
 - [x] Pesquisar fornecedores com CPF, estoque no Brasil e importação autorizada em massa para a HS Digital; diferenciar API/arquivo disponível de integração exclusiva com plataformas prontas.
 - [x] Resultado: Dropify tem API/CSV mas exige CNPJ e IE; Dropi/Drop Nacional tem envio nacional, porém CPF e API/feed customizado não confirmados; Dimona confirma CPF e integração direta por API, mas atua em personalizáveis e catálogo/estoque em lote precisa ser confirmado.
