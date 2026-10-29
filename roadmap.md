@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Alternativa nacional à Amazon — 29/10
+- [ ] Pesquisar fornecedores com CPF, estoque no Brasil e importação autorizada em massa para a HS Digital; diferenciar API/arquivo disponível de integração exclusiva com plataformas prontas.
+- [ ] Apresentar alternativas e requisitos comprovados; nenhuma troca de fornecedor ou pausa do robô aplicada nesta pesquisa.
+
 ## Rodada Amazon e ajuste dirigido — 29/10
 - [x] Conferir rodada posterior: chamadas de 00:10 e 00:20 UTC aparecem com status 0, sem resultado novo persistido; último resultado completo de 00:00 UTC ainda usa formato antigo, sem diagnósticos/histórico. Catálogo continua com 96 nacionais.
 - [ ] Ajustar somente a causa comprovada: bloqueado pela ausência dos motivos por página e pela execução publicada atual não confirmada; status 0 não prova bloqueio Amazon nem causa específica.
