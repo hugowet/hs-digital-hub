@@ -5,9 +5,10 @@
 - [x] Cancelado por Hugo: não integrar Mercado Livre nem aplicar alternância; focar buscas Amazon.
 
 ## Leitor Amazon e recuperação segura — 29/10
-- [ ] Conferir conexão e resultado atual; distinguir autenticação, créditos e limite de requisições sem inventar cota do serviço.
-- [ ] Preservar candidatos diante de falhas temporárias e salvar pausa de recuperação respeitando Retry-After, sem insistência nem mudança de filtros/margens.
-- [ ] Testar recuperação e explicar limite próprio de 50 consultas/hora versus limites externos; publicação e rodada real dependem de implantação.
+- [x] Conexão Firecrawl gerenciada pela Lovable, ligada; último resultado completo 00:50 UTC: timeout na busca cabo usb c, página 2, zero candidatos/publicações. A configuração disponível não informa a cota numérica externa.
+- [x] Preservar candidatos diante de falhas temporárias e salvar pausa de recuperação respeitando Retry-After; 429/timeout pausam pelo menos 5 minutos, cobrança/autenticação/recusa por 1 hora, sem insistência nem mudança de filtros/margens.
+- [x] 29 testes passaram, incluindo fila intacta após 429 e pausa de Retry-After de 900 segundos; build OK. Limite próprio permanece 50 consultas/hora, não 50 publicações; leitor possui limites por minuto/concorrência e cobrança de créditos separada.
+- [ ] Publicar e confirmar recuperação em rodada real: nova proteção não publicada neste pedido; não afirmar importação retomada antes de consultar resultado posterior.
 
 ## Proteção das consultas Amazon — 29/10
 - [x] Publicação solicitada em 29/10; 31 testes e build OK, verificação recente com quatro avisos de mídia e nenhum achado crítico nessa verificação.

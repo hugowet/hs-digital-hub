@@ -50,4 +50,4 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Todos uses scheduled sales-first, category-balanced Boa Vista daily ranking to avoid catalog timeouts.
 - Home exit uses a sentinel; menus use a same-URL entry consumed on close/replaced by navigation to keep Back local.
 - Order chats persist. Private card margins use bounded identity-scoped batches and verified store ownership.
-- Amazon uses single-read persisted queues, delay/budget guards and CAPTCHA/Dogs stops before writes; keeps 12 diagnostic runs, no raw bodies/secrets, trust filters intact.
+- Amazon queues one read, keeps delays/budgets, stops on CAPTCHA/Dogs, saves Retry-After recovery and candidates on reader failures; 12 safe diagnostic runs; trust filters intact.
