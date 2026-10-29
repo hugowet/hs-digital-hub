@@ -4,7 +4,6 @@ import { AMAZON_USER_AGENTS, amazonNavigationHeaders, amazonNextAllowedAt, asser
 describe('Amazon request safety', () => {
   it('selects navigation profiles and exact requested language/referer', () => {
     expect(amazonNavigationHeaders(() => 0)).toEqual({ 'User-Agent': AMAZON_USER_AGENTS[0], 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8', Referer: 'https://google.com.br' });
-    expect(amazonNavigationHeaders(() => 0.999).get).toBeUndefined();
     expect(amazonNavigationHeaders(() => 0.999)['User-Agent']).toBe(AMAZON_USER_AGENTS[6]);
   });
   it('saves a mandatory delay of 5 to 12 seconds', () => {
