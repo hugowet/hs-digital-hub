@@ -1,6 +1,8 @@
 # HS Digital — MVP
 
 ## Diagnóstico da busca Amazon — 29/10
+- [x] Investigar falhas atuais: agendador ativo e integração ligada; teste real pelo leitor conectado retornou HTTP 200 e quatro produtos extraídos, sem importar nem alterar catálogo.
+- [ ] Confirmar execução da versão atual publicada: último resultado salvo não contém searchDiagnostics nem histórico; próxima verificação depende de publicar os registros atualizados, sem publicação autorizada nesta etapa.
 - [x] Registrar falhas por palavra/página com código HTTP, resposta inválida, lista vazia e rejeições; preservar filtros e manter últimas 12 rodadas.
 - [x] 15 testes passaram, incluindo falhas parciais/totais e rejeições, sem chamadas externas nem alteração do catálogo.
 - [ ] Confirmar diagnóstico da próxima rodada real: depende da publicação; registros antigos não permitem recuperar causas omitidas.
