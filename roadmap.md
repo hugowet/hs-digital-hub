@@ -1,7 +1,8 @@
 # HS Digital — MVP
 
 ## Proteção das consultas Amazon — 29/10
-- [ ] Pedido de publicação e aceleração imediata: verificar segurança, solicitar implantação e acelerar somente após confirmar a versão protegida em produção.
+- [x] Publicação solicitada em 29/10; 31 testes e build OK, verificação recente com quatro avisos de mídia e nenhum achado crítico nessa verificação.
+- [ ] Aceleração imediata bloqueada até confirmar implantação: POST público retorna 401, sem marcador queued-50-v1; não prova que a proteção nova já entrou no ar. Agendamento preservado em */10 para não acelerar a versão antiga.
 - [x] Preparar teto de 50 consultas por hora, contando tentativas antes da leitura; não garantir 50 publicações. Agendamento atual confirmado em 10 minutos.
 - [x] Salvar fila e intervalo aleatório de 5–12 segundos entre consultas, com um produto por chamada, sem dormir no agendamento.
 - [x] Aplicar perfis de navegação no leitor, detectar CAPTCHA/Dogs sem confundir imagens normais e interromper a rodada com diagnóstico seguro.
