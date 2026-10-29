@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## Proteção das consultas Amazon — 29/10
+- [ ] Incorporar meta segura de até 50 consultas de produtos por hora, sem prometer 50 publicações; verificar frequência suportada e preservar interrupção por bloqueio.
 - [ ] Salvar fila e intervalo aleatório de 5–12 segundos entre consultas, com um produto por rodada; manter agendamento de 10 minutos.
 - [ ] Aplicar perfis de navegação no leitor, detectar CAPTCHA/Dogs sem confundir imagens normais e interromper a rodada com diagnóstico seguro.
 - [ ] Testar fila, intervalos e interrupção; preservar precificação vigente, dedupe e filtros de confiança. Publicação não solicitada.
