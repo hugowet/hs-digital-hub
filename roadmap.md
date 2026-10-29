@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Voltar e confirmação de saída — 29/10
+- [ ] Corrigir confirmação de saída sem rearmar a proteção durante o clique.
+- [ ] Remover etapas de histórico das escolhas de variante e mudanças de busca/filtros; preservar fechamento local do menu.
+- [ ] Testar navegação e saída no navegador, sem alterar checkout ou preços.
+
 ## Importação nacional alternada — 29/10
 - [x] Registrar pedido: compra manual Mercado Livre após pagamento, envio ao endereço do cliente e catálogo exclusivamente de estoque brasileiro.
 - [x] Cancelado por Hugo: não integrar Mercado Livre nem aplicar alternância; focar buscas Amazon.
