@@ -1,4 +1,4 @@
-export interface AmazonSearchPageDiagnostic {
+export type AmazonSearchPageDiagnostic = {
   keyword: string;
   page: number;
   url: string;
@@ -10,7 +10,7 @@ export interface AmazonSearchPageDiagnostic {
   accepted: number;
   duplicates: number;
   rejections: Record<string, number>;
-}
+};
 
 /** Only controlled messages are stored: never upstream bodies, headers or credentials. */
 export class AmazonSearchReadError extends Error {

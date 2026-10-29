@@ -1,8 +1,9 @@
 # HS Digital — MVP
 
 ## Diagnóstico da busca Amazon — 29/10
-- [ ] Registrar falhas por palavra/página com código HTTP, resposta inválida, lista vazia e rejeições; preservar filtros e manter últimas 12 rodadas.
-- [ ] Testar falhas parciais/totais e rejeições; causa em produção depende da próxima rodada após publicação.
+- [x] Registrar falhas por palavra/página com código HTTP, resposta inválida, lista vazia e rejeições; preservar filtros e manter últimas 12 rodadas.
+- [x] 15 testes passaram, incluindo falhas parciais/totais e rejeições, sem chamadas externas nem alteração do catálogo.
+- [ ] Confirmar diagnóstico da próxima rodada real: depende da publicação; registros antigos não permitem recuperar causas omitidas.
 
 ## Segurança administrativa de frete — 28/10
 - [x] Proteger alterações individuais e em massa com sessão validada e papel admin no servidor; bloquear update com HTTP 403 para não administradores.
