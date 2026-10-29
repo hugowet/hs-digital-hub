@@ -34,12 +34,15 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
     try {
       const result = await runAmazonAutoImport(supabaseAdmin, integration.store_id, cursor);
       const nextCursor = (cursor + 2) % (AMAZON_AUTO_KEYWORDS.length * 10);
-      const summary = result.searchFailures ? `${result.searchFailures} busca(s) falharam; ${result.published} publicados.` : result.failed ? `${result.failed} página(s) de produto falharam; ${result.published} publicados.` : result.published === 0 ? `Sem novos produtos: ${result.candidates} candidatos, ${result.skippedExisting} repetidos, ${result.rejectedPrice} preços rejeitados.` : null;
+      const issues = result.searchDiagnostics.filter(page => page.outcome !== "ok");
+      const summary = issues.length ? issues.map(page => `${page.keyword}, página ${page.page}: ${page.reason}`).join(" | ") : result.failed ? `${result.failed} página(s) de produto falharam; ${result.published} publicados.` : result.published === 0 ? `Sem novos produtos: ${result.candidates} candidatos, ${result.skippedExisting} repetidos, ${result.rejectedPrice} preços rejeitados.` : null;
+      const recordedAt = new Date().toISOString();
+      const history = Array.isArray(mapping.auto_search_history) ? mapping.auto_search_history.slice(-11) : [];
       const { error: saveError } = await supabaseAdmin
         .from("supplier_integrations")
         .update({
-          product_mapping: { ...mapping, auto_cursor: nextCursor, auto_last_result: { ...result } },
-          last_catalog_sync_at: new Date().toISOString(),
+          product_mapping: { ...mapping, auto_cursor: nextCursor, auto_last_result: { ...result }, auto_search_history: [...history, { recordedAt, ...result }] },
+          last_catalog_sync_at: recordedAt,
           last_error: summary,
         })
         .eq("id", integration.id);

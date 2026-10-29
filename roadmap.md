@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Diagnóstico da busca Amazon — 29/10
+- [ ] Registrar falhas por palavra/página com código HTTP, resposta inválida, lista vazia e rejeições; preservar filtros e manter últimas 12 rodadas.
+- [ ] Testar falhas parciais/totais e rejeições; causa em produção depende da próxima rodada após publicação.
+
 ## Segurança administrativa de frete — 28/10
 - [x] Proteger alterações individuais e em massa com sessão validada e papel admin no servidor; bloquear update com HTTP 403 para não administradores.
 - [x] 16 testes passaram: sessão ausente/revogada/divergente, papel negado/nulo/erro, ordem de checagens e update autorizado nas duas ações. API real aceitou sessão admin em ID inexistente sem alterar catálogo; recusa não-admin testada com contexto simulado. Build OK.
