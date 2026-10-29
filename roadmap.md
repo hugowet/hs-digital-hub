@@ -1,9 +1,10 @@
 # HS Digital — MVP
 
 ## Voltar e confirmação de saída — 29/10
-- [ ] Corrigir confirmação de saída sem rearmar a proteção durante o clique.
-- [ ] Remover etapas de histórico das escolhas de variante e mudanças de busca/filtros; preservar fechamento local do menu.
-- [ ] Testar navegação e saída no navegador, sem alterar checkout ou preços.
+- [x] Corrigir confirmação de saída sem rearmar a proteção durante o clique; saída pula histórico interno e usa página em branco se não houver página anterior.
+- [x] Remover etapas de histórico das escolhas de variante e mudanças de busca/filtros; preservar fechamento local do menu.
+- [x] Cinco testes passaram e build OK; navegador com controles reais em tela isolada confirmou busca sem empilhar entradas, duas trocas de tamanho → um Voltar → vitrine, cancelar/repetir e confirmar saída → página externa, sem erros.
+- [ ] Homologar na vitrine completa: prévia serve a tela mas módulos ficam pendentes e não ativam cliques, mesmo após uma recuperação; não confirmado no site publicado.
 
 ## Importação nacional alternada — 29/10
 - [x] Registrar pedido: compra manual Mercado Livre após pagamento, envio ao endereço do cliente e catálogo exclusivamente de estoque brasileiro.
