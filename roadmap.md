@@ -7,7 +7,7 @@
 - [x] Salvar fila e intervalo aleatório de 5–12 segundos entre consultas, com um produto por chamada, sem dormir no agendamento.
 - [x] Aplicar perfis de navegação no leitor, detectar CAPTCHA/Dogs sem confundir imagens normais e interromper a rodada com diagnóstico seguro.
 - [x] 31 testes passaram: fila, intervalos, teto, CAPTCHA/Dogs, preços e disponibilidade; precificação vigente, dedupe e filtros preservados.
-- [ ] Ativar frequência de uma chamada por minuto para buscar até 50 consultas/hora e conferir rodada real: depende de publicar a proteção primeiro. Não acelerar a versão antiga. Publicação não solicitada; atualização não homologada contra Amazon real.
+- [ ] Ativar frequência de uma chamada por minuto para buscar até 50 consultas/hora e conferir rodada real: depende de confirmar a publicação solicitada; atualização não homologada contra Amazon real.
 
 ## Alternativa nacional à Amazon — 29/10
 - [x] Pesquisar fornecedores com CPF, estoque no Brasil e importação autorizada em massa para a HS Digital; diferenciar API/arquivo disponível de integração exclusiva com plataformas prontas.
