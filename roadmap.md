@@ -2,7 +2,12 @@
 
 ## Importação nacional alternada — 29/10
 - [x] Registrar pedido: compra manual Mercado Livre após pagamento, envio ao endereço do cliente e catálogo exclusivamente de estoque brasileiro.
-- [ ] Integrar catálogo autorizado Mercado Livre e alternar uma hora Amazon / uma hora Mercado Livre sem simultaneidade: aguarda confirmação de acesso autorizado ao catálogo e da origem nacional; não reduzir a Amazon antes de existir a segunda integração operacional.
+- [x] Cancelado por Hugo: não integrar Mercado Livre nem aplicar alternância; focar buscas Amazon.
+
+## Leitor Amazon e recuperação segura — 29/10
+- [ ] Conferir conexão e resultado atual; distinguir autenticação, créditos e limite de requisições sem inventar cota do serviço.
+- [ ] Preservar candidatos diante de falhas temporárias e salvar pausa de recuperação respeitando Retry-After, sem insistência nem mudança de filtros/margens.
+- [ ] Testar recuperação e explicar limite próprio de 50 consultas/hora versus limites externos; publicação e rodada real dependem de implantação.
 
 ## Proteção das consultas Amazon — 29/10
 - [x] Publicação solicitada em 29/10; 31 testes e build OK, verificação recente com quatro avisos de mídia e nenhum achado crítico nessa verificação.
