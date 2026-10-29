@@ -106,14 +106,14 @@ const PER_CATEGORY_TARGET = 48;
 const MIN_TRUSTWORTHY_COST = 15;
 const MAX_TRUSTWORTHY_COST = 5000;
 
-interface TrendCandidate {
+type TrendCandidate = {
   url: string;
   title: string;
   rating: number;
   reviews: number;
   badge: string;
   fulfilledByAmazon: boolean;
-}
+};
 
 /**
  * Filtro anti-golpe: só passa produto com reputação real e comprovável.
