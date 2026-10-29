@@ -9,7 +9,11 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
   staticData: { sitemap: false },
   server: { handlers: { POST: async ({ request }) => {
     const denied = await authenticateCronRequest(request);
-    if (denied) return denied;
+    if (denied) {
+      const headers = new Headers(denied.headers);
+      headers.set('X-HS-Amazon-Policy', 'queued-50-v1');
+      return new Response(denied.body, { status: denied.status, headers });
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: integration, error } = await supabaseAdmin
