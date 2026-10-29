@@ -18,6 +18,7 @@ import { extractAmazonAvailability, confirmedAmazonStock } from "./amazon-availa
 import { calculateAmazonPrice } from "./pricing";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 import { AmazonSearchReadError, amazonHttpError, describeAmazonSearchError, type AmazonSearchPageDiagnostic } from "./amazon-search-diagnostics";
+import { amazonNavigationHeaders, amazonNextAllowedAt, assertAmazonPageReadable, isAmazonRoundStop } from './amazon-request-policy';
 
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -169,6 +170,7 @@ async function scrapePage(url: string, formats: unknown[]) {
   const { lovableKey, connectionKey } = gatewayKeys();
   const res = await fetch(`${GATEWAY_V2}/scrape`, {
     method: "POST",
+    signal: AbortSignal.timeout(25000),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${lovableKey}`,
@@ -177,6 +179,7 @@ async function scrapePage(url: string, formats: unknown[]) {
     body: JSON.stringify({
       url,
       formats,
+      headers: amazonNavigationHeaders(),
       onlyMainContent: false,
       waitFor: 3000,
       location: { country: "BR", languages: ["pt-BR"] },
@@ -185,11 +188,12 @@ async function scrapePage(url: string, formats: unknown[]) {
   if (!res.ok) throw amazonHttpError(res.status);
   const json = await res.json().catch(() => { throw new AmazonSearchReadError("invalid_json", "Serviço de leitura retornou JSON inválido.", res.status); });
   if (json?.success === false) throw new AmazonSearchReadError("reader_unsuccessful", "Serviço de leitura informou falha apesar da resposta HTTP bem-sucedida.", res.status);
-  return json?.data && typeof json.data === "object" ? json.data : json;
+  const payload = json?.data && typeof json.data === "object" ? json.data : json;
+  assertAmazonPageReadable(payload ?? {});
+  return payload;
 }
 
-export async function searchCategoryWinners(keyword: string, target: number, cycle = 0): Promise<{ winners: TrendCandidate[]; diagnostics: AmazonSearchPageDiagnostic[]; failed: boolean }> {
-  const pages = 3;
+export async function searchCategoryWinners(keyword: string, target: number, cycle = 0, pages = 3): Promise<{ winners: TrendCandidate[]; diagnostics: AmazonSearchPageDiagnostic[]; failed: boolean }> {
   // Each full keyword cycle goes deeper (pages 1-3, 4-6, ... up to 15) and
   // alternates best-seller / review ordering so dedupe never starves the robot.
   const firstPage = ((cycle % 5) * pages) + 1;
@@ -201,6 +205,7 @@ export async function searchCategoryWinners(keyword: string, target: number, cyc
   const responses = await Promise.allSettled(
     urls.map((url) =>
       scrapePage(url, [
+        'rawHtml',
         {
           type: "json",
           schema: TREND_SCHEMA,
@@ -315,6 +320,9 @@ function asinFromUrl(url: string): string | null {
 }
 
 export interface AmazonAutoImportResult {
+  queue?: TrendCandidate[];
+  nextAllowedAt?: number;
+  stopped?: ReturnType<typeof describeAmazonSearchError>;
   searchDiagnostics: AmazonSearchPageDiagnostic[];
   searchFailures: number;
   scanned: number;
@@ -335,10 +343,12 @@ export async function runAmazonAutoImport(
   supabaseAdmin: any,
   storeId: string,
   cursor = 0,
+  queueState?: { pending: TrendCandidate[]; nextAllowedAt: number },
 ): Promise<AmazonAutoImportResult> {
   const result: AmazonAutoImportResult = {
     scanned: 0, candidates: 0, published: 0, skippedExisting: 0, rejectedPrice: 0, failed: 0, categories: [], searchFailures: 0, searchDiagnostics: [],
   };
+  if (queueState && Date.now() < queueState.nextAllowedAt) return { ...result, queue: queueState.pending, nextAllowedAt: queueState.nextAllowedAt };
 
   // ASINs já importados (dedupe idempotente)
   const { data: existing, error: existingError } = await supabaseAdmin
@@ -355,12 +365,12 @@ export async function runAmazonAutoImport(
   }
 
   const keywords = AMAZON_AUTO_KEYWORDS;
-  const batch = Array.from({ length: Math.min(MAX_CATEGORIES_PER_RUN, keywords.length) }, (_, i) =>
+  const batch = Array.from({ length: Math.min(queueState ? 1 : MAX_CATEGORIES_PER_RUN, keywords.length) }, (_, i) =>
     keywords[(cursor + i) % keywords.length],
   );
 
   // 1) Busca vencedores por categoria (em paralelo entre categorias)
-  const perCategory = await Promise.allSettled(batch.map((b) => searchCategoryWinners(b.keyword, PER_CATEGORY_TARGET, Math.floor(cursor / keywords.length))));
+  const perCategory = queueState?.pending.length ? [] : await Promise.allSettled(batch.map((b) => searchCategoryWinners(b.keyword, PER_CATEGORY_TARGET, Math.floor(cursor / keywords.length), queueState ? 1 : 3)));
   const candidates: TrendCandidate[] = [];
   perCategory.forEach((res, i) => {
     result.scanned++;
@@ -372,9 +382,16 @@ export async function runAmazonAutoImport(
     } else result.searchFailures++;
   });
   result.candidates = candidates.length;
+  const blockedPage = result.searchDiagnostics.find(d => ['amazon_captcha', 'amazon_error_page', 'amazon_access_denied'].includes(d.code ?? ''));
+  if (blockedPage) return { ...result, queue: [], nextAllowedAt: amazonNextAllowedAt(), stopped: { code: blockedPage.code ?? 'amazon_error_page', reason: blockedPage.reason, httpStatus: blockedPage.httpStatus } };
+  if (queueState && !queueState.pending.length) {
+    const pending = candidates.filter(c => !knownAsins.has(asinFromUrl(c.url) ?? ''));
+    result.skippedExisting = candidates.length - pending.length;
+    return { ...result, queue: pending.slice(0, MAX_TOTAL_PER_RUN), nextAllowedAt: amazonNextAllowedAt() };
+  }
 
   // 2) Remove já importados
-  const fresh = candidates.filter((c) => {
+  const fresh = (queueState?.pending ?? candidates).filter((c) => {
     const asin = asinFromUrl(c.url);
     if (asin && knownAsins.has(asin)) {
       result.skippedExisting++;
@@ -382,6 +399,11 @@ export async function runAmazonAutoImport(
     }
     return true;
   }).slice(0, MAX_TOTAL_PER_RUN);
+  if (queueState) {
+    result.queue = fresh.slice(1);
+    result.candidates = fresh.length;
+    fresh.splice(1);
+  }
 
   // 3) Worker outbound concurrency is bounded to six requests.
   const rows: Record<string, unknown>[] = [];
@@ -390,6 +412,10 @@ export async function runAmazonAutoImport(
     const details = await Promise.allSettled(chunk.map((c) => fetchProductData(c.url)));
     details.forEach((res, j) => {
       const candidate = chunk[j];
+      if (res.status === 'rejected' && isAmazonRoundStop(res.reason)) {
+        result.stopped = describeAmazonSearchError(res.reason);
+        result.queue = queueState ? [candidate, ...(result.queue ?? [])] : [];
+      }
       if (res.status !== "fulfilled" || !res.value?.title) {
         result.failed++;
         return;
@@ -439,13 +465,15 @@ export async function runAmazonAutoImport(
         },
       });
     });
+    if (result.stopped) break;
   }
 
   // 4) Publicação em lote única
-  if (rows.length > 0) {
+  if (rows.length > 0 && !result.stopped) {
     const { error } = await supabaseAdmin.from("products").insert(rows);
     if (error) throw error;
     result.published = rows.length;
   }
+  if (queueState) result.nextAllowedAt = amazonNextAllowedAt();
   return result;
 }
