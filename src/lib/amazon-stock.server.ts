@@ -6,6 +6,7 @@ import { amazonHiResFromHtml } from "./amazon-image";
 import { AMAZON_DELIVERY_METHOD_TEXT, buildAmazonDescription, sanitizeAmazonSpecs } from "./amazon-text";
 import { amazonPricePatch, extractAmazonOfferPrice } from './amazon-price';
 import { amazonNavigationHeaders, assertAmazonPageReadable, isAmazonRoundStop } from './amazon-request-policy';
+import { amazonReaderHttpError } from './amazon-search-diagnostics';
 
 export async function checkAmazonStock(supabaseAdmin: any, product: any) {
   const rawUrl = String(product.specifications?.affiliate_url ?? "");
@@ -23,7 +24,7 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "X-Connection-Api-Key": connection },
       body: JSON.stringify({ url: url.toString(), headers: amazonNavigationHeaders(), formats: ["rawHtml"], maxAge: 0, onlyMainContent: false, location: { country: "BR", languages: ["pt-BR"] } }),
     });
-    if (!response.ok) throw new Error("Supplier read failed");
+    if (!response.ok) throw await amazonReaderHttpError(response);
     const payload = await response.json();
     assertAmazonPageReadable(payload?.data ?? payload ?? {});
     html = String(payload?.data?.rawHtml ?? payload?.rawHtml ?? "");

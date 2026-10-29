@@ -30,7 +30,7 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
     const cursor = Number(mapping.auto_cursor ?? 0) || 0;
     const nextAllowedAt = Number(mapping.auto_next_allowed_at ?? 0) || 0;
     if (Date.now() < nextAllowedAt) return Response.json({ deferred: true, nextAllowedAt });
-    const { amazonNextAllowedAt, amazonHourlyBudget, amazonHourlyLimitReached } = await import('@/lib/amazon-request-policy');
+    const { amazonNextAllowedAt, amazonRecoveryAt, amazonHourlyBudget, amazonHourlyLimitReached } = await import('@/lib/amazon-request-policy');
     const { describeAmazonSearchError } = await import('@/lib/amazon-search-diagnostics');
 
     const { runAmazonAutoImport, AMAZON_AUTO_KEYWORDS } = await import("@/lib/amazon-auto.server");
@@ -68,10 +68,11 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
       return Response.json({ ...result, nextCursor });
     } catch (caught) {
       const diagnostic = describeAmazonSearchError(caught);
-      await supabaseAdmin
+      const { error: saveError } = await supabaseAdmin
         .from("supplier_integrations")
-        .update({ last_error: diagnostic.reason, product_mapping: { ...reservedMapping, auto_next_allowed_at: amazonNextAllowedAt(), auto_last_stop: diagnostic } })
+        .update({ last_error: diagnostic.reason, product_mapping: { ...reservedMapping, auto_next_allowed_at: amazonRecoveryAt(diagnostic), auto_last_stop: diagnostic } })
         .eq("id", integration.id);
+      if (saveError) throw saveError;
       throw caught;
     }
   } } },

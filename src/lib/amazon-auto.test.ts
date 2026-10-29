@@ -145,4 +145,19 @@ describe("diagnósticos por página Amazon", () => {
     expect(db.from).not.toHaveBeenCalled();
     expect(result.nextAllowedAt).toBeGreaterThan(Date.now());
   });
+
+  it('retains the full pending queue on reader HTTP 429 and saves recovery time', async () => {
+    setup();
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 429, headers: { 'Retry-After': '900' } }));
+    vi.stubGlobal('fetch', fetch);
+    const db = { from: vi.fn(() => ({ select: () => ({ eq: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) })) };
+    const pending = [{ ...base, rating: 4.6, reviews: 800 }, { ...base, url: 'https://www.amazon.com.br/dp/B0ABC12346', rating: 4.6, reviews: 800 }];
+    const before = Date.now();
+    const result = await runAmazonAutoImport(db, 'test-store', 0, { pending, nextAllowedAt: 0 });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.queue).toEqual(pending);
+    expect(result.stopped?.httpStatus).toBe(429);
+    expect(result.nextAllowedAt).toBeGreaterThanOrEqual(before + 900000);
+    expect(result.published).toBe(0);
+  });
 });
