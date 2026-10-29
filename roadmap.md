@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## Proteção das consultas Amazon — 29/10
+- [ ] Pedido de publicação e aceleração imediata: verificar segurança, solicitar implantação e acelerar somente após confirmar a versão protegida em produção.
 - [x] Preparar teto de 50 consultas por hora, contando tentativas antes da leitura; não garantir 50 publicações. Agendamento atual confirmado em 10 minutos.
 - [x] Salvar fila e intervalo aleatório de 5–12 segundos entre consultas, com um produto por chamada, sem dormir no agendamento.
 - [x] Aplicar perfis de navegação no leitor, detectar CAPTCHA/Dogs sem confundir imagens normais e interromper a rodada com diagnóstico seguro.
