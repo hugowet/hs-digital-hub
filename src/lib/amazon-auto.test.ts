@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { isTrustworthyTrend, isCoherentPrice } from "./amazon-auto.server";
+import { afterEach, describe, expect, it, vi } from "vitest";
+vi.mock("./amazon.functions", () => ({ extractDescription: vi.fn(), extractSpecs: vi.fn() }));
+import { isTrustworthyTrend, isCoherentPrice, searchCategoryWinners, runAmazonAutoImport } from "./amazon-auto.server";
+import { describeAmazonSearchError } from "./amazon-search-diagnostics";
 
 const base = { url: "https://www.amazon.com.br/dp/B0ABC12345", title: "Fone bluetooth", badge: "", fulfilledByAmazon: false };
 
@@ -40,5 +42,72 @@ describe("coerência de preço", () => {
 
   it("aceita preço coerente", () => {
     expect(isCoherentPrice(199.9)).toBe(true);
+  });
+});
+
+describe("diagnósticos por página Amazon", () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+  function setup() {
+    vi.stubEnv("LOVABLE_API_KEY", "test-only");
+    vi.stubEnv("FIRECRAWL_API_KEY", "test-only");
+  }
+  const response = (products: unknown[]) => Response.json({ data: { json: { products } } });
+
+  it("guarda HTTP 503 de cada página sem alegar bloqueio confirmado", async () => {
+    setup();
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => Promise.resolve(new Response("upstream body must not persist", { status: 503 }))));
+    const result = await searchCategoryWinners("celular", 48);
+    expect(result.failed).toBe(true);
+    expect(result.diagnostics.map(d => [d.page, d.httpStatus, d.code])).toEqual([[1, 503, "reader_http_error"], [2, 503, "reader_http_error"], [3, 503, "reader_http_error"]]);
+    expect(JSON.stringify(result)).not.toContain("upstream body");
+  });
+
+  it("mantém candidatos de páginas legíveis quando outra falha", async () => {
+    setup();
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 429 })).mockResolvedValueOnce(response([{ ...base, rating: 4.6, reviews: 800 }])).mockResolvedValueOnce(response([]));
+    vi.stubGlobal("fetch", fetch);
+    const result = await searchCategoryWinners("fone", 48);
+    expect(result.failed).toBe(false);
+    expect(result.winners).toHaveLength(1);
+    expect(result.diagnostics.map(d => d.outcome)).toEqual(["failed", "ok", "empty"]);
+    expect(result.diagnostics[0].httpStatus).toBe(429);
+  });
+
+  it("distingue resposta inválida de lista vazia", async () => {
+    setup();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(Response.json({ data: {} })).mockResolvedValueOnce(response([])).mockResolvedValueOnce(new Response("invalid")));
+    const result = await searchCategoryWinners("relógio", 48);
+    expect(result.diagnostics.map(d => d.code)).toEqual(["missing_products_array", "empty_extraction", "invalid_json"]);
+  });
+
+  it("registra rejeição por nota, avaliações, reputação e link, além de repetidos", async () => {
+    setup();
+    const valid = { ...base, rating: 4.6, reviews: 800 };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(response([
+      { ...valid, url: "invalid" }, { ...valid, rating: 4.2 },
+      { ...valid, reviews: 99 }, { ...valid, rating: 4.4, reviews: 150 }, valid, valid,
+    ])).mockResolvedValue(response([])));
+    const result = await searchCategoryWinners("fone", 48);
+    expect(result.diagnostics[0].rejections).toEqual({ invalid_product_link: 1, rating_below_4_3: 1, reviews_below_100: 1, insufficient_trust_signals: 1 });
+    expect(result.diagnostics[0].duplicates).toBe(1);
+    expect(result.diagnostics[0].accepted).toBe(1);
+  });
+
+  it("preserva seis motivos de falha no resultado da rodada sem publicar", async () => {
+    setup();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 403 })));
+    const limit = vi.fn().mockResolvedValue({ data: [], error: null });
+    const db = { from: vi.fn(() => ({ select: () => ({ eq: () => ({ limit }) }) })) };
+    const result = await runAmazonAutoImport(db, "test-store");
+    expect(result.searchFailures).toBe(2);
+    expect(result.searchDiagnostics).toHaveLength(6);
+    expect(result.searchDiagnostics.every(d => d.httpStatus === 403)).toBe(true);
+    expect(result.published).toBe(0);
+    expect(db.from).toHaveBeenCalledTimes(1);
+  });
+
+  it("não guarda mensagens arbitrárias potencialmente secretas", () => {
+    expect(JSON.stringify(describeAmazonSearchError(new Error("private credential")))).not.toContain("private credential");
+    expect(describeAmazonSearchError(new DOMException("private", "TimeoutError")).code).toBe("timeout");
   });
 });
