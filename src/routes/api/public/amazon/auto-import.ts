@@ -26,16 +26,22 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
     const cursor = Number(mapping.auto_cursor ?? 0) || 0;
     const nextAllowedAt = Number(mapping.auto_next_allowed_at ?? 0) || 0;
     if (Date.now() < nextAllowedAt) return Response.json({ deferred: true, nextAllowedAt });
-    const { amazonNextAllowedAt } = await import('@/lib/amazon-request-policy');
+    const { amazonNextAllowedAt, amazonHourlyBudget, amazonHourlyLimitReached } = await import('@/lib/amazon-request-policy');
     const { describeAmazonSearchError } = await import('@/lib/amazon-search-diagnostics');
 
     const { runAmazonAutoImport, AMAZON_AUTO_KEYWORDS } = await import("@/lib/amazon-auto.server");
+    const budget = amazonHourlyBudget(mapping.auto_hourly_budget);
+    if (amazonHourlyLimitReached(budget)) return Response.json({ deferred: true, reason: 'Limite de 50 consultas por hora atingido.', nextAllowedAt: budget.startedAt + 3600000 });
+    // Reserve the attempt before the outbound call, including failures/timeouts.
+    const reservedMapping = { ...mapping, auto_hourly_budget: { ...budget, count: budget.count + 1 }, auto_next_allowed_at: Date.now() + 30000 };
+    const { error: reserveError } = await supabaseAdmin.from('supplier_integrations').update({ product_mapping: reservedMapping }).eq('id', integration.id);
+    if (reserveError) throw reserveError;
     try {
-      // Alternate one stock read and one queued catalog read; never sleep in cron.
-      if (!integration.auto_sync || mapping.auto_phase === 'stock') {
+      // One read per callback; stock refresh at minute 7 even while paused.
+      if (!integration.auto_sync || new Date().getUTCMinutes() === 7) {
         const { refreshAmazonStockBatch } = await import('@/lib/amazon-stock.server');
         const stock = await refreshAmazonStockBatch(supabaseAdmin, integration.store_id, 1);
-        const { error: saveError } = await supabaseAdmin.from('supplier_integrations').update({ product_mapping: { ...mapping, auto_phase: 'import', auto_next_allowed_at: amazonNextAllowedAt() } }).eq('id', integration.id);
+        const { error: saveError } = await supabaseAdmin.from('supplier_integrations').update({ product_mapping: { ...reservedMapping, auto_next_allowed_at: amazonNextAllowedAt() } }).eq('id', integration.id);
         if (saveError) throw saveError;
         return Response.json({ paused: !integration.auto_sync, stock });
       }
@@ -49,7 +55,7 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
       const { error: saveError } = await supabaseAdmin
         .from("supplier_integrations")
         .update({
-          product_mapping: { ...mapping, auto_phase: 'stock', auto_pending: result.queue ?? [], auto_next_allowed_at: result.nextAllowedAt, auto_cursor: nextCursor, auto_last_result: { ...result }, auto_search_history: [...history, { recordedAt, ...result }] },
+          product_mapping: { ...reservedMapping, auto_pending: result.queue ?? [], auto_next_allowed_at: result.nextAllowedAt, auto_cursor: nextCursor, auto_last_result: { ...result }, auto_search_history: [...history, { recordedAt, ...result }] },
           last_catalog_sync_at: recordedAt,
           last_error: summary,
         })
@@ -60,7 +66,7 @@ export const Route = createFileRoute("/api/public/amazon/auto-import")({
       const diagnostic = describeAmazonSearchError(caught);
       await supabaseAdmin
         .from("supplier_integrations")
-        .update({ last_error: diagnostic.reason, product_mapping: { ...mapping, auto_next_allowed_at: amazonNextAllowedAt(), auto_last_stop: diagnostic } })
+        .update({ last_error: diagnostic.reason, product_mapping: { ...reservedMapping, auto_next_allowed_at: amazonNextAllowedAt(), auto_last_stop: diagnostic } })
         .eq("id", integration.id);
       throw caught;
     }

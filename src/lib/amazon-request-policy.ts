@@ -23,6 +23,18 @@ export function amazonNextAllowedAt(now = Date.now(), random = Math.random) {
   return now + 5000 + Math.min(7000, Math.floor(random() * 7001));
 }
 
+export function amazonHourlyBudget(saved: unknown, now = Date.now()) {
+  const row = saved && typeof saved === 'object' ? saved as Record<string, unknown> : {};
+  const start = Number(row.startedAt);
+  const count = Number(row.count);
+  if (!Number.isFinite(start) || start > now || now - start >= 3600000) return { startedAt: now, count: 0 };
+  return { startedAt: start, count: Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0 };
+}
+
+export function amazonHourlyLimitReached(budget: { count: number }) {
+  return budget.count >= 50;
+}
+
 export function assertAmazonPageReadable(payload: { rawHtml?: unknown; html?: unknown; metadata?: { statusCode?: unknown; title?: unknown } }) {
   const html = String(payload.rawHtml ?? payload.html ?? '');
   const status = Number(payload.metadata?.statusCode);
