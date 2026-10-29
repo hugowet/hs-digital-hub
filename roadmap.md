@@ -2,7 +2,8 @@
 
 ## Publicar registros Amazon com segurança — 29/10
 - [x] Restringir leitura direta de curtidas e seguidores à identidade envolvida e comentários a autor/admin; manter comentários por post e contagens agregadas em consultas autenticadas limitadas.
-- [ ] Verificar regras reais, testar consultas e solicitar publicação após nova verificação de segurança.
+- [x] Regras reais conferidas e oito testes de acesso passaram; quinze testes Amazon passaram. Nova verificação removeu os três erros de acesso amplo; quatro avisos de vídeos/visualizações/arquivos permanecem.
+- [ ] Solicitar publicação; confirmar os registros da próxima rodada após a implantação.
 
 ## Diagnóstico da busca Amazon — 29/10
 - [x] Investigar falhas atuais: agendador ativo e integração ligada; teste real pelo leitor conectado retornou HTTP 200 e quatro produtos extraídos, sem importar nem alterar catálogo.
