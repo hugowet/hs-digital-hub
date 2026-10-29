@@ -55,6 +55,7 @@ import { SITE_ORIGIN, plainDescription, productSearchSchema } from "@/lib/seo";
 import { brl } from "@/lib/format";
 import type { Product } from "@/lib/catalog";
 import { ProductCard } from "@/components/product-card";
+import { selectionNavigation } from "@/lib/exit-navigation";
 import { trackProductView, markAsPurchasedOrInCart, initAbandonmentWatcher } from "@/lib/abandonment-tracker";
 import { recordProductView } from "@/lib/interest-profile";
 
@@ -699,7 +700,7 @@ function ProductDetailPage() {
                             try {
                               if (product.supplier === "cj") await confirmOption({ data: { parentId: productId, productId: option.productId } });
                               setQuantity(1); setSelectedImage(0);
-                              await navigate({ to: "/produto/$productId", params: { productId: option.productId } });
+                              await navigate({ ...selectionNavigation, to: "/produto/$productId", params: { productId: option.productId } });
                             } catch { toast.error("Esta opção não tem estoque confirmado. Escolha outra."); }
                             finally { setCheckingOption(null); }
                           }}>

@@ -48,6 +48,6 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Sitemap follows explicit route decisions and paginated public reads; private subtrees are excluded and failures never emit partial XML.
 - Search schema excludes unconfirmed CJ offers and invented reviews.
 - Todos uses scheduled sales-first, category-balanced Boa Vista daily ranking to avoid catalog timeouts.
-- Home exit uses a sentinel; menus use a same-URL entry consumed on close/replaced by navigation to keep Back local.
+- Exit never rearms in dialogs; confirm skips app history. Search/variants replace; menu Back closes locally.
 - Order chats persist. Private card margins use bounded identity-scoped batches and verified store ownership.
 - Amazon queues one read, keeps delays/budgets, stops on CAPTCHA/Dogs, saves Retry-After recovery and candidates on reader failures; 12 safe diagnostic runs; trust filters intact.

@@ -38,6 +38,7 @@ import { personalizeProducts, recordCategoryClick, recordSearch } from "@/lib/in
 import { IntroAnimation } from "@/components/intro-animation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { selectionNavigation } from "@/lib/exit-navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -347,12 +348,12 @@ function Home() {
       })];
   }, [data]);
 
-  // First filter from the clean home adds one history entry (so Back returns to the home);
-  // further typing/filter changes replace it instead of stacking entries.
+  // Search and filter choices update the storefront entry, never the Back stack.
   const isFiltered = Boolean(search.supplier || search.q || search.category || search.free || search.range !== "all" || search.sort !== "popular");
   const setSearch = (changes: HomeSearchUpdate, options?: { replace?: boolean }) =>
     navigate({
-      replace: options?.replace ?? isFiltered,
+      ...selectionNavigation,
+      state: (previous) => ({ hsExitGuard: previous.hsExitGuard }),
       search: (previous) => {
         const next = { ...previous, ...changes } as Record<string, unknown>;
         if (!next["q"]) delete next["q"];
