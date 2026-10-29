@@ -406,11 +406,8 @@ function ProductDetailPage() {
       navigate({ to: "/auth", search: { reason: "login-required" } });
       return;
     }
-    if (isCj && !priceConfirmed) {
-      toast.info(delivery.postalCode ? "Aguarde a confirmação do preço para seu endereço." : "Salve seu endereço na sua conta para confirmar o preço.");
-      if (!delivery.postalCode) navigate({ to: "/conta" });
-      return;
-    }
+    // Sem cotação ainda, o item entra com o preço da vitrine; o carrinho
+    // recalcula pelo CEP salvo e pede aceite se o valor final mudar.
     markAsPurchasedOrInCart(product.id);
 
     add(
