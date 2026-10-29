@@ -331,9 +331,10 @@ export function HSTrends() {
     queryKey: ["trend-follower-counts", authorIds.join(",")],
     queryFn: async () => {
       if (!authorIds.length) return {};
-      const { data } = await supabase.from("trend_follows").select("followed_id").in("followed_id", authorIds);
+      const { data, error } = await supabase.rpc("read_trend_follower_counts", { _author_ids: authorIds });
+      if (error) throw error;
       const counts: Record<string, number> = {};
-      for (const row of data ?? []) counts[row.followed_id] = (counts[row.followed_id] ?? 0) + 1;
+      for (const row of data ?? []) counts[row.author_id] = Number(row.follower_count);
       return counts;
     },
     enabled: authorIds.length > 0,
@@ -356,12 +357,7 @@ export function HSTrends() {
     queryKey: ["trend-comments", commentModalPost?.id],
     queryFn: async () => {
       if (!commentModalPost?.id) return [];
-      const { data, error } = await supabase
-        .from("trend_comments")
-        .select("*")
-        .eq("video_id", commentModalPost.id)
-        .order("created_at", { ascending: false })
-        .limit(100);
+      const { data, error } = await supabase.rpc("read_trend_comments", { _video_id: commentModalPost.id });
       if (error || !data) return [];
       return data as TrendComment[];
     },

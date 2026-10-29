@@ -1,8 +1,14 @@
 # HS Digital — MVP
 
+## Publicar registros Amazon com segurança — 29/10
+- [x] Restringir leitura direta de curtidas e seguidores à identidade envolvida e comentários a autor/admin; manter comentários por post e contagens agregadas em consultas autenticadas limitadas.
+- [x] Regras reais conferidas e oito testes de acesso passaram; quinze testes Amazon passaram. Nova verificação removeu os três erros de acesso amplo; quatro avisos de vídeos/visualizações/arquivos permanecem.
+- [x] Preparar publicação autorizada com registros Amazon e correções de acesso; build OK. Testes reais das consultas passaram; abertura da tela Trends no navegador não concluiu.
+- [ ] Confirmar implantação e registros da próxima rodada: depende da conclusão da publicação e execução agendada.
+
 ## Diagnóstico da busca Amazon — 29/10
 - [x] Investigar falhas atuais: agendador ativo e integração ligada; teste real pelo leitor conectado retornou HTTP 200 e quatro produtos extraídos, sem importar nem alterar catálogo.
-- [ ] Confirmar execução da versão atual publicada: último resultado salvo não contém searchDiagnostics nem histórico; próxima verificação depende de publicar os registros atualizados, sem publicação autorizada nesta etapa.
+- [ ] Confirmar execução da versão atual publicada: último resultado salvo não contém searchDiagnostics nem histórico; publicação solicitada por Hugo, após corrigir os acessos da HS Trends.
 - [x] Registrar falhas por palavra/página com código HTTP, resposta inválida, lista vazia e rejeições; preservar filtros e manter últimas 12 rodadas.
 - [x] 15 testes passaram, incluindo falhas parciais/totais e rejeições, sem chamadas externas nem alteração do catálogo.
 - [ ] Confirmar diagnóstico da próxima rodada real: depende da publicação; registros antigos não permitem recuperar causas omitidas.
