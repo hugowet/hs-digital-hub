@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Importação nacional alternada — 29/10
+- [x] Registrar pedido: compra manual Mercado Livre após pagamento, envio ao endereço do cliente e catálogo exclusivamente de estoque brasileiro.
+- [ ] Integrar catálogo autorizado Mercado Livre e alternar uma hora Amazon / uma hora Mercado Livre sem simultaneidade: aguarda confirmação de acesso autorizado ao catálogo e da origem nacional; não reduzir a Amazon antes de existir a segunda integração operacional.
+
 ## Proteção das consultas Amazon — 29/10
 - [x] Publicação solicitada em 29/10; 31 testes e build OK, verificação recente com quatro avisos de mídia e nenhum achado crítico nessa verificação.
 - [ ] Aceleração imediata bloqueada até confirmar implantação: POST público retorna 401, sem marcador queued-50-v1; não prova que a proteção nova já entrou no ar. Agendamento preservado em */10 para não acelerar a versão antiga.
