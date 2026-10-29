@@ -2946,6 +2946,33 @@ export type Database = {
         }
         Returns: string
       }
+      read_trend_comments: {
+        Args: { _video_id: string }
+        Returns: {
+          content: string
+          created_at: string
+          edited_at: string | null
+          id: string
+          parent_id: string | null
+          user_avatar: string | null
+          user_id: string
+          user_name: string
+          video_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "trend_comments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      read_trend_follower_counts: {
+        Args: { _author_ids: string[] }
+        Returns: {
+          author_id: string
+          follower_count: number
+        }[]
+      }
       read_trend_pin: { Args: { _video_id: string }; Returns: string }
       refresh_storefront_daily_ranking: {
         Args: { p_day?: string }

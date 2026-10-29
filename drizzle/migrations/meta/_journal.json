@@ -484,6 +484,13 @@
       "when": 1793229963336,
       "tag": "0068_seller_order_cost_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1793232828906,
+      "tag": "0069_scope_trends_social_reads",
+      "breakpoints": true
     }
   ]
 }
