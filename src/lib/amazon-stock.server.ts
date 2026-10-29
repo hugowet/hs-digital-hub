@@ -5,6 +5,7 @@ import { extractAmazonOptions, shouldReplaceOptions } from "./amazon-options";
 import { amazonHiResFromHtml } from "./amazon-image";
 import { AMAZON_DELIVERY_METHOD_TEXT, buildAmazonDescription, sanitizeAmazonSpecs } from "./amazon-text";
 import { amazonPricePatch, extractAmazonOfferPrice } from './amazon-price';
+import { amazonNavigationHeaders, assertAmazonPageReadable, isAmazonRoundStop } from './amazon-request-policy';
 
 export async function checkAmazonStock(supabaseAdmin: any, product: any) {
   const rawUrl = String(product.specifications?.affiliate_url ?? "");
@@ -20,12 +21,14 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
     const response = await fetch("https://connector-gateway.lovable.dev/firecrawl/v2/scrape", {
       method: "POST", signal: AbortSignal.timeout(25000),
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "X-Connection-Api-Key": connection },
-      body: JSON.stringify({ url: url.toString(), formats: ["rawHtml"], maxAge: 0, onlyMainContent: false, location: { country: "BR", languages: ["pt-BR"] } }),
+      body: JSON.stringify({ url: url.toString(), headers: amazonNavigationHeaders(), formats: ["rawHtml"], maxAge: 0, onlyMainContent: false, location: { country: "BR", languages: ["pt-BR"] } }),
     });
     if (!response.ok) throw new Error("Supplier read failed");
     const payload = await response.json();
+    assertAmazonPageReadable(payload?.data ?? payload ?? {});
     html = String(payload?.data?.rawHtml ?? payload?.rawHtml ?? "");
-  } catch {
+  } catch (error) {
+    if (isAmazonRoundStop(error)) throw error;
     // Failed reads never authorize checkout from stale or invented stock.
     return 0;
   }
@@ -68,12 +71,14 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
   return quantity;
 }
 
-export async function refreshAmazonStockBatch(supabaseAdmin: any, storeId: string) {
+export async function refreshAmazonStockBatch(supabaseAdmin: any, storeId: string, limit = 6) {
   const { data, error } = await supabaseAdmin.from("products")
     .select("id,description,specifications,variations,stock").eq("supplier", "amazon").eq("store_id", storeId)
-    .order("supplier_stock_checked_at", { ascending: true, nullsFirst: true }).order("id").limit(6);
+    .order("supplier_stock_checked_at", { ascending: true, nullsFirst: true }).order("id").limit(limit);
   if (error) throw error;
   const results = await Promise.allSettled((data ?? []).map((p: any) => checkAmazonStock(supabaseAdmin, p)));
+  const blocked = results.find(r => r.status === 'rejected' && isAmazonRoundStop(r.reason));
+  if (blocked?.status === 'rejected') throw blocked.reason;
   return { checked: results.length, available: results.filter((r) => r.status === "fulfilled" && r.value > 0).length };
 }
 

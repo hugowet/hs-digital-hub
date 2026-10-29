@@ -110,4 +110,39 @@ describe("diagnósticos por página Amazon", () => {
     expect(JSON.stringify(describeAmazonSearchError(new Error("private credential")))).not.toContain("private credential");
     expect(describeAmazonSearchError(new DOMException("private", "TimeoutError")).code).toBe("timeout");
   });
+
+  it('persists search candidates without fetching details in the same callback', async () => {
+    setup();
+    const fetch = vi.fn().mockResolvedValue(response([{ ...base, rating: 4.6, reviews: 800 }]));
+    vi.stubGlobal('fetch', fetch);
+    const db = { from: vi.fn(() => ({ select: () => ({ eq: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) })) };
+    const result = await runAmazonAutoImport(db, 'test-store', 0, { pending: [], nextAllowedAt: 0 });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.queue).toHaveLength(1);
+    expect(result.published).toBe(0);
+    expect(result.nextAllowedAt).toBeGreaterThan(Date.now());
+  });
+
+  it('preserves pending products and aborts immediately on CAPTCHA', async () => {
+    setup();
+    const fetch = vi.fn().mockResolvedValue(Response.json({ data: { rawHtml: '<input id="captchacharacters">' } }));
+    vi.stubGlobal('fetch', fetch);
+    const db = { from: vi.fn(() => ({ select: () => ({ eq: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) })) };
+    const pending = [{ ...base, rating: 4.6, reviews: 800 }, { ...base, url: 'https://www.amazon.com.br/dp/B0ABC12346', rating: 4.6, reviews: 800 }];
+    const result = await runAmazonAutoImport(db, 'test-store', 0, { pending, nextAllowedAt: 0 });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.stopped?.code).toBe('amazon_captcha');
+    expect(result.queue).toEqual(pending);
+    expect(result.published).toBe(0);
+  });
+
+  it('makes no request before the saved delay expires', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const db = { from: vi.fn() };
+    const result = await runAmazonAutoImport(db, 'test-store', 0, { pending: [], nextAllowedAt: Date.now() + 12000 });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(db.from).not.toHaveBeenCalled();
+    expect(result.nextAllowedAt).toBeGreaterThan(Date.now());
+  });
 });
