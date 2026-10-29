@@ -1,8 +1,9 @@
 # HS Digital — MVP
 
 ## Alternativa nacional à Amazon — 29/10
-- [ ] Pesquisar fornecedores com CPF, estoque no Brasil e importação autorizada em massa para a HS Digital; diferenciar API/arquivo disponível de integração exclusiva com plataformas prontas.
-- [ ] Apresentar alternativas e requisitos comprovados; nenhuma troca de fornecedor ou pausa do robô aplicada nesta pesquisa.
+- [x] Pesquisar fornecedores com CPF, estoque no Brasil e importação autorizada em massa para a HS Digital; diferenciar API/arquivo disponível de integração exclusiva com plataformas prontas.
+- [x] Resultado: Dropify tem API/CSV mas exige CNPJ e IE; Dropi/Drop Nacional tem envio nacional, porém CPF e API/feed customizado não confirmados; Dimona confirma CPF e integração direta por API, mas atua em personalizáveis e catálogo/estoque em lote precisa ser confirmado.
+- [ ] Integrar fornecedor nacional de catálogo variado: bloqueado pela ausência de opção comprovada com CPF e catálogo autorizado para site próprio. Nenhuma troca de fornecedor ou pausa do robô aplicada nesta pesquisa.
 
 ## Rodada Amazon e ajuste dirigido — 29/10
 - [x] Conferir rodada posterior: chamadas de 00:10 e 00:20 UTC aparecem com status 0, sem resultado novo persistido; último resultado completo de 00:00 UTC ainda usa formato antigo, sem diagnósticos/histórico. Catálogo continua com 96 nacionais.
