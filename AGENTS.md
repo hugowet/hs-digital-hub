@@ -17,9 +17,9 @@
 
 - Checkout reserves stock atomically; Mercado Pago splits stores with application_fee and verified webhooks/API.
 - Delivery is atomic; tracking checks owner/payment and shares latest real events via Realtime/polling. Buyer photos verify purchases before signing; reports never grant access.
-- Credenciais da plataforma e tokens OAuth dos vendedores ficam criptografados no banco e são lidos apenas no servidor; produtos digitais são liberados pela confirmação idempotente do pagamento.
+- Platform/OAuth credentials are encrypted and server-only; digital delivery requires idempotent confirmed payment.
 - Papéis de comprador/vendedor são criados por trigger a partir do cadastro e nunca são gravados pelo navegador, evitando elevação de privilégio.
-- Eventos de carrinho abandonado são persistidos apenas para usuários autenticados e protegidos por usuário, permitindo automações futuras sem expor contatos.
+- Abandoned carts are authenticated and user-scoped; never expose contacts.
 - Product media stays private with temporary signed URLs.
 - Checkout locks deterministically with bounded waits.
 - Em lojas da própria conta Mercado Pago da plataforma, a cobrança omite `application_fee`; a comissão permanece no razão interno porque não existe repasse externo.
@@ -50,3 +50,4 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Todos uses scheduled sales-first, category-balanced Boa Vista daily ranking to avoid catalog timeouts.
 - Home exit uses a sentinel; menus use a same-URL entry consumed on close/replaced by navigation to keep Back local.
 - Order chats persist. Private card margins use bounded identity-scoped batches and verified store ownership.
+- Amazon search keeps per-page diagnostics and 12 recent runs in integration mapping; controlled errors/statuses only, no upstream bodies or secrets; trust filters unchanged.

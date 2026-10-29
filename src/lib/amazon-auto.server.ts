@@ -17,6 +17,7 @@ import { extractAmazonOptions } from "./amazon-options";
 import { extractAmazonAvailability, confirmedAmazonStock } from "./amazon-availability";
 import { calculateAmazonPrice } from "./pricing";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
+import { AmazonSearchReadError, amazonHttpError, describeAmazonSearchError, type AmazonSearchPageDiagnostic } from "./amazon-search-diagnostics";
 
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -160,7 +161,7 @@ const TREND_SCHEMA = {
 function gatewayKeys() {
   const lovableKey = process.env["LOVABLE_API_KEY"];
   const connectionKey = process.env["FIRECRAWL_API_KEY"];
-  if (!lovableKey || !connectionKey) throw new Error("Serviço de leitura de páginas não configurado.");
+  if (!lovableKey || !connectionKey) throw new AmazonSearchReadError("reader_not_configured", "Serviço de leitura de páginas não configurado.");
   return { lovableKey, connectionKey };
 }
 
@@ -181,12 +182,13 @@ async function scrapePage(url: string, formats: unknown[]) {
       location: { country: "BR", languages: ["pt-BR"] },
     }),
   });
-  if (!res.ok) throw new Error(`scrape ${res.status}`);
-  const json = await res.json();
+  if (!res.ok) throw amazonHttpError(res.status);
+  const json = await res.json().catch(() => { throw new AmazonSearchReadError("invalid_json", "Serviço de leitura retornou JSON inválido.", res.status); });
+  if (json?.success === false) throw new AmazonSearchReadError("reader_unsuccessful", "Serviço de leitura informou falha apesar da resposta HTTP bem-sucedida.", res.status);
   return json?.data && typeof json.data === "object" ? json.data : json;
 }
 
-async function searchCategoryWinners(keyword: string, target: number, cycle = 0): Promise<TrendCandidate[]> {
+export async function searchCategoryWinners(keyword: string, target: number, cycle = 0): Promise<{ winners: TrendCandidate[]; diagnostics: AmazonSearchPageDiagnostic[]; failed: boolean }> {
   const pages = 3;
   // Each full keyword cycle goes deeper (pages 1-3, 4-6, ... up to 15) and
   // alternates best-seller / review ordering so dedupe never starves the robot.
@@ -208,21 +210,36 @@ async function searchCategoryWinners(keyword: string, target: number, cycle = 0)
       ]),
     ),
   );
-  const failedSearches = responses.filter(response => response.status === "rejected");
-  if (failedSearches.length === responses.length) throw new Error("Nenhuma página de busca Amazon pôde ser lida nesta rodada.");
-
   const seen = new Set<string>();
   const winners: TrendCandidate[] = [];
-  for (const res of responses) {
-    if (res.status !== "fulfilled") continue;
+  const diagnostics: AmazonSearchPageDiagnostic[] = [];
+  for (const [index, res] of responses.entries()) {
+    const diagnostic: AmazonSearchPageDiagnostic = { keyword, page: firstPage + index, url: urls[index], outcome: "ok", reason: "Página lida e produtos avaliados.", extracted: 0, accepted: 0, duplicates: 0, rejections: {} };
+    diagnostics.push(diagnostic);
+    if (res.status !== "fulfilled") {
+      Object.assign(diagnostic, { outcome: "failed", ...describeAmazonSearchError(res.reason) });
+      continue;
+    }
     const list = res.value?.json?.products;
-    if (!Array.isArray(list)) continue;
+    if (!Array.isArray(list)) {
+      diagnostic.outcome = "invalid_response";
+      diagnostic.code = "missing_products_array";
+      diagnostic.reason = "Resposta sem lista de produtos; não é possível afirmar que a busca não tinha resultados.";
+      continue;
+    }
+    diagnostic.extracted = list.length;
+    if (!list.length) {
+      diagnostic.outcome = "empty";
+      diagnostic.code = "empty_extraction";
+      diagnostic.reason = "Leitor devolveu lista vazia; ausência de produtos ou bloqueio não confirmados.";
+    }
+    const reject = (reason: string) => { diagnostic.rejections[reason] = (diagnostic.rejections[reason] ?? 0) + 1; };
     for (const raw of list) {
       const p = raw as Record<string, unknown>;
       const dpMatch = String(p?.url ?? "").match(/\/dp\/([A-Z0-9]{10})/i) ?? String(p?.url ?? "").match(/\/gp\/product\/([A-Z0-9]{10})/i);
-      if (!dpMatch) continue;
+      if (!dpMatch) { reject("invalid_product_link"); continue; }
       const url = `https://www.amazon.com.br/dp/${dpMatch[1]}`;
-      if (seen.has(url)) continue;
+      if (seen.has(url)) { diagnostic.duplicates++; continue; }
       const candidate: TrendCandidate = {
         url,
         title: String(p?.title ?? ""),
@@ -231,13 +248,17 @@ async function searchCategoryWinners(keyword: string, target: number, cycle = 0)
         badge: String(p?.badge ?? ""),
         fulfilledByAmazon: Boolean(p?.fulfilledByAmazon),
       };
-      if (!isTrustworthyTrend(candidate)) continue;
+      if (!isTrustworthyTrend(candidate)) {
+        reject(!candidate.title ? "missing_title" : candidate.rating < 4.3 ? "rating_below_4_3" : candidate.reviews < 100 ? "reviews_below_100" : "insufficient_trust_signals");
+        continue;
+      }
       seen.add(url);
+      diagnostic.accepted++;
       winners.push(candidate);
     }
   }
   winners.sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
-  return winners.slice(0, target);
+  return { winners: winners.slice(0, target), diagnostics, failed: diagnostics.every(d => d.outcome === "failed" || d.outcome === "invalid_response") };
 }
 
 const PRODUCT_SCHEMA = {
@@ -294,6 +315,7 @@ function asinFromUrl(url: string): string | null {
 }
 
 export interface AmazonAutoImportResult {
+  searchDiagnostics: AmazonSearchPageDiagnostic[];
   searchFailures: number;
   scanned: number;
   candidates: number;
@@ -315,7 +337,7 @@ export async function runAmazonAutoImport(
   cursor = 0,
 ): Promise<AmazonAutoImportResult> {
   const result: AmazonAutoImportResult = {
-    scanned: 0, candidates: 0, published: 0, skippedExisting: 0, rejectedPrice: 0, failed: 0, categories: [], searchFailures: 0,
+    scanned: 0, candidates: 0, published: 0, skippedExisting: 0, rejectedPrice: 0, failed: 0, categories: [], searchFailures: 0, searchDiagnostics: [],
   };
 
   // ASINs já importados (dedupe idempotente)
@@ -344,7 +366,9 @@ export async function runAmazonAutoImport(
     result.scanned++;
     if (res.status === "fulfilled") {
       result.categories.push(batch[i].hint);
-      candidates.push(...res.value);
+      result.searchDiagnostics.push(...res.value.diagnostics);
+      if (res.value.failed) result.searchFailures++;
+      candidates.push(...res.value.winners);
     } else result.searchFailures++;
   });
   result.candidates = candidates.length;
