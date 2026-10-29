@@ -406,11 +406,8 @@ function ProductDetailPage() {
       navigate({ to: "/auth", search: { reason: "login-required" } });
       return;
     }
-    if (isCj && !priceConfirmed) {
-      toast.info(delivery.postalCode ? "Aguarde a confirmação do preço para seu endereço." : "Salve seu endereço na sua conta para confirmar o preço.");
-      if (!delivery.postalCode) navigate({ to: "/conta" });
-      return;
-    }
+    // Sem cotação ainda, o item entra com o preço da vitrine; o carrinho
+    // recalcula pelo CEP salvo e pede aceite se o valor final mudar.
     markAsPurchasedOrInCart(product.id);
 
     add(
@@ -654,23 +651,23 @@ function ProductDetailPage() {
                     </span>
                   </div>}
 
-                  {!priceConfirmed && <div className="space-y-2 text-sm text-muted-foreground">
-                    <p>{delivery.loading ? "Confirmando preço para seu endereço…" : !delivery.userId ? "Entre na sua conta para ver o preço de entrega." : !delivery.postalCode ? "Salve seu endereço para confirmar o preço." : delivery.error || "Entrega não confirmada."}</p>
-                    {!delivery.loading && <Button variant="outline" size="sm" onClick={() => {
-                      if (!delivery.userId) navigate({ to: "/auth", search: { reason: "login-required" } });
-                      else if (!delivery.postalCode) navigate({ to: "/conta" });
-                      else void delivery.retry();
-                    }}>{!delivery.userId ? "Entrar" : !delivery.postalCode ? "Salvar endereço" : "Tentar novamente"}</Button>}
-                  </div>}
-                  {priceConfirmed && <div data-testid="detail-price" className="mt-2 flex items-baseline gap-1">
+                  {price > 0 && <div data-testid="detail-price" className="mt-2 flex items-baseline gap-1">
                     <span className="text-sm font-semibold text-foreground">R$</span>
                     <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
                       {priceParts.reais}
                     </span>
                     <span className="text-sm font-semibold text-foreground">{priceParts.centavos}</span>
                   </div>}
+                  {!priceConfirmed && <div className="mt-2 space-y-2 text-xs text-muted-foreground">
+                    <p>{delivery.loading ? "Calculando frete para o CEP do seu endereço…" : !delivery.userId ? "Entre na sua conta para ver o valor exato com frete." : !delivery.postalCode ? "Cadastre seu endereço para ver o valor exato com frete." : delivery.error || "Frete ainda não calculado."}</p>
+                    {!delivery.loading && <Button variant="outline" size="sm" onClick={() => {
+                      if (!delivery.userId) navigate({ to: "/auth", search: { reason: "login-required" } });
+                      else if (!delivery.postalCode) navigate({ to: "/conta" });
+                      else void delivery.retry();
+                    }}>{!delivery.userId ? "Entrar" : !delivery.postalCode ? "Cadastrar endereço" : "Tentar novamente"}</Button>}
+                  </div>}
 
-                  {priceConfirmed && <p className="mt-1 text-xs text-emerald-600 font-medium flex items-center gap-1">
+                  {price > 0 && <p className="mt-1 text-xs text-emerald-600 font-medium flex items-center gap-1">
                     <Zap className="h-3.5 w-3.5 fill-emerald-600" />
                     em {maxInstallments}x de {brl(installmentValue)} sem juros
                   </p>}
