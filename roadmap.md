@@ -2,7 +2,13 @@
 
 ## Importação nacional alternada — 29/10
 - [x] Registrar pedido: compra manual Mercado Livre após pagamento, envio ao endereço do cliente e catálogo exclusivamente de estoque brasileiro.
-- [ ] Integrar catálogo autorizado Mercado Livre e alternar uma hora Amazon / uma hora Mercado Livre sem simultaneidade: aguarda confirmação de acesso autorizado ao catálogo e da origem nacional; não reduzir a Amazon antes de existir a segunda integração operacional.
+- [x] Cancelado por Hugo: não integrar Mercado Livre nem aplicar alternância; focar buscas Amazon.
+
+## Leitor Amazon e recuperação segura — 29/10
+- [x] Conexão Firecrawl gerenciada pela Lovable, ligada; último resultado completo 00:50 UTC: timeout na busca cabo usb c, página 2, zero candidatos/publicações. A configuração disponível não informa a cota numérica externa.
+- [x] Preservar candidatos diante de falhas temporárias e salvar pausa de recuperação respeitando Retry-After; 429/timeout pausam pelo menos 5 minutos, cobrança/autenticação/recusa por 1 hora, sem insistência nem mudança de filtros/margens.
+- [x] 29 testes passaram, incluindo fila intacta após 429 e pausa de Retry-After de 900 segundos; build OK. Limite próprio permanece 50 consultas/hora, não 50 publicações; leitor possui limites por minuto/concorrência e cobrança de créditos separada.
+- [ ] Publicar e confirmar recuperação em rodada real: nova proteção não publicada neste pedido; não afirmar importação retomada antes de consultar resultado posterior.
 
 ## Proteção das consultas Amazon — 29/10
 - [x] Publicação solicitada em 29/10; 31 testes e build OK, verificação recente com quatro avisos de mídia e nenhum achado crítico nessa verificação.

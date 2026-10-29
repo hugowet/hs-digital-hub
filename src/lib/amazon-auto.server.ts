@@ -17,8 +17,8 @@ import { extractAmazonOptions } from "./amazon-options";
 import { extractAmazonAvailability, confirmedAmazonStock } from "./amazon-availability";
 import { calculateAmazonPrice } from "./pricing";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
-import { AmazonSearchReadError, amazonHttpError, describeAmazonSearchError, type AmazonSearchPageDiagnostic } from "./amazon-search-diagnostics";
-import { amazonNavigationHeaders, amazonNextAllowedAt, assertAmazonPageReadable, isAmazonRoundStop } from './amazon-request-policy';
+import { AmazonSearchReadError, amazonReaderHttpError, describeAmazonSearchError, type AmazonSearchPageDiagnostic } from "./amazon-search-diagnostics";
+import { amazonNavigationHeaders, amazonNextAllowedAt, amazonRecoveryAt, assertAmazonPageReadable, isAmazonRoundStop } from './amazon-request-policy';
 
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -185,7 +185,7 @@ async function scrapePage(url: string, formats: unknown[]) {
       location: { country: "BR", languages: ["pt-BR"] },
     }),
   });
-  if (!res.ok) throw amazonHttpError(res.status);
+  if (!res.ok) throw await amazonReaderHttpError(res);
   const json = await res.json().catch(() => { throw new AmazonSearchReadError("invalid_json", "Serviço de leitura retornou JSON inválido.", res.status); });
   if (json?.success === false) throw new AmazonSearchReadError("reader_unsuccessful", "Serviço de leitura informou falha apesar da resposta HTTP bem-sucedida.", res.status);
   const payload = json?.data && typeof json.data === "object" ? json.data : json;
@@ -382,8 +382,11 @@ export async function runAmazonAutoImport(
     } else result.searchFailures++;
   });
   result.candidates = candidates.length;
-  const blockedPage = result.searchDiagnostics.find(d => ['amazon_captcha', 'amazon_error_page', 'amazon_access_denied'].includes(d.code ?? ''));
-  if (blockedPage) return { ...result, queue: [], nextAllowedAt: amazonNextAllowedAt(), stopped: { code: blockedPage.code ?? 'amazon_error_page', reason: blockedPage.reason, httpStatus: blockedPage.httpStatus } };
+  const blockedPage = result.searchDiagnostics.find(d => isAmazonRoundStop(new AmazonSearchReadError(d.code ?? '', d.reason, d.httpStatus, d.retryAt)) || ['timeout', 'network_error'].includes(d.code ?? ''));
+  if (blockedPage) {
+    const stopped = { code: blockedPage.code ?? 'reader_http_error', reason: blockedPage.reason, httpStatus: blockedPage.httpStatus, retryAt: blockedPage.retryAt };
+    return { ...result, queue: candidates.filter(c => !knownAsins.has(asinFromUrl(c.url) ?? '')).slice(0, MAX_TOTAL_PER_RUN), nextAllowedAt: amazonRecoveryAt(stopped), stopped };
+  }
   if (queueState && !queueState.pending.length) {
     const pending = candidates.filter(c => !knownAsins.has(asinFromUrl(c.url) ?? ''));
     result.skippedExisting = candidates.length - pending.length;
@@ -474,6 +477,6 @@ export async function runAmazonAutoImport(
     if (error) throw error;
     result.published = rows.length;
   }
-  if (queueState) result.nextAllowedAt = amazonNextAllowedAt();
+  if (queueState) result.nextAllowedAt = result.stopped ? amazonRecoveryAt(result.stopped) : amazonNextAllowedAt();
   return result;
 }

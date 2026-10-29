@@ -49,5 +49,10 @@ export function assertAmazonPageReadable(payload: { rawHtml?: unknown; html?: un
 }
 
 export function isAmazonRoundStop(error: unknown) {
-  return error instanceof AmazonSearchReadError && ['amazon_captcha', 'amazon_error_page', 'amazon_access_denied'].includes(error.code);
+  return error instanceof AmazonSearchReadError && (['amazon_captcha', 'amazon_error_page', 'amazon_access_denied', 'reader_credit_limit', 'reader_credits_exhausted'].includes(error.code) || (error.code === 'reader_http_error' && [401, 402, 403, 429, 503, 504].includes(error.httpStatus ?? 0))) || error instanceof Error && ['AbortError', 'TimeoutError', 'TypeError'].includes(error.name);
+}
+
+export function amazonRecoveryAt(diagnostic: { code: string; httpStatus?: number; retryAt?: number }, now = Date.now()) {
+  const fallback = ['amazon_captcha', 'amazon_error_page', 'amazon_access_denied', 'reader_credit_limit', 'reader_credits_exhausted'].includes(diagnostic.code) || [401, 402, 403].includes(diagnostic.httpStatus ?? 0) ? 3600000 : 300000;
+  return Math.max(now + fallback, diagnostic.retryAt ?? 0);
 }
