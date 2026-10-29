@@ -1,8 +1,9 @@
 # HS Digital — MVP
 
 ## Rodada Amazon e ajuste dirigido — 29/10
-- [ ] Ler os motivos por busca da rodada posterior à publicação e ajustar somente a causa comprovada, preservando filtros de confiança.
-- [ ] Testar a busca corrigida e relatar os resultados reais; não prometer acompanhamento após o fim desta conversa.
+- [x] Conferir rodada posterior: chamadas de 00:10 e 00:20 UTC aparecem com status 0, sem resultado novo persistido; último resultado completo de 00:00 UTC ainda usa formato antigo, sem diagnósticos/histórico. Catálogo continua com 96 nacionais.
+- [ ] Ajustar somente a causa comprovada: bloqueado pela ausência dos motivos por página e pela execução publicada atual não confirmada; status 0 não prova bloqueio Amazon nem causa específica.
+- [x] Quinze testes dos registros atuais passaram; busca não alterada sem evidência. Site público responde 200, o que não comprova versão do robô nem sucesso agendado.
 
 ## Publicar registros Amazon com segurança — 29/10
 - [x] Restringir leitura direta de curtidas e seguidores à identidade envolvida e comentários a autor/admin; manter comentários por post e contagens agregadas em consultas autenticadas limitadas.
