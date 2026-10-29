@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { shouldConfirmHomeBack } from "@/lib/exit-navigation";
+import { exitHistoryDelta, shouldConfirmHomeBack } from "@/lib/exit-navigation";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -21,14 +21,19 @@ export function ExitConfirmGuard({ active = true }: { active?: boolean }) {
   const [open, setOpen] = useState(false);
   const exitingRef = useRef(false);
   const decision = useRef<((blocked: boolean) => void) | null>(null);
+  const entryIndex = useRef<number | null>(null);
+  const exitBaseIndex = useRef(0);
 
   useEffect(() => {
+    entryIndex.current ??= router.history.location.state.__TSR_index ?? 0;
     exitingRef.current = false;
     if (!active) return;
     // Use the router's history API: copying native state duplicates its index/key
     // and breaks BACK direction detection. Arm within a real user gesture.
     const onGesture = () => {
-      if (exitingRef.current || router.history.location.state[SENTINEL_KEY]) return;
+      // While BACK is awaiting a decision, the native browser is already on
+      // the base entry. Clicking the dialog must not push another sentinel.
+      if (exitingRef.current || decision.current || router.history.location.state[SENTINEL_KEY]) return;
       router.history.push(router.history.location.href, { [SENTINEL_KEY]: true }, { ignoreBlocker: true });
       router.history.flush();
     };
@@ -38,6 +43,7 @@ export function ExitConfirmGuard({ active = true }: { active?: boolean }) {
         if (exitingRef.current || !shouldConfirmHomeBack(action, Boolean(currentLocation.state[SENTINEL_KEY]),
             currentLocation.href, nextLocation.href, Boolean(currentLocation.state.hsMobileMenu))) return false;
         return new Promise<boolean>((resolve) => {
+          exitBaseIndex.current = nextLocation.state.__TSR_index ?? 0;
           decision.current = resolve;
           setOpen(true);
         });
@@ -68,8 +74,16 @@ export function ExitConfirmGuard({ active = true }: { active?: boolean }) {
             exitingRef.current = true;
             decision.current?.(false);
             decision.current = null;
-            // BACK has already landed on the base entry; skip only the guard.
-            window.setTimeout(() => router.history.back({ ignoreBlocker: true }), 0);
+            // Let the pending POP settle, then leave all entries created since
+            // opening the app, including prior product/menu visits.
+            window.setTimeout(() => {
+              router.history.go(exitHistoryDelta(exitBaseIndex.current, entryIndex.current ?? 0), { ignoreBlocker: true });
+              // Browsers cannot close a user-opened tab. With no previous
+              // document, leave the store on a blank page instead.
+              window.setTimeout(() => {
+                if (exitingRef.current) window.location.replace("about:blank");
+              }, 500);
+            }, 0);
           }}>
             Sim, sair
           </AlertDialogAction>

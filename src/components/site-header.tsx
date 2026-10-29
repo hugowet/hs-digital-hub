@@ -38,6 +38,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { catalogSearchGroups, normalizeCatalogSearch } from "@/lib/catalog-search";
 import { useMessageUnread } from "@/hooks/use-message-unread";
 import { UnreadDot } from "@/components/unread-dot";
+import { selectionNavigation } from "@/lib/exit-navigation";
 
 declare module "@tanstack/react-router" {
   interface HistoryState { hsMobileMenu?: boolean }
@@ -197,7 +198,7 @@ export function SiteHeader({
     if (onQueryChange) {
       onQueryChange(localQuery);
     } else {
-      navigate({ to: "/", search: { q: localQuery || undefined } });
+      navigate({ ...selectionNavigation, to: "/", search: { q: localQuery || undefined } });
     }
   };
 
