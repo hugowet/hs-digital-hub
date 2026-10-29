@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Rodada Amazon e ajuste dirigido — 29/10
+- [ ] Ler os motivos por busca da rodada posterior à publicação e ajustar somente a causa comprovada, preservando filtros de confiança.
+- [ ] Testar a busca corrigida e relatar os resultados reais; não prometer acompanhamento após o fim desta conversa.
+
 ## Publicar registros Amazon com segurança — 29/10
 - [x] Restringir leitura direta de curtidas e seguidores à identidade envolvida e comentários a autor/admin; manter comentários por post e contagens agregadas em consultas autenticadas limitadas.
 - [x] Regras reais conferidas e oito testes de acesso passaram; quinze testes Amazon passaram. Nova verificação removeu os três erros de acesso amplo; quatro avisos de vídeos/visualizações/arquivos permanecem.
