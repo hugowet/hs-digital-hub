@@ -11,8 +11,14 @@ it.each([
 it("não importa bolsas só porque a categoria mãe menciona calçados", () => {
   expect(cjInterestGroup("Bags & Shoes / Men's Luggage & Bags / Briefcases")).toBeNull();
 });
-it("não deixa peças de carro e enfeites genéricos encherem novas importações", () => {
-  expect(cjInterestGroup("Automobiles & Motorcycles / Auto Replacement Parts / Car Brake System")).toBeNull();
+it("inclui peças e acessórios de carro e moto, lanternas, mochilas e chaveiros", () => {
+  expect(cjInterestGroup("Automobiles & Motorcycles / Auto Replacement Parts")).toBe("vehicles");
+  expect(cjInterestGroup("Automobiles & Motorcycles / Motorcycle Accessories & Parts")).toBe("vehicles");
+  expect(cjInterestGroup("Lights / Portable Lighting / Flashlights")).toBe("lights");
+  expect(cjInterestGroup("Bags / School Bags")).toBe("backpacks");
+  expect(cjInterestGroup("Jewelry / Key Chains")).toBe("keychains");
+});
+it("não deixa enfeites genéricos encherem novas importações", () => {
   expect(cjInterestGroup("Home / Decor / Stickers")).toBeNull();
 });
 it("alterna interesse em vez de importar só relógios", () => {
