@@ -6,8 +6,7 @@ import { quoteMarketplaceShipping } from "./shipping.functions";
 import { deliveryDateRange } from "./delivery-estimate";
 import { createQuoteBatcher } from "./quote-batcher";
 
-// Serialize visible-product quotes so catalog rendering never floods the supplier,
-// and batch all cards that become visible in the same moment into ONE server call.
+// Serialize independent product quotes: unrelated cards are never a shipment.
 type QuoteGroups = Array<{
   storeId?: string;
   options?: Array<{
@@ -22,20 +21,11 @@ type PendingQuote = {
   quoteFn: (args: { data: { postalCode: string; items: Array<{ productId: string; quantity: number }> } }) => Promise<QuoteGroups>;
 };
 const queueQuote = createQuoteBatcher<PendingQuote, QuoteGroups>(async (batch) => {
-  const groups: QuoteGroups = [];
-  const byCep = new Map<string, PendingQuote[]>();
-  for (const item of batch) {
-    const items = byCep.get(item.postalCode) ?? [];
-    items.push(item);
-    byCep.set(item.postalCode, items);
-  }
-  for (const [postalCode, items] of byCep) {
-    const first = items[0];
-    if (!first) continue;
-    groups.push(...await first.quoteFn({ data: { postalCode, items: items.map(({ productId, quantity }) => ({ productId, quantity })) } }));
-  }
-  return groups;
-});
+  const item = batch[0];
+  if (!item) return [];
+  return item.quoteFn({ data: { postalCode: item.postalCode,
+    items: [{ productId: item.productId, quantity: item.quantity }] } });
+}, 1);
 
 function enqueueQuote(
   quoteFn: (args: { data: { postalCode: string; items: Array<{ productId: string; quantity: number }> } }) => Promise<QuoteGroups>,

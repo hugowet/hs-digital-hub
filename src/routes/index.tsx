@@ -150,6 +150,8 @@ export const Route = createFileRoute("/")({
       { property: "og:url", content: url },
       ...(params.size ? [{ name: "robots", content: "noindex, follow" }] : []),
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "HS Digital · Marketplace" },
+      { name: "twitter:description", content: "Produtos nacionais e internacionais. Confira preços e entrega para seu endereço." },
     ],
     links: [{ rel: "canonical", href: url }],
     scripts: params.size ? [] : [{ type: "application/ld+json", children: JSON.stringify({
@@ -421,15 +423,15 @@ function Home() {
                     <ShieldCheck className="h-4 w-4" /> HS Digital Marketplace
                   </span>
                   <h1 className="mt-3 text-2xl font-black sm:text-4xl md:text-5xl tracking-tight leading-tight">
-                    Ofertas imperdíveis com envio rápido
+                    HS Digital Marketplace
                   </h1>
                   <p className="mt-2 text-sm text-blue-100 sm:text-base md:text-lg">
-                    Milhares de produtos nacionais e importados com frete grátis e compra protegida.
+                    Produtos nacionais e internacionais com pagamento pelo Mercado Pago. Confira o prazo de entrega para seu endereço.
                   </p>
 
                   <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
                     <Gift className="h-4 w-4" />
-                    <span>FRETE GRÁTIS AUTOMÁTICO NA SUA 1ª COMPRA</span>
+                    <span>FRETE GRÁTIS A PARTIR DE R$ 89,90 · CONFORME A COTAÇÃO DO PEDIDO</span>
                   </div>
 
                   {/* BOTÕES DE AÇÃO: JOGOS, CLUBE HS, RÁDIO HS E HS SOCIAL */}
@@ -446,7 +448,7 @@ function Home() {
                 <div className="flex items-center gap-2">
                   <Truck className="h-5 w-5 text-[#3483fa] shrink-0" />
                   <span>
-                    <strong>Frete rápido</strong> em todo o Brasil
+                    <strong>Entrega</strong> conforme seu CEP
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

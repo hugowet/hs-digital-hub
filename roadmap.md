@@ -1,5 +1,16 @@
 # HS Digital — MVP
 
+## Preparação para vendas — 30/10
+- [x] Auditar vitrine, pagamento, integrações e pendências com leitura real da configuração, sem cobrar clientes.
+- [x] Separar cotações CJ de cards distintos; manter fila serial e isolar falhas de estoque.
+- [x] Qualificar avisos de frete e prazo; retirar promessa genérica de repasse automático.
+- [ ] Homologar produto → CEP → carrinho → cobrança → envio real: navegação do produto na prévia expirou; nenhuma cobrança realizada.
+- [ ] Completar informações públicas de contato, responsável, privacidade, troca/devolução e condições de venda: aguarda dados reais e política da operação.
+- [ ] Confirmar envio CJ após reconciliação sem webhook e revisar processamento seguro/idempotente: fluxo atual só dispara envio no webhook; agendador de tentativas existe.
+- [ ] Resolver três envios CJ antigos com endereço incompleto: aguarda dados corretos e confirmação operacional, sem inventar endereço nem reenviar cobranças.
+- [ ] Confirmar versão publicada antes da divulgação: ajustes desta revisão ainda não publicados.
+- [ ] Importação CJ de 50/hora: configuração atual está pausada; confirmar intenção antes de reativar consumo externo.
+
 ## Voltar e confirmação de saída — 29/10
 - [x] Corrigir confirmação de saída sem rearmar a proteção durante o clique; saída pula histórico interno e usa página em branco se não houver página anterior.
 - [x] Remover etapas de histórico das escolhas de variante e mudanças de busca/filtros; preservar fechamento local do menu.
