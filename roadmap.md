@@ -1,10 +1,12 @@
 # HS Digital — MVP
 
 ## Solicitação — 30/10 21:28 UTC
-- [ ] Reativar Amazon com buscas ampliadas, preservando confiança, fila e orçamento do leitor; verificar execução real.
-- [ ] Vitrine Todos com quatro nacionais para cada internacional, sem duplicação e com paginação estável.
+- [x] Amazon reativada na integração real; agendamento mantido em 10 minutos, proteção queued-50-v1 confirmada publicada e leitor respondeu 200. Buscas ampliadas preparadas, ainda não publicadas; não houve nova publicação de produto confirmada.
+- [x] Vitrine Todos com quatro nacionais por internacional: sequência única aplicada no banco; teste real de 40 posições/paginação sem repetição passou. Origem desconhecida fica após a mistura, sem ser inventada.
 - [x] Hugo cancelou os ajustes nas avaliações às 21:37; preservar exemplos identificados como exemplos, sem mudar relatos reais nem inventar datas/cidades.
-- [ ] Corrigir e verificar confirmação de saída no site completo; fechamento do aplicativo depende do navegador.
+- [ ] Saída direta preparada sem disputa com histórico; teste completo bloqueado pela prévia sem hidratação (history.state nulo e cliques não ativados). Não homologada no aparelho; navegador não permite encerrar aplicativo aberto pelo usuário.
+- [x] Avaliações reais, datas, nomes e fotos não alterados; exemplos preservados com identificação ilustrativa, fora da contagem/nota real. Ajuste de cidade cancelado; coluna opcional adicionada antes do cancelamento permanece sem uso e sem preenchimento.
+- [x] 44 testes de Amazon/saída/proporção e cinco de avaliação/seleção passaram; build OK. Publicação dos novos ajustes aguarda pedido explícito.
 
 ## Preparação para vendas — 30/10
 - [x] Auditar vitrine, pagamento, integrações e pendências com leitura real da configuração, sem cobrar clientes.
