@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { exitHistoryDelta, shouldConfirmHomeBack } from "@/lib/exit-navigation";
+import { shouldConfirmHomeBack } from "@/lib/exit-navigation";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -21,11 +21,8 @@ export function ExitConfirmGuard({ active = true }: { active?: boolean }) {
   const [open, setOpen] = useState(false);
   const exitingRef = useRef(false);
   const decision = useRef<((blocked: boolean) => void) | null>(null);
-  const entryIndex = useRef<number | null>(null);
-  const exitBaseIndex = useRef(0);
 
   useEffect(() => {
-    entryIndex.current ??= router.history.location.state.__TSR_index ?? 0;
     exitingRef.current = false;
     if (!active) return;
     // Use the router's history API: copying native state duplicates its index/key
@@ -43,7 +40,6 @@ export function ExitConfirmGuard({ active = true }: { active?: boolean }) {
         if (exitingRef.current || !shouldConfirmHomeBack(action, Boolean(currentLocation.state[SENTINEL_KEY]),
             currentLocation.href, nextLocation.href, Boolean(currentLocation.state.hsMobileMenu))) return false;
         return new Promise<boolean>((resolve) => {
-          exitBaseIndex.current = nextLocation.state.__TSR_index ?? 0;
           decision.current = resolve;
           setOpen(true);
         });
@@ -72,18 +68,14 @@ export function ExitConfirmGuard({ active = true }: { active?: boolean }) {
           <AlertDialogCancel>Não, continuar</AlertDialogCancel>
           <AlertDialogAction onClick={() => {
             exitingRef.current = true;
-            decision.current?.(false);
+            // Cancel the pending router POP, then leave the document directly.
+            // Resolving it first caused a race with history restoration on mobile.
+            decision.current?.(true);
             decision.current = null;
-            // Let the pending POP settle, then leave all entries created since
-            // opening the app, including prior product/menu visits.
-            window.setTimeout(() => {
-              router.history.go(exitHistoryDelta(exitBaseIndex.current, entryIndex.current ?? 0), { ignoreBlocker: true });
-              // Browsers cannot close a user-opened tab. With no previous
-              // document, leave the store on a blank page instead.
-              window.setTimeout(() => {
-                if (exitingRef.current) window.location.replace("about:blank");
-              }, 500);
-            }, 0);
+            // Closing is allowed only for script-opened windows. Other tabs/PWAs
+            // leave the store immediately; browsers do not expose app termination.
+            window.close();
+            window.location.replace("about:blank");
           }}>
             Sim, sair
           </AlertDialogAction>

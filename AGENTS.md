@@ -18,7 +18,7 @@
 - Checkout reserves stock atomically; Mercado Pago splits stores with application_fee and verified webhooks/API.
 - Delivery is atomic; tracking checks owner/payment and shares latest real events via Realtime/polling. Buyer photos verify purchases before signing; reports never grant access.
 - Platform/OAuth credentials are encrypted and server-only; digital delivery requires idempotent confirmed payment.
-- Papéis de comprador/vendedor são criados por trigger a partir do cadastro e nunca são gravados pelo navegador, evitando elevação de privilégio.
+- Buyer/seller roles are trigger-created, never browser-written, preventing privilege escalation.
 - Abandoned carts are authenticated and user-scoped; never expose contacts.
 - Product media stays private with temporary signed URLs.
 - Checkout locks deterministically with bounded waits.
@@ -43,11 +43,11 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Freight admin functions validate session and has_role before privileged updates; deny non-admins with HTTP 403.
 - Games and game coupons are buyer-only on both UI and server. Arcade sessions are single-use, coin awards are server-capped, 10% shipping coupons are issued atomically every 1,000 coins, and free shipping is limited to once per user per month.
 - Social is participant-scoped; avatars signed, receipts visible-only. Root handles unread; audio interrupts playback. Trends stops hidden media; likes/follows identity-scoped, comments bounded post RPC, follower counts aggregate RPC. Admin Club free; calls serialize SDP before ICE without recipient listeners.
-- Reviews use paid-order-verified RPCs and owner-private, server-signed photos.
+- Reviews use RPC purchase verification and private signed photos. Samples are labeled examples, never verified or counted.
 - Radio shares one provider; Club suppresses HS announcements. Club Pix uses CPF-validated direct payments, QR/copy-paste and owner-bound API reconciliation plus signed webhooks; browser writes cannot grant access. Installability is manifest-only.
 - Sitemap follows explicit route decisions and paginated public reads; private subtrees are excluded and failures never emit partial XML.
 - Search schema excludes unconfirmed CJ offers and invented reviews.
-- Todos uses scheduled sales-first, category-balanced Boa Vista daily ranking to avoid catalog timeouts.
-- Exit never rearms in dialogs; confirm skips app history. Search/variants replace; menu Back closes locally.
+- Todos paginates one database origin-mix sequence over Boa Vista daily ranking; filters stay separate.
+- Exit never rearms in dialogs; confirm leaves the document directly. Search/variants replace; menu Back closes locally.
 - Order chats persist. Private card margins use bounded identity-scoped batches and verified store ownership.
 - Amazon queues one read, keeps delays/budgets, stops on CAPTCHA/Dogs, saves Retry-After recovery and candidates on reader failures; 12 safe diagnostic runs; trust filters intact.
