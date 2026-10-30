@@ -3,7 +3,7 @@
 ## Solicitação — 30/10 21:28 UTC
 - [ ] Reativar Amazon com buscas ampliadas, preservando confiança, fila e orçamento do leitor; verificar execução real.
 - [ ] Vitrine Todos com quatro nacionais para cada internacional, sem duplicação e com paginação estável.
-- [ ] Adicionar cidade opcional informada pelo autor nas avaliações, preservando datas e identidade reais; não inventar cidades/datas/quantidades.
+- [x] Hugo cancelou os ajustes nas avaliações às 21:37; preservar exemplos identificados como exemplos, sem mudar relatos reais nem inventar datas/cidades.
 - [ ] Corrigir e verificar confirmação de saída no site completo; fechamento do aplicativo depende do navegador.
 
 ## Preparação para vendas — 30/10
