@@ -43,7 +43,7 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Freight admin functions validate session and has_role before privileged updates; deny non-admins with HTTP 403.
 - Games and game coupons are buyer-only on both UI and server. Arcade sessions are single-use, coin awards are server-capped, 10% shipping coupons are issued atomically every 1,000 coins, and free shipping is limited to once per user per month.
 - Social is participant-scoped; avatars signed, receipts visible-only. Root handles unread; audio interrupts playback. Trends stops hidden media; likes/follows identity-scoped, comments bounded post RPC, follower counts aggregate RPC. Admin Club free; calls serialize SDP before ICE without recipient listeners.
-- Reviews use RPC purchase verification and private signed photos. Samples are labeled examples, never verified or counted.
+- Reviews: purchase-verified RPC, private photos, validated city/UF in location. Samples labeled, unverified, uncounted.
 - Radio shares one provider; Club suppresses HS announcements. Club Pix uses CPF-validated direct payments, QR/copy-paste and owner-bound API reconciliation plus signed webhooks; browser writes cannot grant access. Installability is manifest-only.
 - Sitemap follows explicit route decisions and paginated public reads; private subtrees are excluded and failures never emit partial XML.
 - Search schema excludes unconfirmed CJ offers and invented reviews.

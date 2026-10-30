@@ -5,7 +5,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { getProductReviews, publishProductReview } from "@/lib/reviews.functions";
-import { reviewPhotoPath } from "@/lib/reviews";
+import { reviewInput, reviewPhotoPath, reviewStates } from "@/lib/reviews";
 import { getSampleReviews } from "@/lib/sample-reviews";
 import {
   AlertCircle,
@@ -40,6 +40,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { catalogDisplayPrice } from "@/lib/product-price";
 import { useCjPrice } from "@/lib/use-cj-price";
 import { deliveryDateRange, formatDeliveryRange } from "@/lib/delivery-estimate";
@@ -215,6 +216,8 @@ function ProductDetailPage() {
     refetchInterval: 45 * 60 * 1000,
   });
   const [newReviewAuthor, setNewReviewAuthor] = useState("");
+  const [newReviewCity, setNewReviewCity] = useState("");
+  const [newReviewState, setNewReviewState] = useState("");
   const [newReviewComment, setNewReviewComment] = useState("");
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [newReviewPhotos, setNewReviewPhotos] = useState<string[]>([]);
@@ -479,6 +482,7 @@ function ProductDetailPage() {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) throw new Error("Faça login para publicar sua avaliação.");
       const id = crypto.randomUUID();
+      const reviewData = reviewInput.parse({ id, productId, author: newReviewAuthor, rating: newReviewRating, comment: newReviewComment, photoPaths: [], city: newReviewCity, state: newReviewState });
       for (const [index, photo] of newReviewPhotos.entries()) {
         const blob = await (await fetch(photo)).blob();
         const path = reviewPhotoPath(data.user.id, productId, id, index);
@@ -486,11 +490,12 @@ function ProductDetailPage() {
         if (upload.error) throw new Error("Não foi possível salvar a foto. Tente novamente.");
         paths.push(path);
       }
-      await publishReview({ data: { id, productId, author: newReviewAuthor, rating: newReviewRating, comment: newReviewComment, photoPaths: paths } });
+      await publishReview({ data: { ...reviewData, photoPaths: paths } });
       published = true;
       const refreshed = await reloadReviews();
       if (refreshed.error) throw new Error("Avaliação salva; não foi possível atualizar a lista. Recarregue a página.");
       setNewReviewAuthor(""); setNewReviewComment(""); setNewReviewRating(5); setNewReviewPhotos([]); setShowReviewForm(false);
+      setNewReviewCity(""); setNewReviewState("");
       toast.success("Sua avaliação foi salva com sucesso!");
     } catch (err) {
       if (!published && paths.length) await supabase.storage.from("review-photos").remove(paths);
@@ -929,6 +934,23 @@ function ProductDetailPage() {
                   className="text-xs"
                   required
                 />
+              </div>
+
+              <div className="grid grid-cols-[minmax(0,1fr)_100px] gap-3">
+                <div className="min-w-0">
+                  <label htmlFor="review-city" className="text-xs font-semibold text-muted-foreground block mb-1">Cidade (opcional):</label>
+                  <Input id="review-city" value={newReviewCity} onChange={(e) => setNewReviewCity(e.target.value)} placeholder="Ex: Boa Vista" maxLength={90} autoComplete="address-level2" className="text-xs" />
+                </div>
+                <div>
+                  <label htmlFor="review-state" className="text-xs font-semibold text-muted-foreground block mb-1">Estado:</label>
+                  <Select value={newReviewState || "none"} onValueChange={(value) => setNewReviewState(value === "none" ? "" : value)}>
+                    <SelectTrigger id="review-state" className="w-full text-xs"><SelectValue placeholder="UF" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">UF</SelectItem>
+                      {reviewStates.map((state) => <SelectItem key={state} value={state}>{state}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div>
