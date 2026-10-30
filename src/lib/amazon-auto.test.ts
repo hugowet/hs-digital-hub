@@ -1,9 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("./amazon.functions", () => ({ extractDescription: vi.fn(), extractSpecs: vi.fn() }));
-import { isTrustworthyTrend, isCoherentPrice, searchCategoryWinners, runAmazonAutoImport } from "./amazon-auto.server";
+import { AMAZON_AUTO_KEYWORDS, isTrustworthyTrend, isCoherentPrice, searchCategoryWinners, runAmazonAutoImport } from "./amazon-auto.server";
 import { describeAmazonSearchError } from "./amazon-search-diagnostics";
 
 const base = { url: "https://www.amazon.com.br/dp/B0ABC12345", title: "Fone bluetooth", badge: "", fulfilledByAmazon: false };
+
+it("busca todas as novas linhas pedidas sem duplicar consultas", () => {
+  const keywords = AMAZON_AUTO_KEYWORDS.map(item => item.keyword);
+  for (const keyword of ["liquidificador", "bicicleta", "violão", "sanduicheira", "multiprocessador", "smart tv", "kit panelas frigideiras", "ar condicionado split", "fone de ouvido com fio", "caixa de som amplificada", "panela de pressão elétrica", "caixa térmica", "bebedouro de água", "micro-ondas", "furadeira Vonder", "roçadeira", "serra tico tico", "serra mármore Makita", "carenagem moto", "peças moto", "peças carro", "pneu moto", "pneu carro", "computador", "notebook", "máquina de lavar", "mochila escolar", "bolsa feminina transversal"]) expect(keywords).toContain(keyword);
+  expect(new Set(keywords).size).toBe(keywords.length);
+});
 
 describe("filtro anti-golpe do robô Amazon", () => {
   it("rejeita nota baixa mesmo com muitas avaliações", () => {
