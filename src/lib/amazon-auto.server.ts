@@ -25,6 +25,37 @@ const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
 
 /** Categorias varridas automaticamente (produtos nacionais vendidos na Amazon BR). */
 export const AMAZON_AUTO_KEYWORDS: { keyword: string; hint: string }[] = [
+  { keyword: "liquidificador", hint: "casa-setup" },
+  { keyword: "bicicleta", hint: "esportes" },
+  { keyword: "violão", hint: "instrumentos-musicais" },
+  { keyword: "sanduicheira", hint: "casa-setup" },
+  { keyword: "multiprocessador", hint: "casa-setup" },
+  { keyword: "smart tv", hint: "celulares-tv" },
+  { keyword: "kit panelas frigideiras", hint: "casa-setup" },
+  { keyword: "ar condicionado split", hint: "casa-setup" },
+  { keyword: "fone de ouvido com fio", hint: "eletronicos-gadgets" },
+  { keyword: "caixa de som amplificada", hint: "eletronicos-gadgets" },
+  { keyword: "panela de pressão elétrica", hint: "casa-setup" },
+  { keyword: "caixa térmica", hint: "casa-setup" },
+  { keyword: "bebedouro de água", hint: "casa-setup" },
+  { keyword: "micro-ondas", hint: "casa-setup" },
+  { keyword: "furadeira Vonder", hint: "ferramentas" },
+  { keyword: "roçadeira", hint: "ferramentas" },
+  { keyword: "serra tico tico", hint: "ferramentas" },
+  { keyword: "serra mármore Makita", hint: "ferramentas" },
+  { keyword: "parafusadeira Makita", hint: "ferramentas" },
+  { keyword: "carenagem moto", hint: "autos-motos" },
+  { keyword: "peças moto", hint: "autos-motos" },
+  { keyword: "peças carro", hint: "autos-motos" },
+  { keyword: "pneu moto", hint: "autos-motos" },
+  { keyword: "pneu carro", hint: "autos-motos" },
+  { keyword: "computador", hint: "perifericos-acessorios" },
+  { keyword: "notebook", hint: "perifericos-acessorios" },
+  { keyword: "máquina de lavar", hint: "casa-setup" },
+  { keyword: "mochila escolar", hint: "infantil" },
+  { keyword: "bolsa feminina transversal", hint: "moda" },
+  { keyword: "teclado musical", hint: "instrumentos-musicais" },
+  { keyword: "guitarra", hint: "instrumentos-musicais" },
   { keyword: "fone de ouvido bluetooth", hint: "eletronicos-gadgets" },
   { keyword: "air fryer", hint: "casa-setup" },
   { keyword: "mochila executiva", hint: "moda" },
@@ -120,7 +151,7 @@ type TrendCandidate = {
  * - Nota mínima 4.3 com volume mínimo de avaliações (loja golpista não sustenta
  *   centenas de avaliações positivas por muito tempo);
  * - Ou selo oficial ("Escolha da Amazon" / "Mais vendido") com avaliações;
- * - Ou envio pela Amazon (logística oficial, entrega garantida);
+ * - Ou envio pela Amazon (sinal de logística, não garantia de entrega);
  * - Preço coerente é checado depois, com o custo real extraído da página.
  */
 export function isTrustworthyTrend(p: TrendCandidate): boolean {

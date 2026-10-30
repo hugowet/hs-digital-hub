@@ -44,6 +44,8 @@ export const AMAZON_CATEGORY_RULES: AmazonCategoryRule[] = [
       "abajur", "cama", "travesseiro", "edredom", "toalha", "cortina", "tapete",
       "guarda-roupa", "sofá", "sofa", "mesa", "cadeira de escritório", "escritório",
       "home office", "churrasqueira", "jardim", "vaso", "utensílio",
+      "sanduicheira", "multiprocessador", "ar condicionado", "ar-condicionado",
+      "caixa térmica", "bebedouro", "máquina de lavar", "lavadora",
     ],
   },
   {
@@ -88,6 +90,7 @@ export const AMAZON_CATEGORY_RULES: AmazonCategoryRule[] = [
       "carro", "moto", "automotivo", "pneu", "óleo motor", "oleo motor", "bateria automotiva",
       "som automotivo", "central multimídia", "multimidia", "capa de banco", "tapete automotivo",
       "câmera de ré", "camera de re", "suporte celular carro", "aspirador automotivo",
+      "carenagem", "peças moto", "peças carro",
     ],
   },
   {
@@ -96,7 +99,12 @@ export const AMAZON_CATEGORY_RULES: AmazonCategoryRule[] = [
       "furadeira", "parafusadeira", "serra", "martelo", "chave de fenda", "alicate",
       "ferramenta", "furadeira de impacto", "lixadeira", "esmerilhadeira", "trena",
       "nível laser", "nivel laser", "caixa de ferramentas", "broca",
+      "roçadeira", "vonder", "makita",
     ],
+  },
+  {
+    category: "instrumentos-musicais",
+    keywords: ["violão", "guitarra", "teclado musical", "instrumento musical", "saxofone", "ukulele"],
   },
   {
     category: "mercado",

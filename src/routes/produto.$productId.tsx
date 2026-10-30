@@ -6,7 +6,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { getProductReviews, publishProductReview } from "@/lib/reviews.functions";
 import { reviewPhotoPath } from "@/lib/reviews";
-import { getSampleReviews } from "@/lib/sample-reviews";
 import {
   AlertCircle,
   BadgeCheck,
@@ -215,6 +214,7 @@ function ProductDetailPage() {
     refetchInterval: 45 * 60 * 1000,
   });
   const [newReviewAuthor, setNewReviewAuthor] = useState("");
+  const [newReviewCity, setNewReviewCity] = useState("");
   const [newReviewComment, setNewReviewComment] = useState("");
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [newReviewPhotos, setNewReviewPhotos] = useState<string[]>([]);
@@ -260,11 +260,7 @@ function ProductDetailPage() {
     },
   });
 
-  // Avaliações reais + avaliações de exemplo (nomes e cidades únicos por produto)
-  const allReviews = useMemo<ReviewItem[]>(() => {
-    const samples = getSampleReviews(productId).map((s) => ({ ...s, helpfulCount: 0, photos: [] as string[] }));
-    return [...reviews, ...samples];
-  }, [reviews, productId]);
+  const allReviews: ReviewItem[] = reviews;
 
   useEffect(() => {
     initAbandonmentWatcher();
@@ -489,11 +485,11 @@ function ProductDetailPage() {
         if (upload.error) throw new Error("Não foi possível salvar a foto. Tente novamente.");
         paths.push(path);
       }
-      await publishReview({ data: { id, productId, author: newReviewAuthor, rating: newReviewRating, comment: newReviewComment, photoPaths: paths } });
+      await publishReview({ data: { id, productId, author: newReviewAuthor, city: newReviewCity, rating: newReviewRating, comment: newReviewComment, photoPaths: paths } });
       published = true;
       const refreshed = await reloadReviews();
       if (refreshed.error) throw new Error("Avaliação salva; não foi possível atualizar a lista. Recarregue a página.");
-      setNewReviewAuthor(""); setNewReviewComment(""); setNewReviewRating(5); setNewReviewPhotos([]); setShowReviewForm(false);
+      setNewReviewAuthor(""); setNewReviewCity(""); setNewReviewComment(""); setNewReviewRating(5); setNewReviewPhotos([]); setShowReviewForm(false);
       toast.success("Sua avaliação foi salva com sucesso!");
     } catch (err) {
       if (!published && paths.length) await supabase.storage.from("review-photos").remove(paths);
@@ -932,6 +928,11 @@ function ProductDetailPage() {
                   className="text-xs"
                   required
                 />
+              </div>
+
+              <div>
+                <label htmlFor="review-city" className="text-xs font-semibold text-muted-foreground block mb-1">Cidade / UF (opcional, pública):</label>
+                <Input id="review-city" value={newReviewCity} onChange={(e) => setNewReviewCity(e.target.value)} maxLength={100} placeholder="Ex: Boa Vista - RR" className="text-xs" />
               </div>
 
               <div>
