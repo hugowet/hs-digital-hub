@@ -1,7 +1,8 @@
 # HS Digital — MVP
 
 ## Avaliação — 30/10 22:09 UTC
-- [ ] Ativar campos opcionais de cidade e estado nas novas avaliações, preservar avaliações existentes e validar salvamento/leitura.
+- [x] Ativar cidade e estado opcionais com validação no formulário/servidor e leitura da localização; avaliações antigas preservadas. Três testes passaram; build OK.
+- [ ] Conferir publicação e leitura pela tela: prévia exibe produto, mas o botão de avaliação não responde no navegador de teste; nenhuma avaliação de teste publicada.
 
 ## Solicitação — 30/10 21:28 UTC
 - [x] Amazon reativada na integração real; agendamento mantido em 10 minutos, proteção queued-50-v1 confirmada publicada e leitor respondeu 200. Buscas ampliadas preparadas, ainda não publicadas; não houve nova publicação de produto confirmada.

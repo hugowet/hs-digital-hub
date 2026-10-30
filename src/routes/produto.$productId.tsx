@@ -5,7 +5,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { getProductReviews, publishProductReview } from "@/lib/reviews.functions";
-import { reviewInput, reviewLocation, reviewPhotoPath, reviewStates } from "@/lib/reviews";
+import { reviewInput, reviewPhotoPath, reviewStates } from "@/lib/reviews";
 import { getSampleReviews } from "@/lib/sample-reviews";
 import {
   AlertCircle,
