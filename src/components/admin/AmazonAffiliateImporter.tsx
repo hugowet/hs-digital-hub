@@ -680,16 +680,6 @@ export function AmazonAffiliateImporter() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setShowBulkBox(!showBulkBox)}
-              className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs font-semibold"
-            >
-              <Layers className="h-3.5 w-3.5 mr-1" />
-              Importação em Massa (até 50)
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
               onClick={() => setShowAutoFillBox(!showAutoFillBox)}
               className="border-blue-300 text-blue-700 hover:bg-blue-50 text-xs font-semibold"
             >
@@ -764,52 +754,6 @@ export function AmazonAffiliateImporter() {
                 </Button>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Caixa de Importação em Massa */}
-        {showBulkBox && (
-          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 space-y-2 dark:border-emerald-900 dark:bg-emerald-950/40">
-            <Label className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
-              Cole até 50 produtos, um por linha. Formatos aceitos:
-            </Label>
-            <p className="text-[11px] text-emerald-900/80 dark:text-emerald-200/80 font-mono">
-              link | custo | título | imagem<br />
-              ou JSON por linha: {"{\"url\",\"costPrice\",\"title\",\"mainImage\",\"description\"}"}
-            </p>
-            <Textarea
-              rows={6}
-              placeholder={"https://www.amazon.com.br/dp/XXXX | 49.90 | Título do produto | https://m.media-amazon.com/images/I/...\nhttps://www.amazon.com.br/dp/YYYY | 129.90 | Outro produto | https://..."}
-              value={bulkInput}
-              onChange={(e) => setBulkInput(e.target.value)}
-              className="text-xs font-mono bg-white dark:bg-background"
-            />
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] text-muted-foreground">
-                A Margem Dinâmica é aplicada automaticamente e a compra fecha 100% no checkout da HS Digital — o cliente nunca sai para a Amazon.
-              </p>
-              <div className="flex shrink-0 gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={bulkRunning || bulkFetching}
-                  onClick={handleBulkFetchAndPublish}
-                  className="bg-blue-600 text-white hover:bg-blue-700 text-xs h-8"
-                  title="Cole só os links (um por linha): o sistema puxa todos os dados em paralelo e publica de uma vez"
-                >
-                  {bulkFetching ? "Puxando e publicando..." : "Puxar e Publicar (só links)"}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={bulkRunning || bulkFetching}
-                  onClick={handleBulkImport}
-                  className="bg-emerald-600 text-white hover:bg-emerald-700 text-xs h-8"
-                >
-                  {bulkRunning ? "Importando..." : "Importar em Massa"}
-                </Button>
-              </div>
-            </div>
           </div>
         )}
 
