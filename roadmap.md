@@ -1,5 +1,8 @@
 # HS Digital — MVP
 
+## Avaliação — 30/10 22:09 UTC
+- [ ] Ativar campos opcionais de cidade e estado nas novas avaliações, preservar avaliações existentes e validar salvamento/leitura.
+
 ## Solicitação — 30/10 21:28 UTC
 - [x] Amazon reativada na integração real; agendamento mantido em 10 minutos, proteção queued-50-v1 confirmada publicada e leitor respondeu 200. Buscas ampliadas preparadas, ainda não publicadas; não houve nova publicação de produto confirmada.
 - [x] Vitrine Todos com quatro nacionais por internacional: sequência única aplicada no banco; teste real de 40 posições/paginação sem repetição passou. Origem desconhecida fica após a mistura, sem ser inventada.
