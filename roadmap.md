@@ -5,7 +5,7 @@
 - [x] Separar cotações CJ de cards distintos; manter fila serial e isolar falhas de estoque.
 - [x] Qualificar avisos de frete e prazo; retirar promessa genérica de repasse automático.
 - [x] Corrigir expectativas antigas dos testes para a margem de ticket baixo já vigente, sem alterar os cálculos.
-- [ ] Corrigir envio de endereço CJ: carrinho salva postalCode, mas envio lê postal_code/zip; número e bairro também não compõem a rua enviada. Exige teste e revisão segura antes de ativar pedidos reais.
+- [x] Corrigir endereço CJ: aceitar postalCode e formato antigo; incluir número e bairro na rua. Sem executar envios externos nem alterar pedidos antigos.
 - [ ] Homologar produto → CEP → carrinho → cobrança → envio real: navegação do produto na prévia expirou; nenhuma cobrança realizada.
 - [ ] Completar informações públicas de contato, responsável, privacidade, troca/devolução e condições de venda: aguarda dados reais e política da operação.
 - [ ] Confirmar envio CJ após reconciliação sem webhook e revisar processamento seguro/idempotente: fluxo atual só dispara envio no webhook; agendador de tentativas existe.

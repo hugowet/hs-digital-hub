@@ -4,6 +4,7 @@ import { calculateFinalPrice } from "@/lib/pricing";
 import { decryptSecret, encryptSecret } from "@/lib/mercado-pago.server";
 import { mapCjEconomicalDetails } from "@/lib/cj-content";
 import { cjCategoryPriority, cjInterestGroup, chooseCjCategory } from "./cj-selection";
+import { cjDeliveryAddress } from "./cj-delivery-address";
 
 const CJ_API = "https://developers.cjdropshipping.com/api2.0/v1";
 
@@ -808,14 +809,6 @@ export async function syncCjStock(supabaseAdmin: any, storeId: string) {
   return { updated };
 }
 
-function addressValue(address: Record<string, unknown>, ...keys: string[]) {
-  for (const key of keys) {
-    const value = address[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return "";
-}
-
 export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: string) {
   const { data: fulfillment } = await supabaseAdmin
     .from("supplier_fulfillments")
@@ -856,15 +849,9 @@ export async function submitCjFulfillment(supabaseAdmin: any, fulfillmentId: str
 
   const payload = {
     orderNumber: `HS-${fulfillment.order_id}-${fulfillment.store_id}`,
-    shippingCustomerName: addressValue(address, "name", "recipient_name"),
+    ...cjDeliveryAddress(address),
     shippingCountryCode: "BR",
     shippingCountry: "BR",
-    shippingProvince: addressValue(address, "state"),
-    shippingCity: addressValue(address, "city"),
-    shippingAddress: addressValue(address, "address", "street_address"),
-shippingZip: addressValue(address, "postal_code", "zip").replace(/\D/g, ""),
-
-    shippingPhone: addressValue(address, "phone").replace(/\D/g, ""),
     fromCountryCode: "CN",
     logisticName: shipment?.service_code ?? "",
     payType: 2,
