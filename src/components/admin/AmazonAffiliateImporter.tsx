@@ -757,8 +757,6 @@ export function AmazonAffiliateImporter() {
           </div>
         )}
 
-        )}
-
         {/* Caixa de Preenchimento Rápido */}
         {showAutoFillBox && (
           <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 space-y-2 dark:border-blue-900 dark:bg-blue-950/40">
