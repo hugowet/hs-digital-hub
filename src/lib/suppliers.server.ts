@@ -60,7 +60,7 @@ type QueuedCjProduct = { id: string; stock: number };
 
 const CJ_PRODUCTS_PER_CATEGORY = 20;
 // 5 produtos por rodada a cada 6 minutos = até 50 produtos por hora.
-const CJ_REQUESTS_PER_BATCH = 6;
+const CJ_REQUESTS_PER_BATCH = 5;
 const CJ_LOCK_MS = 45_000;
 let cjLastRequestAt = 0;
 
