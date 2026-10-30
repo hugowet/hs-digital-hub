@@ -26,14 +26,14 @@
 - A geração de Pix exige CPF do pagador e bloqueia autopagamento quando comprador e recebedor usam a mesma conta Mercado Pago.
 - Pedidos só podem ser cancelados antes de iniciar uma cobrança; o cancelamento é feito no servidor, devolve estoque e preserva o histórico financeiro.
 - Pagamentos iniciados são reconciliados com o Mercado Pago pela página do pedido, além do webhook assinado, para recuperar avisos atrasados.
-- Supplier variants keep stable IDs; CJ USD uses validated BCB selling rates before margin. CJ imports use a bounded interest-filtered, category-balanced queue, never invented popularity; stock sync stays separate. Dropi uses server-only mappings and SSRF-safe URLs; paid orders use idempotent fulfillment; credentials stay server-only.
+- Supplier IDs stay stable; CJ USD uses validated BCB selling rates. CJ imports use bounded interest/category queues, never invented popularity; stock sync stays separate. CJ maps current/legacy addresses with CEP, number and neighborhood. Dropi mappings are server-only and SSRF-safe; paid fulfillment is idempotent; credentials are server-only.
 - Catalog lists use cover-only paginated SSR DTOs; details share a prefetched Query cache. Supplier synchronization never runs on storefront load.
 - CJ translation jobs send an explicitly authorized MyMemory contact server-side and reserve an atomic conservative identified byte budget shared with anonymous usage; retain SHA-256 cache, leases, deferrals and per-product progress, with no paid fallback or storefront calls.
 - Catalog search intersects synonyms/attributes over indexed title, descriptions, specs and category; supplier filters precede pagination and persist in URL/cache; admin uses exact counts.
 - Amazon options use a shared parser; templates and labels never confirm stock. Apparel stays stock-zero pending supplier confirmation.
 - Physical checkout uses short-lived, buyer-bound server quotes per store; CJ quotes are converted from USD and own-stock products use each seller's Melhor Envio OAuth account, while platform commission never applies to shipping.
 - CJ base prices have a database cost/markup/commission floor; CEP quotes store protected net targets and exact costs, with a transaction trigger rejecting underfunded CJ orders. Freight is allocated once outside commission; payment fees remain unverified.
-- CJ quotes drain a bounded queue, match product/store and reuse saved-CEP quotes in cart; changes need acceptance. Official variants, server add-ons and profit guards remain authoritative.
+- CJ quotes are serial, product-isolated; only cart items share freight. Reuse buyer/CEP quotes; changes need acceptance. Official variants, add-ons and profit guards stay authoritative.
 - One delivery provider shares identity/address across cards and cart, avoiding duplicate auth listeners.
 - Savings use recorded comparable prices, never generated discounts, CJ base references or embedded freight.
 - CJ delivery exposes only Express and Premium mapped to confirmed services; buyer-bound quotes are reused across product and cart, Premium shows only its real difference, and first-purchase margin is in quoted prices and allocated atomically to the platform ledger, never re-added.
