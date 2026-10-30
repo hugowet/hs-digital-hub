@@ -1203,6 +1203,7 @@ export type Database = {
       product_reviews: {
         Row: {
           author: string
+          city: string | null
           comment: string
           created_at: string
           id: string
@@ -1214,6 +1215,7 @@ export type Database = {
         }
         Insert: {
           author: string
+          city?: string | null
           comment: string
           created_at?: string
           id?: string
@@ -1225,6 +1227,7 @@ export type Database = {
         }
         Update: {
           author?: string
+          city?: string | null
           comment?: string
           created_at?: string
           id?: string
@@ -2938,6 +2941,18 @@ export type Database = {
       publish_product_review: {
         Args: {
           _author: string
+          _comment: string
+          _id: string
+          _photo_paths: string[]
+          _product_id: string
+          _rating: number
+        }
+        Returns: string
+      }
+      publish_product_review_v2: {
+        Args: {
+          _author: string
+          _city?: string
           _comment: string
           _id: string
           _photo_paths: string[]
