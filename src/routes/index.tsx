@@ -46,6 +46,7 @@ import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { storefrontDay } from "@/lib/storefront-selection";
 import { SITE_ORIGIN } from "@/lib/seo";
+import ogShareAsset from "@/assets/og-share-hs-digital.jpg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { useRadio } from "@/lib/radio-context";
 import lupiBannerSquare from "@/assets/lupi-banner-square.jpg";
