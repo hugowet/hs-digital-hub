@@ -223,11 +223,27 @@ function CartPage() {
     addressLoaded.current = true;
         setName(data.recipient_name ?? "");
         setPhone(data.phone ?? "");
-        setAddress(`${data.street_address ?? ""}${data.complement ? `, ${data.complement}` : ""}`);
+        const full = `${data.street_address ?? ""}${data.complement ? `, ${data.complement}` : ""}`;
+        setAddress(full);
+        // Reaproveita número e bairro já escritos no endereço salvo.
+        const num = full.match(/n[uú]mero\s*:?\s*(\d+[a-z]?|s\/?n)/i) ?? full.match(/,\s*(\d+[a-z]?)\b/i);
+        if (num) setHouseNumber(num[1]);
+        const bairro = full.match(/bairro\s*:?\s*([^,]+)/i);
+        if (bairro) setNeighborhood(bairro[1].trim());
+        try {
+          const savedCpf = window.localStorage.getItem("hs-delivery-cpf");
+          if (savedCpf) setCpf(savedCpf);
+        } catch { /* armazenamento indisponível */ }
         setCity(data.city ?? "");
         setState(data.state ?? "");
         setPostalCode(data.postal_code ?? "");
   }, [delivery.address]);
+
+  useEffect(() => {
+    const digits = cpf.replace(/\D/g, "");
+    if (digits.length !== 11) return;
+    try { window.localStorage.setItem("hs-delivery-cpf", cpf); } catch { /* armazenamento indisponível */ }
+  }, [cpf]);
 
   useEffect(() => {
     quoteRequest.current += 1;
