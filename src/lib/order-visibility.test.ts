@@ -25,3 +25,8 @@ describe("isOrderVisibleToSeller (regra das 72 horas)", () => {
     expect(UNPAID_ORDER_VISIBILITY_MS).toBe(72 * 60 * 60 * 1000);
   });
 });
+
+import { test as t2, expect as e2 } from "vitest";
+t2("venda aprovada antiga continua visível ao vendedor", () => {
+  e2(isOrderVisibleToSeller({ payment_status: "approved", status: "paid", created_at: "2026-10-28T05:58:16Z" }, Date.parse("2026-10-31T16:00:00Z"))).toBe(true);
+});
