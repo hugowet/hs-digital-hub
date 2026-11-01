@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Ritmo do robô Amazon — 01/11 14:01 UTC
+- [x] Confirmar robô ligado, proteção queued-50-v1 publicada e último produto publicado às 12:50:20 UTC.
+- [ ] Reduzir somente o intervalo do agendamento de 10 para 5 minutos, preservando limites, pausas, filtros e catálogo.
+- [ ] Conferir agendamento aplicado e testes das proteções; nova publicação depende da rodada real.
+
 ## Tentativas de entrega — 01/11
 - [x] Vendedor pode registrar tentativa com data, horário e motivo real; RPC e trigger validam proprietário, pagamento e data, sem concluir entrega nem liberar repasse. Histórico mostrado nos dois acompanhamentos do comprador.
 - [x] 16 testes passaram e build OK; acesso anônimo à RPC negado. Nenhum pedido real alterado.
