@@ -2,8 +2,8 @@
 
 ## Ritmo do robô Amazon — 01/11 14:01 UTC
 - [x] Confirmar robô ligado, proteção queued-50-v1 publicada e último produto publicado às 12:50:20 UTC.
-- [ ] Reduzir somente o intervalo do agendamento de 10 para 5 minutos, preservando limites, pausas, filtros e catálogo.
-- [ ] Conferir agendamento aplicado e testes das proteções; nova publicação depende da rodada real.
+- [x] Agendamento real reduzido de 10 para 5 minutos e relido pela ferramenta; 288 chamadas/dia, consumo maior explicado. Nenhuma mudança no código do robô, filtros, pausas ou catálogo.
+- [x] 30 testes de limites/pausas/recuperação/filtros passaram; build OK. Nova publicação ainda não confirmada: última leitura às 14:03 UTC mantém resultado de 12:50; próxima chamada prevista às 14:05 UTC.
 
 ## Tentativas de entrega — 01/11
 - [x] Vendedor pode registrar tentativa com data, horário e motivo real; RPC e trigger validam proprietário, pagamento e data, sem concluir entrega nem liberar repasse. Histórico mostrado nos dois acompanhamentos do comprador.
