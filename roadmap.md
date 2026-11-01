@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Tentativas de entrega — 01/11
+- [x] Vendedor pode registrar tentativa com data, horário e motivo real; RPC e trigger validam proprietário, pagamento e data, sem concluir entrega nem liberar repasse. Histórico mostrado nos dois acompanhamentos do comprador.
+- [x] 16 testes passaram e build OK; acesso anônimo à RPC negado. Nenhum pedido real alterado.
+- [ ] Conferir registro e leitura na tela real: prévia autenticada ficou em branco; conta disponível não possui loja. Alteração ainda não publicada.
+
 ## Avaliação — 30/10 22:09 UTC
 - [x] Ativar cidade e estado opcionais com validação no formulário/servidor e leitura da localização; avaliações antigas preservadas. Três testes passaram; build OK.
 - [ ] Conferir publicação e leitura pela tela: prévia exibe produto, mas o botão de avaliação não responde no navegador de teste; nenhuma avaliação de teste publicada.

@@ -81,7 +81,7 @@ export function PurchasesPage() {
           payment_status,
           shipping_address,
           created_at,
-          order_tracking_events(status,note,created_at),
+          order_tracking_events(status,note,created_at,occurred_at),
           supplier_fulfillments(tracking_code,tracking_carrier,supplier_expected_delivery),
           order_items (
             id,

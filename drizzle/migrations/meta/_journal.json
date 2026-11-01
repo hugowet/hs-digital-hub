@@ -505,6 +505,13 @@
       "when": 1793396300969,
       "tag": "0071_keep_unclassified_products_outside_origin_mix",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1793498178417,
+      "tag": "0072_seller_delivery_attempt_events",
+      "breakpoints": true
     }
   ]
 }
