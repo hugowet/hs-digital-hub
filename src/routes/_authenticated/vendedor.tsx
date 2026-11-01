@@ -1,5 +1,6 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { deliveryFields, deliveryReport, deliverySteps, showsManualPurchaseReport } from "@/lib/order-delivery";
+import { SellerDeliveryAttempt } from "@/components/seller-delivery-attempt";
 import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1072,7 +1073,7 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_tracking_events")
-        .select("order_id,status,created_at,note")
+        .select("order_id,status,created_at,note,occurred_at")
         .in("order_id", orders.map((o: any) => o.id))
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -1096,7 +1097,7 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
   });
 
   const currentStep = (orderId: string) => {
-    const evt = trackingEvents.find((e: any) => e.order_id === orderId);
+    const evt = trackingEvents.find((e: any) => e.order_id === orderId && e.status !== "delivery_attempted");
     return evt?.status ?? "confirmed";
   };
 
@@ -1390,6 +1391,8 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
                   }}>{savingEstimate === order.id ? "Salvando…" : "Salvar previsão"}</Button>
                 </div>
               </div>}
+
+              <SellerDeliveryAttempt orderId={order.id} storeId={storeId} disabled={!isPaid || step === "delivered"} events={trackingEvents.filter((event: any) => event.order_id === order.id)} />
 
               {/* Formulário para colar o código de rastreio */}
               <div className="pt-2 border-t border-border/40">

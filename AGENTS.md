@@ -17,6 +17,7 @@
 
 - Checkout reserves stock atomically; Mercado Pago splits stores with application_fee and verified webhooks/API.
 - Delivery is atomic; tracking checks owner/payment and shares latest real events via Realtime/polling. Buyer photos verify purchases before signing; reports never grant access.
+- Failed delivery attempts use an authenticated owner-scoped RPC and insert validation, with occurrence time and note; they never change the delivery stage or release payouts, preserving real history.
 - Platform/OAuth credentials are encrypted and server-only; digital delivery requires idempotent confirmed payment.
 - Buyer/seller roles are trigger-created, never browser-written, preventing privilege escalation.
 - Abandoned carts are authenticated and user-scoped; never expose contacts.

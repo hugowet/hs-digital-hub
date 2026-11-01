@@ -29,6 +29,10 @@ describe("relatório de entrega", () => {
     expect(currentDeliveryStep([{ status: "arrived_in_city" }], true)).toBe(1);
   });
   it("não confirma pedido não pago sem eventos", () => expect(currentDeliveryStep([], false)).toBe(-1));
+  it("tentativa frustrada preserva a etapa e não confirma entrega", () => {
+    expect(currentDeliveryStep([{ status: "out_for_delivery", created_at: "2026-10-31T17:00:00Z" }, { status: "delivery_attempted", created_at: "2026-10-31T18:45:00Z" }], true)).toBe(2);
+    expect(currentDeliveryStep([{ status: "delivery_attempted" }], true)).toBe(0);
+  });
   it("preserva CPF, número e bairro no relatório", () => {
     const a = { cpf: "12345678900", number: "42", neighborhood: "Centro" };
     expect(deliveryFields(a)).toMatchObject(a);
