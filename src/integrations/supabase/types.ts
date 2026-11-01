@@ -800,6 +800,7 @@ export type Database = {
           created_by: string
           id: string
           note: string
+          occurred_at: string | null
           order_id: string
           status: string
         }
@@ -808,6 +809,7 @@ export type Database = {
           created_by: string
           id?: string
           note?: string
+          occurred_at?: string | null
           order_id: string
           status: string
         }
@@ -816,6 +818,7 @@ export type Database = {
           created_by?: string
           id?: string
           note?: string
+          occurred_at?: string | null
           order_id?: string
           status?: string
         }
@@ -2989,6 +2992,15 @@ export type Database = {
         }[]
       }
       read_trend_pin: { Args: { _video_id: string }; Returns: string }
+      record_seller_delivery_attempt: {
+        Args: {
+          _note: string
+          _occurred_at: string
+          _order_id: string
+          _store_id: string
+        }
+        Returns: undefined
+      }
       refresh_storefront_daily_ranking: {
         Args: { p_day?: string }
         Returns: number
