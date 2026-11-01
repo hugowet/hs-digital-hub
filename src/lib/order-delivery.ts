@@ -7,7 +7,7 @@ export const deliverySteps = [
 const legacySteps: Record<string, string> = { preparing: "confirmed", packed: "confirmed", arrived_in_city: "shipped" };
 
 export function currentDeliveryStep(events: Array<{ status: string; created_at?: string }>, paid: boolean) {
-  const latest = [...events].sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "")).at(-1);
+  const latest = events.filter(event => event.status !== "delivery_attempted").sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "")).at(-1);
   const status = latest ? (legacySteps[latest.status] ?? latest.status) : (paid ? "confirmed" : "");
   return deliverySteps.findIndex(([s]) => s === status);
 }

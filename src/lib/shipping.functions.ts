@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { safeOrigin, sha256 } from "@/lib/mercado-pago.server";
 import { assertTrackableOrder } from "@/lib/order-delivery";
+import { deliveryAttemptInput } from "@/lib/delivery-attempt";
 
 const quoteSchema = z.object({
   postalCode: z.string().transform((value) => value.replace(/\D/g, "")).pipe(z.string().length(8)),
@@ -149,6 +150,18 @@ export const saveSellerDeliveryEstimate = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.rpc("save_seller_delivery_estimate", {
       _store_id: data.storeId, _order_id: data.orderId, _date: data.supplierDate,
+    });
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const recordSellerDeliveryAttempt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(input => deliveryAttemptInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("record_seller_delivery_attempt", {
+      _store_id: data.storeId, _order_id: data.orderId,
+      _occurred_at: data.occurredAt, _note: data.note,
     });
     if (error) throw error;
     return { ok: true };
