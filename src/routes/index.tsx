@@ -34,6 +34,7 @@ import type { LucideIcon } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/product-card";
+import { HsPromotionsCarousel } from "@/components/hs-promotions-carousel";
 import { personalizeProducts, recordCategoryClick, recordSearch } from "@/lib/interest-profile";
 import { IntroAnimation } from "@/components/intro-animation";
 import { SiteFooter } from "@/components/site-footer";
@@ -479,6 +480,7 @@ function Home() {
             </section>
           </>
         )}
+<HsPromotionsCarousel />
 {/* BANNER DE FRETE GRÁTIS ANTES DAS CATEGORIAS */}
 <section className="relative mb-5 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-emerald-700 to-emerald-950 p-2 shadow-xl sm:p-3">
   <div className="flex flex-col items-center gap-3 rounded-xl bg-black/70 p-3 md:flex-row">
