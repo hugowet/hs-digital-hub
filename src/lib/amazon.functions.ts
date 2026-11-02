@@ -262,6 +262,7 @@ export const searchAmazonTrends = createServerFn({ method: "POST" })
       .object({
         keyword: z.string().trim().min(2).max(120),
         limit: z.union([z.literal(10), z.literal(20), z.literal(50)]).default(10),
+        cursor: z.number().int().min(0).max(100000).default(0),
       })
       .parse(input),
   )
@@ -277,7 +278,8 @@ export const searchAmazonTrends = createServerFn({ method: "POST" })
     // poucos produtos extraídos, então várias páginas são lidas ao mesmo tempo).
     // Categoria (ex: "moda") vira vários termos populares; termo livre segue igual.
     const pages = Math.min(Math.ceil(data.limit / 3), 6);
-    const { terms, maxPrice } = parseTrendQuery(data.keyword);
+    const query = parseTrendQuery(data.keyword, data.cursor, pages);
+    const { terms, maxPrice } = query;
     const pageUrls = Array.from({ length: pages }, (_, i) => {
       const term = encodeURIComponent(terms[i % terms.length]);
       const page = Math.floor(i / terms.length) + 1;
@@ -355,5 +357,5 @@ export const searchAmazonTrends = createServerFn({ method: "POST" })
 
     // Ordena pelos mais fortes: nota, depois volume de avaliações
     winners.sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
-    return { items: winners.slice(0, data.limit) };
+    return { items: winners.slice(0, data.limit), vehicle: query.vehicle ?? null, nextCursor: query.nextCursor ?? null };
   });
