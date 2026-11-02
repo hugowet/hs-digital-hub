@@ -540,6 +540,13 @@
       "when": 1793643093354,
       "tag": "0076_seller_manual_hs_promotions",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1793643130944,
+      "tag": "0077_fix_promotion_owner_identity",
+      "breakpoints": true
     }
   ]
 }
