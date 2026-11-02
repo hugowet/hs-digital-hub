@@ -456,7 +456,7 @@ export function AmazonAffiliateImporter() {
 
   const handleTrendHunt = async () => {
     const keyword = trendKeyword.trim();
-    if (keyword.length < 2) return toast.error("Digite uma palavra-chave (ex: fone de ouvido bluetooth).");
+    if (keyword.length < 2) return toast.error("Digite uma categoria (ex: Moda) ou um produto.");
     setTrendRunning(true);
     try {
       const { items } = await searchAmazonTrends({ data: { keyword, limit: trendLimit } });
@@ -707,9 +707,13 @@ export function AmazonAffiliateImporter() {
               <Input
                 value={trendKeyword}
                 onChange={(e) => setTrendKeyword(e.target.value)}
-                placeholder="Ex: fone de ouvido bluetooth"
+                placeholder="Categoria (ex: Moda, Calçados, Ferramentas)"
+                list="trend-categories"
                 className="h-8 flex-1 min-w-[220px] text-xs bg-white dark:bg-background"
               />
+              <datalist id="trend-categories">
+                {TREND_CATEGORY_LABELS.map((c) => <option key={c} value={c} />)}
+              </datalist>
               <select
                 value={trendLimit}
                 onChange={(e) => setTrendLimit(Number(e.target.value) as 10 | 20 | 50)}

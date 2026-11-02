@@ -5,6 +5,7 @@ import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { extractAmazonOptions } from "./amazon-options";
+import { resolveTrendTerms } from "./amazon-trend-categories";
 import { extractAmazonAvailability } from "./amazon-availability";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
@@ -273,11 +274,14 @@ export const searchAmazonTrends = createServerFn({ method: "POST" })
 
     // Varre as páginas de resultados da Amazon em paralelo (cada página rende
     // poucos produtos extraídos, então várias páginas são lidas ao mesmo tempo).
+    // Categoria (ex: "moda") vira vários termos populares; termo livre segue igual.
     const pages = Math.min(Math.ceil(data.limit / 3), 6);
-    const keyword = encodeURIComponent(data.keyword);
-    const pageUrls = Array.from({ length: pages }, (_, i) =>
-      `https://www.amazon.com.br/s?k=${keyword}${i > 0 ? `&page=${i + 1}` : ""}`,
-    );
+    const terms = resolveTrendTerms(data.keyword);
+    const pageUrls = Array.from({ length: pages }, (_, i) => {
+      const term = encodeURIComponent(terms[i % terms.length]);
+      const page = Math.floor(i / terms.length) + 1;
+      return `https://www.amazon.com.br/s?k=${term}${page > 1 ? `&page=${page}` : ""}`;
+    });
 
     const responses = await Promise.allSettled(
       pageUrls.map((url) =>
