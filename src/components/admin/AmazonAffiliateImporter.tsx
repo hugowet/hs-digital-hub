@@ -459,7 +459,11 @@ export function AmazonAffiliateImporter() {
     if (keyword.length < 2) return toast.error("Digite uma categoria (ex: Moda) ou um produto.");
     setTrendRunning(true);
     try {
-      const { items } = await searchAmazonTrends({ data: { keyword, limit: trendLimit } });
+      const cursorKey = `hs-trend-cursor:${keyword.toLowerCase()}`;
+      const cursor = Number(window.localStorage.getItem(cursorKey) ?? 0) || 0;
+      const { items, vehicle, nextCursor } = await searchAmazonTrends({ data: { keyword, limit: trendLimit, cursor } });
+      if (nextCursor !== null) window.localStorage.setItem(cursorKey, String(nextCursor));
+      if (vehicle) toast.info(`Peças de ${vehicle}. Na próxima busca ele continua de onde parou.`);
       if (items.length === 0) {
         toast.info("Nenhum produto vencedor encontrado para essa palavra-chave agora. Tente outro termo.");
         return;
@@ -712,7 +716,7 @@ export function AmazonAffiliateImporter() {
                 className="h-8 flex-1 min-w-[220px] text-xs bg-white dark:bg-background"
               />
               <datalist id="trend-categories">
-                {TREND_CATEGORY_LABELS.map((c) => <option key={c} value={c} />)}
+                {[...TREND_CATEGORY_LABELS, "PECASMOTO", "PECASCARRO", "ATE60", "ATE100", "ATE150", "ATE300", "ATE350", "ATE500"].map((c) => <option key={c} value={c} />)}
               </datalist>
               <select
                 value={trendLimit}
