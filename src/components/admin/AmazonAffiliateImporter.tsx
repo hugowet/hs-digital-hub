@@ -28,7 +28,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { calculateAmazonPrice, getMarginRate } from "@/lib/pricing";
 import { buildAmazonDescription, sanitizeAmazonText } from "@/lib/amazon-text";
 import { categorizeAmazonProduct } from "@/lib/amazon-category";
-import { amazonVariationTemplate } from "@/lib/amazon-variations";
+import { amazonVariationTemplate, withAmazonSizeFallback } from "@/lib/amazon-variations";
+import { TREND_CATEGORY_LABELS } from "@/lib/amazon-trend-categories";
 import type { AmazonOptionGroup } from "@/lib/amazon-options";
 import { fetchAmazonProduct, searchAmazonTrends, getAmazonAutoImportStatus, setAmazonAutoImport } from "@/lib/amazon.functions";
 
@@ -271,7 +272,7 @@ export function AmazonAffiliateImporter() {
         free_shipping: true,
         is_active: true,
         category: categorizeAmazonProduct({ title: sanitizeAmazonText(title.trim()), description: finalDescription, amazonCategory }),
-        variations: pageOptions.length ? pageOptions : amazonVariationTemplate({ title, description: finalDescription, amazonCategory }),
+        variations: withAmazonSizeFallback(pageOptions, { title, description: finalDescription, amazonCategory }),
         stock: 999,
         supplier: "amazon",
         product_type: "physical",
@@ -527,7 +528,7 @@ export function AmazonAffiliateImporter() {
         free_shipping: true,
         is_active: true,
         category,
-        variations: data.variations.length ? data.variations : amazonVariationTemplate({ title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }),
+        variations: withAmazonSizeFallback(data.variations, { title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }),
         stock: 999,
         supplier: "amazon",
         product_type: "physical",
@@ -879,7 +880,7 @@ export function AmazonAffiliateImporter() {
           </div>
 
           {/* ESPECIFICAÇÕES DO PRODUTO */}
-          {(pageOptions.length ? pageOptions : amazonVariationTemplate({ title, description, amazonCategory })).map((variation) => (
+          {withAmazonSizeFallback(pageOptions, { title, description, amazonCategory }).map((variation) => (
             <fieldset key={variation.name} className="space-y-2 border-t border-border pt-4">
               <legend className="text-sm font-semibold">{variation.name}</legend>
               <div className="flex flex-wrap gap-2">
