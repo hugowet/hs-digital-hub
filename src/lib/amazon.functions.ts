@@ -5,7 +5,7 @@ import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { extractAmazonOptions } from "./amazon-options";
-import { resolveTrendTerms } from "./amazon-trend-categories";
+import { parseTrendQuery } from "./amazon-trend-categories";
 import { extractAmazonAvailability } from "./amazon-availability";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
@@ -197,6 +197,7 @@ const TREND_SCHEMA = {
           rating: { type: "number", description: "Nota em estrelas (0 a 5)" },
           reviews: { type: "number", description: "Número de avaliações/comentários" },
           badge: { type: "string", description: "Selo como 'Escolha da Amazon' ou 'Mais vendido', se houver" },
+          price: { type: "number", description: "Preço atual em reais (apenas número)" },
         },
       },
     },
@@ -276,11 +277,11 @@ export const searchAmazonTrends = createServerFn({ method: "POST" })
     // poucos produtos extraídos, então várias páginas são lidas ao mesmo tempo).
     // Categoria (ex: "moda") vira vários termos populares; termo livre segue igual.
     const pages = Math.min(Math.ceil(data.limit / 3), 6);
-    const terms = resolveTrendTerms(data.keyword);
+    const { terms, maxPrice } = parseTrendQuery(data.keyword);
     const pageUrls = Array.from({ length: pages }, (_, i) => {
       const term = encodeURIComponent(terms[i % terms.length]);
       const page = Math.floor(i / terms.length) + 1;
-      return `https://www.amazon.com.br/s?k=${term}${page > 1 ? `&page=${page}` : ""}`;
+      return `https://www.amazon.com.br/s?k=${term}${maxPrice ? `&rh=p_36%3A1-${maxPrice * 100}` : ""}${page > 1 ? `&page=${page}` : ""}`;
     });
 
     const responses = await Promise.allSettled(
@@ -299,7 +300,7 @@ export const searchAmazonTrends = createServerFn({ method: "POST" })
                 type: "json",
                 schema: TREND_SCHEMA,
                 prompt:
-                  "Liste os produtos desta página de resultados da Amazon com url (link do produto), título, nota em estrelas (rating), número de avaliações (reviews) e selo (badge) como 'Escolha da Amazon' ou 'Mais vendido'. Use somente o que estiver visível na página.",
+                  "Liste os produtos desta página de resultados da Amazon com url (link do produto), título, nota em estrelas (rating), número de avaliações (reviews) selo (badge) como 'Escolha da Amazon' ou 'Mais vendido' e preço atual em reais (price). Use somente o que estiver visível na página.",
               },
             ],
             onlyMainContent: false,
@@ -337,6 +338,10 @@ export const searchAmazonTrends = createServerFn({ method: "POST" })
           /escolha da amazon|mais vendido|best seller|best-seller/i.test(badge) ||
           reviews >= 1000;
         if (!isWinner) continue;
+        if (maxPrice) {
+          const price = Number(p?.price) || 0;
+          if (price <= 0 || price > maxPrice) continue; // sem preço visível = fora
+        }
         seen.add(url);
         winners.push({
           url,
