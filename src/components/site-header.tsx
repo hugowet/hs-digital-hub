@@ -133,8 +133,9 @@ export function SiteHeader({
     if (!groups.length) return [];
     return suggestions
       .filter((item) => {
-        const text = normalizeCatalogSearch(`${item.title} ${item.category}`);
-        return groups.every((g) => g.some((w) => text.includes(w)));
+        // Match from the start of a word so "fone" does not suggest "microfone".
+        const text = ` ${normalizeCatalogSearch(`${item.title} ${item.category}`).replace(/[^a-z0-9]+/g, " ")}`;
+        return groups.every((g) => g.some((w) => text.includes(` ${w}`)));
       })
       .slice(0, 6);
   }, [localQuery, suggestions]);
