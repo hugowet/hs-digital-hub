@@ -26,3 +26,7 @@ test("lê inline twister de moda", () => {
   const g = extractAmazonOptions(`<div id="inline-twister-row-size_name"><ul><li><span class="swatch-title-text-display">M</span></li><li><span class="swatch-title-text-display">G</span></li><li class="swatch-unavailable"><span class="swatch-title-text-display">GG</span></li></ul></div>`);
   assert.deepEqual(g[0].options, ["M", "G"]);
 });
+import { parseTrendQuery } from "./amazon-trend-categories";
+test("ATE60 limita a R$ 60", () => assert.equal(parseTrendQuery("ate60").maxPrice, 60));
+test("ATE60 com categoria mantém categoria", () => assert.ok(parseTrendQuery("ATE60 moda").terms.some((x) => /camiseta/.test(x))));
+test("sem chave não limita", () => assert.equal(parseTrendQuery("moda").maxPrice, null));

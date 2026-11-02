@@ -32,3 +32,16 @@ export function resolveTrendTerms(input: string): string[] {
   const cat = CATEGORIES[key] ? key : ALIASES[key];
   return cat ? CATEGORIES[cat] : [input.trim()];
 }
+
+/** Chave especial do rastreador: só produtos até R$ 60. */
+export const CHEAP_TREND_KEY = "ATE60";
+export const CHEAP_TREND_MAX_PRICE = 60;
+const CHEAP_TERMS = ["fone de ouvido", "carregador celular", "chaveiro", "lanterna led", "organizador", "capa celular", "utensílios cozinha", "acessórios carro"];
+
+/** Lê a chave ATE60 (sozinha ou com categoria/termo). */
+export function parseTrendQuery(input: string): { terms: string[]; maxPrice: number | null } {
+  const re = new RegExp(`\\b${CHEAP_TREND_KEY}\\b`, "i");
+  if (!re.test(input)) return { terms: resolveTrendTerms(input), maxPrice: null };
+  const rest = input.replace(re, "").trim();
+  return { terms: rest.length >= 2 ? resolveTrendTerms(rest) : CHEAP_TERMS, maxPrice: CHEAP_TREND_MAX_PRICE };
+}
