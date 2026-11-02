@@ -30,3 +30,19 @@ import { parseTrendQuery } from "./amazon-trend-categories";
 test("ATE60 limita a R$ 60", () => assert.equal(parseTrendQuery("ate60").maxPrice, 60));
 test("ATE60 com categoria mantém categoria", () => assert.ok(parseTrendQuery("ATE60 moda").terms.some((x) => /camiseta/.test(x))));
 test("sem chave não limita", () => assert.equal(parseTrendQuery("moda").maxPrice, null));
+
+test("ATE100 a ATE500 limitam o preço", () => {
+  for (const v of [100, 150, 300, 350, 500]) assert.equal(parseTrendQuery(`ATE${v}`).maxPrice, v);
+});
+test("ATE70 não é chave", () => assert.equal(parseTrendQuery("ATE70").maxPrice, null));
+test("PECASMOTO começa na Biz e só ela", () => {
+  const q = parseTrendQuery("PECASMOTO", 0, 6);
+  assert.equal(q.vehicle, "Biz");
+  assert.ok(q.terms.every((t) => t.endsWith("Biz")));
+});
+test("PECASMOTO termina as peças da Biz antes de pular para a CG", () => {
+  const q = parseTrendQuery("PECASMOTO", 6, 6);
+  assert.equal(q.terms.length, 2);
+  assert.equal(parseTrendQuery("PECASMOTO", q.nextCursor!, 6).vehicle, "CG 160");
+});
+test("PECASCARRO gol fica só no Gol", () => assert.equal(parseTrendQuery("PECASCARRO gol").vehicle, "Gol"));
