@@ -37,6 +37,37 @@ export function extractAmazonOptions(html: string): AmazonOptionGroup[] {
       if (groups.length) return groups;
     } catch { /* cai para leitura da página */ }
   }
+  // Twister antigo/alternativo: "dimensionsDisplay" + "dimensionValuesDisplayData" (ASIN -> valores).
+  const dims = html.match(/"dimensionsDisplay"\s*:\s*(\[[^\]]*\])/);
+  const dvd = html.match(/"dimensionValuesDisplayData"\s*:\s*(\{[^{}]*\})/);
+  if (dims && dvd) {
+    try {
+      const names = (JSON.parse(dims[1]) as unknown[]).map((n) => String(n).trim());
+      const rows = Object.values(JSON.parse(dvd[1]) as Record<string, unknown>).filter(Array.isArray) as unknown[][];
+      names.forEach((raw, i) => {
+        const values = [...new Set(rows.map((r) => String(r[i] ?? "").trim()).filter((v) => v && v.length <= 80))];
+        const name = /tamanho|size|numera/i.test(raw) ? "Tamanho" : /cor|color/i.test(raw) ? "Cor" : raw;
+        if (values.length) groups.push({ name, options: values, availability: "unconfirmed", source: "page" });
+      });
+      groups.sort((a, b) => order(a.name) - order(b.name));
+      if (groups.length) return groups;
+    } catch { /* segue */ }
+  }
+  // Inline twister (páginas de moda atuais): linhas "inline-twister-row-<dim>_name".
+  for (const [dimension, name] of [["size", "Tamanho"], ["color", "Cor"], ["style", "Modelo"]] as const) {
+    const row = document.querySelector(`[id^="inline-twister-row-${dimension}_name"], [id^="inline-twister-expander-content-${dimension}_name"]`);
+    if (!row) continue;
+    const values = new Set<string>();
+    for (const el of Array.from(row.querySelectorAll("li"))) {
+      if (/unavailable/i.test(el.className) || el.getAttribute("aria-disabled") === "true") continue;
+      const text = (el.querySelector(".swatch-title-text-display, .swatch-title-text, img")?.getAttribute("alt")
+        || el.querySelector(".swatch-title-text-display, .swatch-title-text")?.textContent
+        || el.querySelector("img")?.getAttribute("alt") || "").replace(/\s+/g, " ").trim();
+      if (text && text.length <= 80 && !/^(selecione|select)/i.test(text)) values.add(text);
+    }
+    if (values.size) groups.push({ name, options: [...values], availability: "unconfirmed", source: "page" });
+  }
+  if (groups.length) { groups.sort((a, b) => order(a.name) - order(b.name)); return groups; }
   for (const [dimension, name] of [["size", "Tamanho"], ["color", "Cor"], ["style", "Modelo"]]) {
     const values = new Set<string>();
     const add = (raw: string | null | undefined) => {

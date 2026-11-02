@@ -12,7 +12,7 @@ import { parseHTML } from "linkedom";
 import { extractDescription, extractSpecs } from "./amazon.functions";
 import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
 import { categorizeAmazonProduct } from "./amazon-category";
-import { amazonVariationTemplate } from "./amazon-variations";
+import { withAmazonSizeFallback } from "./amazon-variations";
 import { extractAmazonOptions } from "./amazon-options";
 import { extractAmazonAvailability, confirmedAmazonStock } from "./amazon-availability";
 import { calculateAmazonPrice } from "./pricing";
@@ -466,7 +466,7 @@ export async function runAmazonAutoImport(
       const description = buildAmazonDescription(data.description);
       const gallery = Array.from(new Set([data.mainImage, ...data.gallery].filter((u) => u.startsWith("http"))));
       const category = categorizeAmazonProduct({ title, description, amazonCategory: data.amazonCategory || candidate.title });
-      const variations = data.variations.length ? data.variations : amazonVariationTemplate({ title, description, amazonCategory: data.amazonCategory });
+      const variations = withAmazonSizeFallback(data.variations, { title, description, amazonCategory: data.amazonCategory });
       const affiliateUrl = new URL(candidate.url);
       affiliateUrl.searchParams.set("tag", AMAZON_AFFILIATE_TAG);
       rows.push({
