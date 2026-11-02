@@ -371,3 +371,4 @@
 - [x] Recomendados: seção criada na página do produto, só mesma categoria (testado)
 - [ ] Biometria no login (cadastro de digital + entrada sem senha)
 - [x] Varredura de desempenho geral (lentidão/travamentos)
+- [x] Carrossel Promoções HS passa sozinho a cada 5s

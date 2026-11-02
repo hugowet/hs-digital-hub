@@ -7,6 +7,9 @@ import { brl } from "@/lib/format";
 
 type Promo = { product_id: string; regular_price: number; promo_price: number; ends_at: string; title: string; image_url: string | null };
 
+// Itens caros com desconto pequeno passam a sensação de que não há promoção.
+const MAX_PROMO_PRICE = 300;
+
 async function fetchPromos(): Promise<Promo[]> {
   const { data, error } = await supabase
     .from("hs_promotions")
@@ -15,7 +18,7 @@ async function fetchPromos(): Promise<Promo[]> {
     .order("position");
   if (error) throw error;
   return (data ?? [])
-    .filter((row) => row.products?.is_active)
+    .filter((row) => row.products?.is_active && Number(row.promo_price) <= MAX_PROMO_PRICE)
     .map((row) => ({
       product_id: row.product_id,
       regular_price: Number(row.regular_price),
@@ -42,8 +45,17 @@ export function HsPromotionsCarousel() {
   const { data: promos = [] } = useQuery({ queryKey: ["hs-promotions"], queryFn: fetchPromos, staleTime: 60_000 });
   const track = useRef<HTMLDivElement>(null);
   const time = useCountdown(promos[0]?.ends_at);
-  if (!promos.length) return null;
   const scroll = (dir: number) => track.current?.scrollBy({ left: dir * track.current.clientWidth * 0.8, behavior: "smooth" });
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const el = track.current;
+      if (!el) return;
+      if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 4) el.scrollTo({ left: 0, behavior: "smooth" });
+      else el.scrollBy({ left: el.clientWidth * 0.8, behavior: "smooth" });
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, []);
+  if (!promos.length) return null;
   const pad = (n: number) => String(n).padStart(2, "0");
 
   return (
