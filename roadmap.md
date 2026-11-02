@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Promoções manuais — 02/11
+- [ ] Aba no vendedor para selecionar produtos Amazon, aplicar 25/35/50% da margem e retirar promoções.
+- [ ] Limite global atômico de 50, propriedade verificada, prazo de 15 dias e proteção de lucro estimado.
+- [ ] Testes e validação do fluxo autenticado; sem cobrança ou importação externa.
+
 ## Ritmo do robô Amazon — 01/11 14:01 UTC
 - [x] Confirmar robô ligado, proteção queued-50-v1 publicada e último produto publicado às 12:50:20 UTC.
 - [x] Agendamento real reduzido de 10 para 5 minutos e relido pela ferramenta; 288 chamadas/dia, consumo maior explicado. Nenhuma mudança no código do robô, filtros, pausas ou catálogo.
