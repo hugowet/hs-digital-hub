@@ -316,6 +316,13 @@ export const searchAmazonTrends = createServerFn({ method: "POST" })
       ),
     );
 
+    const failed = responses.filter((r) => r.status === "rejected") as PromiseRejectedResult[];
+    if (failed.length === responses.length) {
+      const why = String(failed[0]?.reason?.message ?? "");
+      if (/402|429/.test(why)) throw new Error("O leitor de páginas está sem créditos ou no limite agora. Tente mais tarde.");
+      throw new Error(`Não consegui ler a Amazon agora (${why || "falha"}). Tente de novo em alguns minutos.`);
+    }
+
     const seen = new Set<string>();
     const winners: AmazonTrendItem[] = [];
 
