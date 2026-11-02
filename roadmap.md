@@ -1,9 +1,10 @@
 # HS Digital — MVP
 
 ## Promoções manuais — 02/11
-- [ ] Aba no vendedor para selecionar produtos Amazon, aplicar 25/35/50% da margem e retirar promoções.
-- [ ] Limite global atômico de 50, propriedade verificada, prazo de 15 dias e proteção de lucro estimado.
-- [ ] Testes e validação do fluxo autenticado; sem cobrança ou importação externa.
+- [x] Aba no vendedor para selecionar produtos Amazon, aplicar 25/35/50% da margem e retirar promoções; preços e lucro estimados exibidos antes de aplicar.
+- [x] Limite global atômico de 50, propriedade e conta de Hugo verificadas, prazo de 15 dias e proteção de lucro estimado; seleção manual pode incluir preços maiores, seleção antiga mantém corte de R$300.
+- [x] 12 testes passaram e build OK; conta de Hugo na API real bloqueia percentual inválido, 51 itens e produto de terceiros com 403. Nenhum preço real alterado, cobrança ou importação externa.
+- [ ] Conferir seleção → aplicar → leitura na tela: navegador autenticado voltou a ficar totalmente em branco, sem erro de console. Precisa da prévia funcionando; publicação não solicitada.
 
 ## Ritmo do robô Amazon — 01/11 14:01 UTC
 - [x] Confirmar robô ligado, proteção queued-50-v1 publicada e último produto publicado às 12:50:20 UTC.

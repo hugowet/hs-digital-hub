@@ -11,13 +11,13 @@ type Promo = { product_id: string; regular_price: number; promo_price: number; e
 async function fetchPromos(): Promise<Promo[]> {
   const { data, error } = await supabase
     .from("hs_promotions")
-    .select("product_id, regular_price, promo_price, ends_at, position, products(title, image_url, is_active)")
+    .select("product_id, regular_price, promo_price, ends_at, position, manual_selected, products(title, image_url, is_active)")
     .gt("ends_at", new Date().toISOString())
     .order("position")
     .limit(50);
   if (error) throw error;
   return (data ?? [])
-    .flatMap((row) => row.products?.is_active ? [{
+    .flatMap((row) => row.products?.is_active && (row.manual_selected || Number(row.promo_price) <= 300) ? [{
       product_id: row.product_id,
       regular_price: Number(row.regular_price),
       promo_price: Number(row.promo_price),

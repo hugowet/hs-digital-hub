@@ -1,0 +1,2 @@
+ALTER TABLE public.hs_promotions ADD COLUMN manual_selected boolean NOT NULL DEFAULT false;
+DO $$ DECLARE definition text; BEGIN SELECT pg_get_functiondef('public.manage_seller_hs_promotions(uuid,uuid[],numeric,boolean)'::regprocedure) INTO definition; definition := replace(definition, 'margin_share,ends_at,position) VALUES', 'margin_share,ends_at,manual_selected,position) VALUES'); definition := replace(definition, 'discount,_share,expiry,coalesce', 'discount,_share,expiry,true,coalesce'); EXECUTE definition; END $$;
