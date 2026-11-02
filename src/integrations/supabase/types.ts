@@ -2980,6 +2980,15 @@ export type Database = {
         Args: { _cost: number; _regular: number; _share: number }
         Returns: number
       }
+      manage_seller_hs_promotions: {
+        Args: {
+          _product_ids: string[]
+          _remove?: boolean
+          _share: number
+          _store_id: string
+        }
+        Returns: number
+      }
       normalize_catalog_text: { Args: { value: string }; Returns: string }
       play_daily_game: {
         Args: { _game_type: string }
