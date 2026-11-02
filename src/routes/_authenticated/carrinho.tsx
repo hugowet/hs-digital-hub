@@ -85,6 +85,8 @@ function CartPage() {
   const addressLoaded = useRef(false);
   const quoteRequest = useRef(0);
   const [confirmedRequest, setConfirmedRequest] = useState("");
+  const [editingAddress, setEditingAddress] = useState(true);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
   const [priceChangeAccepted, setPriceChangeAccepted] = useState(true);
   const [clock, setClock] = useState(Date.now());
 
@@ -237,6 +239,14 @@ function CartPage() {
         setCity(data.city ?? "");
         setState(data.state ?? "");
         setPostalCode(data.postal_code ?? "");
+        let storedCpf = "";
+        try { storedCpf = window.localStorage.getItem("hs-delivery-cpf") ?? ""; } catch { /* sem armazenamento */ }
+        const missing: string[] = [];
+        if (!storedCpf) missing.push("cpf");
+        if (!num) missing.push("number");
+        if (!bairro) missing.push("neighborhood");
+        const core = [data.recipient_name, data.phone, data.street_address, data.city, data.state, data.postal_code].every((v) => String(v ?? "").trim());
+        if (core) { setMissingFields(missing); setEditingAddress(false); }
   }, [delivery.address]);
 
   useEffect(() => {
@@ -479,6 +489,21 @@ function CartPage() {
           <aside className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-4 shadow-2xs space-y-3">
               <h3 className="text-sm font-bold">Endereço de Entrega</h3>
+              {!editingAddress && (
+                <div className="space-y-2 text-xs">
+                  <div className="rounded-lg bg-muted/50 p-3 leading-relaxed">
+                    <p className="font-semibold">{name} · {phone}</p>
+                    <p>{address}</p>
+                    {neighborhood && <p>Bairro {neighborhood}</p>}
+                    <p>{city}/{state} · CEP {postalCode}</p>
+                  </div>
+                  {missingFields.includes("cpf") && <Input aria-label="CPF para entrega" placeholder="CPF para entrega *" value={cpf} onChange={e => setCpf(e.target.value)} inputMode="numeric" maxLength={14} className="text-xs" />}
+                  {missingFields.includes("number") && <Input aria-label="Número da casa" placeholder="Número da casa (ou S/N) *" value={houseNumber} onChange={e => setHouseNumber(e.target.value)} className="text-xs" />}
+                  {missingFields.includes("neighborhood") && <Input aria-label="Bairro" placeholder="Bairro *" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} className="text-xs" />}
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setEditingAddress(true)}>Entregar em outro endereço</Button>
+                </div>
+              )}
+              {editingAddress && (<>
               <div>
                 <Label htmlFor="postalCode" className="text-xs">
                   CEP *
@@ -541,6 +566,7 @@ function CartPage() {
                   />
                 </div>
               </div>
+              </>)}
             </div>
 
             {/* SELEÇÃO DAS OPÇÕES DE ENVIO */}

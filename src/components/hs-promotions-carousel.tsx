@@ -7,6 +7,9 @@ import { brl } from "@/lib/format";
 
 type Promo = { product_id: string; regular_price: number; promo_price: number; ends_at: string; title: string; image_url: string | null };
 
+// Itens caros com desconto pequeno passam a sensação de que não há promoção.
+const MAX_PROMO_PRICE = 300;
+
 async function fetchPromos(): Promise<Promo[]> {
   const { data, error } = await supabase
     .from("hs_promotions")
@@ -15,7 +18,7 @@ async function fetchPromos(): Promise<Promo[]> {
     .order("position");
   if (error) throw error;
   return (data ?? [])
-    .filter((row) => row.products?.is_active)
+    .filter((row) => row.products?.is_active && Number(row.promo_price) <= MAX_PROMO_PRICE)
     .map((row) => ({
       product_id: row.product_id,
       regular_price: Number(row.regular_price),
