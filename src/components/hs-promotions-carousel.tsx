@@ -47,6 +47,15 @@ export function HsPromotionsCarousel() {
   const time = useCountdown(promos[0]?.ends_at);
   if (!promos.length) return null;
   const scroll = (dir: number) => track.current?.scrollBy({ left: dir * track.current.clientWidth * 0.8, behavior: "smooth" });
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const el = track.current;
+      if (!el) return;
+      if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 4) el.scrollTo({ left: 0, behavior: "smooth" });
+      else el.scrollBy({ left: el.clientWidth * 0.8, behavior: "smooth" });
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, []);
   const pad = (n: number) => String(n).padStart(2, "0");
 
   return (
