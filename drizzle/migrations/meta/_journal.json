@@ -512,6 +512,13 @@
       "when": 1793498178417,
       "tag": "0072_seller_delivery_attempt_events",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1793632877592,
+      "tag": "0073_catalog_search_relevance",
+      "breakpoints": true
     }
   ]
 }
