@@ -526,6 +526,13 @@
       "when": 1793632956760,
       "tag": "0074_catalog_search_accessory_penalty",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1793634215156,
+      "tag": "0075_hs_promotions",
+      "breakpoints": true
     }
   ]
 }

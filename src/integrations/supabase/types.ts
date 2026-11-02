@@ -469,6 +469,50 @@ export type Database = {
           },
         ]
       }
+      hs_promotions: {
+        Row: {
+          created_at: string
+          ends_at: string
+          margin_share: number
+          position: number
+          product_id: string
+          promo_price: number
+          regular_compare_at_price: number | null
+          regular_price: number
+          starts_at: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          margin_share?: number
+          position?: number
+          product_id: string
+          promo_price: number
+          regular_compare_at_price?: number | null
+          regular_price: number
+          starts_at?: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          margin_share?: number
+          position?: number
+          product_id?: string
+          promo_price?: number
+          regular_compare_at_price?: number | null
+          regular_price?: number
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hs_promotions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercado_pago_accounts: {
         Row: {
           access_token_encrypted: string
@@ -2912,6 +2956,7 @@ export type Database = {
         Args: { p_day?: string; p_limit?: number; p_offset?: number }
         Returns: Json
       }
+      end_expired_hs_promotions: { Args: never; Returns: number }
       expire_club_pix_memberships: { Args: never; Returns: undefined }
       finish_arcade_game: {
         Args: { _coins: number; _session_id: string }
@@ -2931,6 +2976,10 @@ export type Database = {
       hs_bank_credit_eligible: { Args: { _store_id: string }; Returns: boolean }
       hs_bank_credit_summary: { Args: { _store_id: string }; Returns: Json }
       hs_bank_request_credit: { Args: { _store_id: string }; Returns: string }
+      hs_promo_price: {
+        Args: { _cost: number; _regular: number; _share: number }
+        Returns: number
+      }
       normalize_catalog_text: { Args: { value: string }; Returns: string }
       play_daily_game: {
         Args: { _game_type: string }
