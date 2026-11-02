@@ -45,7 +45,6 @@ export function HsPromotionsCarousel() {
   const { data: promos = [] } = useQuery({ queryKey: ["hs-promotions"], queryFn: fetchPromos, staleTime: 60_000 });
   const track = useRef<HTMLDivElement>(null);
   const time = useCountdown(promos[0]?.ends_at);
-  if (!promos.length) return null;
   const scroll = (dir: number) => track.current?.scrollBy({ left: dir * track.current.clientWidth * 0.8, behavior: "smooth" });
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -56,6 +55,7 @@ export function HsPromotionsCarousel() {
     }, 5000);
     return () => window.clearInterval(id);
   }, []);
+  if (!promos.length) return null;
   const pad = (n: number) => String(n).padStart(2, "0");
 
   return (
