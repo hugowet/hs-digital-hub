@@ -22,11 +22,15 @@ test("fone à prova d'água cruza objeto e atributo técnico", () => {
 test("símbolos de URL e acentos não alteram os conceitos", () => {
   assert.deepEqual(catalogSearchGroups("FONE+de+OUVIDO"), catalogSearchGroups("fone de ouvido"));
 });
-test("celular encontra smartphone e telefone", () => {
+test("celular encontra smartphone e iphone, sem telefone fixo", () => {
   const groups = catalogSearchGroups("celular");
   assert.equal(groups.length, 1);
   assert.equal(groups[0]?.includes("smartphone"), true);
-  assert.equal(groups[0]?.includes("telefone"), true);
+  assert.equal(groups[0]?.includes("iphone"), true);
+  assert.equal(groups[0]?.includes("telefone"), false);
+});
+test("celular e smartphone buscam a mesma coisa", () => {
+  assert.deepEqual([...catalogSearchGroups("celular")[0]].sort(), [...catalogSearchGroups("smartphone")[0]].sort());
 });
 test("tênis encontra sapato e calçado", () => {
   const groups = catalogSearchGroups("tênis");

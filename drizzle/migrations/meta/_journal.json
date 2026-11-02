@@ -512,6 +512,20 @@
       "when": 1793498178417,
       "tag": "0072_seller_delivery_attempt_events",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1793632877592,
+      "tag": "0073_catalog_search_relevance",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1793632956760,
+      "tag": "0074_catalog_search_accessory_penalty",
+      "breakpoints": true
     }
   ]
 }
