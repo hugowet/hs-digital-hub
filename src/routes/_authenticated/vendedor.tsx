@@ -1,6 +1,7 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { deliveryFields, deliveryReport, deliverySteps, showsManualPurchaseReport } from "@/lib/order-delivery";
 import { SellerDeliveryAttempt } from "@/components/seller-delivery-attempt";
+import { SellerPromotionsTab } from "@/components/seller-promotions-tab";
 import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -291,6 +292,7 @@ function SellerCenterPage() {
           <TabsTrigger value="orders">Pedidos e Envios</TabsTrigger>
           <TabsTrigger value="messages">Mensagens <UnreadDot show={Boolean(unread?.seller)} /></TabsTrigger>
           <TabsTrigger value="products">Meus produtos</TabsTrigger>
+          {isPlatformOwner && <TabsTrigger value="promotions">Promoções HS</TabsTrigger>}
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e extrato</TabsTrigger>
           <TabsTrigger value="mercadopago">Mercado Pago</TabsTrigger>
@@ -309,6 +311,7 @@ function SellerCenterPage() {
         </TabsContent>
 
         {/* Aba de Produtos */}
+        {isPlatformOwner && <TabsContent value="promotions" className="pt-4"><SellerPromotionsTab storeId={store.id} /></TabsContent>}
         <TabsContent value="products" className="pt-4">
           <section className="surface-card p-4">
             <h2 className="text-base font-semibold mb-4">Meus produtos ({products.length})</h2>

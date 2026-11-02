@@ -4,29 +4,27 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Flame, Timer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { brl } from "@/lib/format";
+import { Button } from "@/components/ui/button";
 
 type Promo = { product_id: string; regular_price: number; promo_price: number; ends_at: string; title: string; image_url: string | null };
-
-// Itens caros com desconto pequeno passam a sensação de que não há promoção.
-const MAX_PROMO_PRICE = 300;
 
 async function fetchPromos(): Promise<Promo[]> {
   const { data, error } = await supabase
     .from("hs_promotions")
     .select("product_id, regular_price, promo_price, ends_at, position, products(title, image_url, is_active)")
     .gt("ends_at", new Date().toISOString())
-    .order("position");
+    .order("position")
+    .limit(50);
   if (error) throw error;
   return (data ?? [])
-    .filter((row) => row.products?.is_active && Number(row.promo_price) <= MAX_PROMO_PRICE)
-    .map((row) => ({
+    .flatMap((row) => row.products?.is_active ? [{
       product_id: row.product_id,
       regular_price: Number(row.regular_price),
       promo_price: Number(row.promo_price),
       ends_at: row.ends_at,
-      title: row.products!.title,
-      image_url: row.products!.image_url,
-    }));
+      title: row.products.title,
+      image_url: row.products.image_url,
+    }] : []);
 }
 
 function useCountdown(endsAt: string | undefined) {
@@ -72,10 +70,10 @@ export function HsPromotionsCarousel() {
           )}
         </div>
         <div className="relative">
-          <button type="button" aria-label="Promoções anteriores" onClick={() => scroll(-1)}
+          <Button type="button" size="icon" variant="outline" aria-label="Promoções anteriores" onClick={() => scroll(-1)}
             className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background p-2 text-foreground shadow-lg">
             <ChevronLeft className="h-5 w-5" />
-          </button>
+          </Button>
           <div ref={track} className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-8 [scrollbar-width:none]">
             {promos.map((p) => {
               const off = Math.round((1 - p.promo_price / p.regular_price) * 100);
@@ -95,10 +93,10 @@ export function HsPromotionsCarousel() {
               );
             })}
           </div>
-          <button type="button" aria-label="Próximas promoções" onClick={() => scroll(1)}
+          <Button type="button" size="icon" variant="outline" aria-label="Próximas promoções" onClick={() => scroll(1)}
             className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background p-2 text-foreground shadow-lg">
             <ChevronRight className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
       </div>
     </section>

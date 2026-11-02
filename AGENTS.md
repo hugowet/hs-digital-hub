@@ -51,4 +51,5 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Todos paginates one database origin-mix sequence over Boa Vista daily ranking; filters stay separate.
 - Exit never rearms in dialogs; confirm leaves the document directly. Search/variants replace; menu Back closes locally.
 - Order chats persist. Private card margins use bounded identity-scoped batches and verified store ownership.
+- Seller-managed HS promotions use an authenticated owner-scoped database transaction for price updates and a shared advisory lock for the carousel capacity; public discount badges reflect the actual price reduction, not the chosen margin share.
 - Amazon queues one read, keeps delays/budgets, stops on CAPTCHA/Dogs, saves Retry-After recovery and candidates on reader failures; 12 safe diagnostic runs; trust filters intact.

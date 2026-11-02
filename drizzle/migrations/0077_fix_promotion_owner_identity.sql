@@ -1,0 +1,1 @@
+DO $$ DECLARE definition text; BEGIN SELECT pg_get_functiondef('public.manage_seller_hs_promotions(uuid,uuid[],numeric,boolean)'::regprocedure) INTO definition; definition := replace(definition, 'JOIN profiles u ON u.id=s.owner_id', 'JOIN auth.users u ON u.id=s.owner_id'); EXECUTE definition; END $$;
