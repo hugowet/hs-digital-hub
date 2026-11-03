@@ -411,5 +411,5 @@
 - [x] Renomear lojas que começam com "HS" (ex.: Importes, Store)
 
 - [x] Aba Enviar promoções (Admin): lista de cadastrados, seleção, mensagem com link
-- [ ] Descrição do produto: "Contém" em negrito, organizado (todos publicados)
-- [ ] Varredura: padronizar texto de logística Amazon nas descrições
+- [x] Descrição do produto: "Contém" em negrito, organizado (todos publicados)
+- [x] Varredura: padronizar texto de logística Amazon nas descrições
