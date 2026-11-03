@@ -364,12 +364,12 @@ function AdminPage() {
                 <div className="mt-4 flex h-40 items-end gap-1.5">
                   {(audience?.viewsByDay ?? []).map((item) => {
                     const max = Math.max(1, ...(audience?.viewsByDay ?? []).map((d) => d.count));
-                    const height = Math.max(4, Math.round((item.count / max) * 100));
+                    const height = Math.max(4, Math.round((item.count / max) * 112));
                     const label = new Date(`${item.day}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
                     return (
                       <div key={item.day} className="group flex flex-1 flex-col items-center justify-end gap-1" title={`${label}: ${item.count} visita(s)`}>
                         <span className="text-[10px] font-medium tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">{item.count}</span>
-                        <div className="w-full rounded-t bg-emerald-500/80 transition-colors group-hover:bg-emerald-500" style={{ height: `${height}%` }} />
+                        <div className="w-full rounded-t bg-emerald-500/80 transition-colors group-hover:bg-emerald-500" style={{ height: `${height}px` }} />
                         <span className="text-[9px] tabular-nums text-muted-foreground">{label}</span>
                       </div>
                     );
