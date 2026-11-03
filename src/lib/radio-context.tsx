@@ -10,6 +10,8 @@ export interface RadioTrack {
   album: string;
   artwork: string;
   src: string;
+  /** Backup streams of the same station/genre. */
+  fallbacks?: string[];
 }
 
 export interface RadioAnnouncement {
