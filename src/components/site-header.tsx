@@ -197,7 +197,7 @@ export function SiteHeader({
     setSearchFocused(false);
     inputRef.current?.blur();
     if (onQueryChange) {
-      onQueryChange(localQuery);
+      onQueryChange(localQuery); window.setTimeout(() => { (document.activeElement as HTMLElement | null)?.blur?.(); document.getElementById("resultados-busca")?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 200);
     } else {
       navigate({ ...selectionNavigation, to: "/", search: { q: localQuery || undefined } });
     }
@@ -273,7 +273,7 @@ export function SiteHeader({
                     onClick={() => {
                       inputRef.current?.blur();
                       setLocalQuery(item.title);
-                      if (onQueryChange) onQueryChange(item.title);
+                      if (onQueryChange) { onQueryChange(item.title); window.setTimeout(() => { (document.activeElement as HTMLElement | null)?.blur?.(); document.getElementById("resultados-busca")?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 200); }
                       setSearchFocused(false);
                       navigate({ to: "/produto/$productId", params: { productId: item.id } });
                     }}

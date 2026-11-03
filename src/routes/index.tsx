@@ -421,7 +421,7 @@ function Home() {
       {/* A typed search covers the whole store: a leftover category/origin/price filter must not hide results. */}
       <SiteHeader
         query={search.q}
-        onQueryChange={(q) => { setSearch(q && q !== search.q ? { q, category: null, supplier: null, range: "all", free: false } : { q }); if (q) window.setTimeout(() => document.getElementById("resultados-busca")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150); }}
+        onQueryChange={(q) => { setSearch(q && q !== search.q ? { q, category: null, supplier: null, range: "all", free: false } : { q }); }}
         suggestions={suggestions}
       />
 
