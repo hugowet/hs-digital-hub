@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { readAmazonResultsPage } from "@/lib/amazon-page.functions";
+import { validateAmazonResultsUrl } from "@/lib/amazon-page-selection";
 import { fetchAmazonProduct } from "@/lib/amazon.functions";
 import { parseAmazonLinkBatch, readAmazonLinkBatch } from "@/lib/amazon-link-batch";
 import { amazonNextAllowedAt } from "@/lib/amazon-request-policy";
@@ -18,10 +21,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { brl } from "@/lib/format";
 
 type ProductData = Awaited<ReturnType<typeof fetchAmazonProduct>>;
-type Draft = { url: string; data: ProductData | null; error: string | null; selected: boolean; published: boolean };
+type Draft = { url: string; data: ProductData | null; error: string | null; selected: boolean; published: boolean; group?: string };
 
 export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
   const readProduct = useServerFn(fetchAmazonProduct);
+  const readPage = useServerFn(readAmazonResultsPage);
+  const [pageUrl, setPageUrl] = useState("");
+  const [pageSummary, setPageSummary] = useState("");
   const [input, setInput] = useState("");
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [running, setRunning] = useState(false);
@@ -32,19 +38,27 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
   const ready = drafts.filter((item) => item.data && !item.published);
   const selected = ready.filter((item) => item.selected);
 
-  async function pull(resume = false) {
+  async function pull(resume = false, fromPage = false) {
     if (busy.current || publishing) return;
-    let rows: Draft[];
+    let rows: Draft[] = [];
     try {
-      rows = resume ? drafts : parseAmazonLinkBatch(input).map((url) => ({ url, data: null, error: null, selected: false, published: false }));
+      if (fromPage) validateAmazonResultsUrl(pageUrl);
+      else rows = resume ? drafts : parseAmazonLinkBatch(input).map((url) => ({ url, data: null, error: null, selected: false, published: false }));
     } catch (error) { toast.error(error instanceof Error ? error.message : "Confira os links."); return; }
     if (!resume && ready.length && !window.confirm("Substituir os produtos ainda não publicados por um novo lote?")) return;
-    setDrafts(rows);
-    const pending = rows.map((item, index) => ({ item, index })).filter(({ item }) => !item.data && !item.error);
     stop.current = false;
     busy.current = true;
     setRunning(true);
     try {
+      if (fromPage) {
+        const page = await readPage({ data: { url: pageUrl } });
+        setPageSummary(`${page.cheap} baratos · ${page.moderate} intermediários · ${page.eligible} passaram pelos filtros da página`);
+        rows = page.items.map((item) => ({ url: item.url, group: item.group, data: null, error: null, selected: false, published: false }));
+        if (!rows.length) toast.info("Nenhum produto com preço e reputação suficientes nesta página.");
+        if (rows.length && !stop.current) await new Promise((resolve) => window.setTimeout(resolve, amazonNextAllowedAt() - Date.now()));
+      } else if (!resume) setPageSummary("");
+      setDrafts(rows);
+      const pending = rows.map((item, index) => ({ item, index })).filter(({ item }) => !item.data && !item.error);
       await readAmazonLinkBatch({
         urls: pending.map(({ item }) => item.url),
         read: async (url) => {
@@ -60,7 +74,8 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
         cancelled: () => stop.current,
         wait: () => new Promise((resolve) => window.setTimeout(resolve, amazonNextAllowedAt() - Date.now())),
       });
-    } finally { busy.current = false; setRunning(false); }
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Não consegui ler esta página."); }
+    finally { busy.current = false; setRunning(false); }
   }
 
   async function publish() {
@@ -103,6 +118,11 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
   return (
     <section aria-label="Importação de até 50 links Amazon" className="grid gap-5 border-y border-border py-5 lg:grid-cols-2">
       <div className="space-y-3">
+        <Label htmlFor="amazon-results-page">Página Amazon · até 30 produtos</Label>
+        <Input id="amazon-results-page" type="url" value={pageUrl} onChange={(e) => setPageUrl(e.target.value)} placeholder="https://www.amazon.com.br/s?k=furadeira" disabled={running || publishing} />
+        <Button type="button" variant="outline" onClick={() => void pull(false, true)} disabled={running || publishing || !pageUrl.trim()}><Upload className="mr-2 h-4 w-4" />Puxar 15 baratos + 15 intermediários</Button>
+        {pageSummary && <p className="text-xs text-muted-foreground" aria-live="polite">{pageSummary}</p>}
+        <div className="border-t border-border" />
         <Label htmlFor="amazon-batch-links">Links Amazon · até 50 produtos</Label>
         <Textarea id="amazon-batch-links" rows={6} maxLength={50000} placeholder="https://www.amazon.com.br/dp/...&#10;https://amzn.to/..." value={input} onChange={(e) => setInput(e.target.value)} disabled={running || publishing} className="font-mono text-xs" />
         <div className="flex flex-wrap gap-2">
@@ -123,6 +143,7 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
               {item.data && <img src={item.data.mainImage} alt="" className="h-14 w-14 shrink-0 object-contain" />}
               <div className="min-w-0 flex-1">
                 <p className="break-words text-sm font-medium">{item.data?.title ?? `Link ${index + 1}`}</p>
+                {item.group && <p className="text-xs text-muted-foreground">{item.group === "barato" ? "Mais barato da página" : "Preço intermediário da página"}</p>}
                 {item.data ? <>
                   <p className="text-xs text-muted-foreground">Custo {brl(item.data.costPrice)} · Venda {brl(calculateAmazonPrice(item.data.costPrice))}</p>
                   <p className="text-xs text-muted-foreground">{item.published ? "Publicado" : "Lido · ainda não publicado"}</p>
