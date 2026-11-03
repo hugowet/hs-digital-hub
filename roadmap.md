@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Página Amazon — 03/11
+- [ ] Adicionar leitura de uma página de resultados com 15 baratos e 15 intermediários, preservando fila e confirmação individual antes de publicar.
+- [ ] Testar seleção, filtros e fluxo autenticado sem publicar produtos reais.
+
 ## Confirmação automática Amazon — 03/11
 - [x] Lote de links e atualização de estoque confirmam automaticamente a oferta/ASIN selecionados, com preço exato e evidência da opção; outros modelos não herdam preço/estoque.
 - [x] 21 testes passaram e build OK; tela autenticada de Hugo confirmou Galaxy A34 5G por R$26,99, com mensagem de estoque confirmado automaticamente. Nenhum produto publicado ou preço real alterado; mudanças não publicadas no site.
