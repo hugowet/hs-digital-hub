@@ -1,8 +1,9 @@
 # HS Digital — MVP
 
 ## Links Amazon em lote — 03/11
-- [ ] Permitir até 50 links no importador do vendedor, com fila protegida e resultados ao lado antes de publicar.
-- [ ] Testar limite, deduplicação, falhas e ausência de publicação automática; conferir a tela autenticada.
+- [x] Até 50 links no importador do vendedor, com fila serial, pausas e resultados ao lado antes de publicação explícita dos selecionados; publicação preserva RLS/propriedade e estoque confirmado.
+- [x] 16 testes passaram: limite, deduplicação, domínios, fila, falhas e estoque; montagem sem erros. Sem leitura paga ou publicação de produtos reais.
+- [ ] Conferir leitura → seleção → publicação na tela: /vendedor autenticado permaneceu em branco no navegador de teste; depende da prévia funcional. Não publicado.
 
 ## Promoções manuais — 02/11
 - [x] Aba no vendedor para selecionar produtos Amazon, aplicar 25/35/50% da margem e retirar promoções; preços e lucro estimados exibidos antes de aplicar.
