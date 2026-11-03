@@ -15,6 +15,13 @@ export type AudienceStats = {
   totalAccounts: number;
   newToday: number;
   signupsByDay: Array<{ day: string; count: number }>;
+  viewingNow: number;
+  viewsToday: number;
+  views7d: number;
+  views30d: number;
+  uniqueVisitors30d: number;
+  viewsByDay: Array<{ day: string; count: number }>;
+  topPages: Array<{ path: string; count: number }>;
 };
 
 export const getAudienceStats = createServerFn({ method: "GET" })
@@ -23,11 +30,15 @@ export const getAudienceStats = createServerFn({ method: "GET" })
     await ensureAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const onlineSince = new Date(Date.now() - 45_000).toISOString();
-    const historySince = new Date(Date.now() - 13 * 86_400_000);
+    const now = Date.now();
+    const onlineSince = new Date(now - 45_000).toISOString();
+    const viewingSince = new Date(now - 5 * 60_000).toISOString();
+    const historySince = new Date(now - 13 * 86_400_000);
     historySince.setUTCHours(0, 0, 0, 0);
+    const viewsSince = new Date(now - 29 * 86_400_000);
+    viewsSince.setUTCHours(0, 0, 0, 0);
 
-    const [online, total, recent] = await Promise.all([
+    const [online, total, recent, views] = await Promise.all([
       supabaseAdmin
         .from("social_presence")
         .select("user_id", { count: "exact", head: true })
@@ -37,6 +48,12 @@ export const getAudienceStats = createServerFn({ method: "GET" })
         .from("profiles")
         .select("created_at")
         .gte("created_at", historySince.toISOString()),
+      supabaseAdmin
+        .from("site_page_views")
+        .select("path,session_id,created_at")
+        .gte("created_at", viewsSince.toISOString())
+        .order("created_at", { ascending: false })
+        .limit(50000),
     ]);
 
     const byDay = new Map<string, number>();
@@ -50,11 +67,47 @@ export const getAudienceStats = createServerFn({ method: "GET" })
     }
 
     const todayKey = new Date().toISOString().slice(0, 10);
+    const weekSince = new Date(now - 6 * 86_400_000);
+    weekSince.setUTCHours(0, 0, 0, 0);
+    const weekKey = weekSince.toISOString().slice(0, 10);
+
+    const viewsByDayMap = new Map<string, number>();
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(historySince.getTime() + i * 86_400_000);
+      viewsByDayMap.set(d.toISOString().slice(0, 10), 0);
+    }
+    const pageCounts = new Map<string, number>();
+    const visitors = new Set<string>();
+    const activeNow = new Set<string>();
+    let viewsToday = 0;
+    let views7d = 0;
+    let views30d = 0;
+    for (const row of views.data ?? []) {
+      const key = String(row.created_at).slice(0, 10);
+      views30d += 1;
+      visitors.add(String(row.session_id));
+      if (viewsByDayMap.has(key)) viewsByDayMap.set(key, (viewsByDayMap.get(key) ?? 0) + 1);
+      if (key === todayKey) viewsToday += 1;
+      if (key >= weekKey) views7d += 1;
+      pageCounts.set(row.path, (pageCounts.get(row.path) ?? 0) + 1);
+      if (String(row.created_at) >= viewingSince) activeNow.add(String(row.session_id));
+    }
+
     return {
       onlineNow: online.count ?? 0,
       totalAccounts: total.count ?? 0,
       newToday: byDay.get(todayKey) ?? 0,
       signupsByDay: [...byDay.entries()].map(([day, count]) => ({ day, count })),
+      viewingNow: activeNow.size,
+      viewsToday,
+      views7d,
+      views30d,
+      uniqueVisitors30d: visitors.size,
+      viewsByDay: [...viewsByDayMap.entries()].map(([day, count]) => ({ day, count })),
+      topPages: [...pageCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([path, count]) => ({ path, count })),
     };
   });
 
