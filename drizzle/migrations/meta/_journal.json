@@ -561,6 +561,13 @@
       "when": 1793708786280,
       "tag": "0079_admin_marketing_contacts",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1793744118966,
+      "tag": "0080_fix_tracking_insert_scope",
+      "breakpoints": true
     }
   ]
 }

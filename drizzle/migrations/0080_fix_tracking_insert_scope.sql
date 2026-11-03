@@ -1,0 +1,3 @@
+DROP POLICY IF EXISTS "sellers and admins add tracking" ON public.order_tracking_events;
+CREATE POLICY "sellers and admins add tracking" ON public.order_tracking_events FOR INSERT TO authenticated
+WITH CHECK (created_by = auth.uid() AND (public.has_role(auth.uid(),'admin') OR EXISTS (SELECT 1 FROM public.order_items oi JOIN public.stores s ON s.id=oi.store_id WHERE oi.order_id = order_tracking_events.order_id AND s.owner_id = auth.uid())));
