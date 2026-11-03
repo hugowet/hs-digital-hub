@@ -405,12 +405,9 @@ export function PurchasesPage() {
                           </div>
 
                           <Tabs defaultValue="pedido" className="mt-4">
-                            <TabsList className="grid w-full grid-cols-3">
+                            <TabsList className="grid w-full grid-cols-2">
                               <TabsTrigger value="pedido" className="text-xs sm:text-sm">
-                                <Package className="mr-1.5 hidden h-4 w-4 sm:block" /> Produtos
-                              </TabsTrigger>
-                              <TabsTrigger value="rastreio" className="text-xs sm:text-sm">
-                                <Truck className="mr-1.5 hidden h-4 w-4 sm:block" /> Entrega
+                                <Truck className="mr-1.5 hidden h-4 w-4 sm:block" /> Entrega e produto
                               </TabsTrigger>
                               <TabsTrigger value="devolucao" className="text-xs sm:text-sm">
                                 <RotateCcw className="mr-1.5 hidden h-4 w-4 sm:block" /> Garantia
@@ -418,7 +415,8 @@ export function PurchasesPage() {
                             </TabsList>
 
                             <TabsContent value="pedido" className="pt-4 space-y-4">
-                              <div className="space-y-2">
+                              <OrderTracking events={order.order_tracking_events ?? []} paid={true} fulfillments={order.supplier_fulfillments ?? []} />
+                              <div className="space-y-2 border-t border-border pt-4">
                                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                   Itens Comprados:
                                 </h4>
@@ -451,15 +449,10 @@ export function PurchasesPage() {
 
                                 <Button asChild size="sm">
                                   <Link to="/pedido/$orderId" params={{ orderId: order.id }}>
-                                    Acompanhar pedido <UnreadDot show={order.order_items.some((item: any) => unread?.products.includes(item.product_id))} /> <ChevronRight className="h-4 w-4" />
+                                    Detalhes e atendimento <UnreadDot show={order.order_items.some((item: any) => unread?.products.includes(item.product_id))} /> <ChevronRight className="h-4 w-4" />
                                   </Link>
                                 </Button>
                               </div>
-                            </TabsContent>
-
-                            <TabsContent value="rastreio" className="pt-4">
-                              <OrderTracking events={order.order_tracking_events ?? []} paid={true} fulfillments={order.supplier_fulfillments ?? []} />
-                              <Button asChild variant="outline" className="mt-4"><Link to="/pedido/$orderId" params={{ orderId: order.id }}>Detalhes e atendimento <ChevronRight className="h-4 w-4" /></Link></Button>
                             </TabsContent>
 
                             <TabsContent value="devolucao" className="pt-4">
