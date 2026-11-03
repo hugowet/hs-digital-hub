@@ -44,8 +44,8 @@ export const MOTO_PARTS_KEY = "PECASMOTO";
 export const CAR_PARTS_KEY = "PECASCARRO";
 export const MOTO_MODELS = ["Biz", "CG 160", "CG 150 Titan", "Titan 150", "Titan 160", "Fan 150", "Fan 160", "Bros 150", "Bros 160", "CB 300", "CB 500", "XRE 300", "Pop 110", "Factor 150", "Fazer 250", "Lander 250", "Crosser 150", "NMax", "PCX", "Twister 250", "XJ6", "MT-03", "Hornet"];
 export const CAR_MODELS = ["Gol", "Palio", "Uno", "Celta", "Corsa", "Onix", "Prisma", "HB20", "Fiesta", "Ka", "Fox", "Polo", "Strada", "Saveiro", "Sandero", "Logan", "Civic", "Corolla", "Hilux", "S10", "Ranger", "Amarok", "Frontier", "L200", "Toro", "Montana"];
-const MOTO_PARTS = ["carenagem", "pneu", "kit motor", "kit relação", "peças motor", "pastilha de freio", "farol", "retrovisor"];
-const CAR_PARTS = ["peças motor", "pneu", "pastilha de freio", "amortecedor", "kit embreagem", "filtro de óleo", "farol", "parachoque"];
+const MOTO_PARTS = ["carenagem", "pneu", "kit motor", "kit relação", "peças motor", "pastilha de freio", "farol", "retrovisor", "disco de freio", "tambor de freio", "sapata de freio", "balança", "rolamento", "bengala", "kit cilindro", "válvulas", "cabeçote", "camisa", "anéis", "juntas", "sistema de ignição", "kit embreagem", "bico do farol", "tanque"];
+const CAR_PARTS = ["peças motor", "pneu", "pastilha de freio", "amortecedor", "kit embreagem", "filtro de óleo", "farol", "parachoque", "disco de freio", "tambor de freio", "rolamento", "válvulas", "cabeçote", "anéis", "juntas", "sistema de ignição", "cilindro mestre", "alternador", "motor de partida", "bico injetor", "correia do alternador"];
 
 export type TrendQuery = { terms: string[]; maxPrice: number | null; vehicle?: string; nextCursor?: number; total?: number };
 
