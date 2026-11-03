@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Voltar da busca e rastreamento — 03/11
+- [x] Voltar nativo limpa busca na vitrine e em Meus produtos; conferido em 434x769 com sessão real, sem sair da página.
+- [x] Pedido pago BBE8DB03 mantém Saiu para entrega após tentativa; botão explícito Seu pedido foi entregue e confirmação adicionados. Tentativa tem abrir/fechar/cancelar sem apagar histórico. Conferidos na conta real; não confirmada entrega real nem enviada tentativa fictícia. Nenhuma falha de gravação reproduzida; 22 testes passaram. Não publicado.
+
 ## Limpeza de tamanhos e busca do vendedor — 03/11
 - [x] Retirados da vitrine 2.351 produtos CJ e 17 Amazon sem identificação suficiente de tamanho/opções, incluindo ambos os capacetes Liberty; registros e pedidos preservados, variantes oficiais CJ identificadas com estoque mantidas.
 - [x] Busca por título em Meus produtos consulta todos os publicados da própria loja com paginação; edição e confirmação de exclusão conferidas na conta real da loja JJ Kuster, sem excluir outro produto. Mudanças da tela ainda não publicadas.

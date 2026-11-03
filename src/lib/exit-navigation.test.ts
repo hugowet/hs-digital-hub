@@ -1,9 +1,16 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { exitHistoryDelta, selectionNavigation, shouldConfirmHomeBack } from "./exit-navigation";
+import { exitHistoryDelta, selectionNavigation, shouldConfirmHomeBack, shouldClearSearchOnBack } from "./exit-navigation";
 
 test("native back from the home guard asks before exiting", () => {
   assert.equal(shouldConfirmHomeBack("BACK", true, "/", "/"), true);
+});
+test("Back clears an active storefront search before asking to exit", () => {
+  assert.equal(shouldClearSearchOnBack("BACK", "/?q=moto"), true);
+  assert.equal(shouldClearSearchOnBack("BACK", "/"), false);
+  assert.equal(shouldClearSearchOnBack("BACK", "/?q=moto", true), false);
+  assert.equal(shouldClearSearchOnBack("PUSH", "/?q=moto"), false);
+  assert.equal(shouldClearSearchOnBack("BACK", "/produto/1?q=moto"), false);
 });
 test("back closes the menu without leaving the current page", () => {
   assert.equal(shouldConfirmHomeBack("BACK", true, "/", "/", true), false);

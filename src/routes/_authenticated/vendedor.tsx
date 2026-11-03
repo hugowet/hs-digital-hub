@@ -1,10 +1,10 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
-import { deliveryFields, deliveryReport, deliverySteps, showsManualPurchaseReport } from "@/lib/order-delivery";
+import { deliveryFields, deliveryReport, deliverySteps, currentDeliveryStep, showsManualPurchaseReport } from "@/lib/order-delivery";
 import { SellerDeliveryAttempt } from "@/components/seller-delivery-attempt";
 import { SellerPromotionsTab } from "@/components/seller-promotions-tab";
 import { sellerProductSearchPattern } from "@/lib/seller-product-search";
 import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -101,6 +101,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 function SellerCenterPage() {
+  const router = useRouter();
   const qc = useQueryClient();
   const syncCj = useServerFn(syncCjProducts);
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
@@ -124,6 +125,17 @@ function SellerCenterPage() {
   const [deletingProduct, setDeletingProduct] = useState<any | null>(null);
   const [removingProduct, setRemovingProduct] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  useEffect(() => router.history.subscribe(({ location, action }) => {
+    if (action.type === "BACK" && !location.state.hsSellerSearch) { setProductSearch(""); setProductPage(0); }
+  }), [router]);
+  const changeProductSearch = (value: string) => {
+    if (value && !productSearch && !router.history.location.state.hsSellerSearch) {
+      router.history.push(router.history.location.href, { ...router.history.location.state, hsSellerSearch: true }, { ignoreBlocker: true });
+      router.history.flush();
+    }
+    if (!value && router.history.location.state.hsSellerSearch) router.history.back({ ignoreBlocker: true });
+    setProductSearch(value); setProductPage(0);
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -346,8 +358,8 @@ function SellerCenterPage() {
             <div className="relative mb-4">
               <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
               <Input aria-label="Pesquisar meus produtos" placeholder="Pesquisar produto publicado..." className="pl-9 pr-10" value={productSearch}
-                onChange={(e) => { setProductSearch(e.target.value); setProductPage(0); }} />
-              {productSearch && <Button size="icon" variant="ghost" className="absolute right-1 top-1 size-8" aria-label="Limpar pesquisa" onClick={() => { setProductSearch(""); setProductPage(0); }}><X className="size-4" /></Button>}
+                onChange={(e) => changeProductSearch(e.target.value)} />
+              {productSearch && <Button size="icon" variant="ghost" className="absolute right-1 top-1 size-8" aria-label="Limpar pesquisa" onClick={() => changeProductSearch("")}><X className="size-4" /></Button>}
             </div>
             {productsFetching && <p role="status" className="mb-3 text-sm text-muted-foreground">Buscando produtos...</p>}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1082,6 +1094,7 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
   const [savingEstimate, setSavingEstimate] = useState<string | null>(null);
   const loadPhotos = useServerFn(getSellerOrderPhotos);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+  const [deliveryConfirmation, setDeliveryConfirmation] = useState<string | null>(null);
   const [savingTracking, setSavingTracking] = useState<string | null>(null);
   const [trackingInputs, setTrackingInputs] = useState<Record<string, { code: string; carrier: string }>>({});
 
@@ -1147,8 +1160,8 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
   });
 
   const currentStep = (orderId: string) => {
-    const evt = trackingEvents.find((e: any) => e.order_id === orderId && e.status !== "delivery_attempted");
-    return evt?.status ?? "confirmed";
+    const index = currentDeliveryStep(trackingEvents.filter((e: any) => e.order_id === orderId), true);
+    return DELIVERY_STEPS[index]?.[0] ?? "confirmed";
   };
 
   const getFulfillment = (orderId: string) => {
@@ -1175,6 +1188,7 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
       await qc.invalidateQueries({ queryKey: ["store-orders-tracking", storeId] });
       await qc.invalidateQueries({ queryKey: ["store-orders", storeId] });
       await qc.invalidateQueries({ queryKey: ["store-payouts", storeId] });
+      setDeliveryConfirmation(null);
     } catch (err: any) {
       toast.error(err?.message || "Não foi possível atualizar o status.");
     } finally {
@@ -1244,6 +1258,9 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
 
   return (
     <div className="space-y-5">
+      <Dialog open={Boolean(deliveryConfirmation)} onOpenChange={(open) => { if (!open && !updatingOrder) setDeliveryConfirmation(null); }}>
+        <DialogContent><DialogHeader><DialogTitle>Confirmar entrega do pedido?</DialogTitle><DialogDescription>Confirme somente se o cliente já recebeu o pedido. A entrega será registrada e poderá liberar o repasse.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" disabled={Boolean(updatingOrder)} onClick={() => setDeliveryConfirmation(null)}>Cancelar</Button><Button disabled={Boolean(updatingOrder)} onClick={() => { if (deliveryConfirmation) void handleStepChange(deliveryConfirmation, "delivered"); }}>{updatingOrder ? "Confirmando..." : "Confirmar entrega"}</Button></DialogFooter></DialogContent>
+      </Dialog>
       {orders.map((order: any) => {
         const step = currentStep(order.id);
         const fulfillment = getFulfillment(order.id);
@@ -1416,7 +1433,8 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
                     className="rounded-md border border-border bg-background px-2.5 py-1 text-xs"
                     value={step}
                     disabled={updatingOrder === order.id || !isPaid}
-                    onChange={(e) => handleStepChange(order.id, e.target.value)}
+                    aria-label={`Etapa do pedido ${order.id.slice(0, 8)}`}
+                    onChange={(e) => { if (e.target.value === "delivered") setDeliveryConfirmation(order.id); else void handleStepChange(order.id, e.target.value); }}
                   >
                     {DELIVERY_STEPS.map(([value, label]) => (
                       <option key={value} value={value}>
@@ -1426,6 +1444,8 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
                   </select>
                 </div>
               </div>
+
+              {isPaid && step !== "delivered" && <Button disabled={updatingOrder === order.id} onClick={() => setDeliveryConfirmation(order.id)}><CheckCircle2 className="size-4" />Seu pedido foi entregue</Button>}
 
               {showManualReport && <div className="border-t border-border pt-3">
                 <Label htmlFor={`supplier-estimate-${order.id}`} className="text-xs">Data de chegada informada pela Amazon</Label>
