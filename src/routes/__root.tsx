@@ -22,6 +22,7 @@ import { AuraChatWidget } from "../components/aura-chat-widget";
 import { InstallAppPrompt } from "../components/install-app-prompt";
 import { ExitConfirmGuard } from "../components/exit-confirm-guard";
 import { AccountNotificationListener } from "../components/account-notification-listener";
+import { SiteViewTracker } from "../components/site-view-tracker";
 
 function NotFoundComponent() {
   return (
