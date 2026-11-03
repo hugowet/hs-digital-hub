@@ -30,7 +30,7 @@ export function sanitizeAmazonText(text: string): string {
 
 /** Descrição final do produto: limpa de menções à Amazon + método de entrega padronizado. */
 export function buildAmazonDescription(rawDescription: string): string {
-  const clean = normalizeAmazonDeliveryText(sanitizeAmazonText(rawDescription));
+  const clean = normalizeAmazonDeliveryText(sanitizeAmazonText(rawDescription.replace(/logística\s+parceira\s+Amazon/gi, "logística parceira")));
   const base = clean || "Produto oficial com garantia e entrega rápida.";
   if (base.includes("Método de entrega:")) return base;
   return `${base}\n\n${AMAZON_DELIVERY_METHOD_TEXT}`;
