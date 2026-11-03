@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Falha no preço do lote Amazon — 03/11
+- [ ] Reproduzir recusa do preço exato, corrigir apenas formatos comprovados e testar sem aceitar estimativas ou outra variante.
+- [ ] Validar leitura na tela sem publicar produtos reais.
+
 ## Links Amazon em lote — 03/11
 - [x] Leitura individual/lote usa só preço BRL da oferta principal e ASIN comprovados no HTML, com centavos exatos; ausência/ambiguidade bloqueadas, sem estimativa JSON. 17 testes passaram e build OK; leitura Amazon real não executada (créditos), tela segue não homologada.
 - [x] Até 50 links no importador do vendedor, com fila serial, pausas e resultados ao lado antes de publicação explícita dos selecionados; publicação preserva RLS/propriedade e estoque confirmado.
