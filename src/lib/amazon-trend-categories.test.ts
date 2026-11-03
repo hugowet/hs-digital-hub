@@ -41,8 +41,9 @@ test("PECASMOTO começa na Biz e só ela", () => {
   assert.ok(q.terms.every((t) => t.endsWith("Biz")));
 });
 test("PECASMOTO termina as peças da Biz antes de pular para a CG", () => {
-  const q = parseTrendQuery("PECASMOTO", 6, 6);
-  assert.equal(q.terms.length, 2);
+  const q = parseTrendQuery("PECASMOTO", 18, 6);
+  assert.equal(q.terms.length, 6);
+  assert.ok(q.terms.every((t) => t.endsWith("Biz")));
   assert.equal(parseTrendQuery("PECASMOTO", q.nextCursor!, 6).vehicle, "CG 160");
 });
 test("PECASCARRO gol fica só no Gol", () => assert.equal(parseTrendQuery("PECASCARRO gol").vehicle, "Gol"));
