@@ -23,6 +23,26 @@ function AuraAvatar() {
   );
 }
 
+const AURA_ROUTES = new Set([
+  "/", "/carrinho", "/compras", "/conta", "/cupons", "/notificacoes", "/jogos", "/social",
+  "/trends", "/clube-hs", "/radio", "/hs-bank", "/afiliados", "/vendedor", "/auth",
+]);
+
+/** Extrai a etiqueta de navegação da resposta da IA, aceitando apenas rotas conhecidas. */
+function parseAuraNavigation(reply: string): { text: string; link?: { label: string; url: string } } {
+  let link: { label: string; url: string } | undefined;
+  const go = reply.match(/\[\[IR:\s*(\/[a-z0-9-]*)\s*\|\s*([^\]]{1,40})\]\]/i);
+  const search = reply.match(/\[\[BUSCA:\s*([^\]]{1,60})\]\]/i);
+  if (go && AURA_ROUTES.has(go[1].toLowerCase())) {
+    link = { label: go[2].trim(), url: go[1].toLowerCase() };
+  } else if (search) {
+    const term = search[1].trim();
+    link = { label: `Ver "${term}" na vitrine`, url: `/?q=${encodeURIComponent(term)}` };
+  }
+  const text = reply.replace(/\[\[(IR|BUSCA):[^\]]*\]\]/gi, "").trim();
+  return { text: text || "Te levo direto para lá:", link };
+}
+
 export function AuraChatWidget() {
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
@@ -278,14 +298,16 @@ export function AuraChatWidget() {
         .map((m) => ({ role: m.sender === "user" ? ("user" as const) : ("assistant" as const), content: m.text }));
       askAura({ data: { message: query, history } })
         .then(({ reply }) => {
+          const { text, link } = parseAuraNavigation(reply);
           setMessages((prev) => [
             ...prev,
             {
               id: String(Date.now() + 1),
               sender: "aura",
-              text: reply,
+              text,
               time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
               actionTag: "Consultora IA",
+              ...(link ? { link } : {}),
             },
           ]);
         })

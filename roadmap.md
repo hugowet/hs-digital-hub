@@ -401,3 +401,7 @@
 
 - [x] Aba Audiência (Admin): visitas ao site — quem está navegando agora (5 min), visitas hoje/7d/30d, visitantes únicos, gráfico por dia e páginas mais visitadas; registro via tabela site_page_views + RPC record_page_view (testado com conta admin)
 - [x] Rastreador: nome de veículo/ano, caminhão, picapes, bicicleta e celular puxam peças/acessórios
+
+- [x] Aura: navegação inteligente para todas as abas
+- [x] Trocar "Indisponível" por "Estoque acabou" nos produtos sem estoque
+- [x] Renomear lojas que começam com "HS" (ex.: Importes, Store)

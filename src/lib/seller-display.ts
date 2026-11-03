@@ -2,21 +2,21 @@
 const PLATFORM_STORE = /jj\s*kuster/i;
 
 const BRANDS: Record<string, string> = {
-  "eletronicos-gadgets": "HS Tech & Gadgets",
-  "celulares-tv": "HS Conecta Celulares",
-  "perifericos-acessorios": "HS Acessórios Pro",
-  "casa-setup": "HS Casa & Estilo",
-  moda: "HS Moda Express",
-  beleza: "HS Beleza & Cuidado",
-  esportes: "HS Esporte Ativo",
-  infantil: "HS Kids Store",
-  "autos-motos": "HS Auto Center",
-  ferramentas: "HS Ferramentas",
-  mercado: "HS Mercado & Utilidades",
+  "eletronicos-gadgets": "Tech & Gadgets Store",
+  "celulares-tv": "Conecta Celulares Store",
+  "perifericos-acessorios": "Acessórios Pro Importes",
+  "casa-setup": "Casa & Estilo Store",
+  moda: "Moda Express Store",
+  beleza: "Beleza & Cuidado Store",
+  esportes: "Esporte Ativo Store",
+  infantil: "Kids Store",
+  "autos-motos": "Auto Center Importes",
+  ferramentas: "Ferramentas Importes",
+  mercado: "Mercado & Utilidades Store",
 };
 
 export function sellerDisplayName(storeName: string | null | undefined, category?: string | null) {
   const name = storeName?.trim() || "HS Digital";
   if (!PLATFORM_STORE.test(name)) return name;
-  return (category && BRANDS[category]) || "HS Variedades";
+  return (category && BRANDS[category]) || "Variedades Importes";
 }

@@ -332,7 +332,7 @@ export function ProductCard({
               toast.success("Adicionado ao carrinho!");
             }}
           >
-            <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> {Number(product.stock) <= 0 ? "Indisponível" : "Adicionar"}
+            <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> {Number(product.stock) <= 0 ? "Estoque acabou" : "Adicionar"}
           </Button>
         </div>
       </div>
