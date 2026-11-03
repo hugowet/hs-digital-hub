@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { countAudienceVisits } from "./audience-visit-counts";
 
 async function ensureAdmin(context: { supabase: any; userId: string }) {
   const { data, error } = await context.supabase.rpc("has_role", {
@@ -50,7 +51,7 @@ export const getAudienceStats = createServerFn({ method: "GET" })
         .gte("created_at", historySince.toISOString()),
       supabaseAdmin
         .from("site_page_views")
-        .select("path,session_id,created_at")
+        .select("path,session_id,created_at,user_id")
         .gte("created_at", viewsSince.toISOString())
         .order("created_at", { ascending: false })
         .limit(50000),
@@ -79,16 +80,13 @@ export const getAudienceStats = createServerFn({ method: "GET" })
     const pageCounts = new Map<string, number>();
     const visitors = new Set<string>();
     const activeNow = new Set<string>();
-    let viewsToday = 0;
-    let views7d = 0;
+    const { viewsToday, views7d } = countAudienceVisits(views.data ?? [], todayKey, weekKey);
     let views30d = 0;
     for (const row of views.data ?? []) {
       const key = String(row.created_at).slice(0, 10);
       views30d += 1;
       visitors.add(String(row.session_id));
       if (viewsByDayMap.has(key)) viewsByDayMap.set(key, (viewsByDayMap.get(key) ?? 0) + 1);
-      if (key === todayKey) viewsToday += 1;
-      if (key >= weekKey) views7d += 1;
       pageCounts.set(row.path, (pageCounts.get(row.path) ?? 0) + 1);
       if (String(row.created_at) >= viewingSince) activeNow.add(String(row.session_id));
     }

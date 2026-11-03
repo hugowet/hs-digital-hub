@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Audiência — 03/11
+- [x] Excluir visitas identificadas da conta de Hugo dos totais de hoje e últimos sete dias, inclusive histórico; demais indicadores preservados.
+- [x] Explicar identificação de visitantes: nome/e-mail apenas de contas identificadas; visitantes anônimos não revelam contato, e promoções exigem consentimento.
+
 ## Página Amazon — 03/11
 - [x] Leitura da página escolhida com até 15 baratos e 15 intermediários; filtros, fila serial e confirmação individual preservados.
 - [x] 18 testes passaram; build OK; conta autenticada de Hugo leu página real de furadeiras e mostrou fila com 16 candidatos (15 baratos e 1 intermediário). Pausa testada antes das leituras individuais; nenhum produto publicado.
