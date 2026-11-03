@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Links Amazon em lote — 03/11
+- [ ] Permitir até 50 links no importador do vendedor, com fila protegida e resultados ao lado antes de publicar.
+- [ ] Testar limite, deduplicação, falhas e ausência de publicação automática; conferir a tela autenticada.
+
 ## Promoções manuais — 02/11
 - [x] Aba no vendedor para selecionar produtos Amazon, aplicar 25/35/50% da margem e retirar promoções; preços e lucro estimados exibidos antes de aplicar.
 - [x] Limite global atômico de 50, propriedade e conta de Hugo verificadas, prazo de 15 dias e proteção de lucro estimado; seleção manual pode incluir preços maiores, seleção antiga mantém corte de R$300.
