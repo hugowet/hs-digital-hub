@@ -72,6 +72,14 @@ test("celular puxa capinha, película e tela", () => {
 test("Bros 150 2010 (modelo não listado) puxa só peças de moto", () => {
   const all = [0, 6, 12].flatMap((c) => parseTrendQuery("Bros 150 2010", c, 6).terms);
   assert.ok(all.every((t) => t.endsWith("Bros 150 2010")));
+});
+
+test("Titan 150 2008 percorre todas as peças da moto, incluindo carburador, painel e motor de arranque", () => {
+  const all = Array.from({ length: 10 }, (_, i) => parseTrendQuery("Titan 150 2008", i * 6, 6).terms).flat();
+  assert.ok(all.every((t) => t.endsWith("Titan 150 2008")));
+  for (const part of ["pneu", "carburador", "tanque", "seta", "farol", "painel", "rabeta", "motor de arranque", "escapamento", "buzina", "cabo de velocímetro", "luva", "maçaneta"]) {
+    assert.ok(all.some((t) => t.startsWith(part + " ")), `faltou a peça: ${part}`);
+  }
   assert.ok(all.some((t) => /kit relação/.test(t)), "peças de moto");
   for (const p of ["radiador", "parachoque", "kit correia dentada"]) assert.ok(!all.some((t) => t.includes(p)), p);
 });
