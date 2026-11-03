@@ -1,6 +1,6 @@
 import { parseHTML } from "linkedom";
 
-export type AmazonOptionGroup = { name: string; options: string[]; availability: "unconfirmed"; source: "page" };
+export type AmazonOptionGroup = { name: string; options: string[]; availability: "unconfirmed" | "confirmed"; source: "page"; asin?: string };
 
 const order = (name: string) => { const i = ["Cor", "Tamanho", "Armazenamento", "Modelo"].indexOf(name); return i < 0 ? 9 : i; };
 

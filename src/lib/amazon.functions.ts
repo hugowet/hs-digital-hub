@@ -6,7 +6,7 @@ import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { extractAmazonOptions } from "./amazon-options";
 import { parseTrendQuery } from "./amazon-trend-categories";
-import { extractAmazonAvailability } from "./amazon-availability";
+import { extractSelectedAmazonOffer } from "./amazon-selected-offer";
 import { validateAmazonProductUrl } from "./amazon-link-batch";
 import { assertAmazonPageReadable } from "./amazon-request-policy";
 import { extractExactAmazonPrice } from "./amazon-price";
@@ -150,6 +150,7 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
     const expectedAsin = new URL(url).pathname.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})(?:\/|$)/i)?.[1];
     const exactCost = extractExactAmazonPrice(rawHtml, expectedAsin);
     if (exactCost === null) throw new Error("Não consegui confirmar o preço exato da oferta na Amazon. Produto não importado; confira o link e a opção selecionada.");
+    const selectedOffer = extractSelectedAmazonOffer(rawHtml, expectedAsin);
 
     let description = "";
     let specs: Record<string, string> = {};
@@ -185,8 +186,9 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
       gallery: images.slice(1),
       specs: sanitizeAmazonSpecs(specs),
       amazonCategory,
-      variations: extractAmazonOptions(rawHtml),
-      availability: extractAmazonAvailability(rawHtml),
+      variations: selectedOffer.variations,
+      availability: selectedOffer.availability,
+      confirmedStock: selectedOffer.stock,
     };
   });
 

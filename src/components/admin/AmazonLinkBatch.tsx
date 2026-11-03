@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { fetchAmazonProduct } from "@/lib/amazon.functions";
 import { parseAmazonLinkBatch, readAmazonLinkBatch } from "@/lib/amazon-link-batch";
 import { amazonNextAllowedAt } from "@/lib/amazon-request-policy";
-import { confirmedAmazonStock } from "@/lib/amazon-availability";
+import { confirmedSelectedAmazonStock } from "@/lib/amazon-selected-offer";
 import { calculateAmazonPrice } from "@/lib/pricing";
 import { withAmazonSizeFallback } from "@/lib/amazon-variations";
 import { categorizeAmazonProduct } from "@/lib/amazon-category";
@@ -76,7 +76,7 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
         const data = draft.data;
         if (!data) return [];
         const variations = withAmazonSizeFallback(data.variations, data);
-        const stock = confirmedAmazonStock(data.availability, Boolean(variations.length));
+        const stock = Math.min(data.confirmedStock, confirmedSelectedAmazonStock(data.availability, variations));
         const url = new URL(draft.url);
         url.searchParams.set("tag", "hsdigitalst0c-20");
         const description = buildAmazonDescription(data.description);
@@ -127,7 +127,9 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
                   <p className="text-xs text-muted-foreground">Custo {brl(item.data.costPrice)} · Venda {brl(calculateAmazonPrice(item.data.costPrice))}</p>
                   <p className="text-xs text-muted-foreground">{item.published ? "Publicado" : "Lido · ainda não publicado"}</p>
                   <p className="text-xs text-muted-foreground">{item.data.variations.map((group) => `${group.name}: ${group.options.join(", ")}`).join(" · ")}</p>
-                  {(item.data.availability !== "available" || withAmazonSizeFallback(item.data.variations, item.data).length > 0) && <p className="text-xs text-destructive">Estoque ou opções não confirmados · compra bloqueada</p>}
+                  {Math.min(item.data.confirmedStock, confirmedSelectedAmazonStock(item.data.availability, withAmazonSizeFallback(item.data.variations, item.data))) > 0
+                    ? <p className="text-xs text-primary">Estoque confirmado automaticamente · somente a opção exibida</p>
+                    : <p className="text-xs text-destructive">Amazon não confirmou estoque ou opção · compra bloqueada</p>}
                 </> : <p className={item.error ? "break-words text-xs text-destructive" : "text-xs text-muted-foreground"}>{item.error ?? "Pendente"}</p>}
               </div>
               {item.published ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : item.data && <Checkbox aria-label={`Selecionar ${item.data.title}`} checked={item.selected} disabled={publishing || running} onCheckedChange={(checked) => setDrafts((current) => current.map((draft, i) => i === index ? { ...draft, selected: checked === true } : draft))} />}
