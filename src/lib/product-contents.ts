@@ -15,7 +15,7 @@ export function extractProductContents(description: string): { contents: string[
   if (idx < 0) return { contents: [], rest: description };
 
   const items: string[] = [];
-  const inline = lines[idx].match(HEADER)?.[4]?.trim() ?? "";
+  const inline = lines[idx].match(HEADER)?.[3]?.trim() ?? "";
   if (inline) items.push(...inline.split(/[;,]|\s\+\s/));
   let end = idx + 1;
   for (; end < lines.length; end++) {
@@ -28,7 +28,7 @@ export function extractProductContents(description: string): { contents: string[
     items.push(l);
   }
   const contents = items
-    .map((s) => s.replace(/^[-•*\d.)\s]+(?=\D)/, "").trim())
+    .map((s) => s.replace(/^(?:[-•*]\s*|\d+[.)]\s+)/, "").trim())
     .filter((s) => s.length > 1 && s.length <= 120)
     .slice(0, 25);
   if (!contents.length) return { contents: [], rest: description };
