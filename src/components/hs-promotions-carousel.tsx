@@ -64,7 +64,7 @@ export function HsPromotionsCarousel() {
             <Flame className="h-5 w-5" /> Promoções HS
           </h2>
           {time && (
-            <div className="flex items-center gap-1.5 rounded-full bg-background/20 px-3 py-1 text-sm font-bold tabular-nums">
+            <div className="flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1 text-sm font-bold text-destructive-foreground shadow tabular-nums">
               <Timer className="h-4 w-4" /> Termina em {time.d}d {pad(time.h)}:{pad(time.m)}:{pad(time.s)}
             </div>
           )}
