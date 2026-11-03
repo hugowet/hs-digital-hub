@@ -96,7 +96,7 @@ test("carro também percorre freio, rolamento, motor e ignição", () => {
   }
 });
 test("Toro 2020 (modelo não listado) puxa só peças de carro", () => {
-  const all = [0, 6, 12].flatMap((c) => parseTrendQuery("Toro 2020", c, 6).terms);
+  const all = [0, 6, 12, 18, 24].flatMap((c) => parseTrendQuery("Toro 2020", c, 6).terms);
   assert.ok(all.every((t) => t.endsWith("Toro 2020")));
   assert.ok(all.some((t) => /radiador/.test(t)), "peças de carro");
   assert.ok(!all.some((t) => t.includes("kit relação")), "sem peças de moto");
