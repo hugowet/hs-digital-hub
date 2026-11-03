@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Falha no preço do lote Amazon — 03/11
+- [x] Página real da capinha B0CFGFYP27 retornou sem input ASIN e com a-offscreen vazio; parser agora verifica identidade do bloco principal e centavos impressos, bloqueando conflitos. 17 testes passaram; build OK.
+- [x] Tela autenticada de Hugo em /vendedor puxou a capinha por R$26,99 e exibiu conferência com modelos; nenhum produto publicado. Opções/estoque seguem não confirmados e compra bloqueada. Não publicado.
+
 ## Links Amazon em lote — 03/11
 - [x] Leitura individual/lote usa só preço BRL da oferta principal e ASIN comprovados no HTML, com centavos exatos; ausência/ambiguidade bloqueadas, sem estimativa JSON. 17 testes passaram e build OK; leitura Amazon real não executada (créditos), tela segue não homologada.
 - [x] Até 50 links no importador do vendedor, com fila serial, pausas e resultados ao lado antes de publicação explícita dos selecionados; publicação preserva RLS/propriedade e estoque confirmado.
