@@ -418,7 +418,12 @@ function Home() {
   return (
     <div className="min-h-screen bg-[#ebebeb] text-gray-900">
       <IntroAnimation />
-      <SiteHeader query={search.q} onQueryChange={(q) => setSearch({ q })} suggestions={suggestions} />
+      {/* A typed search covers the whole store: a leftover category/origin/price filter must not hide results. */}
+      <SiteHeader
+        query={search.q}
+        onQueryChange={(q) => setSearch(q && q !== search.q ? { q, category: null, supplier: null, range: "all", free: false } : { q })}
+        suggestions={suggestions}
+      />
 
       <main>
         {!hasSearchQuery && (
