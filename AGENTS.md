@@ -55,3 +55,4 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Amazon queues one read, keeps delays/budgets, stops on CAPTCHA/Dogs, saves Retry-After recovery and candidates on reader failures; 12 safe diagnostic runs; trust filters intact.
 - Seller URL batches stage at most 50 links in a separate read-only serial queue; only explicit selection publication writes products under owner RLS, using confirmed stock and no fabricated reference prices.
 - Manual Amazon URL extraction uses the selected ASIN's unambiguous BRL buy-box HTML price, never reader JSON estimates; missing prices fail closed while HS sale-price margins remain separate.
+- Resolve @acemir/cssom to its CommonJS library entry in Vite so LinkeDOM gets named parser exports instead of the browser-only global script; keep it bundled for Workers.
