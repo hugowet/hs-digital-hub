@@ -1,7 +1,7 @@
 # HS Digital — MVP
 
 ## Foto ao escolher cor — 03/11
-- [ ] Vincular a foto exibida à imagem real da opção escolhida, sem inferir cores nem alterar preço/estoque; testar no capacete publicado.
+- [x] Vincular a foto exibida à imagem real da opção escolhida, sem inferir cores nem alterar preço/estoque; fotos atualizadas nos dois capacetes. Nove testes passaram e a página real trocou entre Branco, Preto e Rosa, sem erros. Alterações do site ainda não publicadas.
 
 ## Audiência — 03/11
 - [x] Excluir visitas identificadas da conta de Hugo dos totais de hoje e últimos sete dias, inclusive histórico; demais indicadores preservados.
