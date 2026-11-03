@@ -1630,6 +1630,30 @@ export type Database = {
           },
         ]
       }
+      site_page_views: {
+        Row: {
+          created_at: string
+          id: number
+          path: string
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          path: string
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          path?: string
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       social_conversations: {
         Row: {
           created_at: string
@@ -3053,6 +3077,10 @@ export type Database = {
         }[]
       }
       read_trend_pin: { Args: { _video_id: string }; Returns: string }
+      record_page_view: {
+        Args: { _path: string; _session: string }
+        Returns: undefined
+      }
       record_seller_delivery_attempt: {
         Args: {
           _note: string

@@ -393,3 +393,5 @@
 - [ ] Biometria no login (cadastro de digital + entrada sem senha)
 - [x] Varredura de desempenho geral (lentidão/travamentos)
 - [x] Carrossel Promoções HS passa sozinho a cada 5s
+
+- [x] Aba Audiência (Admin): visitas ao site — quem está navegando agora (5 min), visitas hoje/7d/30d, visitantes únicos, gráfico por dia e páginas mais visitadas; registro via tabela site_page_views + RPC record_page_view (testado com conta admin)
