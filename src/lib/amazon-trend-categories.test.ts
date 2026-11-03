@@ -46,3 +46,27 @@ test("PECASMOTO termina as peças da Biz antes de pular para a CG", () => {
   assert.equal(parseTrendQuery("PECASMOTO", q.nextCursor!, 6).vehicle, "CG 160");
 });
 test("PECASCARRO gol fica só no Gol", () => assert.equal(parseTrendQuery("PECASCARRO gol").vehicle, "Gol"));
+
+test("'biz' sozinho puxa peças da Biz", () => {
+  const q = parseTrendQuery("biz");
+  assert.equal(q.vehicle, "biz");
+  assert.ok(q.terms.every((t) => t.endsWith("biz")) && q.total! > 20);
+});
+test("CB 300 2008/2009 inclui o ano", () => {
+  const q = parseTrendQuery("CB 300 2008/2009");
+  assert.ok(q.terms.every((t) => t.endsWith("CB 300 2008/2009")));
+});
+test("modelo + ano avança pelas peças", () => {
+  const q = parseTrendQuery("Gol 2012", 0, 6);
+  assert.notEqual(parseTrendQuery("Gol 2012", q.nextCursor!, 6).terms[0], q.terms[0]);
+});
+test("categoria comum continua igual", () => assert.ok(parseTrendQuery("moda").terms.some((x) => /camiseta/.test(x))));
+
+test("caminhão puxa peças de caminhão", () => assert.ok(parseTrendQuery("caminhão").terms.every((t) => /caminhão/.test(t))));
+test("bicicleta puxa peças", () => assert.ok(parseTrendQuery("bicicleta").terms.some((t) => /pneu bicicleta/.test(t))));
+test("Ranger vira peças de carro", () => assert.equal(parseTrendQuery("Ranger 2015").vehicle, "Ranger 2015"));
+test("celular puxa capinha, película e tela", () => {
+  const all = [0, 6].flatMap((c) => parseTrendQuery("celular", c, 6).terms).join("|");
+  for (const w of ["capinha", "película", "carregador", "fone", "tela"]) assert.ok(all.includes(w), w);
+});
+test("iphone 13 puxa acessórios do modelo", () => assert.ok(parseTrendQuery("iphone 13").terms.includes("capinha iphone 13")));
