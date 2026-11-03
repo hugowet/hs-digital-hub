@@ -17,6 +17,8 @@ export type CartItem = {
   quotedPostalCode?: string;
   quotedExpiresAt?: string;
   quotedShipping?: number;
+  /** Buyer-chosen options, e.g. "Cor: Preto · Tamanho: 58". */
+  choice?: string;
 };
 
 type CartContextValue = {
