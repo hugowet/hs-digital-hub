@@ -10,6 +10,8 @@ export interface RadioTrack {
   album: string;
   artwork: string;
   src: string;
+  /** Backup streams of the same station/genre. */
+  fallbacks?: string[];
 }
 
 export interface RadioAnnouncement {
@@ -100,7 +102,9 @@ export const RADIO_BACKGROUND_TRACKS: RadioTrack[] = [
     artist: "Trilha Gospel",
     album: "Rádio HS Digital",
     artwork: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=512&q=80",
-    src: "https://stream.zeno.fm/0r0xa792kwzuv",
+    // The old Zeno channel switched to lofi hip hop; use dedicated gospel streams with same-genre backups.
+    src: "https://cast.mgtradio.net/radio/8040/aac",
+    fallbacks: ["https://player.voxpainel.com.br/proxy/7076", "https://webradio.bsoundradio.com.br/listen/gospelhits/live"],
   },
   {
     title: "Pop & Eletrônica Suave",
@@ -146,6 +150,18 @@ interface RadioContextType {
 }
 
 const RadioContext = createContext<RadioContextType | null>(null);
+
+/** Prefer natural/neural male Portuguese voices; fall back to any pt-BR voice. */
+function pickMaleVoice(voices: SpeechSynthesisVoice[]) {
+  const pt = voices.filter((v) => /^pt[-_]?BR/i.test(v.lang) || v.lang.startsWith("pt"));
+  const male = /antonio|antônio|daniel|francisco|donato|fabio|fábio|humberto|julio|júlio|nicolau|valerio|valério|thiago|male|masculin/i;
+  const natural = /natural|neural|online|premium|enhanced/i;
+  return pt.find((v) => male.test(v.name) && natural.test(v.name))
+    ?? pt.find((v) => male.test(v.name))
+    ?? pt.find((v) => natural.test(v.name))
+    ?? pt.find((v) => /pt[-_]?BR/i.test(v.lang))
+    ?? pt[0];
+}
 
 export function RadioProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -209,8 +225,9 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
       navigator.mediaSession.setActionHandler("play", () => play());
       navigator.mediaSession.setActionHandler("pause", () => pause());
-      navigator.mediaSession.setActionHandler("previoustrack", () => handlePrevTrack());
-      navigator.mediaSession.setActionHandler("nexttrack", () => handleNextTrack());
+      // Station changes only through an explicit tap in the player; phone/headset skip events are ignored.
+      navigator.mediaSession.setActionHandler("previoustrack", null);
+      navigator.mediaSession.setActionHandler("nexttrack", null);
     } catch (e) {
       console.warn("MediaSession:", e);
     }
@@ -224,14 +241,16 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const reconnectStream = useCallback((buffering = false) => {
     if (!shouldBePlayingRef.current || !audioRef.current || reconnectTimeoutRef.current !== null) return;
     setIsReconnecting(true);
-    if (retryCountRef.current >= 8) { setIsPlaying(false); setIsReconnecting(false); shouldBePlayingRef.current = false; return; }
+    if (retryCountRef.current >= 20) { setIsPlaying(false); setIsReconnecting(false); shouldBePlayingRef.current = false; return; }
     reconnectTimeoutRef.current = window.setTimeout(() => {
       reconnectTimeoutRef.current = null;
       const audio = audioRef.current;
       if (!audio || !shouldBePlayingRef.current) return;
       if (!shouldRestartRadio(audio, buffering)) { setIsReconnecting(false); return; }
       retryCountRef.current += 1;
-      audio.src = trackRef.current.src;
+      // Same station only: rotate between its own backup streams, never to another genre.
+      const sources = [trackRef.current.src, ...(trackRef.current.fallbacks ?? [])];
+      audio.src = sources[Math.floor(retryCountRef.current / 2) % sources.length];
       audio.load();
       audio.play().catch((err) => {
         if (err.name === "NotAllowedError") { shouldBePlayingRef.current = false; setIsPlaying(false); setIsReconnecting(false); return; }
@@ -256,13 +275,10 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
       const utterance = new SpeechSynthesisUtterance(scriptObj.script);
       utterance.lang = "pt-BR";
-      utterance.rate = 1.05;
-      utterance.pitch = 1.05;
+      utterance.rate = 0.98;
+      utterance.pitch = 0.9;
 
-      const voices = window.speechSynthesis.getVoices();
-      const ptVoice = voices.find(
-        (v) => v.lang.includes("pt-BR") || v.lang.includes("pt_BR") || v.lang.startsWith("pt")
-      );
+      const ptVoice = pickMaleVoice(window.speechSynthesis.getVoices());
       if (ptVoice) {
         utterance.voice = ptVoice;
       }
@@ -455,7 +471,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         onError={() => {
           if (shouldBePlayingRef.current) { clearRecovery(); reconnectStream(false); }
         }}
-        onEnded={handleNextTrack}
+        onEnded={() => { if (shouldBePlayingRef.current) reconnectStream(false); }}
       />
       {children}
     </RadioContext.Provider>
