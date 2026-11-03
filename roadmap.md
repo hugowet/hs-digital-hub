@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Confirmação automática Amazon — 03/11
+- [ ] Confirmar disponibilidade na própria leitura de links, sem exigir conferência manual rotineira e sem atribuir estoque/preço de uma opção às demais.
+- [ ] Testar dados reais do leitor e preservar bloqueio somente quando não houver confirmação confiável.
+
 ## Falha no preço do lote Amazon — 03/11
 - [x] Página real da capinha B0CFGFYP27 retornou sem input ASIN e com a-offscreen vazio; parser agora verifica identidade do bloco principal e centavos impressos, bloqueando conflitos. 17 testes passaram; build OK.
 - [x] Tela autenticada de Hugo em /vendedor puxou a capinha por R$26,99 e exibiu conferência com modelos; nenhum produto publicado. Opções/estoque seguem não confirmados e compra bloqueada. Não publicado.
