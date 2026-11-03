@@ -250,7 +250,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       retryCountRef.current += 1;
       // Same station only: rotate between its own backup streams, never to another genre.
       const sources = [trackRef.current.src, ...(trackRef.current.fallbacks ?? [])];
-      audio.src = sources[Math.floor(retryCountRef.current / 2) % sources.length];
+      audio.src = sources[retryCountRef.current % sources.length];
       audio.load();
       audio.play().catch((err) => {
         if (err.name === "NotAllowedError") { shouldBePlayingRef.current = false; setIsPlaying(false); setIsReconnecting(false); return; }
