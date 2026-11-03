@@ -404,4 +404,4 @@
 
 - [x] Aura: navegação inteligente para todas as abas
 - [x] Trocar "Indisponível" por "Estoque acabou" nos produtos sem estoque
-- [ ] Renomear lojas que começam com "HS" (ex.: Importes, Store)
+- [x] Renomear lojas que começam com "HS" (ex.: Importes, Store)
