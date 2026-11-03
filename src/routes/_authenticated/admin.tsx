@@ -329,6 +329,70 @@ function AdminPage() {
                 </section>
               </div>
 
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <section className="surface-card p-5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-muted-foreground">Visitando o site agora</p>
+                    <span className="relative flex h-3 w-3">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+                    </span>
+                  </div>
+                  <p className="mt-2 font-display text-4xl font-bold tabular-nums">{audience?.viewingNow ?? 0}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Pessoas que abriram páginas nos últimos 5 minutos</p>
+                </section>
+                <section className="surface-card p-5">
+                  <p className="text-sm font-medium text-muted-foreground">Visitas hoje</p>
+                  <p className="mt-2 font-display text-4xl font-bold tabular-nums">{audience?.viewsToday ?? 0}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Páginas abertas hoje</p>
+                </section>
+                <section className="surface-card p-5">
+                  <p className="text-sm font-medium text-muted-foreground">Visitas nos últimos 7 dias</p>
+                  <p className="mt-2 font-display text-4xl font-bold tabular-nums">{audience?.views7d ?? 0}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{audience?.views30d ?? 0} nos últimos 30 dias</p>
+                </section>
+                <section className="surface-card p-5">
+                  <p className="text-sm font-medium text-muted-foreground">Visitantes únicos (30 dias)</p>
+                  <p className="mt-2 font-display text-4xl font-bold tabular-nums">{audience?.uniqueVisitors30d ?? 0}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Pessoas diferentes que entraram no site</p>
+                </section>
+              </div>
+
+              <section className="surface-card p-5">
+                <h2 className="text-base font-semibold">Visitas ao site por dia</h2>
+                <p className="text-xs text-muted-foreground">Últimos 14 dias</p>
+                <div className="mt-4 flex h-40 items-end gap-1.5">
+                  {(audience?.viewsByDay ?? []).map((item) => {
+                    const max = Math.max(1, ...(audience?.viewsByDay ?? []).map((d) => d.count));
+                    const height = Math.max(4, Math.round((item.count / max) * 100));
+                    const label = new Date(`${item.day}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+                    return (
+                      <div key={item.day} className="group flex flex-1 flex-col items-center justify-end gap-1" title={`${label}: ${item.count} visita(s)`}>
+                        <span className="text-[10px] font-medium tabular-nums text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">{item.count}</span>
+                        <div className="w-full rounded-t bg-emerald-500/80 transition-colors group-hover:bg-emerald-500" style={{ height: `${height}%` }} />
+                        <span className="text-[9px] tabular-nums text-muted-foreground">{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="surface-card p-5">
+                <h2 className="text-base font-semibold">Páginas mais visitadas</h2>
+                <p className="text-xs text-muted-foreground">Últimos 30 dias</p>
+                <ul className="mt-3 space-y-2">
+                  {(audience?.topPages ?? []).map((page) => (
+                    <li key={page.path} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="truncate text-muted-foreground">{page.path === "/" ? "Página inicial" : page.path}</span>
+                      <span className="shrink-0 font-semibold tabular-nums">{page.count}</span>
+                    </li>
+                  ))}
+                  {(audience?.topPages ?? []).length === 0 && (
+                    <li className="text-sm text-muted-foreground">As visitas começam a aparecer aqui assim que as primeiras pessoas navegarem pelo site.</li>
+                  )}
+                </ul>
+              </section>
+
               <section className="surface-card p-5">
                 <h2 className="text-base font-semibold">Novos cadastros por dia</h2>
                 <p className="text-xs text-muted-foreground">Últimos 14 dias</p>
