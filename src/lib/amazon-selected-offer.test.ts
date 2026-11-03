@@ -7,7 +7,8 @@ describe('automatic selected Amazon availability', () => {
   it('confirms only the exact A34 offer, never the A14 sibling', () => {
     const result = extractSelectedAmazonOffer(page(options), 'B0CFGFYP27');
     expect(result.stock).toBe(1);
-    expect(result.variations[0]?.options).toEqual(['Galaxy A34 5G']);
+    expect(result.variations[0]?.options).toEqual(['Galaxy A34 5G', 'Galaxy A14 5G']);
+    expect(result.variations[0]?.selected).toBe('Galaxy A34 5G');
     expect(result.variations[0]?.asin).toBe('B0CFGFYP27');
   });
   it('blocks options without selected evidence', () => {
@@ -22,6 +23,8 @@ describe('automatic selected Amazon availability', () => {
   it('blocks template or multiple option inventory', () => {
     expect(confirmedSelectedAmazonStock('available', [{ options: ['M'], availability: 'unconfirmed' }])).toBe(0);
     expect(confirmedSelectedAmazonStock('available', [{ options: ['M','G'], availability: 'confirmed', asin: 'B0CFGFYP27' }])).toBe(0);
+    expect(confirmedSelectedAmazonStock('available', [{ options: ['M','G'], availability: 'confirmed', asin: 'B0CFGFYP27', selected: 'X' }])).toBe(0);
+    expect(confirmedSelectedAmazonStock('available', [{ options: ['M','G'], availability: 'confirmed', asin: 'B0CFGFYP27', selected: 'G' }])).toBe(1);
   });
   it('confirms a product without variations automatically', () => {
     expect(extractSelectedAmazonOffer(page(), 'B0CFGFYP27').stock).toBe(1);
