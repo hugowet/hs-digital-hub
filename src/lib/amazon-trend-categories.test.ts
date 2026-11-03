@@ -61,3 +61,12 @@ test("modelo + ano avança pelas peças", () => {
   assert.notEqual(parseTrendQuery("Gol 2012", q.nextCursor!, 6).terms[0], q.terms[0]);
 });
 test("categoria comum continua igual", () => assert.ok(parseTrendQuery("moda").terms.some((x) => /camiseta/.test(x))));
+
+test("caminhão puxa peças de caminhão", () => assert.ok(parseTrendQuery("caminhão").terms.every((t) => /caminhão/.test(t))));
+test("bicicleta puxa peças", () => assert.ok(parseTrendQuery("bicicleta").terms.some((t) => /pneu bicicleta/.test(t))));
+test("Ranger vira peças de carro", () => assert.equal(parseTrendQuery("Ranger 2015").vehicle, "Ranger 2015"));
+test("celular puxa capinha, película e tela", () => {
+  const all = [0, 6].flatMap((c) => parseTrendQuery("celular", c, 6).terms).join("|");
+  for (const w of ["capinha", "película", "carregador", "fone", "tela"]) assert.ok(all.includes(w), w);
+});
+test("iphone 13 puxa acessórios do modelo", () => assert.ok(parseTrendQuery("iphone 13").terms.includes("capinha iphone 13")));

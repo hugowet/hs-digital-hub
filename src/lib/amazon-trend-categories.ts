@@ -43,7 +43,7 @@ const CHEAP_TERMS = ["fone de ouvido", "carregador celular", "chaveiro", "lanter
 export const MOTO_PARTS_KEY = "PECASMOTO";
 export const CAR_PARTS_KEY = "PECASCARRO";
 export const MOTO_MODELS = ["Biz", "CG 160", "CG 150 Titan", "Titan 160", "Fan 160", "Bros 160", "CB 300", "CB 500", "XRE 300", "Pop 110", "Factor 150", "Fazer 250", "Lander 250", "Crosser 150", "NMax", "PCX", "Twister 250", "XJ6", "MT-03", "Hornet"];
-export const CAR_MODELS = ["Gol", "Palio", "Uno", "Celta", "Corsa", "Onix", "Prisma", "HB20", "Fiesta", "Ka", "Fox", "Polo", "Strada", "Saveiro", "Sandero", "Logan", "Civic", "Corolla", "Hilux", "S10"];
+export const CAR_MODELS = ["Ranger", "Amarok", "Frontier", "L200", "Toro", "Montana", "Gol", "Palio", "Uno", "Celta", "Corsa", "Onix", "Prisma", "HB20", "Fiesta", "Ka", "Fox", "Polo", "Strada", "Saveiro", "Sandero", "Logan", "Civic", "Corolla", "Hilux", "S10"];
 const MOTO_PARTS = ["carenagem", "pneu", "kit motor", "kit relação", "peças motor", "pastilha de freio", "farol", "retrovisor"];
 const CAR_PARTS = ["peças motor", "pneu", "pastilha de freio", "amortecedor", "kit embreagem", "filtro de óleo", "farol", "parachoque"];
 
@@ -75,6 +75,8 @@ export function parseTrendQuery(input: string, cursor = 0, pages = 6): TrendQuer
     const r = vehicleTerms(isMoto ? MOTO_MODELS : CAR_MODELS, isMoto ? MOTO_PARTS : CAR_PARTS, text.replace(vm[0], ""), cursor, pages);
     return { ...r, maxPrice };
   }
+  const fam = familyQuery(text, cursor, pages);
+  if (fam) return { ...fam, maxPrice };
   const direct = directVehicleQuery(text, cursor, pages);
   if (direct) return { ...direct, maxPrice };
   if (maxPrice === null) return { terms: resolveTrendTerms(input), maxPrice: null };
@@ -109,4 +111,35 @@ export function directVehicleQuery(text: string, cursor = 0, pages = 6): TrendQu
   const start = ((cursor % list.length) + list.length) % list.length;
   const terms = Array.from({ length: Math.min(pages, list.length) }, (_, i) => list[(start + i) % list.length]);
   return { terms, maxPrice: null, vehicle, nextCursor: (start + terms.length) % list.length, total: list.length };
+}
+
+const TRUCK_PARTS = ["peças caminhão", "pneu caminhão", "lona de freio caminhão", "filtro de óleo caminhão", "farol caminhão", "lanterna caminhão", "retrovisor caminhão", "amortecedor cabine caminhão", "kit embreagem caminhão", "bateria caminhão", "parachoque caminhão", "acessórios cabine caminhão"];
+const BIKE_PARTS = ["peças bicicleta", "pneu bicicleta", "câmara de ar bicicleta", "corrente bicicleta", "freio bicicleta", "selim bicicleta", "pedal bicicleta", "guidão bicicleta", "câmbio bicicleta", "farol bicicleta", "capacete ciclismo", "bomba de ar bicicleta"];
+const PHONE_ITEMS = ["", "capinha", "película", "carregador", "cabo usb", "fone de ouvido", "tela display", "bateria", "suporte veicular", "power bank"];
+const PHONE_WORDS = /^(celular|celulares|smartphone|iphone|galaxy|samsung|motorola|moto g|moto e|xiaomi|redmi|poco|realme|lg)\b/;
+
+function rotate(list: string[], label: string, cursor: number, pages: number): TrendQuery {
+  const start = ((cursor % list.length) + list.length) % list.length;
+  const terms = Array.from({ length: Math.min(pages, list.length) }, (_, i) => list[(start + i) % list.length]);
+  return { terms, maxPrice: null, vehicle: label, nextCursor: (start + terms.length) % list.length, total: list.length };
+}
+
+/** Caminhão, bicicleta e celular: puxam o item e tudo ligado a ele (peças/acessórios). */
+export function familyQuery(text: string, cursor = 0, pages = 6): TrendQuery | null {
+  const raw = text.replace(/\s+/g, " ").trim();
+  const n = normalizeCatalogSearch(raw).trim();
+  if (/^caminh(ao|oes)\b/.test(n)) {
+    const rest = raw.split(" ").slice(1).join(" ");
+    return rotate(TRUCK_PARTS.map((p) => (rest ? `${p} ${rest}` : p)), raw, cursor, pages);
+  }
+  if (/^(bicicleta|bicicletas|bike|bikes)\b/.test(n)) {
+    const rest = raw.split(" ").slice(1).join(" ");
+    return rotate(BIKE_PARTS.map((p) => (rest ? `${p} ${rest}` : p)), raw, cursor, pages);
+  }
+  if (PHONE_WORDS.test(n)) {
+    const model = /^(celular|celulares|smartphone)$/.test(n) ? "celular" : raw.replace(/^(celulares?|smartphone)\s+/i, "");
+    const list = PHONE_ITEMS.map((i) => (i ? `${i} ${model}` : model === "celular" ? "smartphone" : model));
+    return rotate(list, model, cursor, pages);
+  }
+  return null;
 }
