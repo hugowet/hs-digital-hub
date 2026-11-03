@@ -409,3 +409,7 @@
 - [x] Aura: navegação inteligente para todas as abas
 - [x] Trocar "Indisponível" por "Estoque acabou" nos produtos sem estoque
 - [x] Renomear lojas que começam com "HS" (ex.: Importes, Store)
+
+- [x] Aba Enviar promoções (Admin): lista de cadastrados, seleção, mensagem com link
+- [x] Descrição do produto: "Contém" em negrito, organizado (todos publicados)
+- [x] Varredura: padronizar texto de logística Amazon nas descrições

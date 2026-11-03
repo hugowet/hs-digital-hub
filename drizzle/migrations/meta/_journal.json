@@ -554,6 +554,13 @@
       "when": 1793643285673,
       "tag": "0078_mark_seller_selected_promotions",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1793708786280,
+      "tag": "0079_admin_marketing_contacts",
+      "breakpoints": true
     }
   ]
 }

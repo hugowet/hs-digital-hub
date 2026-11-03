@@ -1,5 +1,7 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { sellerDisplayName } from "@/lib/seller-display";
+import { extractProductContents } from "@/lib/product-contents";
+import { CheckCircle2 } from "lucide-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -821,23 +823,43 @@ function ProductDetailPage() {
             <FileText className="h-5 w-5 text-primary" /> Descrição do Produto
           </h2>
           <div className="mt-4 space-y-4 text-sm text-foreground/90 leading-relaxed">
-            <p className="whitespace-pre-line text-sm sm:text-base text-foreground/90 font-normal">
-              {(() => {
-                const desc = product.description_long || product.description || "Descrição completa em processamento.";
-                const marker = "Método de entrega:";
-                const idx = desc.indexOf(marker);
-                if (idx < 0) return desc;
-                const head = desc.slice(0, idx).trimEnd();
-                const tail = desc.slice(idx).trimStart();
-                return (
-                  <>
-                    {head ? head : null}
-                    {head ? "\n\n" : null}
-                    <span className="font-semibold text-orange-600 dark:text-orange-400">{tail}</span>
-                  </>
-                );
-              })()}
-            </p>
+            {(() => {
+              const full = product.description_long || product.description || "Descrição completa em processamento.";
+              const { contents, rest } = extractProductContents(full);
+              const desc = rest || full;
+              const marker = "Método de entrega:";
+              const idx = desc.indexOf(marker);
+              const head = idx < 0 ? desc : desc.slice(0, idx).trimEnd();
+              const tail = idx < 0 ? "" : desc.slice(idx).trimStart();
+              return (
+                <>
+                  {contents.length > 0 && (
+                    <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4">
+                      <p className="mb-2 font-black text-foreground">O que vem no produto</p>
+                      <ul className="space-y-1">
+                        {contents.map((item, i) => (
+                          <li key={i} className="flex gap-2 text-sm sm:text-base">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                            <span>
+                              <strong className="font-bold text-foreground">Contém:</strong> {item}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <p className="whitespace-pre-line text-sm sm:text-base text-foreground/90 font-normal">
+                    {head}
+                    {tail ? (
+                      <>
+                        {head ? "\n\n" : null}
+                        <span className="font-semibold text-orange-600 dark:text-orange-400">{tail}</span>
+                      </>
+                    ) : null}
+                  </p>
+                </>
+              );
+            })()}
           </div>
         </section>
 

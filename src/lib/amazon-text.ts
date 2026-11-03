@@ -6,7 +6,7 @@
  */
 
 export const AMAZON_DELIVERY_METHOD_TEXT =
-  "Método de entrega: parceria com a logística Amazon para entrega rápida, rastreada e segura em todo o Brasil.";
+  "Método de entrega: parceria com logística parceira para entrega rápida, rastreada e segura em todo o Brasil.";
 
 /** Remove/substitui menções à Amazon em qualquer texto visível ao cliente. */
 export function sanitizeAmazonText(text: string): string {
