@@ -75,6 +75,38 @@ export function parseTrendQuery(input: string, cursor = 0, pages = 6): TrendQuer
     const r = vehicleTerms(isMoto ? MOTO_MODELS : CAR_MODELS, isMoto ? MOTO_PARTS : CAR_PARTS, text.replace(vm[0], ""), cursor, pages);
     return { ...r, maxPrice };
   }
+  const direct = directVehicleQuery(text, cursor, pages);
+  if (direct) return { ...direct, maxPrice };
   if (maxPrice === null) return { terms: resolveTrendTerms(input), maxPrice: null };
   return { terms: text.length >= 2 ? resolveTrendTerms(text) : CHEAP_TERMS, maxPrice };
+}
+
+/** Peças completas para busca direta pelo nome do veículo (ex.: "Biz", "CB 300 2008/2009"). */
+const MOTO_FULL_PARTS = [...MOTO_PARTS, "kit cilindro", "kit embreagem", "escapamento", "banco", "bateria", "corrente", "manete", "pedaleira", "guidão", "lanterna traseira", "pisca", "bobina", "vela", "filtro de ar", "cabo de embreagem", "disco de freio", "amortecedor", "tanque"];
+const CAR_FULL_PARTS = [...CAR_PARTS, "kit correia dentada", "bomba de água", "radiador", "vela de ignição", "bobina de ignição", "sensor", "bateria", "retrovisor", "lanterna traseira", "pastilha e disco de freio", "bandeja suspensão", "pivô", "terminal de direção", "filtro de ar", "junta cabeçote", "tapete", "capa de banco"];
+const YEAR_RE = /\b((?:19|20)\d{2})(?:\s*[\/-]\s*((?:19|20)?\d{2}))?\b/;
+
+function matchModel(models: string[], n: string): string | undefined {
+  return [...models].sort((a, b) => b.length - a.length).find((m) => {
+    const k = normalizeCatalogSearch(m);
+    return n === k || n.startsWith(k + " ");
+  });
+}
+
+/** Nome do veículo (com ano opcional) vira busca de todas as peças daquele veículo. */
+export function directVehicleQuery(text: string, cursor = 0, pages = 6): TrendQuery | null {
+  const ym = text.match(YEAR_RE);
+  const year = ym ? ym[0].replace(/\s+/g, "") : "";
+  const base = (ym ? text.replace(ym[0], " ") : text).replace(/\s+/g, " ").trim();
+  const n = normalizeCatalogSearch(base).trim();
+  if (!n) return null;
+  const moto = matchModel(MOTO_MODELS, n);
+  const car = moto ? undefined : matchModel(CAR_MODELS, n);
+  if (!moto && !car && !year) return null;
+  const parts = car ? CAR_FULL_PARTS : MOTO_FULL_PARTS.concat(moto ? [] : CAR_FULL_PARTS.filter((p) => !MOTO_FULL_PARTS.includes(p)));
+  const vehicle = [base, year].filter(Boolean).join(" ");
+  const list = parts.map((p) => `${p} ${vehicle}`);
+  const start = ((cursor % list.length) + list.length) % list.length;
+  const terms = Array.from({ length: Math.min(pages, list.length) }, (_, i) => list[(start + i) % list.length]);
+  return { terms, maxPrice: null, vehicle, nextCursor: (start + terms.length) % list.length, total: list.length };
 }
