@@ -1,5 +1,5 @@
 import { parseHTML } from "linkedom";
-import { confirmedAmazonStock, extractAmazonAvailability } from "./amazon-availability";
+import { extractAmazonAvailability } from "./amazon-availability";
 import { extractDescription, extractSpecs } from "./amazon.functions";
 import { extractAmazonOptions, shouldReplaceOptions } from "./amazon-options";
 import { amazonHiResFromHtml } from "./amazon-image";

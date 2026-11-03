@@ -4,7 +4,6 @@ import { parseHTML } from "linkedom";
 import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { extractAmazonOptions } from "./amazon-options";
 import { parseTrendQuery } from "./amazon-trend-categories";
 import { extractSelectedAmazonOffer } from "./amazon-selected-offer";
 import { validateAmazonProductUrl } from "./amazon-link-batch";
