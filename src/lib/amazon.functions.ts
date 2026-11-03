@@ -9,6 +9,7 @@ import { parseTrendQuery } from "./amazon-trend-categories";
 import { extractAmazonAvailability } from "./amazon-availability";
 import { validateAmazonProductUrl } from "./amazon-link-batch";
 import { assertAmazonPageReadable } from "./amazon-request-policy";
+import { extractExactAmazonPrice } from "./amazon-price";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
@@ -17,7 +18,6 @@ const PRODUCT_SCHEMA = {
   type: "object",
   properties: {
     title: { type: "string", description: "Título completo do produto" },
-    price: { type: "number", description: "Preço atual de venda em reais (apenas o número, sem símbolo)" },
     images: { type: "array", items: { type: "string" }, description: "URLs das fotos do produto (m.media-amazon.com)" },
     specs: { type: "object", description: "Especificações técnicas mencionadas na página (marca, cor, conectividade, voltagem, dimensões etc.). Use SOMENTE fatos presentes na página; nunca invente." },
   },
@@ -126,7 +126,7 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
         url,
         formats: [
           "rawHtml",
-          { type: "json", schema: PRODUCT_SCHEMA, prompt: "Extraia título, preço atual em reais e todas as URLs de fotos do produto desta página da Amazon." },
+          { type: "json", schema: PRODUCT_SCHEMA, prompt: "Extraia título e todas as URLs de fotos do produto desta página da Amazon. Não estime preços." },
         ],
         onlyMainContent: false,
         waitFor: 3000,
@@ -147,6 +147,9 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
     const rawHtml: string = typeof payload?.rawHtml === "string" ? payload.rawHtml : "";
 
     if (!json?.title && !rawHtml) throw new Error("A página não retornou os dados do produto. Confira o link.");
+    const expectedAsin = new URL(url).pathname.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})(?:\/|$)/i)?.[1];
+    const exactCost = extractExactAmazonPrice(rawHtml, expectedAsin);
+    if (exactCost === null) throw new Error("Não consegui confirmar o preço exato da oferta na Amazon. Produto não importado; confira o link e a opção selecionada.");
 
     let description = "";
     let specs: Record<string, string> = {};
@@ -176,7 +179,7 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
 
     return {
       title: sanitizeAmazonText(String(json?.title ?? htmlTitle ?? "")),
-      costPrice: Number(json?.price) || 0,
+      costPrice: exactCost,
       description: description ? buildAmazonDescription(description) : "",
       mainImage: images[0] ?? "",
       gallery: images.slice(1),
