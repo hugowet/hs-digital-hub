@@ -22,4 +22,8 @@ describe('Amazon results page', () => {
     const html='<div data-component-type="s-search-result" data-asin="B012345678"><h2>Furadeira</h2><span class="a-price"><span class="a-offscreen">R$ 84,60</span></span><span class="a-price a-text-price"><span class="a-offscreen">R$ 94,00</span></span><span class="a-icon-star-small"><span class="a-icon-alt">4,6 de 5</span></span><a href="/customerReviews"><span class="a-size-base">1.200</span></a></div>';
     expect(extractAmazonPageCandidates(html)[0]).toMatchObject({price:84.60,rating:4.6,reviews:1200});
   });
+  it('reads current mini stars and exact accessible review counts, ignoring installments', () => {
+    const html='<div data-component-type="s-search-result" data-asin="B012345678"><h2>Furadeira</h2><span class="a-price"><span class="a-offscreen">R$ 119,00</span></span><span class="a-price a-text-price"><span class="a-offscreen">R$ 39,68</span></span><i class="a-icon-star-mini"><span class="a-icon-alt">4,7 de 5 estrelas</span></i><a aria-label="1.200 classificações"><span>(1,2 mil)</span></a></div>';
+    expect(extractAmazonPageCandidates(html)[0]).toMatchObject({price:119,rating:4.7,reviews:1200});
+  });
 });

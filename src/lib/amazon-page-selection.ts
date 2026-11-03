@@ -27,8 +27,9 @@ export function extractAmazonPageCandidates(html: string): AmazonPageCandidate[]
     }).filter(Number.isFinite);
     const unique = [...new Set(prices)];
     if (!/^[A-Z0-9]{10}$/.test(asin) || !title || unique.length !== 1) return [];
-    const rating = Number((card.querySelector('.a-icon-star-small .a-icon-alt, .a-icon-star .a-icon-alt')?.textContent ?? '').match(/\d[,.]\d/)?.[0]?.replace(',', '.')) || 0;
-    const reviewText = card.querySelector('a[href*="customerReviews"] .a-size-base, a[href*="customerReviews"] span, .s-underline-text')?.textContent ?? '';
+    const rating = Number((card.querySelector('.a-icon-star-small .a-icon-alt, .a-icon-star .a-icon-alt, .a-icon-star-mini .a-icon-alt')?.textContent ?? '').match(/\d[,.]\d/)?.[0]?.replace(',', '.')) || 0;
+    const accessibleReviews = card.querySelector('a[aria-label*="classificações"], a[aria-label*="avaliações"]')?.getAttribute('aria-label')?.match(/^[\d.]+/)?.[0];
+    const reviewText = accessibleReviews ?? card.querySelector('a[href*="customerReviews"] .a-size-base, a[href*="customerReviews"] span')?.textContent ?? '';
     const reviews = /^\s*[\d.]+\s*$/.test(reviewText) ? Number(reviewText.replace(/\D/g, '')) : 0;
     const text = card.textContent ?? '';
     const badge = text.match(/Escolha da Amazon|Mais vendido|Best seller/i)?.[0] ?? '';
