@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Carrossel Mais vendidos — 03/11
+- [x] Primeira fileira substituída por Mais vendidos exclusivo Amazon, com camisa Procura no Gugo em destaque; ordenação usa vendas registradas, sem inventar contagens. Filtros, catálogo restante e importador preservados.
+- [x] Três testes passaram; fotos, avanço automático, pausa, setas e abertura da camisa conferidos em 434x794 e 1280x1800, sem erros; build OK. Não publicado.
+
 ## Voltar da busca e rastreamento — 03/11
 - [x] Voltar nativo limpa busca na vitrine e em Meus produtos; conferido em 434x769 com sessão real, sem sair da página.
 - [x] Pedido pago BBE8DB03 mantém Saiu para entrega após tentativa; botão explícito Seu pedido foi entregue e confirmação adicionados. Tentativa tem abrir/fechar/cancelar sem apagar histórico. Conferidos na conta real; não confirmada entrega real nem enviada tentativa fictícia. Nenhuma falha de gravação reproduzida; 22 testes passaram. Não publicado.

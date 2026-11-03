@@ -35,6 +35,8 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/product-card";
 import { HsPromotionsCarousel } from "@/components/hs-promotions-carousel";
+import { AmazonBestSellersCarousel } from "@/components/amazon-best-sellers-carousel";
+import { amazonBestSellersOptions } from "@/lib/amazon-best-sellers";
 import { personalizeProducts, recordCategoryClick, recordSearch } from "@/lib/interest-profile";
 import { IntroAnimation } from "@/components/intro-animation";
 import { SiteFooter } from "@/components/site-footer";
@@ -122,6 +124,7 @@ export const Route = createFileRoute("/")({
   // the component keeps showing the previous products (useDeferredValue) until the new page arrives.
   loader: ({ context, deps, cause }) => {
     const options = catalogQueryOptions(deps);
+    if (Object.keys(deps).length === 0) void context.queryClient.prefetchQuery(amazonBestSellersOptions);
     if (cause === "stay") {
       void context.queryClient.prefetchInfiniteQuery(options);
       return;
@@ -603,11 +606,13 @@ function Home() {
             </TabsList>
           </Tabs>
 
+          {!isFiltered && <AmazonBestSellersCarousel />}
+
           {/* LISTA DE PRODUTOS */}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">
-                {activeCategory ? activeCategory.label : search.q ? "Resultados da busca" : search.supplier === "cj" ? "Produtos internacionais" : search.supplier === "amazon" ? "Produtos nacionais" : "Seleção do dia"}
+                {activeCategory ? activeCategory.label : search.q ? "Resultados da busca" : search.supplier === "cj" ? "Produtos internacionais" : search.supplier === "amazon" ? "Produtos nacionais" : "Todos os produtos"}
               </h2>
               <p className="text-xs text-gray-500">
                 {filtered.length} produto{filtered.length === 1 ? "" : "s"} encontrado{filtered.length === 1 ? "" : "s"}
