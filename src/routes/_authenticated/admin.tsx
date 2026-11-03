@@ -39,6 +39,7 @@ import { getMercadoPagoConfiguration, saveMercadoPagoConfiguration } from "@/lib
 import { getAudienceStats } from "@/lib/audience.functions";
 import { AudienceAccountsDialog } from "@/components/admin/audience-accounts-dialog";
 import { SupplierProductsPanel } from "@/components/admin/SupplierProductsPanel";
+import { PromotionsEmailTab } from "@/components/admin/promotions-email-tab";
 
 import { setProductShippingAdmin, setAllProductsShippingAdmin } from "@/lib/admin-shipping.functions";
 
@@ -223,6 +224,9 @@ function AdminPage() {
               <TabsTrigger value="audience" className="flex items-center gap-1.5">
                 <Users className="h-4 w-4" /> Audiência
               </TabsTrigger>
+              <TabsTrigger value="promotions-email" className="flex items-center gap-1.5">
+                <Send className="h-4 w-4" /> Enviar promoções
+              </TabsTrigger>
               <TabsTrigger value="shipping" className="flex items-center gap-1.5">
                 <Truck className="h-4 w-4" /> Conceder Frete Grátis
               </TabsTrigger>
@@ -234,6 +238,10 @@ function AdminPage() {
               <TabsTrigger value="dropi">Dropi Nacional</TabsTrigger>
               <TabsTrigger value="transactions">Transações</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="promotions-email" className="pt-4">
+              <PromotionsEmailTab />
+            </TabsContent>
 
             {/* ABA: VISÃO GERAL */}
             <TabsContent value="overview" className="space-y-4 pt-4">
