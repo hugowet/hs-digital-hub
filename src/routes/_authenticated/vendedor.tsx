@@ -1121,6 +1121,11 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
   });
 
   const orders = rawOrders.filter((o: any) => isOrderVisibleToSeller(o));
+  const [paymentFilter, setPaymentFilter] = useState<"paid" | "pending" | "failed">("paid");
+  const orderPaymentGroup = (o: any): "paid" | "pending" | "failed" =>
+    ["paid", "approved"].includes(o.payment_status) ? "paid"
+      : ["pending", "in_process", "authorized"].includes(o.payment_status) && !["cancelled", "payment_failed"].includes(o.status) ? "pending"
+      : "failed";
 
   const productIds = [...new Set(orders.flatMap((o: any) => o.order_items.map((i: any) => i.product_id).filter(Boolean)))] as string[];
   const { data: photos = [] } = useQuery({
@@ -1261,7 +1266,15 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
       <Dialog open={Boolean(deliveryConfirmation)} onOpenChange={(open) => { if (!open && !updatingOrder) setDeliveryConfirmation(null); }}>
         <DialogContent><DialogHeader><DialogTitle>Confirmar entrega do pedido?</DialogTitle><DialogDescription>Confirme somente se o cliente já recebeu o pedido. A entrega será registrada e poderá liberar o repasse.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" disabled={Boolean(updatingOrder)} onClick={() => setDeliveryConfirmation(null)}>Cancelar</Button><Button disabled={Boolean(updatingOrder)} onClick={() => { if (deliveryConfirmation) void handleStepChange(deliveryConfirmation, "delivered"); }}>{updatingOrder ? "Confirmando..." : "Confirmar entrega"}</Button></DialogFooter></DialogContent>
       </Dialog>
-      {orders.map((order: any) => {
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filtrar pedidos por pagamento">
+        {(["paid", "pending", "failed"] as const).map((key) => {
+          const label = key === "paid" ? "Pagos" : key === "pending" ? "Aguardando pagamento" : "Não pagos / cancelados";
+          const count = orders.filter((o: any) => orderPaymentGroup(o) === key).length;
+          return <Button key={key} role="tab" aria-selected={paymentFilter === key} size="sm" variant={paymentFilter === key ? "default" : "outline"} onClick={() => setPaymentFilter(key)}>{label} ({count})</Button>;
+        })}
+      </div>
+      {orders.filter((o: any) => orderPaymentGroup(o) === paymentFilter).length === 0 && <div className="surface-card p-5 text-sm text-muted-foreground">Nenhum pedido nesta aba.</div>}
+      {orders.filter((o: any) => orderPaymentGroup(o) === paymentFilter).map((order: any) => {
         const step = currentStep(order.id);
         const fulfillment = getFulfillment(order.id);
         const storeItems = order.order_items.filter((i: any) => i.store_id === storeId);
