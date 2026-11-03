@@ -76,13 +76,24 @@ test("Bros 150 2010 (modelo não listado) puxa só peças de moto", () => {
 });
 
 test("Titan 150 2008 percorre todas as peças da moto, incluindo carburador, painel e motor de arranque", () => {
-  const all = Array.from({ length: 10 }, (_, i) => parseTrendQuery("Titan 150 2008", i * 6, 6).terms).flat();
+  const all: string[] = [];
+  for (let i = 0; i * 6 < 70; i++) all.push(...parseTrendQuery("Titan 150 2008", i * 6, 6).terms);
   assert.ok(all.every((t) => t.endsWith("Titan 150 2008")));
   for (const part of ["pneu", "carburador", "tanque", "seta", "farol", "painel", "rabeta", "motor de arranque", "escapamento", "buzina", "cabo de velocímetro", "luva", "maçaneta"]) {
     assert.ok(all.some((t) => t.startsWith(part + " ")), `faltou a peça: ${part}`);
   }
+  for (const part of ["disco de freio", "tambor de freio", "sapata de freio", "balança", "rolamento", "bengala", "válvulas", "cabeçote", "camisa", "anéis", "juntas", "sistema de ignição", "bico do farol", "kit embreagem"]) {
+    assert.ok(all.some((t) => t.startsWith(part + " ")), `faltou a peça: ${part}`);
+  }
   assert.ok(all.some((t) => /kit relação/.test(t)), "peças de moto");
   for (const p of ["radiador", "parachoque", "kit correia dentada"]) assert.ok(!all.some((t) => t.includes(p)), p);
+});
+test("carro também percorre freio, rolamento, motor e ignição", () => {
+  const all: string[] = [];
+  for (let i = 0; i * 6 < 50; i++) all.push(...parseTrendQuery("Gol 2012", i * 6, 6).terms);
+  for (const part of ["disco de freio", "tambor de freio", "rolamento", "válvulas", "cabeçote", "anéis", "juntas", "sistema de ignição", "cilindro mestre", "alternador", "motor de partida", "bico injetor", "correia do alternador"]) {
+    assert.ok(all.some((t) => t.startsWith(part + " ")), `faltou a peça: ${part}`);
+  }
 });
 test("Toro 2020 (modelo não listado) puxa só peças de carro", () => {
   const all = [0, 6, 12].flatMap((c) => parseTrendQuery("Toro 2020", c, 6).terms);
