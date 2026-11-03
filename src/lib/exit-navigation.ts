@@ -8,3 +8,7 @@ export function exitHistoryDelta(baseIndex: number, entryIndex: number) {
 }
 
 export const selectionNavigation = { replace: true } as const;
+
+export function shouldClearSearchOnBack(action: string, currentHref: string, mobileMenu = false) {
+  return action === "BACK" && !mobileMenu && currentHref.split(/[?#]/)[0] === "/" && Boolean(new URL(currentHref, "https://hsdigitalmarketpla.store").searchParams.get("q"));
+}
