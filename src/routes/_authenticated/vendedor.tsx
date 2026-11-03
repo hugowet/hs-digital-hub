@@ -1480,7 +1480,7 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
                 </div>
               </div>}
 
-              <SellerDeliveryAttempt orderId={order.id} storeId={storeId} disabled={!isPaid || step === "delivered"} events={trackingEvents.filter((event: any) => event.order_id === order.id)} />
+              {step !== "delivered" && <SellerDeliveryAttempt orderId={order.id} storeId={storeId} disabled={!isPaid} events={trackingEvents.filter((event: any) => event.order_id === order.id)} />
 
               {/* Formulário para colar o código de rastreio */}
               <div className="pt-2 border-t border-border/40">
