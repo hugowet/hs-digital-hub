@@ -69,4 +69,16 @@ test("celular puxa capinha, película e tela", () => {
   const all = [0, 6].flatMap((c) => parseTrendQuery("celular", c, 6).terms).join("|");
   for (const w of ["capinha", "película", "carregador", "fone", "tela"]) assert.ok(all.includes(w), w);
 });
+test("Bros 150 2010 (modelo não listado) puxa só peças de moto", () => {
+  const all = [0, 6, 12].flatMap((c) => parseTrendQuery("Bros 150 2010", c, 6).terms);
+  assert.ok(all.every((t) => t.endsWith("Bros 150 2010")));
+  assert.ok(all.some((t) => /kit relação/.test(t)), "peças de moto");
+  for (const p of ["radiador", "parachoque", "kit correia dentada"]) assert.ok(!all.some((t) => t.includes(p)), p);
+});
+test("Toro 2020 (modelo não listado) puxa só peças de carro", () => {
+  const all = [0, 6, 12].flatMap((c) => parseTrendQuery("Toro 2020", c, 6).terms);
+  assert.ok(all.every((t) => t.endsWith("Toro 2020")));
+  assert.ok(all.some((t) => /radiador/.test(t)), "peças de carro");
+  assert.ok(!all.some((t) => t.includes("kit relação")), "sem peças de moto");
+});
 test("iphone 13 puxa acessórios do modelo", () => assert.ok(parseTrendQuery("iphone 13").terms.includes("capinha iphone 13")));
