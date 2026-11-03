@@ -646,7 +646,7 @@ function Home() {
             </div>
           ) : (
             <div aria-busy={isSearching} className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 transition-opacity ${isSearching ? "opacity-60" : ""}`}>
-              {(isFiltered ? filtered : filtered.slice(5)).map((prod) => (
+              {filtered.map((prod) => (
                 <ProductCard key={prod.id} product={prod} />
               ))}
             </div>
