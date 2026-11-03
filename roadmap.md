@@ -1,8 +1,8 @@
 # HS Digital — MVP
 
 ## Limpeza de tamanhos e busca do vendedor — 03/11
-- [ ] Retirar da vitrine roupas, calçados e capacetes CJ/Amazon sem tamanhos/opções confirmados, incluindo os capacetes Liberty indicados; preservar pedidos e outros tipos de produto.
-- [ ] Adicionar busca em Meus produtos, mantendo edição/exclusão, e conferir com conta autenticada.
+- [x] Retirados da vitrine 2.351 produtos CJ e 17 Amazon sem identificação suficiente de tamanho/opções, incluindo ambos os capacetes Liberty; registros e pedidos preservados, variantes oficiais CJ identificadas com estoque mantidas.
+- [x] Busca por título em Meus produtos consulta todos os publicados da própria loja com paginação; edição e confirmação de exclusão conferidas na conta real da loja JJ Kuster, sem excluir outro produto. Mudanças da tela ainda não publicadas.
 
 ## Foto ao escolher cor — 03/11
 - [x] Vincular a foto exibida à imagem real da opção escolhida, sem inferir cores nem alterar preço/estoque; fotos atualizadas nos dois capacetes. Nove testes passaram e a página real trocou entre Branco, Preto e Rosa, sem erros. Alterações do site ainda não publicadas.
