@@ -21,6 +21,12 @@ describe("limpeza de menções à Amazon", () => {
     const once = buildAmazonDescription("Texto");
     const twice = buildAmazonDescription(once);
     expect(twice.match(/Método de entrega:/g)).toHaveLength(1);
+    expect(twice).toBe(once);
+  });
+
+  it("preserva os parágrafos e a lista de itens da descrição importada", () => {
+    const original = "Celular com tela de 6 polegadas\n\nContém: carregador, fone de ouvido\n\nGarantia de 12 meses";
+    expect(buildAmazonDescription(original).split("\n\nMétodo de entrega:")[0]).toBe(original);
   });
 
   it("limpa chaves e valores das especificações", () => {

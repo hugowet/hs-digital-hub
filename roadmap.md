@@ -413,3 +413,7 @@
 - [x] Aba Enviar promoções (Admin): lista de cadastrados, seleção, mensagem com link
 - [x] Descrição do produto: "Contém" em negrito, organizado (todos publicados)
 - [x] Varredura: padronizar texto de logística Amazon nas descrições
+
+## Correção da descrição — 03/11
+- [ ] Restaurar logística parceira Amazon nos produtos atuais e próximos importados.
+- [ ] Preservar a descrição completa separada dos itens destacados; validar testes e página real.

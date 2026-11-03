@@ -18,13 +18,13 @@ export function extractProductContents(description: string): { contents: string[
   const inline = lines[idx].match(HEADER)?.[3]?.trim() ?? "";
   if (inline) items.push(...inline.split(/[;,]|\s\+\s/));
   let end = idx + 1;
-  for (; end < lines.length; end++) {
+  for (; end < lines.length && !inline; end++) {
     const l = lines[end].trim();
     if (!l) {
       if (items.length) break;
       continue;
     }
-    if (STOP.test(l) || HEADER.test(l) || l.length > 120) break;
+    if (STOP.test(l) || HEADER.test(l) || l.length > 120 || /[:：]/.test(l)) break;
     items.push(l);
   }
   const contents = items
@@ -32,6 +32,6 @@ export function extractProductContents(description: string): { contents: string[
     .filter((s) => s.length > 1 && s.length <= 120)
     .slice(0, 25);
   if (!contents.length) return { contents: [], rest: description };
-  const rest = [...lines.slice(0, idx), ...lines.slice(end)].join("\n").replace(/\n{3,}/g, "\n\n").trim();
-  return { contents, rest };
+  // A lista é um destaque adicional: nunca recorta a descrição original.
+  return { contents, rest: description };
 }
