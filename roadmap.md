@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Limpeza de tamanhos e busca do vendedor — 03/11
+- [ ] Retirar da vitrine roupas, calçados e capacetes CJ/Amazon sem tamanhos/opções confirmados, incluindo os capacetes Liberty indicados; preservar pedidos e outros tipos de produto.
+- [ ] Adicionar busca em Meus produtos, mantendo edição/exclusão, e conferir com conta autenticada.
+
 ## Foto ao escolher cor — 03/11
 - [x] Vincular a foto exibida à imagem real da opção escolhida, sem inferir cores nem alterar preço/estoque; fotos atualizadas nos dois capacetes. Nove testes passaram e a página real trocou entre Branco, Preto e Rosa, sem erros. Alterações do site ainda não publicadas.
 

@@ -2,6 +2,7 @@
 import { deliveryFields, deliveryReport, deliverySteps, showsManualPurchaseReport } from "@/lib/order-delivery";
 import { SellerDeliveryAttempt } from "@/components/seller-delivery-attempt";
 import { SellerPromotionsTab } from "@/components/seller-promotions-tab";
+import { sellerProductSearchPattern } from "@/lib/seller-product-search";
 import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -41,6 +42,7 @@ import {
   Upload,
   X,
   Star,
+  Search,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -117,6 +119,10 @@ function SellerCenterPage() {
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [activeTab, setActiveTab] = useState("products");
+  const [productSearch, setProductSearch] = useState("");
+  const [productPage, setProductPage] = useState(0);
+  const [deletingProduct, setDeletingProduct] = useState<any | null>(null);
+  const [removingProduct, setRemovingProduct] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -143,20 +149,42 @@ function SellerCenterPage() {
     },
   });
 
-  const { data: products = [] } = useQuery({
+  const { data: productResult, isFetching: productsFetching } = useQuery({
     enabled: !!store?.id,
-    queryKey: ["store-products", store?.id],
+    queryKey: ["store-products", store?.id, productSearch, productPage],
     queryFn: async () => {
-      if (!store?.id) return [];
-      const { data, error } = await supabase
+      if (!store?.id) return { products: [], total: 0 };
+      let query = supabase
         .from("products")
-        .select("*, product_media(*)")
+        .select("*, product_media(*)", { count: "exact" })
         .eq("store_id", store.id)
+        .eq("is_active", true);
+      if (productSearch.trim()) query = query.ilike("title", sellerProductSearchPattern(productSearch));
+      const { data, error, count } = await query
+        .range(productPage * 60, productPage * 60 + 59)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return { products: data ?? [], total: count ?? 0 };
     },
   });
+  const products = productResult?.products ?? [];
+  const productTotal = productResult?.total ?? 0;
+
+  const handleRemoveProduct = async () => {
+    if (!deletingProduct || !store?.id) return;
+    setRemovingProduct(true);
+    try {
+      const { data, error } = await supabase.from("products").update({ is_active: false })
+        .eq("id", deletingProduct.id).eq("store_id", store.id).select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("Não foi possível excluir este produto.");
+      setDeletingProduct(null);
+      qc.invalidateQueries({ queryKey: ["store-products"] });
+      toast.success("Produto excluído da vitrine. Histórico dos pedidos preservado.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível excluir o produto.");
+    } finally { setRemovingProduct(false); }
+  };
 
   const { data: transactions = [] } = useQuery({
     enabled: !!store?.id,
@@ -314,14 +342,21 @@ function SellerCenterPage() {
         {isPlatformOwner && <TabsContent value="promotions" className="pt-4"><SellerPromotionsTab storeId={store.id} /></TabsContent>}
         <TabsContent value="products" className="pt-4">
           <section className="surface-card p-4">
-            <h2 className="text-base font-semibold mb-4">Meus produtos ({products.length})</h2>
+            <h2 className="text-base font-semibold mb-4">Meus produtos ({productTotal})</h2>
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
+              <Input aria-label="Pesquisar meus produtos" placeholder="Pesquisar produto publicado..." className="pl-9 pr-10" value={productSearch}
+                onChange={(e) => { setProductSearch(e.target.value); setProductPage(0); }} />
+              {productSearch && <Button size="icon" variant="ghost" className="absolute right-1 top-1 size-8" aria-label="Limpar pesquisa" onClick={() => { setProductSearch(""); setProductPage(0); }}><X className="size-4" /></Button>}
+            </div>
+            {productsFetching && <p role="status" className="mb-3 text-sm text-muted-foreground">Buscando produtos...</p>}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {products.map((p) => (
                 <div
                   key={p.id}
                   className="border border-border p-3 rounded-lg flex justify-between items-center bg-card shadow-sm"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     {p.image_url ? (
                       <img
                         src={p.image_url}
@@ -333,7 +368,7 @@ function SellerCenterPage() {
                         <Package className="w-5 h-5 text-muted-foreground" />
                       </div>
                     )}
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium text-sm line-clamp-1">{p.title}</p>
                       <p className="text-xs text-muted-foreground">
                         {brl(p.price)} · Estoque: {p.stock ?? 0}
@@ -349,12 +384,18 @@ function SellerCenterPage() {
                     <Pencil className="w-3.5 h-3.5" />
                     Editar
                   </Button>
+                  <Button size="icon" variant="ghost" className="size-8 shrink-0 text-destructive" aria-label={`Excluir ${p.title}`} title="Excluir produto" onClick={() => setDeletingProduct(p)}><Trash2 className="size-4" /></Button>
                 </div>
               ))}
-              {products.length === 0 && (
-                <p className="text-sm text-muted-foreground">Nenhum produto cadastrado.</p>
+              {products.length === 0 && !productsFetching && (
+                <p className="text-sm text-muted-foreground">{productSearch ? "Nenhum produto encontrado." : "Nenhum produto publicado."}</p>
               )}
             </div>
+            {productTotal > 60 && <div className="mt-4 flex items-center justify-between gap-3">
+              <Button variant="outline" disabled={productPage === 0 || productsFetching} onClick={() => setProductPage((page) => page - 1)}>Anterior</Button>
+              <span className="text-sm text-muted-foreground">{productPage + 1} / {Math.ceil(productTotal / 60)}</span>
+              <Button variant="outline" disabled={(productPage + 1) * 60 >= productTotal || productsFetching} onClick={() => setProductPage((page) => page + 1)}>Próxima</Button>
+            </div>}
           </section>
         </TabsContent>
 
@@ -406,6 +447,12 @@ function SellerCenterPage() {
       </Tabs>
 
       {/* Modal de Edição */}
+      <Dialog open={Boolean(deletingProduct)} onOpenChange={(open) => { if (!open && !removingProduct) setDeletingProduct(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Excluir produto?</DialogTitle><DialogDescription>O produto {deletingProduct?.title} sairá da vitrine. Os pedidos anteriores serão preservados.</DialogDescription></DialogHeader>
+          <DialogFooter><Button variant="outline" disabled={removingProduct} onClick={() => setDeletingProduct(null)}>Cancelar</Button><Button variant="destructive" disabled={removingProduct} onClick={handleRemoveProduct}>{removingProduct ? "Excluindo..." : "Excluir produto"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
