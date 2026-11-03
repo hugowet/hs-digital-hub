@@ -1,6 +1,7 @@
 import { parseHTML } from "linkedom";
+import { amazonFullResImage } from "./amazon-image";
 
-export type AmazonOptionGroup = { name: string; options: string[]; availability: "unconfirmed" | "confirmed"; source: "page"; asin?: string; selected?: string };
+export type AmazonOptionGroup = { name: string; options: string[]; images?: Record<string, string>; availability: "unconfirmed" | "confirmed"; source: "page"; asin?: string; selected?: string };
 
 const order = (name: string) => { const i = ["Cor", "Tamanho", "Armazenamento", "Modelo"].indexOf(name); return i < 0 ? 9 : i; };
 
@@ -9,7 +10,8 @@ export function shouldReplaceOptions(saved: unknown, fresh: AmazonOptionGroup[])
   if (!fresh.length) return false;
   const count = (g: unknown) => Array.isArray(g) ? g.reduce((n, x: any) => n + (Array.isArray(x?.options) ? x.options.length : 0), 0) : 0;
   const broken = Array.isArray(saved) && saved.some((g: any) => g?.options?.some((o: string) => /^(B0[A-Z0-9]{8}|indexInDimList|defaultAsin|\/dp\/)/.test(o)));
-  return broken || count(fresh) > count(saved);
+  const missingImages = fresh.some((group) => Object.entries(group.images ?? {}).some(([option, image]) => !Array.isArray(saved) || !saved.some((old: any) => old?.name === group.name && old.images?.[option] === image)));
+  return broken || count(fresh) > count(saved) || missingImages;
 }
 
 /** Extract actual page options; a swatch is NOT an inventory confirmation. */
@@ -17,6 +19,24 @@ export function extractAmazonOptions(html: string): AmazonOptionGroup[] {
   if (!html) return [];
   const { document } = parseHTML(html);
   const groups: AmazonOptionGroup[] = [];
+  const withImages = () => groups.map((group) => {
+    const dimension = ({ Cor: "color", Tamanho: "size", Modelo: "style" } as Record<string, string>)[group.name];
+    if (!dimension) return group;
+    const images: Record<string, string> = {};
+    const conflicts = new Set<string>();
+    for (const row of Array.from(document.querySelectorAll(`[id^="variation_${dimension}"], [id^="inline-twister-row-${dimension}_name"], [id^="inline-twister-expander-content-${dimension}_name"]`))) {
+      for (const image of Array.from(row.querySelectorAll("li img"))) {
+        const label = (image.getAttribute("alt") ?? "").trim();
+        const raw = image.getAttribute("data-old-hires") || image.getAttribute("src") || image.getAttribute("data-src") || "";
+        if (!group.options.includes(label) || !/^https:\/\/(?:m|images-[a-z0-9-]+)\.media-amazon\.com\/images\/I\//i.test(raw)) continue;
+        const url = amazonFullResImage(raw);
+        if (images[label] && images[label] !== url) conflicts.add(label);
+        else images[label] = url;
+      }
+    }
+    for (const label of conflicts) delete images[label];
+    return Object.keys(images).length ? { ...group, images } : group;
+  });
   // Twister moderno: "variationValues" é a fonte mais limpa de tamanhos/cores/capacidade etc.
   const vv = html.match(/"variationValues"\s*:\s*(\{[^{}]*\})/);
   if (vv) {
@@ -34,7 +54,7 @@ export function extractAmazonOptions(html: string): AmazonOptionGroup[] {
         if (list.length) groups.push({ name: label, options: [...new Set(list)], availability: "unconfirmed", source: "page" });
       }
       groups.sort((a, b) => order(a.name) - order(b.name));
-      if (groups.length) return groups;
+      if (groups.length) return withImages();
     } catch { /* cai para leitura da página */ }
   }
   // Twister antigo/alternativo: "dimensionsDisplay" + "dimensionValuesDisplayData" (ASIN -> valores).
@@ -50,7 +70,7 @@ export function extractAmazonOptions(html: string): AmazonOptionGroup[] {
         if (values.length) groups.push({ name, options: values, availability: "unconfirmed", source: "page" });
       });
       groups.sort((a, b) => order(a.name) - order(b.name));
-      if (groups.length) return groups;
+      if (groups.length) return withImages();
     } catch { /* segue */ }
   }
   // Inline twister (páginas de moda atuais): linhas "inline-twister-row-<dim>_name".
@@ -67,7 +87,7 @@ export function extractAmazonOptions(html: string): AmazonOptionGroup[] {
     }
     if (values.size) groups.push({ name, options: [...values], availability: "unconfirmed", source: "page" });
   }
-  if (groups.length) { groups.sort((a, b) => order(a.name) - order(b.name)); return groups; }
+  if (groups.length) { groups.sort((a, b) => order(a.name) - order(b.name)); return withImages(); }
   for (const [dimension, name] of [["size", "Tamanho"], ["color", "Cor"], ["style", "Modelo"]]) {
     const values = new Set<string>();
     const add = (raw: string | null | undefined) => {
@@ -93,5 +113,5 @@ export function extractAmazonOptions(html: string): AmazonOptionGroup[] {
     }
     if (values.size) groups.push({ name: name ?? dimension ?? "Opção", options: [...values], availability: "unconfirmed", source: "page" });
   }
-  return groups;
+  return withImages();
 }

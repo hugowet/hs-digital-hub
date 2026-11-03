@@ -1,5 +1,8 @@
 # HS Digital — MVP
 
+## Foto ao escolher cor — 03/11
+- [ ] Vincular a foto exibida à imagem real da opção escolhida, sem inferir cores nem alterar preço/estoque; testar no capacete publicado.
+
 ## Audiência — 03/11
 - [x] Excluir visitas identificadas da conta de Hugo dos totais de hoje e últimos sete dias, inclusive histórico; demais indicadores preservados.
 - [x] Explicar identificação de visitantes: nome/e-mail apenas de contas identificadas; visitantes anônimos não revelam contato, e promoções exigem consentimento.
