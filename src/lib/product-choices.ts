@@ -1,12 +1,21 @@
-export type ChoiceGroup = { name: string; options: string[]; selected?: string };
+export type ChoiceGroup = { name: string; options: string[]; selected?: string; images?: Record<string, string> };
 
 /** Groups the buyer must choose from (Cor, Tamanho...). Single-option groups need no choice. */
 export function buyerChoiceGroups(variations: unknown): ChoiceGroup[] {
   if (!Array.isArray(variations)) return [];
   return variations
     .filter((g: any) => g && typeof g.name === "string" && Array.isArray(g.options))
-    .map((g: any) => ({ name: String(g.name), options: g.options.map(String).filter(Boolean), selected: typeof g.selected === "string" ? g.selected : undefined }))
+    .map((g: any) => ({ name: String(g.name), options: g.options.map(String).filter(Boolean), selected: typeof g.selected === "string" ? g.selected : undefined, images: g.images && typeof g.images === "object" && !Array.isArray(g.images) ? Object.fromEntries(Object.entries(g.images).filter(([option, url]) => g.options.includes(option) && typeof url === "string" && /^https:\/\//.test(url))) as Record<string, string> : undefined }))
     .filter((g) => g.options.length > 0);
+}
+
+/** Only explicitly associated option photos may replace the product cover. */
+export function choiceImage(groups: ChoiceGroup[], picked: Record<string, string>): string | null {
+  for (const group of [...groups].sort((a, b) => Number(b.name === "Cor") - Number(a.name === "Cor"))) {
+    const value = picked[group.name] ?? (group.options.length === 1 ? group.options[0] : undefined);
+    if (value && group.options.includes(value) && group.images?.[value]) return group.images[value];
+  }
+  return null;
 }
 
 /** "Cor: Preto · Tamanho: 58" — only when every group has a valid choice. */

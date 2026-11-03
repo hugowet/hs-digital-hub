@@ -49,7 +49,7 @@ import { useCjPrice } from "@/lib/use-cj-price";
 import { deliveryDateRange, formatDeliveryRange } from "@/lib/delivery-estimate";
 import { confirmCjOption } from "@/lib/cj-option.functions";
 import { isPurchasableVariant } from "@/lib/variant-availability";
-import { buyerChoiceGroups, choiceLabel } from "@/lib/product-choices";
+import { buyerChoiceGroups, choiceLabel, choiceImage } from "@/lib/product-choices";
 import { sendSellerMessage } from "@/lib/seller-chat.functions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -236,6 +236,7 @@ function ProductDetailPage() {
   const [picked, setPicked] = useState<Record<string, string>>({});
   useEffect(() => setPicked({}), [productId]);
   const pickedLabel = choiceLabel(choiceGroups, picked);
+  const pickedImage = choiceImage(choiceGroups, picked);
 
   const { data: relatedProducts = [] } = useQuery({
     queryKey: ["related-products", product?.category, productId],
@@ -326,14 +327,15 @@ function ProductDetailPage() {
   const imagesList = useMemo(() => {
     if (!product) return [];
     const list: string[] = [];
-    if (product.image_url) list.push(product.image_url);
+    if (pickedImage) list.push(pickedImage);
+    if (product.image_url && !list.includes(product.image_url)) list.push(product.image_url);
     if (Array.isArray(product.gallery_urls)) {
       product.gallery_urls.forEach((url) => {
         if (url && !list.includes(url)) list.push(url);
       });
     }
     return list.length > 0 ? list : ["https://placehold.co/600x600/f3f4f6/666666?text=Sem+Foto"];
-  }, [product]);
+  }, [product, pickedImage]);
 
   // Touch Swipe para passar fotos no celular
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -730,7 +732,7 @@ function ProductDetailPage() {
                         const active = group.options.length === 1 || picked[group.name] === option;
                         return (
                           <Button key={option} type="button" size="sm" variant={active ? "default" : "outline"} aria-pressed={active}
-                            onClick={() => setPicked((prev) => ({ ...prev, [group.name]: option }))}>
+                            onClick={() => { setPicked((prev) => ({ ...prev, [group.name]: option })); setSelectedImage(0); setZoomPos(null); }}>
                             {option}
                           </Button>
                         );
