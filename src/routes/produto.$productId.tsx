@@ -1,5 +1,7 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { sellerDisplayName } from "@/lib/seller-display";
+import { extractProductContents } from "@/lib/product-contents";
+import { CheckCircle2 } from "lucide-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
