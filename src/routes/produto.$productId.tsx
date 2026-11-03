@@ -1,6 +1,7 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { sellerDisplayName } from "@/lib/seller-display";
 import { extractProductContents } from "@/lib/product-contents";
+import { normalizeAmazonDeliveryText } from "@/lib/amazon-text";
 import { CheckCircle2 } from "lucide-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
@@ -824,7 +825,8 @@ function ProductDetailPage() {
           </h2>
           <div className="mt-4 space-y-4 text-sm text-foreground/90 leading-relaxed">
             {(() => {
-              const full = product.description_long || product.description || "Descrição completa em processamento.";
+              const original = product.description_long || product.description || "Descrição completa em processamento.";
+              const full = product.supplier === "amazon" ? normalizeAmazonDeliveryText(original) : original;
               const { contents, rest } = extractProductContents(full);
               const desc = rest || full;
               const marker = "Método de entrega:";
@@ -834,14 +836,14 @@ function ProductDetailPage() {
               return (
                 <>
                   {contents.length > 0 && (
-                    <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4">
+                    <div className="border-b border-border pb-4">
                       <p className="mb-2 font-black text-foreground">O que vem no produto</p>
                       <ul className="space-y-1">
                         {contents.map((item, i) => (
                           <li key={i} className="flex gap-2 text-sm sm:text-base">
                             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                             <span>
-                              <strong className="font-bold text-foreground">Contém:</strong> {item}
+                              <strong className="font-bold text-foreground">Contém: {item}</strong>
                             </span>
                           </li>
                         ))}

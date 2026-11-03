@@ -2,11 +2,16 @@
  * Limpeza de textos de produtos importados da Amazon.
  * Remove menções à marca Amazon de títulos, descrições e especificações para
  * o cliente não achar que foi "passado para trás" ao receber embalagem da Amazon,
- * e padroniza o texto de método de entrega como parceria logística.
+ * e padroniza o texto de método de entrega como logística parceira Amazon.
  */
 
 export const AMAZON_DELIVERY_METHOD_TEXT =
-  "Método de entrega: parceria com logística parceira para entrega rápida, rastreada e segura em todo o Brasil.";
+  "Método de entrega: parceria com logística parceira Amazon para entrega rápida, rastreada e segura em todo o Brasil.";
+
+/** Normaliza só o nome da logística, preservando a descrição e suas quebras. */
+export function normalizeAmazonDeliveryText(text: string): string {
+  return text.replace(/(?:logística\s+)+parceira(?:\s+Amazon)?/gi, "logística parceira Amazon");
+}
 
 /** Remove/substitui menções à Amazon em qualquer texto visível ao cliente. */
 export function sanitizeAmazonText(text: string): string {
@@ -18,14 +23,14 @@ export function sanitizeAmazonText(text: string): string {
     .replace(/amazon\s*prime/gi, "entrega prioritária")
     .replace(/amazon\.com(\.br)?|amzn\.[a-z.]+/gi, "nossa loja")
     .replace(/\bamazon\b/gi, "logística parceira")
-    .replace(/\s{2,}/g, " ")
+    .replace(/[^\S\r\n]{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
 /** Descrição final do produto: limpa de menções à Amazon + método de entrega padronizado. */
 export function buildAmazonDescription(rawDescription: string): string {
-  const clean = sanitizeAmazonText(rawDescription);
+  const clean = normalizeAmazonDeliveryText(sanitizeAmazonText(rawDescription.replace(/logística\s+parceira\s+Amazon/gi, "logística parceira")));
   const base = clean || "Produto oficial com garantia e entrega rápida.";
   if (base.includes("Método de entrega:")) return base;
   return `${base}\n\n${AMAZON_DELIVERY_METHOD_TEXT}`;
