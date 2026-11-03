@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Carrossel Mais vendidos — 03/11
+- [ ] Trocar a primeira fileira de Seleção do dia por carrossel automático exclusivo Amazon e destacar a camisa “procura no Google”, preservando filtros, demais produtos e importador.
+- [ ] Conferir fotos, avanço automático, setas e abertura de produto no celular e computador.
+
 ## Voltar da busca e rastreamento — 03/11
 - [x] Voltar nativo limpa busca na vitrine e em Meus produtos; conferido em 434x769 com sessão real, sem sair da página.
 - [x] Pedido pago BBE8DB03 mantém Saiu para entrega após tentativa; botão explícito Seu pedido foi entregue e confirmação adicionados. Tentativa tem abrir/fechar/cancelar sem apagar histórico. Conferidos na conta real; não confirmada entrega real nem enviada tentativa fictícia. Nenhuma falha de gravação reproduzida; 22 testes passaram. Não publicado.
