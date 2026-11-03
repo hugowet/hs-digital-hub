@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Voltar da busca e rastreamento — 03/11
+- [ ] Voltar nativo limpa a busca ativa sem sair do site nem acumular cada letra no histórico.
+- [ ] Reproduzir e corrigir impedimento de marcar entrega em Pedidos e Envios; preservar tentativas reais e oferecer limpar/cancelar o formulário de tentativa.
+
 ## Limpeza de tamanhos e busca do vendedor — 03/11
 - [x] Retirados da vitrine 2.351 produtos CJ e 17 Amazon sem identificação suficiente de tamanho/opções, incluindo ambos os capacetes Liberty; registros e pedidos preservados, variantes oficiais CJ identificadas com estoque mantidas.
 - [x] Busca por título em Meus produtos consulta todos os publicados da própria loja com paginação; edição e confirmação de exclusão conferidas na conta real da loja JJ Kuster, sem excluir outro produto. Mudanças da tela ainda não publicadas.
