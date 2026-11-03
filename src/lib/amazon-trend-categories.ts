@@ -44,8 +44,8 @@ export const MOTO_PARTS_KEY = "PECASMOTO";
 export const CAR_PARTS_KEY = "PECASCARRO";
 export const MOTO_MODELS = ["Biz", "CG 160", "CG 150 Titan", "Titan 150", "Titan 160", "Fan 150", "Fan 160", "Bros 150", "Bros 160", "CB 300", "CB 500", "XRE 300", "Pop 110", "Factor 150", "Fazer 250", "Lander 250", "Crosser 150", "NMax", "PCX", "Twister 250", "XJ6", "MT-03", "Hornet"];
 export const CAR_MODELS = ["Gol", "Palio", "Uno", "Celta", "Corsa", "Onix", "Prisma", "HB20", "Fiesta", "Ka", "Fox", "Polo", "Strada", "Saveiro", "Sandero", "Logan", "Civic", "Corolla", "Hilux", "S10", "Ranger", "Amarok", "Frontier", "L200", "Toro", "Montana"];
-const MOTO_PARTS = ["carenagem", "pneu", "kit motor", "kit relação", "peças motor", "pastilha de freio", "farol", "retrovisor"];
-const CAR_PARTS = ["peças motor", "pneu", "pastilha de freio", "amortecedor", "kit embreagem", "filtro de óleo", "farol", "parachoque"];
+const MOTO_PARTS = ["carenagem", "pneu", "kit motor", "kit relação", "peças motor", "pastilha de freio", "farol", "retrovisor", "disco de freio", "tambor de freio", "sapata de freio", "balança", "rolamento", "bengala", "kit cilindro", "válvulas", "cabeçote", "camisa", "anéis", "juntas", "sistema de ignição", "kit embreagem", "bico do farol", "tanque"];
+const CAR_PARTS = ["peças motor", "pneu", "pastilha de freio", "amortecedor", "kit embreagem", "filtro de óleo", "farol", "parachoque", "disco de freio", "tambor de freio", "rolamento", "válvulas", "cabeçote", "anéis", "juntas", "sistema de ignição", "cilindro mestre", "alternador", "motor de partida", "bico injetor", "correia do alternador"];
 
 export type TrendQuery = { terms: string[]; maxPrice: number | null; vehicle?: string; nextCursor?: number; total?: number };
 
@@ -84,8 +84,8 @@ export function parseTrendQuery(input: string, cursor = 0, pages = 6): TrendQuer
 }
 
 /** Peças completas para busca direta pelo nome do veículo (ex.: "Biz", "CB 300 2008/2009"). */
-const MOTO_FULL_PARTS = [...MOTO_PARTS, "kit cilindro", "kit embreagem", "escapamento", "banco", "bateria", "corrente", "manete", "pedaleira", "guidão", "lanterna traseira", "pisca", "seta", "bobina", "vela", "filtro de ar", "cabo de embreagem", "cabo de velocímetro", "cabo de acelerador", "disco de freio", "amortecedor", "tanque", "carburador", "painel", "rabeta", "motor de arranque", "buzina", "luva", "maçaneta", "pedal de freio", "pedal de câmbio", "cavalete", "protetor de motor", "estator", "regulador retificador", "relé de partida", "CDI", "bengala", "balança traseira", "capa de banco", "adesivo", "parafusos carenagem", "tampa do tanque", "cabo de freio", "sapata de freio", "pinça de freio"];
-const CAR_FULL_PARTS = [...CAR_PARTS, "kit correia dentada", "bomba de água", "radiador", "vela de ignição", "bobina de ignição", "sensor", "bateria", "retrovisor", "lanterna traseira", "pastilha e disco de freio", "bandeja suspensão", "pivô", "terminal de direção", "filtro de ar", "junta cabeçote", "tapete", "capa de banco"];
+const MOTO_FULL_PARTS = [...MOTO_PARTS, "escapamento", "banco", "bateria", "corrente", "manete", "pedaleira", "guidão", "lanterna traseira", "pisca", "seta", "bobina", "vela", "filtro de ar", "cabo de embreagem", "cabo de velocímetro", "cabo de acelerador", "amortecedor", "carburador", "painel", "rabeta", "motor de arranque", "buzina", "luva", "maçaneta", "pedal de freio", "pedal de câmbio", "cavalete", "protetor de motor", "estator", "regulador retificador", "relé de partida", "CDI", "balança traseira", "capa de banco", "adesivo", "parafusos carenagem", "tampa do tanque", "cabo de freio", "pinça de freio"];
+const CAR_FULL_PARTS = [...CAR_PARTS, "kit correia dentada", "bomba de água", "radiador", "vela de ignição", "bobina de ignição", "sensor", "bateria", "retrovisor", "lanterna traseira", "pastilha e disco de freio", "bandeja suspensão", "pivô", "terminal de direção", "filtro de ar", "junta cabeçote", "virabrequim", "comando de válvulas", "tapete", "capa de banco"];
 const YEAR_RE = /\b((?:19|20)\d{2})(?:\s*[\/-]\s*((?:19|20)?\d{2}))?\b/;
 
 function matchModel(models: string[], n: string): string | undefined {
