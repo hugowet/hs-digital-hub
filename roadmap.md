@@ -1,8 +1,9 @@
 # HS Digital — MVP
 
 ## Página Amazon — 03/11
-- [ ] Adicionar leitura de uma página de resultados com 15 baratos e 15 intermediários, preservando fila e confirmação individual antes de publicar.
-- [ ] Testar seleção, filtros e fluxo autenticado sem publicar produtos reais.
+- [x] Leitura da página escolhida com até 15 baratos e 15 intermediários; filtros, fila serial e confirmação individual preservados.
+- [x] 18 testes passaram; build OK; conta autenticada de Hugo leu página real de furadeiras e mostrou fila com 16 candidatos (15 baratos e 1 intermediário). Pausa testada antes das leituras individuais; nenhum produto publicado.
+- [ ] Homologar lote completo até conferência individual: não executado neste teste para limitar leituras pagas; publicação do site não solicitada.
 
 ## Confirmação automática Amazon — 03/11
 - [x] Lote de links e atualização de estoque confirmam automaticamente a oferta/ASIN selecionados, com preço exato e evidência da opção; outros modelos não herdam preço/estoque.
