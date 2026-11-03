@@ -346,6 +346,7 @@ function CartPage() {
           items: items.map((i) => ({
             productId: i.productId,
             quantity: i.quantity,
+            ...(i.choice ? { choice: i.choice } : {}),
           })),
           shippingAddress: hasPhysical
             ? {

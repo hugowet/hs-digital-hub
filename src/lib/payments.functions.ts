@@ -113,9 +113,36 @@ export const startMercadoPagoConnection = createServerFn({ method: "POST" })
     return { url: `https://auth.mercadopago.com.br/authorization?${params.toString()}` };
   });
 
+/** Appends the buyer's validated color/size choice to the order item title so the seller knows what to buy. */
+async function recordBuyerChoices(admin: any, orderId: string | null, buyerId: string, items: Array<{ productId: string; choice?: string }>) {
+  const chosen = items.filter((item) => item.choice);
+  if (!chosen.length) return;
+  const { isValidChoiceLabel } = await import("@/lib/product-choices");
+  if (orderId === null) {
+    const { data: products } = await admin.from("products").select("id,variations").in("id", chosen.map((i) => i.productId));
+    for (const item of chosen) {
+      const product = products?.find((p: any) => p.id === item.productId);
+      if (!product || !isValidChoiceLabel(product.variations, item.choice!)) throw new Error("A cor ou tamanho escolhido não existe mais. Escolha novamente no produto.");
+    }
+    return;
+  }
+  const { data: order } = await admin.from("orders").select("buyer_id").eq("id", orderId).maybeSingle();
+  if (order?.buyer_id !== buyerId) return;
+  const { data: products } = await admin.from("products").select("id,variations").in("id", chosen.map((i) => i.productId));
+  const { data: rows } = await admin.from("order_items").select("id,product_id,title").eq("order_id", orderId);
+  for (const item of chosen) {
+    const product = products?.find((p: any) => p.id === item.productId);
+    if (!product || !isValidChoiceLabel(product.variations, item.choice!)) continue;
+    for (const row of (rows ?? []).filter((r: any) => r.product_id === item.productId)) {
+      const base = String(row.title).split(" — ")[0];
+      await admin.from("order_items").update({ title: `${base} — ${item.choice}`.slice(0, 500) }).eq("id", row.id);
+    }
+  }
+}
+
 const checkoutSchema = z.object({
   items: z
-    .array(z.object({ productId: z.string().uuid(), quantity: z.number().int().min(1).max(99) }))
+    .array(z.object({ productId: z.string().uuid(), quantity: z.number().int().min(1).max(99), choice: z.string().trim().min(1).max(300).optional() }))
     .min(1)
     .max(50),
   shippingAddress: z
@@ -150,6 +177,7 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { assertAmazonStock } = await import("@/lib/amazon-stock.server");
     await assertAmazonStock(supabaseAdmin, data.items);
+    await recordBuyerChoices(supabaseAdmin, null, context.userId, data.items);
     const rpcArguments = {
       _items: data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
       _shipping_address: data.shippingAddress
@@ -172,6 +200,7 @@ export const createMarketplaceCheckout = createServerFn({ method: "POST" })
     });
     const { data: orderId, error } = result;
     if (error || !orderId) throw new Error(error?.message ?? "Não foi possível criar o pedido.");
+    await recordBuyerChoices(supabaseAdmin, String(orderId), context.userId, data.items);
 
     return { orderId };
   });

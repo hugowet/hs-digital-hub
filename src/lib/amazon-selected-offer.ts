@@ -25,11 +25,14 @@ export function extractSelectedAmazonOffer(html: string, asin?: string) {
       }
     }
     if (candidates.size !== 1) return blocked;
-    selected.push({ ...group, options: [...candidates], availability: "confirmed", asin: asin.toUpperCase() });
+    // Keep every real page option for the buyer; only `selected` carries the confirmed offer.
+    selected.push({ ...group, selected: [...candidates][0], availability: "confirmed", asin: asin.toUpperCase() });
   }
   return { availability, variations: selected, stock: confirmedSelectedAmazonStock(availability, selected) };
 }
 
-export function confirmedSelectedAmazonStock(availability: Parameters<typeof confirmedAmazonStock>[0], groups: Array<{ options?: string[]; availability?: string; asin?: string }>) {
-  return confirmedAmazonStock(availability, groups.some(group => group.availability !== "confirmed" || group.options?.length !== 1 || !/^[A-Z0-9]{10}$/.test(group.asin ?? "")));
+export function confirmedSelectedAmazonStock(availability: Parameters<typeof confirmedAmazonStock>[0], groups: Array<{ options?: string[]; availability?: string; asin?: string; selected?: string }>) {
+  const confirmedChoice = (group: { options?: string[]; selected?: string }) =>
+    group.selected ? Boolean(group.options?.includes(group.selected)) : group.options?.length === 1;
+  return confirmedAmazonStock(availability, groups.some(group => group.availability !== "confirmed" || !confirmedChoice(group) || !/^[A-Z0-9]{10}$/.test(group.asin ?? "")));
 }

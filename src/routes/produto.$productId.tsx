@@ -49,6 +49,7 @@ import { useCjPrice } from "@/lib/use-cj-price";
 import { deliveryDateRange, formatDeliveryRange } from "@/lib/delivery-estimate";
 import { confirmCjOption } from "@/lib/cj-option.functions";
 import { isPurchasableVariant } from "@/lib/variant-availability";
+import { buyerChoiceGroups, choiceLabel } from "@/lib/product-choices";
 import { sendSellerMessage } from "@/lib/seller-chat.functions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -231,6 +232,10 @@ function ProductDetailPage() {
   const [canScrollRight, setCanScrollRight] = useState(true);
 
   const { data: product } = useSuspenseQuery(productQueryOptions(productId));
+  const choiceGroups = useMemo(() => buyerChoiceGroups((product as any)?.variations), [product]);
+  const [picked, setPicked] = useState<Record<string, string>>({});
+  useEffect(() => setPicked({}), [productId]);
+  const pickedLabel = choiceLabel(choiceGroups, picked);
 
   const { data: relatedProducts = [] } = useQuery({
     queryKey: ["related-products", product?.category, productId],
@@ -403,6 +408,7 @@ function ProductDetailPage() {
 
   const handleAddToCart = async (redirectCheckout: boolean) => {
     if (!product) return;
+    if (choiceGroups.length && !pickedLabel) { toast.error(`Escolha ${choiceGroups.filter((g) => g.options.length > 1 && !picked[g.name]).map((g) => g.name.toLowerCase()).join(" e ")} antes de continuar.`); return; }
     if (maxAvailableStock < quantity) { toast.error("Esta opção está sem estoque."); return; }
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
@@ -420,7 +426,8 @@ function ProductDetailPage() {
         storeId: product.store_id,
         storeName: sellerDisplayName("JJ Kuster", product.category),
         title: product.supplierOptions?.find((option) => option.productId === productId)?.label
-          ? `${product.title} — ${product.supplierOptions.find((option) => option.productId === productId)?.label}` : product.title,
+          ? `${product.title} — ${product.supplierOptions.find((option) => option.productId === productId)?.label}` : pickedLabel ? `${product.title} — ${pickedLabel}` : product.title,
+        choice: pickedLabel ?? undefined,
         price,
         supplier: product.supplier,
         compareAtPrice: product.compare_at_price,
@@ -715,6 +722,23 @@ function ProductDetailPage() {
                     </div>
                   </fieldset>
                 )}
+                {!(product.supplierOptions?.length > 1) && choiceGroups.map((group) => (
+                  <fieldset key={group.name} className="mt-4">
+                    <legend className="mb-2 text-sm font-semibold">{group.name}: <span className="font-normal">{group.options.length === 1 ? group.options[0] : picked[group.name] ?? "escolha"}</span></legend>
+                    <div className="flex flex-wrap gap-2">
+                      {group.options.map((option) => {
+                        const active = group.options.length === 1 || picked[group.name] === option;
+                        return (
+                          <Button key={option} type="button" size="sm" variant={active ? "default" : "outline"} aria-pressed={active}
+                            onClick={() => setPicked((prev) => ({ ...prev, [group.name]: option }))}>
+                            {option}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                ))}
+                {choiceGroups.some((g) => g.selected) && !(product.supplierOptions?.length > 1) && <p className="mt-2 text-xs text-muted-foreground">Outras cores e tamanhos têm a disponibilidade conferida com o fornecedor após o pagamento.</p>}
                 {/* Estoque e Quantidade */}
                 {maxAvailableStock === 0 && <p className="mt-4 text-sm font-semibold text-destructive" role="status">Produto indisponível no momento</p>}
                 <div className="mt-4 flex items-center justify-between border-y border-border py-3">
