@@ -1,5 +1,5 @@
 import { parseHTML } from "linkedom";
-import { confirmedAmazonStock, extractAmazonAvailability } from "./amazon-availability";
+import { extractAmazonAvailability } from "./amazon-availability";
 import { extractDescription, extractSpecs } from "./amazon.functions";
 import { extractAmazonOptions, shouldReplaceOptions } from "./amazon-options";
 import { amazonHiResFromHtml } from "./amazon-image";
@@ -7,6 +7,7 @@ import { AMAZON_DELIVERY_METHOD_TEXT, buildAmazonDescription, sanitizeAmazonSpec
 import { amazonPricePatch, extractAmazonOfferPrice } from './amazon-price';
 import { amazonNavigationHeaders, assertAmazonPageReadable, isAmazonRoundStop } from './amazon-request-policy';
 import { amazonReaderHttpError } from './amazon-search-diagnostics';
+import { extractSelectedAmazonOffer, confirmedSelectedAmazonStock } from './amazon-selected-offer';
 
 export async function checkAmazonStock(supabaseAdmin: any, product: any) {
   const rawUrl = String(product.specifications?.affiliate_url ?? "");
@@ -37,6 +38,7 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
   const availability = extractAmazonAvailability(html);
   const patch: Record<string, unknown> = {};
   const asin = rawUrl.match(/\/(?:dp|gp\/product)\/([a-z0-9]{10})/i)?.[1];
+  const offer = extractSelectedAmazonOffer(html, asin);
   if (asin) Object.assign(patch, amazonPricePatch(extractAmazonOfferPrice(html, asin)));
   // Restaura descrição completa / especificações / tamanhos e cores quando faltarem.
   // Corrige a galeria: somente as fotos do próprio anúncio.
@@ -51,14 +53,15 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
     const current = String(product.description ?? "").replace(AMAZON_DELIVERY_METHOD_TEXT, "").trim();
     if (desc && desc.length > current.length + 40) patch.description = buildAmazonDescription(desc);
     const options = extractAmazonOptions(html);
-    if (shouldReplaceOptions(product.variations, options)) patch.variations = options;
+    if (offer.stock > 0) patch.variations = offer.variations;
+    else if (shouldReplaceOptions(product.variations, options)) patch.variations = options;
     const specs = sanitizeAmazonSpecs(extractSpecs(document));
     const oldSpecs = product.specifications ?? {};
     const userSpecCount = Object.keys(oldSpecs).filter((k) => k !== "affiliate_url" && !k.startsWith("_")).length;
     if (Object.keys(specs).length > userSpecCount) patch.specifications = { ...specs, ...oldSpecs };
   } catch { /* conteúdo opcional */ }
   const variations = (patch.variations as any[]) ?? product.variations;
-  const quantity = confirmedAmazonStock(availability, Boolean(variations?.length));
+  const quantity = Math.min(offer.stock, confirmedSelectedAmazonStock(availability, variations ?? []));
 
   const { error } = await supabaseAdmin.from("products").update({
     ...patch,

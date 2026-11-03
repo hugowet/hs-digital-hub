@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Confirmação automática Amazon — 03/11
+- [x] Lote de links e atualização de estoque confirmam automaticamente a oferta/ASIN selecionados, com preço exato e evidência da opção; outros modelos não herdam preço/estoque.
+- [x] 21 testes passaram e build OK; tela autenticada de Hugo confirmou Galaxy A34 5G por R$26,99, com mensagem de estoque confirmado automaticamente. Nenhum produto publicado ou preço real alterado; mudanças não publicadas no site.
+- [ ] Expandir confirmação para todas as opções irmãs: exige leitura comprovada de cada oferta; a página selecionada sozinha não confirma todos os estoques/preços, e cotas/bloqueios do leitor limitam a coleta.
+
 ## Falha no preço do lote Amazon — 03/11
 - [x] Página real da capinha B0CFGFYP27 retornou sem input ASIN e com a-offscreen vazio; parser agora verifica identidade do bloco principal e centavos impressos, bloqueando conflitos. 17 testes passaram; build OK.
 - [x] Tela autenticada de Hugo em /vendedor puxou a capinha por R$26,99 e exibiu conferência com modelos; nenhum produto publicado. Opções/estoque seguem não confirmados e compra bloqueada. Não publicado.
