@@ -2839,6 +2839,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_marketing_contacts: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+        }[]
+      }
       apply_club_pix_payment: {
         Args: {
           _amount: number
