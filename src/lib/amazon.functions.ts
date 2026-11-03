@@ -7,6 +7,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { extractAmazonOptions } from "./amazon-options";
 import { parseTrendQuery } from "./amazon-trend-categories";
 import { extractAmazonAvailability } from "./amazon-availability";
+import { validateAmazonProductUrl } from "./amazon-link-batch";
+import { assertAmazonPageReadable } from "./amazon-request-policy";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
@@ -99,7 +101,7 @@ export function extractSpecs(doc: Document): Record<string, string> {
 
 export const fetchAmazonProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ url: z.string().url() }).parse(input))
+  .inputValidator((input) => z.object({ url: z.string().max(2000).transform(validateAmazonProductUrl) }).parse(input))
   .handler(async ({ data, context }) => {
     const email = String(context.claims?.email ?? "").toLowerCase();
     if (!ALLOWED_EMAILS.includes(email)) throw new Error("Recurso exclusivo da administração.");
@@ -140,6 +142,7 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
 
     const result = await response.json();
     const payload = result?.data && typeof result.data === "object" ? result.data : result;
+    assertAmazonPageReadable(payload);
     const json = payload?.json ?? null;
     const rawHtml: string = typeof payload?.rawHtml === "string" ? payload.rawHtml : "";
 

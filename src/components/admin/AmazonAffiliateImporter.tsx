@@ -32,6 +32,7 @@ import { amazonVariationTemplate, withAmazonSizeFallback } from "@/lib/amazon-va
 import { TREND_CATEGORY_LABELS } from "@/lib/amazon-trend-categories";
 import type { AmazonOptionGroup } from "@/lib/amazon-options";
 import { fetchAmazonProduct, searchAmazonTrends, getAmazonAutoImportStatus, setAmazonAutoImport } from "@/lib/amazon.functions";
+import { AmazonLinkBatch } from "./AmazonLinkBatch";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -792,6 +793,8 @@ export function AmazonAffiliateImporter() {
           </div>
         )}
       </div>
+
+      <AmazonLinkBatch storeId={storeId} />
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Formulário Principal */}
