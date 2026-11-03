@@ -1,8 +1,8 @@
 # HS Digital — MVP
 
 ## Carrossel Mais vendidos — 03/11
-- [ ] Trocar a primeira fileira de Seleção do dia por carrossel automático exclusivo Amazon e destacar a camisa “procura no Google”, preservando filtros, demais produtos e importador.
-- [ ] Conferir fotos, avanço automático, setas e abertura de produto no celular e computador.
+- [x] Primeira fileira substituída por Mais vendidos exclusivo Amazon, com camisa Procura no Gugo em destaque; ordenação usa vendas registradas, sem inventar contagens. Filtros, catálogo restante e importador preservados.
+- [x] Três testes passaram; fotos, avanço automático, pausa, setas e abertura da camisa conferidos em 434x794 e 1280x1800, sem erros; build OK. Não publicado.
 
 ## Voltar da busca e rastreamento — 03/11
 - [x] Voltar nativo limpa busca na vitrine e em Meus produtos; conferido em 434x769 com sessão real, sem sair da página.
