@@ -29,6 +29,7 @@ export function extractProductContents(description: string): { contents: string[
   }
   const contents = items
     .map((s) => s.replace(/^(?:[-•*]\s*|\d+[.)]\s+)/, "").trim())
+    .filter((s) => !/^(?:garantindo|proporcionando|oferecendo|ideal para|contribuindo)\b/i.test(s))
     .filter((s) => s.length > 1 && s.length <= 120)
     .slice(0, 25);
   if (!contents.length) return { contents: [], rest: description };

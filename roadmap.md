@@ -415,5 +415,5 @@
 - [x] Varredura: padronizar texto de logística Amazon nas descrições
 
 ## Correção da descrição — 03/11
-- [ ] Restaurar logística parceira Amazon nos produtos atuais e próximos importados.
-- [ ] Preservar a descrição completa separada dos itens destacados; validar testes e página real.
+- [x] Restaurar logística parceira Amazon na exibição dos produtos atuais e próximos importados, sem apagar dados.
+- [x] Preservar a descrição completa separada dos itens destacados; 12 testes e página real sem erros validados.
