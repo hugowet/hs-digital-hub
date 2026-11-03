@@ -95,6 +95,10 @@ function matchModel(models: string[], n: string): string | undefined {
   });
 }
 
+/** Primeira palavra de cada modelo, para reconhecer a família de um modelo não listado (ex.: "Bros 150"). */
+const MOTO_TOKENS = new Set(MOTO_MODELS.map((m) => normalizeCatalogSearch(m).split(" ")[0]));
+const CAR_TOKENS = new Set(CAR_MODELS.map((m) => normalizeCatalogSearch(m).split(" ")[0]));
+
 /** Nome do veículo (com ano opcional) vira busca de todas as peças daquele veículo. */
 export function directVehicleQuery(text: string, cursor = 0, pages = 6): TrendQuery | null {
   const ym = text.match(YEAR_RE);
@@ -105,7 +109,16 @@ export function directVehicleQuery(text: string, cursor = 0, pages = 6): TrendQu
   const moto = matchModel(MOTO_MODELS, n);
   const car = moto ? undefined : matchModel(CAR_MODELS, n);
   if (!moto && !car && !year) return null;
-  const parts = car ? CAR_FULL_PARTS : MOTO_FULL_PARTS.concat(moto ? [] : CAR_FULL_PARTS.filter((p) => !MOTO_FULL_PARTS.includes(p)));
+  // Modelo não listado: a primeira palavra decide a família (moto ou carro);
+  // sem sinal nenhum, cobre os dois tipos sem misturar dentro da mesma lista.
+  const head = n.split(" ")[0];
+  const parts = car
+    ? CAR_FULL_PARTS
+    : moto || MOTO_TOKENS.has(head)
+      ? MOTO_FULL_PARTS
+      : CAR_TOKENS.has(head)
+        ? CAR_FULL_PARTS
+        : MOTO_FULL_PARTS.concat(CAR_FULL_PARTS.filter((p) => !MOTO_FULL_PARTS.includes(p)));
   const vehicle = [base, year].filter(Boolean).join(" ");
   const list = parts.map((p) => `${p} ${vehicle}`);
   const start = ((cursor % list.length) + list.length) % list.length;
