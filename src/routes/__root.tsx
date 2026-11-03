@@ -150,6 +150,7 @@ function RootComponent() {
           <Outlet />
           <Toaster position="top-center" richColors />
           <AccountNotificationListener />
+          <SiteViewTracker />
           {pathname === "/" && <InstallAppPrompt />}
           {pathname === "/" && <AuraChatWidget />}
           <ExitConfirmGuard active={pathname === "/"} />
