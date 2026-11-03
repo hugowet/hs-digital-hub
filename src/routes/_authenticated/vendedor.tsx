@@ -1445,6 +1445,11 @@ function SellerOrdersTab({ storeId, showManualReport = false }: { storeId: strin
                 </div>
               </div>
 
+              {!isPaid && <div role="status" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground">
+                <p className="font-semibold">Este pedido ainda não foi pago.</p>
+                <p className="text-muted-foreground">O cliente gerou o pedido mas não concluiu o pagamento. Rastreio, previsão, tentativa e “Seu pedido foi entregue” liberam sozinhos assim que o pagamento for aprovado — não compre nada na Amazon antes disso.</p>
+              </div>}
+
               {isPaid && step !== "delivered" && <Button disabled={updatingOrder === order.id} onClick={() => setDeliveryConfirmation(order.id)}><CheckCircle2 className="size-4" />Seu pedido foi entregue</Button>}
 
               {showManualReport && <div className="border-t border-border pt-3">
