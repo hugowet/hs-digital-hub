@@ -1,5 +1,11 @@
 # HS Digital — MVP
 
+## Links Amazon em lote — 03/11
+- [x] Leitura individual/lote usa só preço BRL da oferta principal e ASIN comprovados no HTML, com centavos exatos; ausência/ambiguidade bloqueadas, sem estimativa JSON. 17 testes passaram e build OK; leitura Amazon real não executada (créditos), tela segue não homologada.
+- [x] Até 50 links no importador do vendedor, com fila serial, pausas e resultados ao lado antes de publicação explícita dos selecionados; publicação preserva RLS/propriedade e estoque confirmado.
+- [x] 16 testes passaram: limite, deduplicação, domínios, fila, falhas e estoque; montagem sem erros. Sem leitura paga ou publicação de produtos reais.
+- [ ] Conferir leitura → seleção → publicação na tela: /vendedor autenticado permaneceu em branco no navegador de teste; depende da prévia funcional. Não publicado.
+
 ## Promoções manuais — 02/11
 - [x] Aba no vendedor para selecionar produtos Amazon, aplicar 25/35/50% da margem e retirar promoções; preços e lucro estimados exibidos antes de aplicar.
 - [x] Limite global atômico de 50, propriedade e conta de Hugo verificadas, prazo de 15 dias e proteção de lucro estimado; seleção manual pode incluir preços maiores, seleção antiga mantém corte de R$300.
