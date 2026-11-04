@@ -2,6 +2,7 @@
 import { deliveryFields, deliveryReport, deliverySteps, currentDeliveryStep, showsManualPurchaseReport } from "@/lib/order-delivery";
 import { SellerDeliveryAttempt } from "@/components/seller-delivery-attempt";
 import { SellerPromotionsTab } from "@/components/seller-promotions-tab";
+import { SellerCarouselTab } from "@/components/seller-carousel-tab";
 import { sellerProductSearchPattern } from "@/lib/seller-product-search";
 import { AmazonAffiliateImporter } from "@/components/admin/AmazonAffiliateImporter";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
@@ -333,6 +334,7 @@ function SellerCenterPage() {
           <TabsTrigger value="messages">Mensagens <UnreadDot show={Boolean(unread?.seller)} /></TabsTrigger>
           <TabsTrigger value="products">Meus produtos</TabsTrigger>
           {isPlatformOwner && <TabsTrigger value="promotions">Promoções HS</TabsTrigger>}
+          {isPlatformOwner && <TabsTrigger value="best-sellers">Mais vendidos</TabsTrigger>}
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e extrato</TabsTrigger>
           <TabsTrigger value="mercadopago">Mercado Pago</TabsTrigger>
@@ -352,6 +354,7 @@ function SellerCenterPage() {
 
         {/* Aba de Produtos */}
         {isPlatformOwner && <TabsContent value="promotions" className="pt-4"><SellerPromotionsTab storeId={store.id} /></TabsContent>}
+        {isPlatformOwner && <TabsContent value="best-sellers" className="pt-4"><SellerCarouselTab storeId={store.id} /></TabsContent>}
         <TabsContent value="products" className="pt-4">
           <section className="surface-card p-4">
             <h2 className="text-base font-semibold mb-4">Meus produtos ({productTotal})</h2>

@@ -108,6 +108,32 @@ export type Database = {
           },
         ]
       }
+      amazon_carousel_controls: {
+        Row: {
+          included: boolean
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          included: boolean
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          included?: boolean
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amazon_carousel_controls_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       arcade_game_sessions: {
         Row: {
           accepted_coins: number | null
@@ -2848,6 +2874,7 @@ export type Database = {
           id: string
         }[]
       }
+      amazon_carousel_product_ids: { Args: never; Returns: string[] }
       apply_club_pix_payment: {
         Args: {
           _amount: number
@@ -3014,6 +3041,10 @@ export type Database = {
       hs_bank_request_credit: { Args: { _store_id: string }; Returns: string }
       hs_promo_price: {
         Args: { _cost: number; _regular: number; _share: number }
+        Returns: number
+      }
+      manage_amazon_carousel: {
+        Args: { _include: boolean; _product_ids: string[]; _store_id: string }
         Returns: number
       }
       manage_seller_hs_promotions: {

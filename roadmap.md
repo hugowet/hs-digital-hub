@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Controle manual Mais vendidos — 04/11
+- [ ] Adicionar aba no vendedor com busca e ações de incluir/retirar os próprios produtos Amazon, sem mudar preços, estoque ou importador.
+- [ ] Persistir a seleção e conferir inclusão/retirada e carrossel na conta real.
+
 ## Carrossel Mais vendidos — 03/11
 - [x] Primeira fileira substituída por Mais vendidos exclusivo Amazon, com camisa Procura no Gugo em destaque; ordenação usa vendas registradas, sem inventar contagens. Filtros, catálogo restante e importador preservados.
 - [x] Três testes passaram; fotos, avanço automático, pausa, setas e abertura da camisa conferidos em 434x794 e 1280x1800, sem erros; build OK. Não publicado.

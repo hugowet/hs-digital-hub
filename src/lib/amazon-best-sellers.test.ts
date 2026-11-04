@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Product } from "./catalog";
-vi.mock("@/lib/catalog.functions", () => ({ fetchCatalogPage: vi.fn() }));
+vi.mock("@/lib/catalog.functions", () => ({ fetchAmazonCarousel: vi.fn() }));
 import { FEATURED_SHIRT_ID, selectAmazonBestSellers } from "./amazon-best-sellers";
 
 const product = (id: string, sold_count: number, supplier = "amazon", stock = 1) => ({ id, sold_count, supplier, stock }) as Product;

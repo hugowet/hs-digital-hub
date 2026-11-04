@@ -204,6 +204,17 @@ export const fetchProducts = createServerFn({ method: "GET" }).handler(async () 
   }
 });
 
+export const fetchAmazonCarousel = createServerFn({ method: "GET" }).handler(async () => {
+  const db = await createPublicClient();
+  const { data: ids, error } = await db.rpc("amazon_carousel_product_ids");
+  if (error) throw error;
+  if (!ids?.length) return [] as Product[];
+  const result = await db.from("products").select(cardProjection).in("id", ids).eq("is_active", true).eq("supplier", "amazon").gt("stock", 0);
+  if (result.error) throw result.error;
+  const byId = new Map((result.data ?? []).map(p => [p.id, p]));
+  return prepareCards(ids.flatMap(id => { const row = byId.get(id); return row ? [row] : []; }));
+});
+
 export const fetchProduct = createServerFn({ method: "GET" })
   .inputValidator((input) => z.object({ productId: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
