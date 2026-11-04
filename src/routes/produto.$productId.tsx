@@ -44,7 +44,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { catalogDisplayPrice } from "@/lib/product-price";
+import { catalogDisplayPrice, canAddProductToCart } from "@/lib/product-price";
 import { useCjPrice } from "@/lib/use-cj-price";
 import { deliveryDateRange, formatDeliveryRange } from "@/lib/delivery-estimate";
 import { confirmCjOption } from "@/lib/cj-option.functions";
@@ -771,7 +771,7 @@ function ProductDetailPage() {
               <div className="mt-6 space-y-2.5">
                 <Button
                   onClick={() => handleAddToCart(true)}
-                  disabled={maxAvailableStock === 0 || (isCj && Boolean(delivery.postalCode) && !priceConfirmed)}
+                  disabled={!canAddProductToCart(product, quantity)}
                   className="w-full h-12 text-sm font-bold bg-[#3483fa] hover:bg-[#2968c8] text-white shadow-md rounded-xl"
                 >
                   <Zap className="h-4 w-4 mr-2" /> Comprar Agora
@@ -779,7 +779,7 @@ function ProductDetailPage() {
                 <Button
                   variant="outline"
                   onClick={() => handleAddToCart(false)}
-                  disabled={maxAvailableStock === 0 || (isCj && Boolean(delivery.postalCode) && !priceConfirmed)}
+                  disabled={!canAddProductToCart(product, quantity)}
                   className="w-full h-12 text-sm font-bold rounded-xl border-primary/40 text-primary hover:bg-primary/5"
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" /> Adicionar ao Carrinho
