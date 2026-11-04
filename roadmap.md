@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Verificação rápida da compra — 04/11
+- [ ] Conferir vitrine publicada, produto, carrinho e início do checkout com sessão real, sem cobrança.
+- [ ] Corrigir falhas comprovadas e executar testes relacionados, preservando regras e pedidos existentes.
+- [ ] Informar limites da verificação e necessidade de publicar eventuais correções.
+
 ## Controle manual Mais vendidos — 04/11
 - [x] Aba Mais vendidos no vendedor com busca e ações de incluir/retirar os próprios produtos Amazon, sem mudar preços, estoque ou importador.
 - [x] Seleção persistida; retirada e reinclusão da camisa conferidas na conta JJ Kuster e na vitrine em 434x794 e 1280x1800; sete testes passaram e build OK. Não publicado.
