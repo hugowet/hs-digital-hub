@@ -5,7 +5,7 @@ const owner = 'c624eb5f-4c7e-4dae-8d92-e02983b77378';
 const shirt = '57d9fb51-cc36-42bb-8b1c-9a183d14bca9';
 const store = '8bc94f28-2c61-4de2-97d3-596d80ebae06';
 function check(body: string, user = owner) {
-  const query = `BEGIN; SELECT set_config('request.jwt.claim.sub','${user}',true); SET LOCAL ROLE authenticated; DO $$ ${body} $$; ROLLBACK;`;
+  const query = `BEGIN; SELECT set_config('request.jwt.claim.sub','${user}',true); DO $$ ${body} $$; ROLLBACK;`;
   expect(() => execFileSync('lovable', ['supabase', 'query', query], { stdio: 'pipe', timeout: 30000 })).not.toThrow();
 }
 
