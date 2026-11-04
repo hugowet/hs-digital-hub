@@ -35,7 +35,10 @@ export function restoreCart(raw: string | null): CartItem[] {
 
 export function mergeCartItem(items: CartItem[], item: Omit<CartItem, "quantity">, quantity: number): CartItem[] {
   const found = items.find((row) => row.productId === item.productId);
-  const nextQuantity = Math.min((found?.quantity ?? 0) + quantity, item.stock);
+  // A single product row carries one supplier choice; changing it must not
+  // silently transfer quantities purchased for the previous color/size.
+  const sameChoice = found?.choice === item.choice;
+  const nextQuantity = Math.min((sameChoice ? found?.quantity ?? 0 : 0) + quantity, item.stock);
   if (nextQuantity <= 0) return items;
   if (!found) return [...items, { ...item, quantity: nextQuantity }];
   return items.map((row) => row.productId === item.productId ? { ...row, ...item, quantity: nextQuantity } : row);

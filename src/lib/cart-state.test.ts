@@ -21,4 +21,10 @@ describe("recuperação do carrinho", () => {
     expect(mergeCartItem([], { ...item, stock: 1 }, 2)[0]?.quantity).toBe(1);
     expect(mergeCartItem([], { ...item, stock: 0 }, 1)).toEqual([]);
   });
+  it("não soma quantidades de outra cor ao trocar a opção", () => {
+    const result = mergeCartItem([{ ...item, choice: "Cor: Preto" }], { ...item, choice: "Cor: Branco" }, 1);
+    expect(result[0]?.choice).toBe("Cor: Branco");
+    expect(result[0]?.quantity).toBe(1);
+    expect(result).toHaveLength(1);
+  });
 });
