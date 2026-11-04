@@ -2874,6 +2874,7 @@ export type Database = {
           id: string
         }[]
       }
+      amazon_carousel_product_ids: { Args: never; Returns: string[] }
       apply_club_pix_payment: {
         Args: {
           _amount: number
