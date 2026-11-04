@@ -96,15 +96,19 @@ function AuthPage() {
   }
 
   async function handleGoogle() {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        toast.error("Não foi possível entrar com Google");
+        return;
+      }
+      if (result.redirected) return;
+      navigate({ to: (redirectUrl as any) || "/", replace: true });
+    } catch {
       toast.error("Não foi possível entrar com Google");
-      return;
     }
-    if (result.redirected) return;
-    navigate({ to: (redirectUrl as any) || "/", replace: true });
   }
 
   return (

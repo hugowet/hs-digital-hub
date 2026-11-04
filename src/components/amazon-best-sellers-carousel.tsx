@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight, Pause, Play, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { brl } from "@/lib/format";
 import { createCarouselAutoplay } from "@/lib/carousel-autoplay";
 
 export function AmazonBestSellersCarousel() {
-  const { data: products } = useSuspenseQuery(amazonBestSellersOptions);
+  // An optional carousel must never replace the entire storefront on a network failure.
+  const { data: products = [] } = useQuery({ ...amazonBestSellersOptions, throwOnError: false });
   const [trackRef, carousel] = useEmblaCarousel({ align: "start", loop: true });
   const [paused, setPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);

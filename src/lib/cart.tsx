@@ -1,25 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-
-export type CartItem = {
-  productId: string;
-  title: string;
-  price: number;
-  imageUrl: string | null;
-  storeId: string;
-  storeName: string;
-  freeShipping: boolean;
-  productType: string;
-  stock: number;
-  quantity: number;
-  supplier?: string | null;
-  compareAtPrice?: number | null;
-  quotedPostalCode?: string;
-  quotedExpiresAt?: string;
-  quotedShipping?: number;
-  /** Buyer-chosen options, e.g. "Cor: Preto · Tamanho: 58". */
-  choice?: string;
-};
+import { mergeCartItem, restoreCart, type CartItem } from "./cart-state";
+export type { CartItem } from "./cart-state";
 
 type CartContextValue = {
   items: CartItem[];
@@ -36,32 +18,26 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [restored, setRestored] = useState(false);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Array<CartItem & { stock?: number }>;
-        setItems(
-          parsed.map((item) => ({
-            ...item,
-            stock: Number.isFinite(item.stock) ? Number(item.stock) : 99,
-            productType: item.productType ?? "physical",
-          })),
-        );
-      }
+      setItems(restoreCart(localStorage.getItem(STORAGE_KEY)));
     } catch {
       /* carrinho vazio */
+    } finally {
+      setRestored(true);
     }
   }, []);
 
   useEffect(() => {
+    if (!restored) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch {
       /* ignora quota */
     }
-  }, [items]);
+  }, [items, restored]);
 
   const value = useMemo<CartContextValue>(() => {
     const count = items.reduce((sum, i) => sum + i.quantity, 0);
@@ -71,17 +47,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       count,
       subtotal,
       add: (item, quantity = 1) => {
-        setItems((prev) => {
-          const found = prev.find((i) => i.productId === item.productId);
-          if (found) {
-            return prev.map((i) =>
-              i.productId === item.productId
-                ? { ...i, ...item, quantity: Math.min(i.quantity + quantity, i.stock) }
-                : i,
-            );
-          }
-          return [...prev, { ...item, quantity }];
-        });
+        setItems((prev) => mergeCartItem(prev, item, quantity));
         toast.success("Adicionado ao carrinho");
       },
       setQuantity: (productId, quantity) =>
