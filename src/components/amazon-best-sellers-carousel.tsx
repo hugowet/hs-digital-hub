@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Pause, Play, TrendingUp } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { amazonBestSellersOptions, FEATURED_SHIRT_ID } from "@/lib/amazon-best-sellers";
 import { brl } from "@/lib/format";
+import { createCarouselAutoplay } from "@/lib/carousel-autoplay";
 
 export function AmazonBestSellersCarousel() {
   const { data: products } = useSuspenseQuery(amazonBestSellersOptions);
@@ -13,6 +14,7 @@ export function AmazonBestSellersCarousel() {
   const [paused, setPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const interacting = useRef(false);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -24,12 +26,26 @@ export function AmazonBestSellersCarousel() {
 
   useEffect(() => {
     if (!carousel || paused || reducedMotion || products.length < 2) return;
-    const id = window.setInterval(() => {
-      if (document.hidden || interacting.current) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    let visible = false;
+    const timer = createCarouselAutoplay(() => {
+      if (interacting.current) return;
       if (carousel.canScrollNext()) carousel.scrollNext();
       else carousel.scrollTo(0);
-    }, 5000);
-    return () => window.clearInterval(id);
+    });
+    const update = () => timer.setActive(visible && !document.hidden);
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = Boolean(entry?.isIntersecting && entry.intersectionRatio >= 0.25);
+      update();
+    }, { threshold: 0.25 });
+    observer.observe(viewport);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      timer.dispose();
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", update);
+    };
   }, [carousel, paused, reducedMotion, products.length]);
 
   if (!products.length) return null;
@@ -48,7 +64,7 @@ export function AmazonBestSellersCarousel() {
           <Button size="icon" variant="outline" aria-label="Próximos mais vendidos" title="Próximos" onClick={() => carousel?.scrollNext()}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </div>
-      <div ref={trackRef} className="overflow-hidden" onPointerEnter={() => { interacting.current = true; }} onPointerLeave={() => { interacting.current = false; }} onFocusCapture={() => { interacting.current = true; }} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) interacting.current = false; }}>
+      <div ref={(node) => { viewportRef.current = node; trackRef(node); }} className="overflow-hidden" onPointerEnter={() => { interacting.current = true; }} onPointerLeave={() => { interacting.current = false; }} onFocusCapture={() => { interacting.current = true; }} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) interacting.current = false; }}>
         <div className="-ml-3 flex touch-pan-y">
           {products.map((product) => (
             <div key={product.id} data-carousel-product-id={product.id} className="min-w-0 shrink-0 grow-0 basis-1/2 pl-3 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
