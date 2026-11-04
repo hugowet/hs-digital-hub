@@ -1,5 +1,8 @@
 # HS Digital — MVP
 
+## Botões de compra CJ — 04/11
+- [ ] Corrigir bloqueio indevido de compra enquanto a cotação por CEP está pendente, preservando estoque e validações no pagamento; testar produto → carrinho com conta real.
+
 ## Verificação rápida da compra — 04/11
 - [x] Vitrine publicada abriu sem erros; produto → adicionar → carrinho → recarregar → validação de endereço conferidos em sessão real no celular, sem criar pedido ou cobrar.
 - [x] Recuperação de armazenamento inválido, persistência após restauração e limite pelo estoque atualizado corrigidos; trocar opção não combina quantidades antigas. Carrossel isolado de falhas e erro de Google tratado.
