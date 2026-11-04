@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Botões de compra CJ — 04/11
+- [x] Reproduzido Comprar Agora desativado na conta real por falha de frete apesar de estoque positivo; botões desacoplados da cotação, mantendo estoque e validações no pagamento.
+- [x] Adicionar → Comprar Agora → carrinho → recarregar conferidos no celular com produto CJ real; dez testes passaram e build OK. Sem pedido ou cobrança; correção precisa de publicação.
+
 ## Verificação rápida da compra — 04/11
 - [x] Vitrine publicada abriu sem erros; produto → adicionar → carrinho → recarregar → validação de endereço conferidos em sessão real no celular, sem criar pedido ou cobrar.
 - [x] Recuperação de armazenamento inválido, persistência após restauração e limite pelo estoque atualizado corrigidos; trocar opção não combina quantidades antigas. Carrossel isolado de falhas e erro de Google tratado.
