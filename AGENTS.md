@@ -54,10 +54,9 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Order chats persist. Private card margins use bounded identity-scoped batches and verified store ownership.
 - Seller-managed HS promotions use an authenticated owner-scoped database transaction for price updates and a shared advisory lock for the carousel capacity; public discount badges reflect the actual price reduction, not the chosen margin share.
 - Amazon queues one read, keeps delays/budgets, stops on CAPTCHA/Dogs, saves Retry-After recovery and candidates on reader failures; 12 safe diagnostic runs; trust filters intact.
-- Seller URL batches stage at most 50 links in a separate read-only serial queue; only explicit selection publication writes products under owner RLS, using confirmed stock and no fabricated reference prices.
+- Seller URL/page batches (max 50) queue in amazon_link_jobs for a cron worker, so reads survive app close; only explicit selection publishes, under owner RLS with confirmed stock.
 - Amazon result-page discovery parses bounded HTML candidates with explicit displayed prices and reputation filters, then stages price-ranked groups in the existing serial individual-offer queue; result cards never prove product stock or replace the exact selected-offer price.
 - Manual Amazon URL extraction verifies the selected ASIN from the hidden input or consistent main-price widget identities and reads exact BRL text or whole/fraction spans across main-price widgets; conflicting identities/prices fail closed, never reader JSON estimates, while HS sale-price margins remain separate.
 - Resolve @acemir/cssom to its CommonJS library entry in Vite so LinkeDOM gets named parser exports instead of the browser-only global script; keep it bundled for Workers.
 - Today's and seven-day audience counts filter the verified owner account ID server-side, including historical rows; other audience metrics remain unchanged to preserve their scope.
 - Contents extraction is additive; shared delivery normalization preserves published descriptions at display/import time.
-- Amazon link imports queue in amazon_link_jobs for a cron worker (survives app close); publishing stays manual.
