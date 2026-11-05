@@ -1,6 +1,8 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { sellerDisplayName } from "@/lib/seller-display";
 import { extractProductContents } from "@/lib/product-contents";
+import { formatCjDescription } from "@/lib/cj-presentation";
+import { cleanTitle } from "@/components/product-card";
 import { normalizeAmazonDeliveryText } from "@/lib/amazon-text";
 import { CheckCircle2 } from "lucide-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -625,7 +627,7 @@ function ProductDetailPage() {
                 </div>
 
                 <h1 className="mt-2 text-base sm:text-xl font-bold leading-snug text-foreground">
-                  {product.title}
+                  {(product as any)?.supplier === "cj" ? cleanTitle(product.title) : product.title}
                 </h1>
 
                 <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -642,6 +644,11 @@ function ProductDetailPage() {
                       <Truck className="h-3.5 w-3.5" />
                       Produto internacional · envio do exterior
                     </span>
+                    <ul className="mt-2 grid grid-cols-3 gap-1.5 text-center text-[10px] font-semibold text-foreground">
+                      <li className="rounded-lg border border-border bg-muted/30 p-2"><BadgeCheck className="mx-auto mb-1 h-4 w-4 text-primary" />Compra protegida</li>
+                      <li className="rounded-lg border border-border bg-muted/30 p-2"><Truck className="mx-auto mb-1 h-4 w-4 text-primary" />Rastreio por etapas</li>
+                      <li className="rounded-lg border border-border bg-muted/30 p-2"><CheckCircle2 className="mx-auto mb-1 h-4 w-4 text-primary" />Pix ou cartão</li>
+                    </ul>
                   ) : (product as any)?.supplier === "amazon" ? (
                     <span className="inline-flex items-center gap-1.5 rounded-md border border-success/40 bg-success/10 px-2.5 py-1 text-[11px] font-bold text-success">
                       <span aria-hidden>🇧🇷</span>
@@ -853,6 +860,38 @@ function ProductDetailPage() {
             {(() => {
               const original = product.description_long || product.description || "Descrição completa em processamento.";
               const full = product.supplier === "amazon" ? normalizeAmazonDeliveryText(original) : original;
+              if (product.supplier === "cj" && product.description_long) {
+                const sections = formatCjDescription(product.description_long);
+                if (sections.length) return (
+                  <div className="space-y-5">
+                    {sections.map((s, i) => (
+                      <div key={i} className={i ? "border-t border-border pt-4" : ""}>
+                        {s.title && <p className="mb-2 text-base font-black text-foreground">{s.title}</p>}
+                        {s.paragraphs.map((p, j) => <p key={j} className="mb-2 text-sm sm:text-base">{p}</p>)}
+                        {s.bullets.length > 0 && (
+                          <ul className="space-y-1.5">
+                            {s.bullets.map((b, j) => (
+                              <li key={j} className="flex gap-2 text-sm sm:text-base">
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{b}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {s.specs.length > 0 && (
+                          <dl className="mt-1 overflow-hidden rounded-xl border border-border text-xs sm:text-sm">
+                            {s.specs.map(([k, v], j) => (
+                              <div key={j} className={`grid grid-cols-[40%_60%] ${j % 2 ? "bg-card" : "bg-muted/30"}`}>
+                                <dt className="p-2.5 font-semibold text-muted-foreground">{k}</dt>
+                                <dd className="p-2.5 text-foreground">{v}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
               const { contents, rest } = extractProductContents(full);
               const desc = rest || full;
               const marker = "Método de entrega:";
