@@ -15,14 +15,14 @@ export function SellerCarouselTab({ storeId }: { storeId: string }) {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
-  const [carouselOnly, setCarouselOnly] = useState(false);
+  const [carouselOnly, setCarouselOnly] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const { data, error, isPending, refetch } = useQuery({ queryKey: ['seller-carousel', storeId, search, page, carouselOnly], queryFn: () => read({ data: { storeId, search, page, carouselOnly } }) });
-  const apply = async (include: boolean) => {
+  const apply = async (include: boolean, ids: string[] = selected) => {
     setBusy(true);
     try {
-      const count = await save({ data: { storeId, productIds: selected, include } });
+      const count = await save({ data: { storeId, productIds: ids, include } });
       setSelected([]);
       await Promise.all([qc.invalidateQueries({ queryKey: ['seller-carousel'] }), qc.invalidateQueries({ queryKey: ['amazon-best-sellers'] })]);
       toast.success(`${count} produto${count === 1 ? '' : 's'} ${include ? 'adicionado' : 'retirado'}${count === 1 ? '' : 's'} ${include ? 'ao' : 'do'} carrossel.`);
@@ -36,7 +36,7 @@ export function SellerCarouselTab({ storeId }: { storeId: string }) {
     </div>
     <div className="flex flex-wrap items-center gap-2 border-b border-border pb-4">
       <div className="relative min-w-0 flex-1 basis-48"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" /><Input aria-label="Buscar produtos para Mais vendidos" placeholder="Buscar produtos Amazon" className="pl-9" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} /></div>
-      <Button variant={carouselOnly ? 'secondary' : 'outline'} aria-pressed={carouselOnly} onClick={() => { setCarouselOnly(!carouselOnly); setPage(0); setSelected([]); }}>No carrossel</Button>
+      <Button variant={carouselOnly ? 'secondary' : 'outline'} aria-pressed={carouselOnly} onClick={() => { setCarouselOnly(!carouselOnly); setPage(0); setSelected([]); }}>{carouselOnly ? 'Ver todos os produtos' : 'Ver só os ativos no carrossel'}</Button>
     </div>
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-sm text-muted-foreground">{selected.length} selecionados</span>
@@ -57,6 +57,7 @@ export function SellerCarouselTab({ storeId }: { storeId: string }) {
             <div className="mb-2 flex items-center gap-2">{p.image_url && <img src={p.image_url} alt="" className="size-14 shrink-0 rounded object-contain" loading="lazy" />}<p className="line-clamp-3 text-sm font-medium">{p.title}</p></div>
             <p className="text-sm font-bold">{brl(Number(p.price))}</p>
             <p className={`mt-1 text-xs ${included ? 'text-success' : 'text-muted-foreground'}`}>{included ? 'No carrossel' : 'Fora do carrossel'}</p>
+            <Button type="button" size="sm" variant={included ? 'destructive' : 'default'} className="mt-2" disabled={busy} onClick={e => { e.preventDefault(); void apply(!included, [p.id]); }}>{included ? <><Trash2 />Retirar</> : <><Plus />Adicionar</>}</Button>
             {(!p.is_active || p.stock <= 0) && <p className="mt-1 text-xs text-destructive">{!p.is_active ? 'Produto não publicado' : 'Estoque acabou'}</p>}
           </div>
         </label>;
