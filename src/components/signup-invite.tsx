@@ -24,7 +24,7 @@ export function SignupInvite() {
   const close = () => { sessionStorage.setItem(DISMISS_KEY, "1"); setShow(false); };
 
   return (
-    <div role="dialog" aria-label="Crie sua conta na HS Digital" className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-md rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-2xl animate-in slide-in-from-bottom-4">
+    <div role="dialog" aria-label="Crie sua conta na HS Digital" className="fixed inset-x-3 bottom-3 z-[100] mx-auto max-w-md rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-2xl animate-in slide-in-from-bottom-4">
       <button type="button" onClick={close} aria-label="Fechar" className="absolute right-2 top-2 rounded-full p-1 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
       <div className="flex gap-3 pr-6">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"><Gift className="h-5 w-5" /></span>
