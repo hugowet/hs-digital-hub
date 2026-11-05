@@ -31,6 +31,7 @@ import { Route as AuthenticatedVendedorRouteImport } from './routes/_authenticat
 import { Route as ProdutoProductIdRouteImport } from './routes/produto.$productId'
 import { Route as AuthenticatedPedidoOrderIdRouteImport } from './routes/_authenticated/pedido.$orderId'
 import { Route as ApiPublicAmazonAutoImportRouteImport } from './routes/api/public/amazon/auto-import'
+import { Route as ApiPublicAmazonLinkQueueRouteImport } from './routes/api/public/amazon/link-queue'
 import { Route as ApiPublicMelhorEnvioOauthCallbackRouteImport } from './routes/api/public/melhor-envio/oauth-callback'
 import { Route as ApiPublicMercadoPagoOauthCallbackRouteImport } from './routes/api/public/mercado-pago/oauth-callback'
 import { Route as ApiPublicMercadoPagoWebhookRouteImport } from './routes/api/public/mercado-pago/webhook'
@@ -152,6 +153,12 @@ const ApiPublicAmazonAutoImportRoute =
     path: '/api/public/amazon/auto-import',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAmazonLinkQueueRoute =
+  ApiPublicAmazonLinkQueueRouteImport.update({
+    id: '/api/public/amazon/link-queue',
+    path: '/api/public/amazon/link-queue',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicMelhorEnvioOauthCallbackRoute =
   ApiPublicMelhorEnvioOauthCallbackRouteImport.update({
     id: '/api/public/melhor-envio/oauth-callback',
@@ -222,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
   '/api/public/amazon/auto-import': typeof ApiPublicAmazonAutoImportRoute
+  '/api/public/amazon/link-queue': typeof ApiPublicAmazonLinkQueueRoute
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
@@ -253,6 +261,7 @@ export interface FileRoutesByTo {
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
   '/api/public/amazon/auto-import': typeof ApiPublicAmazonAutoImportRoute
+  '/api/public/amazon/link-queue': typeof ApiPublicAmazonLinkQueueRoute
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
@@ -286,6 +295,7 @@ export interface FileRoutesById {
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/_authenticated/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
   '/api/public/amazon/auto-import': typeof ApiPublicAmazonAutoImportRoute
+  '/api/public/amazon/link-queue': typeof ApiPublicAmazonLinkQueueRoute
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/produto/$productId'
     | '/pedido/$orderId'
     | '/api/public/amazon/auto-import'
+    | '/api/public/amazon/link-queue'
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
@@ -350,6 +361,7 @@ export interface FileRouteTypes {
     | '/produto/$productId'
     | '/pedido/$orderId'
     | '/api/public/amazon/auto-import'
+    | '/api/public/amazon/link-queue'
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
@@ -382,6 +394,7 @@ export interface FileRouteTypes {
     | '/produto/$productId'
     | '/_authenticated/pedido/$orderId'
     | '/api/public/amazon/auto-import'
+    | '/api/public/amazon/link-queue'
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
@@ -404,6 +417,7 @@ export interface RootRouteChildren {
   TrendsRoute: typeof TrendsRoute
   ProdutoProductIdRoute: typeof ProdutoProductIdRoute
   ApiPublicAmazonAutoImportRoute: typeof ApiPublicAmazonAutoImportRoute
+  ApiPublicAmazonLinkQueueRoute: typeof ApiPublicAmazonLinkQueueRoute
   ApiPublicMelhorEnvioOauthCallbackRoute: typeof ApiPublicMelhorEnvioOauthCallbackRoute
   ApiPublicMercadoPagoOauthCallbackRoute: typeof ApiPublicMercadoPagoOauthCallbackRoute
   ApiPublicMercadoPagoWebhookRoute: typeof ApiPublicMercadoPagoWebhookRoute
@@ -570,6 +584,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAmazonAutoImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/amazon/link-queue': {
+      id: '/api/public/amazon/link-queue'
+      path: '/api/public/amazon/link-queue'
+      fullPath: '/api/public/amazon/link-queue'
+      preLoaderRoute: typeof ApiPublicAmazonLinkQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/melhor-envio/oauth-callback': {
       id: '/api/public/melhor-envio/oauth-callback'
       path: '/api/public/melhor-envio/oauth-callback'
@@ -672,6 +693,7 @@ const rootRouteChildren: RootRouteChildren = {
   TrendsRoute: TrendsRoute,
   ProdutoProductIdRoute: ProdutoProductIdRoute,
   ApiPublicAmazonAutoImportRoute: ApiPublicAmazonAutoImportRoute,
+  ApiPublicAmazonLinkQueueRoute: ApiPublicAmazonLinkQueueRoute,
   ApiPublicMelhorEnvioOauthCallbackRoute:
     ApiPublicMelhorEnvioOauthCallbackRoute,
   ApiPublicMercadoPagoOauthCallbackRoute:

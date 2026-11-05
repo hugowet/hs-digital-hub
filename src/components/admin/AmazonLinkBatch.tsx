@@ -1,17 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Loader2, Pause, Play, Trash2, Upload } from "lucide-react";
+import { CheckCircle2, Loader2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { readAmazonResultsPage } from "@/lib/amazon-page.functions";
+import { enqueueAmazonLinks } from "@/lib/amazon-link-queue.functions";
 import { validateAmazonResultsUrl } from "@/lib/amazon-page-selection";
 import { fetchAmazonProduct } from "@/lib/amazon.functions";
-import { parseAmazonLinkBatch, readAmazonLinkBatch } from "@/lib/amazon-link-batch";
-import { amazonNextAllowedAt } from "@/lib/amazon-request-policy";
+import { parseAmazonLinkBatch } from "@/lib/amazon-link-batch";
 import { confirmedSelectedAmazonStock } from "@/lib/amazon-selected-offer";
 import { calculateAmazonPrice } from "@/lib/pricing";
 import { withAmazonSizeFallback } from "@/lib/amazon-variations";
@@ -21,61 +20,63 @@ import { supabase } from "@/integrations/supabase/client";
 import { brl } from "@/lib/format";
 
 type ProductData = Awaited<ReturnType<typeof fetchAmazonProduct>>;
-type Draft = { url: string; data: ProductData | null; error: string | null; selected: boolean; published: boolean; group?: string };
+type Draft = { id: string; url: string; data: ProductData | null; error: string | null; selected: boolean; published: boolean; group?: string };
 
 export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
-  const readProduct = useServerFn(fetchAmazonProduct);
-  const readPage = useServerFn(readAmazonResultsPage);
+  const enqueue = useServerFn(enqueueAmazonLinks);
   const [pageUrl, setPageUrl] = useState("");
   const [pageSummary, setPageSummary] = useState("");
   const [input, setInput] = useState("");
   const [drafts, setDrafts] = useState<Draft[]>([]);
-  const [running, setRunning] = useState(false);
+  const [queuing, setQueuing] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const stop = useRef(false);
-  const busy = useRef(false);
-  useEffect(() => () => { stop.current = true; }, []);
   const ready = drafts.filter((item) => item.data && !item.published);
   const selected = ready.filter((item) => item.selected);
+  // Reading happens on the server queue, so it keeps going with the app closed.
+  const running = drafts.some((item) => !item.data && !item.error && !item.published);
 
-  async function pull(resume = false, fromPage = false) {
-    if (busy.current || publishing) return;
-    let rows: Draft[] = [];
+  const refresh = useCallback(async () => {
+    const { data } = await supabase.from("amazon_link_jobs").select("id,url,grp,status,data,error").order("created_at", { ascending: true }).limit(100);
+    if (!data) return;
+    setDrafts((current) => {
+      const picked = new Map(current.map((item) => [item.id, item.selected]));
+      return data.map((row) => ({
+        id: row.id, url: row.url, group: row.grp ?? undefined,
+        data: (row.status === "done" || row.status === "published") ? row.data as unknown as ProductData : null,
+        error: row.status === "error" ? row.error : null,
+        published: row.status === "published",
+        selected: row.status === "done" && (picked.get(row.id) ?? true),
+      }));
+    });
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 8000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
+
+  async function pull(fromPage = false) {
+    if (queuing || publishing || !storeId) return;
     try {
       if (fromPage) validateAmazonResultsUrl(pageUrl);
-      else rows = resume ? drafts : parseAmazonLinkBatch(input).map((url) => ({ url, data: null, error: null, selected: false, published: false }));
+      else parseAmazonLinkBatch(input);
     } catch (error) { toast.error(error instanceof Error ? error.message : "Confira os links."); return; }
-    if (!resume && ready.length && !window.confirm("Substituir os produtos ainda não publicados por um novo lote?")) return;
-    stop.current = false;
-    busy.current = true;
-    setRunning(true);
+    if (ready.length && !window.confirm("Substituir os produtos ainda não publicados por um novo lote?")) return;
+    setQueuing(true);
     try {
-      if (fromPage) {
-        const page = await readPage({ data: { url: pageUrl } });
-        setPageSummary(`${page.cheap} baratos · ${page.moderate} intermediários · ${page.eligible} passaram pelos filtros da página`);
-        rows = page.items.map((item) => ({ url: item.url, group: item.group, data: null, error: null, selected: false, published: false }));
-        if (!rows.length) toast.info("Nenhum produto com preço e reputação suficientes nesta página.");
-        if (rows.length && !stop.current) await new Promise((resolve) => window.setTimeout(resolve, amazonNextAllowedAt() - Date.now()));
-      } else if (!resume) setPageSummary("");
-      setDrafts(rows);
-      const pending = rows.map((item, index) => ({ item, index })).filter(({ item }) => !item.data && !item.error);
-      await readAmazonLinkBatch({
-        urls: pending.map(({ item }) => item.url),
-        read: async (url) => {
-          const data = await readProduct({ data: { url } });
-          if (!data.title || !data.mainImage || data.costPrice <= 0) throw new Error("Dados incompletos: faltou nome, foto ou preço. Confira o anúncio.");
-          return data;
-        },
-        result: (index, data, error) => {
-          const target = pending[index];
-          if (!target) return;
-          setDrafts((current) => current.map((item, i) => i === target.index ? { ...item, data, error, selected: Boolean(data) } : item));
-        },
-        cancelled: () => stop.current,
-        wait: () => new Promise((resolve) => window.setTimeout(resolve, amazonNextAllowedAt() - Date.now())),
-      });
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Não consegui ler esta página."); }
-    finally { busy.current = false; setRunning(false); }
+      const result = await enqueue({ data: fromPage ? { storeId, pageUrl } : { storeId, links: input } });
+      setPageSummary(result.summary);
+      if (!result.queued) toast.info("Nenhum produto com preço e reputação suficientes nesta página.");
+      else toast.success(`${result.queued} link(s) na fila. A leitura continua mesmo se você sair do aplicativo.`);
+      await refresh();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Não consegui colocar na fila."); }
+    finally { setQueuing(false); }
+  }
+
+  async function remove(id: string) {
+    const { error } = await supabase.from("amazon_link_jobs").delete().eq("id", id);
+    if (error) toast.error("Não consegui remover."); else setDrafts((current) => current.filter((item) => item.id !== id));
   }
 
   async function publish() {
@@ -108,8 +109,9 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
       });
       const { error } = await supabase.from("products").insert(rows);
       if (error) throw error;
-      const urls = new Set(selected.map((item) => item.url));
-      setDrafts((current) => current.map((item) => urls.has(item.url) ? { ...item, published: true, selected: false } : item));
+      const ids = selected.map((item) => item.id);
+      await supabase.from("amazon_link_jobs").update({ status: "published" }).in("id", ids);
+      setDrafts((current) => current.map((item) => ids.includes(item.id) ? { ...item, published: true, selected: false } : item));
       toast.success(`${rows.length} produto(s) publicado(s).`);
     } catch (error) { toast.error(error instanceof Error ? error.message : "Não consegui publicar. Seus produtos continuam aqui."); }
     finally { setPublishing(false); }
@@ -119,17 +121,16 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
     <section aria-label="Importação de até 50 links Amazon" className="grid gap-5 border-y border-border py-5 lg:grid-cols-2">
       <div className="space-y-3">
         <Label htmlFor="amazon-results-page">Página Amazon · até 30 produtos</Label>
-        <Input id="amazon-results-page" type="url" value={pageUrl} onChange={(e) => setPageUrl(e.target.value)} placeholder="https://www.amazon.com.br/s?k=furadeira" disabled={running || publishing} />
-        <Button type="button" variant="outline" onClick={() => void pull(false, true)} disabled={running || publishing || !pageUrl.trim()}><Upload className="mr-2 h-4 w-4" />Puxar 15 baratos + 15 intermediários</Button>
+        <Input id="amazon-results-page" type="url" value={pageUrl} onChange={(e) => setPageUrl(e.target.value)} placeholder="https://www.amazon.com.br/s?k=furadeira" disabled={queuing || publishing} />
+        <Button type="button" variant="outline" onClick={() => void pull(true)} disabled={queuing || publishing || !pageUrl.trim()}><Upload className="mr-2 h-4 w-4" />Puxar 15 baratos + 15 intermediários</Button>
         {pageSummary && <p className="text-xs text-muted-foreground" aria-live="polite">{pageSummary}</p>}
         <div className="border-t border-border" />
         <Label htmlFor="amazon-batch-links">Links Amazon · até 50 produtos</Label>
-        <Textarea id="amazon-batch-links" rows={6} maxLength={50000} placeholder="https://www.amazon.com.br/dp/...&#10;https://amzn.to/..." value={input} onChange={(e) => setInput(e.target.value)} disabled={running || publishing} className="font-mono text-xs" />
+        <Textarea id="amazon-batch-links" rows={6} maxLength={50000} placeholder="https://www.amazon.com.br/dp/...&#10;https://amzn.to/..." value={input} onChange={(e) => setInput(e.target.value)} disabled={queuing || publishing} className="font-mono text-xs" />
         <div className="flex flex-wrap gap-2">
-          <Button type="button" onClick={() => void pull()} disabled={running || publishing || !input.trim()}><Upload className="mr-2 h-4 w-4" />Puxar dados do lote</Button>
-          {running ? <Button type="button" variant="outline" onClick={() => { stop.current = true; }}><Pause className="mr-2 h-4 w-4" />Pausar</Button> : drafts.some((item) => !item.data && !item.error) && <Button type="button" variant="outline" disabled={publishing} onClick={() => void pull(true)}><Play className="mr-2 h-4 w-4" />Continuar pendentes</Button>}
+          <Button type="button" onClick={() => void pull()} disabled={queuing || publishing || !input.trim()}><Upload className="mr-2 h-4 w-4" />{queuing ? "Colocando na fila..." : "Puxar dados do lote"}</Button>
         </div>
-        <p className="text-xs text-muted-foreground">A leitura usa créditos. O tempo depende da Amazon e dos limites do leitor.</p>
+        <p className="text-xs text-muted-foreground">A leitura roda em segundo plano: pode sair do aplicativo que ela continua até terminar. Usa créditos e respeita as pausas da Amazon.</p>
       </div>
       <div className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -139,7 +140,7 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
         <div className="max-h-[420px] space-y-2 overflow-y-auto" aria-live="polite">
           {!drafts.length && <p className="py-6 text-sm text-muted-foreground">Nenhum produto lido neste lote.</p>}
           {drafts.map((item, index) => (
-            <article key={item.url} className="flex items-start gap-3 rounded-md border border-border p-3">
+            <article key={item.id} className="flex items-start gap-3 rounded-md border border-border p-3">
               {item.data && <img src={item.data.mainImage} alt="" className="h-14 w-14 shrink-0 object-contain" />}
               <div className="min-w-0 flex-1">
                 <p className="break-words text-sm font-medium">{item.data?.title ?? `Link ${index + 1}`}</p>
@@ -151,14 +152,14 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
                   {Math.min(item.data.confirmedStock, confirmedSelectedAmazonStock(item.data.availability, withAmazonSizeFallback(item.data.variations, item.data))) > 0
                     ? <p className="text-xs text-primary">Estoque confirmado automaticamente · somente a opção exibida</p>
                     : <p className="text-xs text-destructive">Amazon não confirmou estoque ou opção · compra bloqueada</p>}
-                </> : <p className={item.error ? "break-words text-xs text-destructive" : "text-xs text-muted-foreground"}>{item.error ?? "Pendente"}</p>}
+                </> : <p className={item.error ? "break-words text-xs text-destructive" : "text-xs text-muted-foreground"}>{item.error ?? "Na fila · lendo em segundo plano"}</p>}
               </div>
-              {item.published ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : item.data && <Checkbox aria-label={`Selecionar ${item.data.title}`} checked={item.selected} disabled={publishing || running} onCheckedChange={(checked) => setDrafts((current) => current.map((draft, i) => i === index ? { ...draft, selected: checked === true } : draft))} />}
-              {!running && !publishing && !item.published && <Button type="button" variant="ghost" size="icon" aria-label={`Remover link ${index + 1}`} onClick={() => setDrafts((current) => current.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>}
+              {item.published ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : item.data && <Checkbox aria-label={`Selecionar ${item.data.title}`} checked={item.selected} disabled={publishing} onCheckedChange={(checked) => setDrafts((current) => current.map((draft, i) => i === index ? { ...draft, selected: checked === true } : draft))} />}
+              {!publishing && !item.published && <Button type="button" variant="ghost" size="icon" aria-label={`Remover link ${index + 1}`} onClick={() => void remove(item.id)}><Trash2 className="h-4 w-4" /></Button>}
             </article>
           ))}
         </div>
-        <Button type="button" className="w-full" disabled={running || publishing || !storeId || !selected.length} onClick={() => void publish()}>{publishing ? "Publicando..." : `Publicar selecionados (${selected.length})`}</Button>
+        <Button type="button" className="w-full" disabled={publishing || !storeId || !selected.length} onClick={() => void publish()}>{publishing ? "Publicando..." : `Publicar selecionados (${selected.length})`}</Button>
       </div>
     </section>
   );

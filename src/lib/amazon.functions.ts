@@ -104,8 +104,12 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const email = String(context.claims?.email ?? "").toLowerCase();
     if (!ALLOWED_EMAILS.includes(email)) throw new Error("Recurso exclusivo da administração.");
+    return readAmazonProductPage(data.url);
+  });
 
-    const url = data.url.trim();
+/** Shared by the interactive reader and the background link queue. */
+export async function readAmazonProductPage(rawUrl: string) {
+    const url = validateAmazonProductUrl(rawUrl).trim();
     if (!/amazon\./i.test(url) && !/amzn\./i.test(url)) {
       throw new Error("Informe um link da Amazon.");
     }
@@ -189,7 +193,7 @@ export const fetchAmazonProduct = createServerFn({ method: "POST" })
       availability: selectedOffer.availability,
       confirmedStock: selectedOffer.stock,
     };
-  });
+}
 
 const TREND_SCHEMA = {
   type: "object",

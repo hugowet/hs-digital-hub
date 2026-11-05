@@ -40,6 +40,7 @@ import { amazonBestSellersOptions } from "@/lib/amazon-best-sellers";
 import { personalizeProducts, recordCategoryClick, recordSearch } from "@/lib/interest-profile";
 import { IntroAnimation } from "@/components/intro-animation";
 import { SiteFooter } from "@/components/site-footer";
+import { SignupInvite } from "@/components/signup-invite";
 import { SiteHeader } from "@/components/site-header";
 import { selectionNavigation } from "@/lib/exit-navigation";
 import { Button } from "@/components/ui/button";
@@ -421,6 +422,7 @@ function Home() {
   return (
     <div className="min-h-screen bg-[#ebebeb] text-gray-900">
       <IntroAnimation />
+      <SignupInvite />
       {/* A typed search covers the whole store: a leftover category/origin/price filter must not hide results. */}
       <SiteHeader
         query={search.q}

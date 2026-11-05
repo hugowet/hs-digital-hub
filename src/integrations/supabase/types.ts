@@ -134,6 +134,51 @@ export type Database = {
           },
         ]
       }
+      amazon_link_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          data: Json | null
+          error: string | null
+          grp: string | null
+          id: string
+          locked_until: string | null
+          owner_id: string
+          status: string
+          store_id: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          data?: Json | null
+          error?: string | null
+          grp?: string | null
+          id?: string
+          locked_until?: string | null
+          owner_id: string
+          status?: string
+          store_id: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          data?: Json | null
+          error?: string | null
+          grp?: string | null
+          id?: string
+          locked_until?: string | null
+          owner_id?: string
+          status?: string
+          store_id?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       arcade_game_sessions: {
         Row: {
           accepted_coins: number | null
