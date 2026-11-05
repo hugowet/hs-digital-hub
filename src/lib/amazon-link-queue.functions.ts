@@ -22,7 +22,7 @@ export const enqueueAmazonLinks = createServerFn({ method: "POST" })
     let rows: { url: string; grp: string | null }[] = [];
     let summary = "";
     if (data.pageUrl) {
-      const { readAmazonResultsPageCore } = await import("./amazon-page.server");
+      const { readAmazonResultsPageCore } = await import("./amazon-page.functions");
       const page = await readAmazonResultsPageCore(data.pageUrl);
       summary = `${page.cheap} baratos · ${page.moderate} intermediários · ${page.eligible} passaram pelos filtros da página`;
       rows = page.items.map((item) => ({ url: validateAmazonProductUrl(item.url), grp: item.group ?? null }));
