@@ -2,7 +2,6 @@
 import { sellerDisplayName } from "@/lib/seller-display";
 import { extractProductContents } from "@/lib/product-contents";
 import { formatCjDescription } from "@/lib/cj-presentation";
-import { cleanTitle } from "@/components/product-card";
 import { normalizeAmazonDeliveryText } from "@/lib/amazon-text";
 import { CheckCircle2 } from "lucide-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -627,7 +626,7 @@ function ProductDetailPage() {
                 </div>
 
                 <h1 className="mt-2 text-base sm:text-xl font-bold leading-snug text-foreground">
-                  {(product as any)?.supplier === "cj" ? cleanTitle(product.title) : product.title}
+                  {product.title}
                 </h1>
 
                 <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">

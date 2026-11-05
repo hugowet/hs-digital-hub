@@ -10,7 +10,9 @@ const HEADINGS: Record<string, string> = {
   "product information": "Informações do produto", "informações do produto": "Informações do produto",
   "package content": "O que vem na embalagem", "package contents": "O que vem na embalagem",
   "package includes": "O que vem na embalagem", "packing list": "O que vem na embalagem",
-  "conteúdo da embalagem": "O que vem na embalagem", note: "Observações", notes: "Observações",
+  "conteúdo da embalagem": "O que vem na embalagem", note: "Observações", "purchase notice": "Antes de comprar", "size chart": "Tabela de medidas",
+  "how to use": "Como usar", usage: "Como usar", "product parameters": "Especificações",
+  "product details": "Detalhes do produto", details: "Detalhes do produto", notes: "Observações",
   "product image": "", "imagem do produto": "",
 };
 
