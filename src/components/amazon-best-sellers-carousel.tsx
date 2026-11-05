@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import useEmblaCarousel from "embla-carousel-react";
-import { ChevronLeft, ChevronRight, Pause, Play, TrendingUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { TrendingUp } from "lucide-react";
 import { amazonBestSellersOptions } from "@/lib/amazon-best-sellers";
 import { brl } from "@/lib/format";
 import { createCarouselAutoplay } from "@/lib/carousel-autoplay";
@@ -12,7 +11,6 @@ export function AmazonBestSellersCarousel() {
   // An optional carousel must never replace the entire storefront on a network failure.
   const { data: products = [] } = useQuery({ ...amazonBestSellersOptions, throwOnError: false });
   const [trackRef, carousel] = useEmblaCarousel({ align: "start", loop: true });
-  const [paused, setPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const interacting = useRef(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -26,7 +24,7 @@ export function AmazonBestSellersCarousel() {
   }, []);
 
   useEffect(() => {
-    if (!carousel || paused || reducedMotion || products.length < 2) return;
+    if (!carousel || reducedMotion || products.length < 2) return;
     const viewport = viewportRef.current;
     if (!viewport) return;
     let visible = false;
@@ -47,23 +45,16 @@ export function AmazonBestSellersCarousel() {
       observer.disconnect();
       document.removeEventListener("visibilitychange", update);
     };
-  }, [carousel, paused, reducedMotion, products.length]);
+  }, [carousel, reducedMotion, products.length]);
 
   if (!products.length) return null;
 
   return (
     <section aria-label="Mais vendidos" className="mb-7">
-      <div className="mb-4 flex items-center justify-between gap-2">
+      <div className="mb-4">
         <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
           <TrendingUp className="h-5 w-5 text-primary" /> Mais vendidos
         </h2>
-        <div className="flex shrink-0 gap-1">
-          {!reducedMotion && <Button size="icon" variant="ghost" aria-label={paused ? "Continuar carrossel" : "Pausar carrossel"} title={paused ? "Continuar" : "Pausar"} onClick={() => setPaused((value) => !value)}>
-            {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-          </Button>}
-          <Button size="icon" variant="outline" aria-label="Mais vendidos anteriores" title="Anteriores" onClick={() => carousel?.scrollPrev()}><ChevronLeft className="h-4 w-4" /></Button>
-          <Button size="icon" variant="outline" aria-label="Próximos mais vendidos" title="Próximos" onClick={() => carousel?.scrollNext()}><ChevronRight className="h-4 w-4" /></Button>
-        </div>
       </div>
       <div ref={(node) => { viewportRef.current = node; trackRef(node); }} className="overflow-hidden" onPointerEnter={() => { interacting.current = true; }} onPointerLeave={() => { interacting.current = false; }} onFocusCapture={() => { interacting.current = true; }} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) interacting.current = false; }}>
         <div className="-ml-3 flex touch-pan-y">
