@@ -60,3 +60,4 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Resolve @acemir/cssom to its CommonJS library entry in Vite so LinkeDOM gets named parser exports instead of the browser-only global script; keep it bundled for Workers.
 - Today's and seven-day audience counts filter the verified owner account ID server-side, including historical rows; other audience metrics remain unchanged to preserve their scope.
 - Contents extraction is additive; shared delivery normalization preserves published descriptions at display/import time.
+- Amazon link/page imports are queued in amazon_link_jobs and read by the scheduled /api/public/amazon/link-queue worker so they finish with the app closed; publication stays an explicit seller action.
