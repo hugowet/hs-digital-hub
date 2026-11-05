@@ -329,7 +329,7 @@ function SellerCenterPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-        <TabsList className="h-auto w-full flex-wrap justify-start gap-1 border-b">
+        <TabsList className="h-auto w-full justify-start overflow-x-auto border-b">
           <TabsTrigger value="orders">Pedidos e Envios</TabsTrigger>
           <TabsTrigger value="messages">Mensagens <UnreadDot show={Boolean(unread?.seller)} /></TabsTrigger>
           <TabsTrigger value="products">Meus produtos</TabsTrigger>
