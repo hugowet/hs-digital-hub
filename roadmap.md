@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Abas e carrossel Mais vendidos — 05/11
+- [x] Barra de abas do Seller Center voltou a ser uma linha única que arrasta para o lado, como estava; funções da aba Mais vendidos mantidas.
+- [x] Botões de pausa e setas removidos do carrossel Mais vendidos na vitrine; giro automático de 5s ao aparecer conferido em 434x769 (mudou aos ~4,5s e ~9s), 50 produtos no carrossel, quatro testes passaram e build OK. Ainda não publicado.
+
 ## Botões de compra CJ — 04/11
 - [x] Reproduzido Comprar Agora desativado na conta real por falha de frete apesar de estoque positivo; botões desacoplados da cotação, mantendo estoque e validações no pagamento.
 - [x] Adicionar → Comprar Agora → carrinho → recarregar conferidos no celular com produto CJ real; dez testes passaram e build OK. Sem pedido ou cobrança; correção precisa de publicação.
