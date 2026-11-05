@@ -43,7 +43,7 @@ export function formatCjDescription(text: string): CjSection[] {
     if (bullet) { current.bullets.push(bullet[1]); continue; }
     const spec = line.match(/^([^:：]{2,40})\s*[:：]\s*(.{1,200})$/);
     if (spec && spec[2].trim()) { current.specs.push([spec[1].trim(), spec[2].trim()]); continue; }
-    if (line.length <= 90 && current.title === "Destaques") current.bullets.push(line);
+    if (line.length <= 90 && (current.title === "Destaques" || current.title === "O que vem na embalagem")) current.bullets.push(line);
     else current.paragraphs.push(line);
   }
   push();

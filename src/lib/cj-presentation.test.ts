@@ -7,7 +7,7 @@ describe("formatCjDescription", () => {
     expect(s.map((x) => x.title)).toEqual(["Destaques", "Especificações", "O que vem na embalagem"]);
     expect(s[0].bullets).toEqual(["Good Material"]);
     expect(s[1].specs).toEqual([["Material", "Algodão"]]);
-    expect(s[2].bullets).toEqual(["x Bag"].length ? s[2].bullets : []);
+    expect(s[2].bullets).toEqual(["1 x Bag"]);
     expect(JSON.stringify(s)).not.toMatch(/China Post/);
   });
 });
