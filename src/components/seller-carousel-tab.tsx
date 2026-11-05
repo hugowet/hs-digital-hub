@@ -67,7 +67,7 @@ export function SellerCarouselTab({ storeId }: { storeId: string }) {
             <div className="mb-2 flex items-center gap-2">{p.image_url && <img src={p.image_url} alt="" className="size-14 shrink-0 rounded object-contain" loading="lazy" />}<p className="line-clamp-3 text-sm font-medium">{p.title}</p></div>
             <p className="text-sm font-bold">{brl(Number(p.price))}</p>
             <p className={`mt-1 text-xs ${included ? 'text-success' : 'text-muted-foreground'}`}>{included ? 'No carrossel' : 'Fora do carrossel'}</p>
-            <div className="mt-2 flex items-center gap-2 text-xs" onClick={e => e.preventDefault()}>
+            <div className="mt-2 flex items-center gap-2 text-xs">
               <span>Posição na vitrine:</span>
               <select aria-label={`Posição de ${p.title}`} className="rounded border border-input bg-background px-2 py-1" disabled={busy || (!p.is_active || p.stock <= 0)} value={data.slots?.[p.id] ?? ''} onChange={e => void changeSlot(p.id, e.target.value)}>
                 <option value="">Automática</option>
