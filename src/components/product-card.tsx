@@ -209,7 +209,7 @@ export function ProductCard({
               <Package className="h-3 w-3" /> Físico
             </span>
           )}
-          {isCj && <span className="rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">Internacional</span>}
+          {isCj && <span className="rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">✈️ Importado</span>}
           {product.supplier === "amazon" && !isDigital && <span className="rounded-md bg-success px-2 py-0.5 text-[10px] font-semibold text-success-foreground">🇧🇷 Nacional</span>}
         </div>
       </div>
