@@ -112,16 +112,19 @@ export type Database = {
         Row: {
           included: boolean
           product_id: string
+          slot: number | null
           updated_at: string
         }
         Insert: {
           included: boolean
           product_id: string
+          slot?: number | null
           updated_at?: string
         }
         Update: {
           included?: boolean
           product_id?: string
+          slot?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2920,6 +2923,13 @@ export type Database = {
         }[]
       }
       amazon_carousel_product_ids: { Args: never; Returns: string[] }
+      amazon_carousel_slots: {
+        Args: never
+        Returns: {
+          product_id: string
+          slot: number
+        }[]
+      }
       apply_club_pix_payment: {
         Args: {
           _amount: number
@@ -3239,6 +3249,10 @@ export type Database = {
           _supplier: string
         }
         Returns: string[]
+      }
+      set_amazon_carousel_slot: {
+        Args: { _product_id: string; _slot: number; _store_id: string }
+        Returns: undefined
       }
       social_contact_profiles: {
         Args: never

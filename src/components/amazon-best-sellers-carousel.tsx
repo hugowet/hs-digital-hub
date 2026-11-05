@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight, Pause, Play, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { amazonBestSellersOptions, FEATURED_SHIRT_ID } from "@/lib/amazon-best-sellers";
+import { amazonBestSellersOptions } from "@/lib/amazon-best-sellers";
 import { brl } from "@/lib/format";
 import { createCarouselAutoplay } from "@/lib/carousel-autoplay";
 
@@ -67,12 +67,12 @@ export function AmazonBestSellersCarousel() {
       </div>
       <div ref={(node) => { viewportRef.current = node; trackRef(node); }} className="overflow-hidden" onPointerEnter={() => { interacting.current = true; }} onPointerLeave={() => { interacting.current = false; }} onFocusCapture={() => { interacting.current = true; }} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) interacting.current = false; }}>
         <div className="-ml-3 flex touch-pan-y">
-          {products.map((product) => (
+          {products.map((product, index) => (
             <div key={product.id} data-carousel-product-id={product.id} className="min-w-0 shrink-0 grow-0 basis-1/2 pl-3 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
               <Link to="/produto/$productId" params={{ productId: product.id }} className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground">
                 <div className="relative aspect-square bg-muted/20">
                   {product.image_url && <img src={product.image_url} alt={product.title} width={400} height={400} loading="lazy" className="h-full w-full object-contain p-3" />}
-                  {product.id === FEATURED_SHIRT_ID && <span className="absolute left-2 top-2 rounded-md bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">Em destaque</span>}
+                  {index === 0 && <span className="absolute left-2 top-2 rounded-md bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">Em destaque</span>}
                 </div>
                 <div className="flex flex-1 flex-col p-3">
                   <p className="line-clamp-2 min-h-10 text-sm leading-5">{product.title}</p>

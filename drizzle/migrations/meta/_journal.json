@@ -589,6 +589,13 @@
       "when": 1793911738977,
       "tag": "0083_amazon_link_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1793916758761,
+      "tag": "0084_carousel_positions",
+      "breakpoints": true
     }
   ]
 }

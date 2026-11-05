@@ -12,6 +12,9 @@ export const getSellerCarousel = createServerFn({ method: 'POST' })
     const selection = await db.rpc('amazon_carousel_product_ids');
     if (selection.error) throw new Error(selection.error.message);
     const ids = selection.data ?? [];
+    const slotRows = await db.rpc('amazon_carousel_slots');
+    if (slotRows.error) throw new Error(slotRows.error.message);
+    const slots = Object.fromEntries((slotRows.data ?? []).map(r => [r.product_id, r.slot]));
     let query = db.from('products').select('id,title,image_url,price,stock,is_active', { count: 'exact' }).eq('store_id', data.storeId).eq('supplier', 'amazon');
     const search = data.search.replace(/[%_]/g, '').trim();
     if (search) query = query.ilike('title', `%${search}%`);
@@ -22,7 +25,7 @@ export const getSellerCarousel = createServerFn({ method: 'POST' })
     const paths = [...new Set(products.flatMap(p => p.image_url && !/^https?:\/\//.test(p.image_url) ? [p.image_url] : []))];
     const signed = paths.length ? await db.storage.from('product-images').createSignedUrls(paths, 3600) : null;
     const urls = new Map(paths.map((path, i) => [path, signed?.data?.[i]?.signedUrl]));
-    return { products: products.map(p => ({ ...p, image_url: p.image_url ? urls.get(p.image_url) ?? p.image_url : null })), total: result.count ?? 0, carouselIds: ids };
+    return { products: products.map(p => ({ ...p, image_url: p.image_url ? urls.get(p.image_url) ?? p.image_url : null })), total: result.count ?? 0, carouselIds: ids, slots };
   });
 
 export const saveSellerCarousel = createServerFn({ method: 'POST' })
@@ -32,4 +35,13 @@ export const saveSellerCarousel = createServerFn({ method: 'POST' })
     const result = await context.supabase.rpc('manage_amazon_carousel', { _store_id: data.storeId, _product_ids: data.productIds, _include: data.include });
     if (result.error) throw new Error(result.error.message);
     return result.data;
+  });
+
+export const setSellerCarouselSlot = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(input => z.object({ storeId: z.string().uuid(), productId: z.string().uuid(), slot: z.number().int().min(1).max(50).nullable() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc('set_amazon_carousel_slot', { _store_id: data.storeId, _product_id: data.productId, _slot: data.slot as number });
+    if (result.error) throw new Error(result.error.message);
+    return true;
   });
