@@ -662,7 +662,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
   const [price, setPrice] = useState("");
   const [costPrice, setCostPrice] = useState("");
   const [stock, setStock] = useState("");
-  const [category, setCategory] = useState(CATEGORIES[0]?.slug ?? "geral");
+  const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [heightCm, setHeightCm] = useState("");
@@ -737,6 +737,10 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       return;
     }
 
+    if (!category) {
+      toast.error("Escolha a categoria do produto.");
+      return;
+    }
     setLoading(true);
     try {
       const parsedPrice = parseFloat(price.replace(",", "."));
@@ -794,6 +798,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       setCostPrice("");
       setStock("");
       setDescription("");
+      setCategory("");
       setSelectedFiles([]);
       setFilePreviews([]);
       onCreated();
@@ -863,7 +868,9 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
+            required
           >
+            <option value="" disabled>Escolha a categoria</option>
             {CATEGORIES.map((c) => (
               <option key={c.slug} value={c.slug}>
                 {c.label}
