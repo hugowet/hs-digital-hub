@@ -71,6 +71,7 @@ import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
 import { processSupplierFulfillment, syncCjProducts, getCjSupplierStatus, updateCjContent, setCjAutoImport } from "@/lib/suppliers.functions";
+import { createSellerProduct } from "@/lib/products.functions";
 
 export const Route = createFileRoute("/_authenticated/vendedor")({
   staticData: { sitemap: false },
@@ -663,6 +664,10 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
   const [stock, setStock] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]?.slug ?? "geral");
   const [description, setDescription] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [heightCm, setHeightCm] = useState("");
+  const [widthCm, setWidthCm] = useState("");
+  const [lengthCm, setLengthCm] = useState("");
 
   // Fotos selecionadas da galeria (até 10 fotos)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -735,7 +740,6 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
     setLoading(true);
     try {
       const parsedPrice = parseFloat(price.replace(",", "."));
-      const parsedCostPrice = costPrice ? parseFloat(costPrice.replace(",", ".")) : null;
       const parsedStock = parseInt(stock, 10);
 
       if (isNaN(parsedPrice) || parsedPrice <= 0) {
@@ -744,47 +748,45 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         return;
       }
 
-      // 1. Upload de cada foto para o Supabase Storage bucket 'product-images'
-      const uploadedUrls: string[] = [];
-
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i];
-        const ext = file.name.split(".").pop() || "jpg";
-        const path = `${storeId}/${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}.${ext}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("product-images")
-          .upload(path, file, { cacheControl: "3600", upsert: true });
-
-        if (!uploadError) {
-          const { data: publicData } = supabase.storage.from("product-images").getPublicUrl(path);
-          uploadedUrls.push(publicData.publicUrl);
-        } else {
-          // Se o bucket não estiver público ou der erro, cria uma data URL comprimida como fallback
-          const dataUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (ev) => resolve(String(ev.target?.result));
-            reader.readAsDataURL(file);
-          });
-          uploadedUrls.push(dataUrl);
-        }
+      const dims = [weightKg, heightCm, widthCm, lengthCm].map((v) => parseFloat(v.replace(",", ".")));
+      if (dims.some((v) => !Number.isFinite(v) || v <= 0)) {
+        toast.error("Informe peso e medidas da embalagem para calcular o frete.");
+        setLoading(false);
+        return;
       }
 
-      // 2. Insere diretamente na tabela products
-      const { error: insertError } = await supabase.from("products").insert({
-        store_id: storeId,
-        title: title.trim(),
-        price: parsedPrice,
-        compare_at_price: parsedCostPrice,
-        stock: isNaN(parsedStock) ? 0 : parsedStock,
-        category,
-        description: description.trim() || null,
-        image_url: uploadedUrls[0] || null,
-        gallery_urls: uploadedUrls,
-        is_active: true,
-      });
+      // 1. Envia as fotos para o armazenamento privado da loja
+      const media: Array<{ storagePath: string; mediaType: "image"; mimeType: string; sizeBytes: number; position: number }> = [];
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const extByType: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+        const ext = extByType[file.type];
+        if (!ext) throw new Error(`A foto "${file.name}" precisa ser JPG, PNG, WEBP ou GIF.`);
+        const path = `${storeId}/${Date.now()}_${i}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("product-images")
+          .upload(path, file, { cacheControl: "3600", contentType: file.type });
+        if (uploadError) throw new Error(`Não foi possível enviar a foto ${i + 1}: ${uploadError.message}`);
+        media.push({ storagePath: path, mediaType: "image", mimeType: file.type, sizeBytes: file.size, position: i });
+      }
 
-      if (insertError) throw insertError;
+      // 2. Cria o produto no servidor, ligando as fotos ao anúncio
+      await createSellerProduct({
+        data: {
+          title: title.trim(),
+          description: description.trim(),
+          price: parsedPrice,
+          stock: isNaN(parsedStock) ? 0 : parsedStock,
+          category: category as never,
+          productType: "physical",
+          deliveryUrl: "",
+          media,
+          weightKg: dims[0],
+          heightCm: dims[1],
+          widthCm: dims[2],
+          lengthCm: dims[3],
+        },
+      });
 
       toast.success("Produto cadastrado com sucesso com as fotos anexadas!");
       setTitle("");
@@ -864,11 +866,25 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           >
             {CATEGORIES.map((c) => (
               <option key={c.slug} value={c.slug}>
-                {c.name}
+                {c.label}
               </option>
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {([
+          ["form-weight", "Peso (kg)", weightKg, setWeightKg],
+          ["form-height", "Altura (cm)", heightCm, setHeightCm],
+          ["form-width", "Largura (cm)", widthCm, setWidthCm],
+          ["form-length", "Comprimento (cm)", lengthCm, setLengthCm],
+        ] as const).map(([id, label, value, set]) => (
+          <div key={id} className="space-y-1.5">
+            <Label htmlFor={id}>{label}</Label>
+            <Input id={id} required type="number" step="0.01" min="0" value={value} onChange={(e) => set(e.target.value)} />
+          </div>
+        ))}
       </div>
 
       <div className="space-y-1.5">
