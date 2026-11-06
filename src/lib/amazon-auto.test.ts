@@ -28,8 +28,8 @@ describe("filtro anti-golpe do robô Amazon", () => {
     expect(isTrustworthyTrend({ ...base, rating: 4.4, reviews: 150, badge: "Escolha da Amazon" })).toBe(true);
   });
 
-  it("aceita envio pela Amazon com 200+ avaliações", () => {
-    expect(isTrustworthyTrend({ ...base, rating: 4.3, reviews: 250, fulfilledByAmazon: true })).toBe(true);
+  it("recusa produto enviado pela Amazon (Full/Prime), mesmo bem avaliado", () => {
+    expect(isTrustworthyTrend({ ...base, rating: 4.3, reviews: 250, fulfilledByAmazon: true, reviews: 5000, rating: 4.9 })).toBe(false);
   });
 
   it("rejeita produto sem link ou título", () => {
