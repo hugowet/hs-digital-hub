@@ -10,6 +10,13 @@ test("extracts only actual shoe numbers and colors, never a fabricated range", (
 test("missing options never imply size or stock", () => {
   assert.deepEqual(extractAmazonOptions('<h1>Tênis masculino</h1>'), []);
 });
+test("a size-only JSON does not hide actual colors exposed in swatches", () => {
+  const groups = extractAmazonOptions(`<script>"variationValues":{"size_name":["P","M","G"]}</script><div id="inline-twister-row-color_name"><li data-asin="B0HPXF119V"><img alt="Preto" src="https://m.media-amazon.com/images/I/41j3WswtYaL._SS64_.jpg"></li><li data-asin="B0HPXF1QLP"><img alt="Branco" src="https://m.media-amazon.com/images/I/41v-wF-tDIL._SS64_.jpg"></li></div>`);
+  assert.deepEqual(groups.find((g) => g.name === "Cor")?.options, ["Preto", "Branco"]);
+  assert.deepEqual(groups.find((g) => g.name === "Tamanho")?.options, ["P", "M", "G"]);
+  assert.equal(groups.every((g) => g.availability === "unconfirmed"), true);
+  assert.equal(shouldReplaceOptions([{ name: "Tamanho", options: ["P", "M", "G", "GG", "XG"] }], groups), true);
+});
 test("associates named helmet swatches with real full resolution photos without confirming stock", () => {
   const groups = extractAmazonOptions(`<script>"variationValues":{"color_name":["Branco","Preto","Rosa"]}</script><div id="inline-twister-row-color_name"><li><img alt="Branco" src="https://m.media-amazon.com/images/I/white._SS64_.jpg"></li><li><img alt="Preto" src="https://m.media-amazon.com/images/I/black._SS64_.jpg"></li><li><img alt="Rosa" src="https://m.media-amazon.com/images/I/pink._SS64_.jpg"></li></div>`);
   assert.deepEqual(groups[0]?.images, { Branco: "https://m.media-amazon.com/images/I/white.jpg", Preto: "https://m.media-amazon.com/images/I/black.jpg", Rosa: "https://m.media-amazon.com/images/I/pink.jpg" });
