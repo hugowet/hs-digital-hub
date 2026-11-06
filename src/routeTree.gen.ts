@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ClubeHsRouteImport } from './routes/clube-hs'
 import { Route as RadioRouteImport } from './routes/radio'
 import { Route as RadioHsRouteImport } from './routes/radio-hs'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -73,6 +74,11 @@ const RadioRoute = RadioRouteImport.update({
 const RadioHsRoute = RadioHsRouteImport.update({
   id: '/radio-hs',
   path: '/radio-hs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -214,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/clube-hs': typeof ClubeHsRoute
   '/radio': typeof RadioRoute
   '/radio-hs': typeof RadioHsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trends': typeof TrendsRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -246,6 +253,7 @@ export interface FileRoutesByTo {
   '/clube-hs': typeof ClubeHsRoute
   '/radio': typeof RadioRoute
   '/radio-hs': typeof RadioHsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trends': typeof TrendsRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -280,6 +288,7 @@ export interface FileRoutesById {
   '/clube-hs': typeof ClubeHsRoute
   '/radio': typeof RadioRoute
   '/radio-hs': typeof RadioHsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/trends': typeof TrendsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
@@ -314,6 +323,7 @@ export interface FileRouteTypes {
     | '/clube-hs'
     | '/radio'
     | '/radio-hs'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/trends'
     | '/admin'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/clube-hs'
     | '/radio'
     | '/radio-hs'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/trends'
     | '/admin'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/clube-hs'
     | '/radio'
     | '/radio-hs'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/trends'
     | '/_authenticated/admin'
@@ -413,6 +425,7 @@ export interface RootRouteChildren {
   ClubeHsRoute: typeof ClubeHsRoute
   RadioRoute: typeof RadioRoute
   RadioHsRoute: typeof RadioHsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TrendsRoute: typeof TrendsRoute
   ProdutoProductIdRoute: typeof ProdutoProductIdRoute
@@ -477,6 +490,13 @@ declare module '@tanstack/react-router' {
       path: '/radio-hs'
       fullPath: '/radio-hs'
       preLoaderRoute: typeof RadioHsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -689,6 +709,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClubeHsRoute: ClubeHsRoute,
   RadioRoute: RadioRoute,
   RadioHsRoute: RadioHsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TrendsRoute: TrendsRoute,
   ProdutoProductIdRoute: ProdutoProductIdRoute,
