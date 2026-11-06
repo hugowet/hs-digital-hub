@@ -390,7 +390,7 @@ function Home() {
   // On the unfiltered storefront, re-rank by this person's interest profile so
   // each visitor sees more of what they search, click and view.
   const personalized = useMemo(
-    () => (isFiltered ? products : personalizeProducts(products)),
+    () => (isFiltered ? products : mixByOrigin(personalizeProducts(products))),
     [products, isFiltered],
   );
 
