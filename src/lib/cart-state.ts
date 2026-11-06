@@ -43,7 +43,12 @@ export function mergeCartItem(items: CartItem[], item: Omit<CartItem, "quantity"
   const nextQuantity = Math.min((sameChoice ? found?.quantity ?? 0 : 0) + quantity, item.stock);
   if (nextQuantity <= 0) return items;
   if (!found) return [...items, { ...item, quantity: nextQuantity }];
-  return items.map((row) => row.productId === item.productId
-    ? { ...row, ...item, choice: item.choice ?? row.choice, quantity: nextQuantity }
-    : row);
+  return items.map((row) => {
+    if (row.productId !== item.productId) return row;
+    const merged: CartItem = { ...row, ...item, choice: item.choice ?? row.choice, quantity: nextQuantity };
+    // The card line carries no choice, so it must not rewrite the color/size
+    // the product page recorded in the title (the only place it is shown).
+    if (!item.choice && row.choice) merged.title = row.title;
+    return merged;
+  });
 }
