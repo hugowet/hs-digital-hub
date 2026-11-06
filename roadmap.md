@@ -1,9 +1,10 @@
 # HS Digital — MVP
 
 ## Cores e cadastro manual — 06/11
-- [ ] Investigar e corrigir cores ausentes na importação sem inventar variantes ou estoque.
-- [ ] Acrescentar origem nacional/importada, tamanhos americanos e cores ao cadastro manual e preservar na compra.
-- [ ] Conferir testes e fluxo na conta do vendedor, sem publicar produto fictício na vitrine.
+- [x] Campos de origem, tamanhos e cores disponíveis para todas as contas de vendedor, sem filtro por e-mail; gravação limitada à própria loja.
+- [x] Camisa recapturada da Amazon com Branco/Preto e P/M/G reais; fotos associadas oficialmente, sem alterar preços ou inventar estoque. Leitor combina fontes parciais e detecta dimensões ausentes.
+- [x] Cadastro com envio nacional/importado, tamanhos BR/US e cores persistidos pela criação atômica; escolhas preservadas na validação de compra.
+- [x] Vinte testes passaram; cores e cadastro na conta JJ Kuster conferidos no celular sem erros. Não publicado produto fictício: gravação completa pela tela ainda não homologada; mudanças de tela precisam publicar.
 
 ## Abas e carrossel Mais vendidos — 05/11
 - [x] Barra de abas do Seller Center voltou a ser uma linha única que arrasta para o lado, como estava; funções da aba Mais vendidos mantidas.
