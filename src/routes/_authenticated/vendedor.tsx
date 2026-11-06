@@ -71,6 +71,7 @@ import { brl } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
 import { processSupplierFulfillment, syncCjProducts, getCjSupplierStatus, updateCjContent, setCjAutoImport } from "@/lib/suppliers.functions";
+import { createSellerProduct } from "@/lib/products.functions";
 
 export const Route = createFileRoute("/_authenticated/vendedor")({
   staticData: { sitemap: false },
@@ -739,7 +740,6 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
     setLoading(true);
     try {
       const parsedPrice = parseFloat(price.replace(",", "."));
-      const parsedCostPrice = costPrice ? parseFloat(costPrice.replace(",", ".")) : null;
       const parsedStock = parseInt(stock, 10);
 
       if (isNaN(parsedPrice) || parsedPrice <= 0) {
