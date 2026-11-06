@@ -41,7 +41,6 @@ export const CATEGORIES = [
   { slug: "ferramentas", label: "Ferramentas", icon: "Drill" },
   { slug: "autos-motos", label: "Autos & Motos", icon: "CarFront" },
   { slug: "casa-setup", label: "Casa & Setup", icon: "LampDesk" },
-  { slug: "eletronicos", label: "Eletrônicos", icon: "Smartphone" },
   { slug: "moda", label: "Moda", icon: "Shirt" },
   { slug: "casa", label: "Casa", icon: "Sofa" },
   { slug: "beleza", label: "Beleza", icon: "Sparkles" },
