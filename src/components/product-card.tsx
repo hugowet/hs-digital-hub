@@ -13,6 +13,7 @@ import { catalogDisplayPrice } from "@/lib/product-price";
 import { useCjPrice } from "@/lib/use-cj-price";
 import { formatDeliveryRange } from "@/lib/delivery-estimate";
 import { useProductMargin } from '@/lib/product-margin-context';
+import { productShippingOrigin } from '@/lib/manual-product-options';
 
 // Faixas de desconto conforme solicitado: 5, 6, 7, 12, 22, 35, 50, 66, 71%
 export const DISCOUNT_TIERS = [5, 6, 7, 12, 22, 35, 50, 66, 71] as const;
@@ -209,8 +210,8 @@ export function ProductCard({
               <Package className="h-3 w-3" /> Físico
             </span>
           )}
-          {isCj && <span className="rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">✈️ Importado</span>}
-          {product.supplier === "amazon" && !isDigital && <span className="rounded-md bg-success px-2 py-0.5 text-[10px] font-semibold text-success-foreground">🇧🇷 Nacional</span>}
+          {!isDigital && productShippingOrigin(product) === "international" && <span className="rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">✈️ Importado</span>}
+          {!isDigital && productShippingOrigin(product) === "national" && <span className="rounded-md bg-success px-2 py-0.5 text-[10px] font-semibold text-success-foreground">🇧🇷 Nacional</span>}
         </div>
       </div>
 

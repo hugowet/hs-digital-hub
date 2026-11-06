@@ -1397,6 +1397,7 @@ export type Database = {
           product_type: string
           rating: number
           reviews_count: number
+          shipping_origin: string | null
           sold_count: number
           specifications: Json
           stock: number
@@ -1444,6 +1445,7 @@ export type Database = {
           product_type?: string
           rating?: number
           reviews_count?: number
+          shipping_origin?: string | null
           sold_count?: number
           specifications?: Json
           stock?: number
@@ -1491,6 +1493,7 @@ export type Database = {
           product_type?: string
           rating?: number
           reviews_count?: number
+          shipping_origin?: string | null
           sold_count?: number
           specifications?: Json
           stock?: number
@@ -3065,6 +3068,25 @@ export type Database = {
           _product_type: string
           _stock: number
           _title: string
+          _weight_kg: number
+          _width_cm: number
+        }
+        Returns: string
+      }
+      create_seller_product_v4: {
+        Args: {
+          _category: string
+          _delivery_url: string
+          _description: string
+          _height_cm: number
+          _length_cm: number
+          _media: Json
+          _price: number
+          _product_type: string
+          _shipping_origin: string
+          _stock: number
+          _title: string
+          _variations: Json
           _weight_kg: number
           _width_cm: number
         }

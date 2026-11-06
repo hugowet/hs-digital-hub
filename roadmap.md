@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Cores e cadastro manual — 06/11
+- [ ] Investigar e corrigir cores ausentes na importação sem inventar variantes ou estoque.
+- [ ] Acrescentar origem nacional/importada, tamanhos americanos e cores ao cadastro manual e preservar na compra.
+- [ ] Conferir testes e fluxo na conta do vendedor, sem publicar produto fictício na vitrine.
+
 ## Abas e carrossel Mais vendidos — 05/11
 - [x] Barra de abas do Seller Center voltou a ser uma linha única que arrasta para o lado, como estava; funções da aba Mais vendidos mantidas.
 - [x] Botões de pausa e setas removidos do carrossel Mais vendidos na vitrine; giro automático de 5s ao aparecer conferido em 434x769 (mudou aos ~4,5s e ~9s), 50 produtos no carrossel, quatro testes passaram e build OK. Ainda não publicado.

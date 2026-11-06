@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { manualOptionsSchema } from "./manual-product-options";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -46,6 +47,8 @@ const productSchema = z
     heightCm: z.number().positive().max(1_000).nullable().optional(),
     widthCm: z.number().positive().max(1_000).nullable().optional(),
     lengthCm: z.number().positive().max(1_000).nullable().optional(),
+    shippingOrigin: z.enum(["national", "international"]),
+    variations: manualOptionsSchema.default([]),
   })
   .superRefine((data, context) => {
     if (data.productType === "digital") {
@@ -81,7 +84,7 @@ export const createSellerProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => productSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: productId, error } = await context.supabase.rpc("create_seller_product_v3", {
+    const { data: productId, error } = await context.supabase.rpc("create_seller_product_v4", {
       _title: data.title,
       _description: data.description,
       _price: data.price,
@@ -94,6 +97,8 @@ export const createSellerProduct = createServerFn({ method: "POST" })
       _height_cm: data.heightCm ?? 0,
       _width_cm: data.widthCm ?? 0,
       _length_cm: data.lengthCm ?? 0,
+      _shipping_origin: data.shippingOrigin,
+      _variations: data.variations,
     });
 
     if (error || !productId) {
