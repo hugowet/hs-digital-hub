@@ -610,6 +610,13 @@
       "when": 1793998491590,
       "tag": "0086_manual_product_origin_options",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1794002089116,
+      "tag": "0087_fix_manual_product_media_alias",
+      "breakpoints": true
     }
   ]
 }
