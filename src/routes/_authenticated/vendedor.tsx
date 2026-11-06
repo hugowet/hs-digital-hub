@@ -72,6 +72,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
 import { processSupplierFulfillment, syncCjProducts, getCjSupplierStatus, updateCjContent, setCjAutoImport } from "@/lib/suppliers.functions";
 import { createSellerProduct } from "@/lib/products.functions";
+import { BR_SIZES, US_SIZES, OPTION_COLORS, manualProductOptions } from "@/lib/manual-product-options";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/_authenticated/vendedor")({
   staticData: { sitemap: false },
@@ -668,6 +670,12 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
   const [heightCm, setHeightCm] = useState("");
   const [widthCm, setWidthCm] = useState("");
   const [lengthCm, setLengthCm] = useState("");
+  const [shippingOrigin, setShippingOrigin] = useState<"national" | "international" | "">("");
+  const [sizeSystem, setSizeSystem] = useState<"BR" | "US">("BR");
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [colors, setColors] = useState<string[]>([]);
+  const [extraSizes, setExtraSizes] = useState("");
+  const [extraColors, setExtraColors] = useState("");
 
   // Fotos selecionadas da galeria (até 10 fotos)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -741,10 +749,15 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       toast.error("Escolha a categoria do produto.");
       return;
     }
+    if (!shippingOrigin) { toast.error("Escolha envio nacional ou importado."); return; }
     setLoading(true);
     try {
       const parsedPrice = parseFloat(price.replace(",", "."));
       const parsedStock = parseInt(stock, 10);
+      const variations = manualProductOptions(
+        [...colors, ...extraColors.split(",").map((v) => v.trim()).filter(Boolean)],
+        [...sizes, ...extraSizes.split(",").map((v) => v.trim()).filter(Boolean)], sizeSystem,
+      );
 
       if (isNaN(parsedPrice) || parsedPrice <= 0) {
         toast.error("Preço de venda inválido.");
@@ -789,6 +802,8 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           heightCm: dims[1],
           widthCm: dims[2],
           lengthCm: dims[3],
+          shippingOrigin,
+          variations,
         },
       });
 
@@ -799,6 +814,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       setStock("");
       setDescription("");
       setCategory("");
+      setShippingOrigin(""); setSizes([]); setColors([]); setExtraSizes(""); setExtraColors("");
       setSelectedFiles([]);
       setFilePreviews([]);
       onCreated();
@@ -880,6 +896,33 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         </div>
       </div>
 
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-semibold">Origem do envio</legend>
+        <div className="flex flex-wrap gap-2">
+          {([["national", "Nacional · envio do Brasil"], ["international", "Importado · envio do exterior"]] as const).map(([value, label]) => (
+            <Button key={value} type="button" variant={shippingOrigin === value ? "default" : "outline"} aria-pressed={shippingOrigin === value} onClick={() => setShippingOrigin(value)}>{label}</Button>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-semibold">Tamanhos disponíveis</legend>
+        <div className="flex gap-2">
+          {(["BR", "US"] as const).map((value) => <Button key={value} type="button" variant={sizeSystem === value ? "default" : "outline"} aria-pressed={sizeSystem === value} onClick={() => { setSizeSystem(value); setSizes([]); setExtraSizes(""); }}>{value === "BR" ? "Brasil (BR)" : "Estados Unidos (US)"}</Button>)}
+        </div>
+        <div className="flex flex-wrap gap-4">
+          {(sizeSystem === "US" ? US_SIZES : BR_SIZES).map((value) => <label key={value} className="flex items-center gap-2 text-sm"><Checkbox checked={sizes.includes(value)} onCheckedChange={(checked) => setSizes((old) => checked ? [...old, value] : old.filter((v) => v !== value))} />{value}</label>)}
+        </div>
+        <Label htmlFor="extra-sizes">Outros tamanhos / numerações</Label>
+        <Input id="extra-sizes" value={extraSizes} onChange={(e) => setExtraSizes(e.target.value)} placeholder="Ex.: 8, 9, 10, 10.5" />
+      </fieldset>
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-semibold">Cores disponíveis</legend>
+        <div className="flex flex-wrap gap-4">
+          {OPTION_COLORS.map((value) => <label key={value} className="flex items-center gap-2 text-sm"><Checkbox checked={colors.includes(value)} onCheckedChange={(checked) => setColors((old) => checked ? [...old, value] : old.filter((v) => v !== value))} />{value}</label>)}
+        </div>
+        <Label htmlFor="extra-colors">Outras cores</Label>
+        <Input id="extra-colors" value={extraColors} onChange={(e) => setExtraColors(e.target.value)} placeholder="Ex.: Azul-marinho, Bege" />
+      </fieldset>
       <div className="grid grid-cols-2 gap-3">
         {([
           ["form-weight", "Peso (kg)", weightKg, setWeightKg],

@@ -28,6 +28,7 @@ export type Product = {
   variations: Array<{ name: string; options: string[]; images?: Record<string, string>; availability?: "unconfirmed" | "confirmed"; asin?: string; selected?: string }>;
   product_type: string;
   supplier: string | null;
+  shipping_origin?: "national" | "international" | null;
   supplierOptions?: Array<{ productId: string; label: string; stock: number }>;
   media?: ProductMedia[];
 };
