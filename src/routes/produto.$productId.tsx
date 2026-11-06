@@ -244,9 +244,8 @@ function ProductDetailPage() {
     enabled: !!product?.category,
     queryFn: async () => {
       try {
-        const res = await fetchCatalogPage({ data: { category: product?.category, pageSize: 24 } });
-        // Recomendados: somente produtos da MESMA categoria, com prioridade para
-        // itens que compartilham palavras-chave do título (ex: fone -> outros fones).
+        // Recomendados: somente produtos do MESMO tipo (palavra principal do título),
+        // nunca a categoria inteira.
         const stopWords = new Set(["de", "da", "do", "com", "para", "sem", "the", "and", "e", "em", "a", "o"]);
         const keywords = (product?.title ?? "")
           .toLowerCase()
@@ -254,8 +253,12 @@ function ProductDetailPage() {
           .replace(/[̀-ͯ]/g, "")
           .split(/[^a-z0-9]+/)
           .filter((w) => w.length >= 4 && !stopWords.has(w));
+        const main = keywords[0];
+        if (!main) return [];
+        const res = await fetchCatalogPage({ data: { query: main, pageSize: 36 } });
+        const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
         const scored = res.products
-          .filter((p: Product) => p.id !== productId && p.category === product?.category)
+          .filter((p: Product) => p.id !== productId && norm(p.title).includes(main))
           .map((p: Product) => {
             const text = `${p.title} ${p.description ?? ""}`.toLowerCase()
               .normalize("NFD")

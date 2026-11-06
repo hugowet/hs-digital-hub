@@ -40,7 +40,7 @@ export function extractAmazonPageCandidates(html: string): AmazonPageCandidate[]
 export function selectAmazonPageProducts(candidates: AmazonPageCandidate[]) {
   const seen = new Set<string>();
   const valid = candidates.filter((p) => {
-    if (!p.title || !/^https:\/\/www\.amazon\.com\.br\/dp\/[A-Z0-9]{10}$/.test(p.url) || seen.has(p.url) || !Number.isFinite(p.price) || p.price < 15 || p.price > 5000 || p.rating < 4.3 || p.reviews < 100 || p.fulfilledByAmazon) return false;
+    if (!p.title || !/^https:\/\/www\.amazon\.com\.br\/dp\/[A-Z0-9]{10}$/.test(p.url) || seen.has(p.url) || !Number.isFinite(p.price) || p.price < 15 || p.price > 5000 || p.rating < 4.3 || p.reviews < 100) return false;
     const trusted = (p.rating >= 4.5 && p.reviews >= 500) || (/escolha da amazon|mais vendido|best seller/i.test(p.badge) && p.reviews >= 100) || p.reviews >= 1000;
     if (!trusted) return false;
     seen.add(p.url);
