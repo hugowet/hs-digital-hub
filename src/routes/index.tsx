@@ -34,6 +34,7 @@ import type { LucideIcon } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { ProductCard } from "@/components/product-card";
+import { CategoryCarousels } from "@/components/category-carousels";
 import { HsPromotionsCarousel } from "@/components/hs-promotions-carousel";
 import { AmazonBestSellersCarousel } from "@/components/amazon-best-sellers-carousel";
 import { amazonBestSellersOptions } from "@/lib/amazon-best-sellers";
@@ -609,6 +610,7 @@ function Home() {
           </Tabs>
 
           {!isFiltered && <AmazonBestSellersCarousel />}
+          {!isFiltered && <CategoryCarousels />}
 
           {/* LISTA DE PRODUTOS */}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">

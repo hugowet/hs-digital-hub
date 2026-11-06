@@ -158,8 +158,6 @@ export function isTrustworthyTrend(p: TrendCandidate): boolean {
   if (!p.url || !p.title) return false;
   if (p.rating < 4.3) return false;
   if (p.reviews < 100) return false;
-  // Nunca importar produtos enviados dos galpões da Amazon (FBA/Prime): chegariam na caixa da Amazon.
-  if (p.fulfilledByAmazon) return false;
   const hasOfficialBadge = /escolha da amazon|mais vendido|best seller|best-seller/i.test(p.badge);
   if (p.rating >= 4.5 && p.reviews >= 500) return true;
   if (hasOfficialBadge && p.reviews >= 100) return true;
