@@ -33,15 +33,15 @@ export function extractAmazonPageCandidates(html: string): AmazonPageCandidate[]
     const reviews = /^\s*[\d.]+\s*$/.test(reviewText) ? Number(reviewText.replace(/\D/g, '')) : 0;
     const text = card.textContent ?? '';
     const badge = text.match(/Escolha da Amazon|Mais vendido|Best seller/i)?.[0] ?? '';
-    return [{ url: `https://www.amazon.com.br/dp/${asin}`, title, price: unique[0] ?? 0, rating, reviews, badge, fulfilledByAmazon: /enviado pela Amazon|envio pela Amazon/i.test(text) }];
+    return [{ url: `https://www.amazon.com.br/dp/${asin}`, title, price: unique[0] ?? 0, rating, reviews, badge, fulfilledByAmazon: /enviado pela Amazon|envio pela Amazon|entregue pela Amazon|amazon prime|\bprime\b/i.test(text) }];
   });
 }
 
 export function selectAmazonPageProducts(candidates: AmazonPageCandidate[]) {
   const seen = new Set<string>();
   const valid = candidates.filter((p) => {
-    if (!p.title || !/^https:\/\/www\.amazon\.com\.br\/dp\/[A-Z0-9]{10}$/.test(p.url) || seen.has(p.url) || !Number.isFinite(p.price) || p.price < 15 || p.price > 5000 || p.rating < 4.3 || p.reviews < 100) return false;
-    const trusted = (p.rating >= 4.5 && p.reviews >= 500) || (/escolha da amazon|mais vendido|best seller/i.test(p.badge) && p.reviews >= 100) || (p.fulfilledByAmazon && p.reviews >= 200) || p.reviews >= 1000;
+    if (!p.title || !/^https:\/\/www\.amazon\.com\.br\/dp\/[A-Z0-9]{10}$/.test(p.url) || seen.has(p.url) || !Number.isFinite(p.price) || p.price < 15 || p.price > 5000 || p.rating < 4.3 || p.reviews < 100 || p.fulfilledByAmazon) return false;
+    const trusted = (p.rating >= 4.5 && p.reviews >= 500) || (/escolha da amazon|mais vendido|best seller/i.test(p.badge) && p.reviews >= 100) || p.reviews >= 1000;
     if (!trusted) return false;
     seen.add(p.url);
     return true;

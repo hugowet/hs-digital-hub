@@ -158,10 +158,11 @@ export function isTrustworthyTrend(p: TrendCandidate): boolean {
   if (!p.url || !p.title) return false;
   if (p.rating < 4.3) return false;
   if (p.reviews < 100) return false;
+  // Nunca importar produtos enviados dos galpões da Amazon (FBA/Prime): chegariam na caixa da Amazon.
+  if (p.fulfilledByAmazon) return false;
   const hasOfficialBadge = /escolha da amazon|mais vendido|best seller|best-seller/i.test(p.badge);
   if (p.rating >= 4.5 && p.reviews >= 500) return true;
   if (hasOfficialBadge && p.reviews >= 100) return true;
-  if (p.fulfilledByAmazon && p.reviews >= 200) return true;
   return p.reviews >= 1000;
 }
 
@@ -183,7 +184,7 @@ const TREND_SCHEMA = {
           rating: { type: "number" },
           reviews: { type: "number" },
           badge: { type: "string" },
-          fulfilledByAmazon: { type: "boolean", description: "true se a página indica 'Enviado pela Amazon' ou 'Entregue pela Amazon'" },
+          fulfilledByAmazon: { type: "boolean", description: "true se a página indica 'Enviado pela Amazon', 'Entregue pela Amazon' ou selo Prime" },
         },
       },
     },
@@ -241,7 +242,7 @@ export async function searchCategoryWinners(keyword: string, target: number, cyc
           type: "json",
           schema: TREND_SCHEMA,
           prompt:
-            "Liste os produtos desta página de resultados da Amazon com url (link do produto), título, nota em estrelas (rating), número de avaliações (reviews), selo (badge) como 'Escolha da Amazon' ou 'Mais vendido', e fulfilledByAmazon (true se indicar 'Enviado pela Amazon' ou 'Entregue pela Amazon'). Use somente o que estiver visível na página.",
+            "Liste os produtos desta página de resultados da Amazon com url (link do produto), título, nota em estrelas (rating), número de avaliações (reviews), selo (badge) como 'Escolha da Amazon' ou 'Mais vendido', e fulfilledByAmazon (true se indicar 'Enviado pela Amazon', 'Entregue pela Amazon' ou selo Prime). Use somente o que estiver visível na página.",
         },
       ]),
     ),
