@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { mixByOrigin } from "@/lib/origin-mix";
 import { infiniteQueryOptions, useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import {
   Baby,
@@ -390,7 +391,7 @@ function Home() {
   // On the unfiltered storefront, re-rank by this person's interest profile so
   // each visitor sees more of what they search, click and view.
   const personalized = useMemo(
-    () => (isFiltered ? products : personalizeProducts(products)),
+    () => (isFiltered ? products : mixByOrigin(personalizeProducts(products))),
     [products, isFiltered],
   );
 
