@@ -68,7 +68,22 @@ export function AmazonBestSellersCarousel() {
                 <div className="flex flex-1 flex-col p-3">
                   <p className="line-clamp-2 min-h-10 text-sm leading-5">{product.title}</p>
                   {Number(product.sold_count) > 0 && <p className="mt-1 text-xs text-muted-foreground">{product.sold_count} vendido{Number(product.sold_count) === 1 ? "" : "s"}</p>}
-                  <p className="mt-auto pt-2 text-lg font-bold text-foreground">{brl(Number(product.price))}</p>
+                  {(() => {
+                    const price = Number(product.price);
+                    const old = Number(product.compare_at_price);
+                    const off = old > price && price > 0 ? Math.round((1 - price / old) * 100) : 0;
+                    return (
+                      <div className="mt-auto pt-2">
+                        {off > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground line-through">{brl(old)}</span>
+                            <span className="rounded bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">{off}% OFF</span>
+                          </div>
+                        )}
+                        <p className="text-lg font-bold text-foreground">{brl(price)}</p>
+                      </div>
+                    );
+                  })()}
                 </div>
               </Link>
             </div>
