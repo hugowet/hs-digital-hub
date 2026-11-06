@@ -185,6 +185,20 @@ function AuthPage() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                {mode === "signin" && (
+                  <button
+                    type="button"
+                    className="mt-2 text-sm font-medium text-primary hover:underline"
+                    onClick={async () => {
+                      if (!email.trim()) { toast.error("Digite seu e-mail acima para receber o link."); return; }
+                      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/reset-password` });
+                      if (error) toast.error("Não foi possível enviar o link. Tente novamente.");
+                      else toast.success("Enviamos um link para seu e-mail para criar uma nova senha.");
+                    }}
+                  >
+                    Esqueci a senha
+                  </button>
+                )}
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {mode === "signin" ? "Entrar" : "Criar conta"}
