@@ -27,4 +27,15 @@ describe("recuperação do carrinho", () => {
     expect(result[0]?.quantity).toBe(1);
     expect(result).toHaveLength(1);
   });
+  it("soma ao adicionar pelo card de um produto com cor escolhida", () => {
+    const result = mergeCartItem([{ ...item, quantity: 3, choice: "Cor: Branco", title: "Produto — Cor: Branco" }], { ...item, stock: 10 }, 1);
+    expect(result[0]?.quantity).toBe(4);
+    expect(result[0]?.choice).toBe("Cor: Branco");
+    expect(result[0]?.title).toBe("Produto — Cor: Branco");
+  });
+  it("registra a cor escolhida sem zerar a quantidade já no carrinho", () => {
+    const result = mergeCartItem([{ ...item, quantity: 2 }], { ...item, choice: "Cor: Preto" }, 1);
+    expect(result[0]?.quantity).toBe(3);
+    expect(result[0]?.choice).toBe("Cor: Preto");
+  });
 });
