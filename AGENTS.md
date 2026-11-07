@@ -32,7 +32,7 @@
 - CJ translation jobs send an explicitly authorized MyMemory contact server-side and reserve an atomic conservative identified byte budget shared with anonymous usage; retain SHA-256 cache, leases, deferrals and per-product progress, with no paid fallback or storefront calls.
 - Catalog search intersects word-start synonyms/attributes over indexed title, descriptions, specs and category, then ranks the product itself above accessories and description-only matches; supplier filters precede pagination and persist in URL/cache; admin uses exact counts.
 - Amazon options use a shared parser; templates and labels never confirm stock. Apparel stays stock-zero pending supplier confirmation.
-- Amazon link batches and stock refresh confirm only an identity/price-verified selected ASIN with explicit availability and selected option evidence; sibling options remain unconfirmed and never inherit that offer.
+- Amazon link batches confirm only an identity/price-verified selected ASIN; sibling options never inherit that offer.
 - Physical checkout uses short-lived, buyer-bound server quotes per store; CJ quotes are converted from USD and own-stock products use each seller's Melhor Envio OAuth account, while platform commission never applies to shipping.
 - CJ base prices have a database cost/markup/commission floor; CEP quotes store protected net targets and exact costs, with a transaction trigger rejecting underfunded CJ orders. Freight is allocated once outside commission; payment fees remain unverified.
 - CJ quotes are serial, product-isolated; only cart items share freight. Reuse buyer/CEP quotes; changes need acceptance. Official variants, add-ons and profit guards stay authoritative.
@@ -60,4 +60,4 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Resolve @acemir/cssom to its CommonJS library entry in Vite so LinkeDOM gets named parser exports instead of the browser-only global script; keep it bundled for Workers.
 - Today's and seven-day audience counts filter the verified owner account ID server-side, including historical rows; other audience metrics remain unchanged to preserve their scope.
 - Contents extraction is additive; shared delivery normalization preserves published descriptions at display/import time.
-- Amazon checkout stock only blocks on an explicit unavailable page; failed/ambiguous reads keep saved stock and recent confirmations skip live reads, so Pix creation is never stalled by the reader.
+- Amazon stock refresh/checkout zero stock only on explicit unavailability; ambiguous reads keep stock, so Pix never stalls.
