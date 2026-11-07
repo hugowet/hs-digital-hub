@@ -26,7 +26,7 @@ type EditableProduct = {
 
 function initialPhotos(product: EditableProduct): Photo[] {
   const rows = [...(product.product_media ?? [])].sort((a, b) => a.position - b.position);
-  const urls = [...new Set([product.image_url, ...(product.gallery_urls ?? []), ...rows.map(r => r.storage_path)].filter((v): v is string => Boolean(v)))];
+  const urls = [...new Set([product.image_url, ...(product.gallery_urls ?? []), ...rows.map(r => r.storage_path), ...Object.values(product.variations?.find(g => g.name === "Cor")?.images ?? {})].filter((v): v is string => Boolean(v)))];
   return urls.map(value => {
     const row = rows.find(r => r.storage_path === value);
     return { ...(value.startsWith("https://") ? { url: value } : { storagePath: value }), preview: value.startsWith("https://") ? value : "", mediaType: row?.media_type ?? "image", mimeType: row?.mime_type, sizeBytes: row?.size_bytes };
