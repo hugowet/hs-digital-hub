@@ -1170,7 +1170,6 @@ Substitua todo o bloco `{/* 4. AVALIAÇÕES E COMENTÁRIOS DOS CLIENTES */}` por
             ))}
           </div>
         </section>
-```
                 
           {/* Formulário de Nova Avaliação */}
           {showReviewForm && (
