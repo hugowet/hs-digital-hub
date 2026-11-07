@@ -1,5 +1,8 @@
 # HS Digital — MVP
 
+## Logo nos links de produto — 07/11
+- [ ] Gerar prévia da foto do produto com logo no canto sem alterar fotos na vitrine; conferir imagem e metadados. Requer publicação para chegar às redes sociais.
+
 ## Fotos por cor — 07/11
 - [x] Cadastro e edição de qualquer vendedor incluem Foto de cada cor; caminhos privados são persistidos e assinados apenas para exibição.
 - [x] Associações oficiais Amazon preservadas e CJ mantém fotos reais dos produtos-filhos; não inferir cor pela ordem da galeria. Produtos antigos sem vínculo precisam da associação real no editor.
