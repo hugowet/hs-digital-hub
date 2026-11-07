@@ -1,5 +1,8 @@
 # HS Digital — MVP
 
+## Logo nos links de produto — 07/11
+- [x] Prévia JPEG 1200×630 da camisa conferida com logo no canto, preservando foto original; somente capas de produtos públicos ativos, destinos limitados e formatos JPEG/PNG com limites. Formatos não suportados preservam a prévia original. Requer publicação para chegar às redes sociais.
+
 ## Fotos por cor — 07/11
 - [x] Cadastro e edição de qualquer vendedor incluem Foto de cada cor; caminhos privados são persistidos e assinados apenas para exibição.
 - [x] Associações oficiais Amazon preservadas e CJ mantém fotos reais dos produtos-filhos; não inferir cor pela ordem da galeria. Produtos antigos sem vínculo precisam da associação real no editor.
