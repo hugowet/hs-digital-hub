@@ -36,6 +36,7 @@ import { Route as ApiPublicAmazonLinkQueueRouteImport } from './routes/api/publi
 import { Route as ApiPublicMelhorEnvioOauthCallbackRouteImport } from './routes/api/public/melhor-envio/oauth-callback'
 import { Route as ApiPublicMercadoPagoOauthCallbackRouteImport } from './routes/api/public/mercado-pago/oauth-callback'
 import { Route as ApiPublicMercadoPagoWebhookRouteImport } from './routes/api/public/mercado-pago/webhook'
+import { Route as ApiPublicProductShareProductIdRouteImport } from './routes/api/public/product-share.$productId'
 import { Route as ApiPublicSuppliersContentRouteImport } from './routes/api/public/suppliers/content'
 import { Route as ApiPublicSuppliersPricesRouteImport } from './routes/api/public/suppliers/prices'
 import { Route as ApiPublicSuppliersProcessRouteImport } from './routes/api/public/suppliers/process'
@@ -183,6 +184,12 @@ const ApiPublicMercadoPagoWebhookRoute =
     path: '/api/public/mercado-pago/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicProductShareProductIdRoute =
+  ApiPublicProductShareProductIdRouteImport.update({
+    id: '/api/public/product-share/$productId',
+    path: '/api/public/product-share/$productId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicSuppliersContentRoute =
   ApiPublicSuppliersContentRouteImport.update({
     id: '/api/public/suppliers/content',
@@ -240,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
+  '/api/public/product-share/$productId': typeof ApiPublicProductShareProductIdRoute
   '/api/public/suppliers/content': typeof ApiPublicSuppliersContentRoute
   '/api/public/suppliers/prices': typeof ApiPublicSuppliersPricesRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
@@ -273,6 +281,7 @@ export interface FileRoutesByTo {
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
+  '/api/public/product-share/$productId': typeof ApiPublicProductShareProductIdRoute
   '/api/public/suppliers/content': typeof ApiPublicSuppliersContentRoute
   '/api/public/suppliers/prices': typeof ApiPublicSuppliersPricesRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
@@ -308,6 +317,7 @@ export interface FileRoutesById {
   '/api/public/melhor-envio/oauth-callback': typeof ApiPublicMelhorEnvioOauthCallbackRoute
   '/api/public/mercado-pago/oauth-callback': typeof ApiPublicMercadoPagoOauthCallbackRoute
   '/api/public/mercado-pago/webhook': typeof ApiPublicMercadoPagoWebhookRoute
+  '/api/public/product-share/$productId': typeof ApiPublicProductShareProductIdRoute
   '/api/public/suppliers/content': typeof ApiPublicSuppliersContentRoute
   '/api/public/suppliers/prices': typeof ApiPublicSuppliersPricesRoute
   '/api/public/suppliers/process': typeof ApiPublicSuppliersProcessRoute
@@ -343,6 +353,7 @@ export interface FileRouteTypes {
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
+    | '/api/public/product-share/$productId'
     | '/api/public/suppliers/content'
     | '/api/public/suppliers/prices'
     | '/api/public/suppliers/process'
@@ -376,6 +387,7 @@ export interface FileRouteTypes {
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
+    | '/api/public/product-share/$productId'
     | '/api/public/suppliers/content'
     | '/api/public/suppliers/prices'
     | '/api/public/suppliers/process'
@@ -410,6 +422,7 @@ export interface FileRouteTypes {
     | '/api/public/melhor-envio/oauth-callback'
     | '/api/public/mercado-pago/oauth-callback'
     | '/api/public/mercado-pago/webhook'
+    | '/api/public/product-share/$productId'
     | '/api/public/suppliers/content'
     | '/api/public/suppliers/prices'
     | '/api/public/suppliers/process'
@@ -434,6 +447,7 @@ export interface RootRouteChildren {
   ApiPublicMelhorEnvioOauthCallbackRoute: typeof ApiPublicMelhorEnvioOauthCallbackRoute
   ApiPublicMercadoPagoOauthCallbackRoute: typeof ApiPublicMercadoPagoOauthCallbackRoute
   ApiPublicMercadoPagoWebhookRoute: typeof ApiPublicMercadoPagoWebhookRoute
+  ApiPublicProductShareProductIdRoute: typeof ApiPublicProductShareProductIdRoute
   ApiPublicSuppliersContentRoute: typeof ApiPublicSuppliersContentRoute
   ApiPublicSuppliersPricesRoute: typeof ApiPublicSuppliersPricesRoute
   ApiPublicSuppliersProcessRoute: typeof ApiPublicSuppliersProcessRoute
@@ -632,6 +646,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMercadoPagoWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/product-share/$productId': {
+      id: '/api/public/product-share/$productId'
+      path: '/api/public/product-share/$productId'
+      fullPath: '/api/public/product-share/$productId'
+      preLoaderRoute: typeof ApiPublicProductShareProductIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/suppliers/content': {
       id: '/api/public/suppliers/content'
       path: '/api/public/suppliers/content'
@@ -720,6 +741,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMercadoPagoOauthCallbackRoute:
     ApiPublicMercadoPagoOauthCallbackRoute,
   ApiPublicMercadoPagoWebhookRoute: ApiPublicMercadoPagoWebhookRoute,
+  ApiPublicProductShareProductIdRoute: ApiPublicProductShareProductIdRoute,
   ApiPublicSuppliersContentRoute: ApiPublicSuppliersContentRoute,
   ApiPublicSuppliersPricesRoute: ApiPublicSuppliersPricesRoute,
   ApiPublicSuppliersProcessRoute: ApiPublicSuppliersProcessRoute,
