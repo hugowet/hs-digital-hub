@@ -631,6 +631,13 @@
       "when": 1794033365935,
       "tag": "0089_seller_product_comparable_prices",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1794034275741,
+      "tag": "0090_manual_color_photo_associations",
+      "breakpoints": true
     }
   ]
 }
