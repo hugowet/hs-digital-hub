@@ -1,6 +1,8 @@
 # HS Digital — MVP
 
 ## Edição completa — 07/11
+- [ ] Preencher medidas automaticamente apenas quando informadas no texto, sem inventar dados de frete.
+- [ ] Separar preço anterior real, custo e venda no cadastro e edição; exibir riscado apenas com redução real.
 - [ ] Manter Mais vendidos ao filtrar nacionais/importados e preservar posição da vitrine ao trocar esses filtros.
 - [ ] Ampliar edição dos próprios produtos: preço, estoque, categoria, descrição, origem, cores, numerações, medidas e fotos; preservar identidade e pedidos.
 - [ ] Verificar salvamento e reabertura com conta de vendedor, sem modificar anúncio real.
