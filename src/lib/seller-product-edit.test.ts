@@ -17,5 +17,7 @@ describe("edição completa", () => {
     expect(sellerEditSchema.parse(data).price).toBe(35);
     expect(sellerEditSchema.safeParse({ ...data, stock: 1.5 }).success).toBe(false);
     expect(sellerEditSchema.safeParse({ ...data, price: 0 }).success).toBe(false);
+    expect(sellerEditSchema.parse({ ...data, compareAtPrice: 40 }).compareAtPrice).toBe(40);
+    expect(sellerEditSchema.safeParse({ ...data, compareAtPrice: 30 }).success).toBe(false);
   });
 });
