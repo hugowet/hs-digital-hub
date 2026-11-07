@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { manualOptionsSchema } from "./manual-product-options";
 import { sellerEditSchema, mergeEditedOptions } from "./seller-product-edit";
+import { colorPhotosSchema, withColorPhotos } from "./color-photos";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -52,6 +53,7 @@ const productSchema = z
     lengthCm: z.number().positive().max(1_000).nullable().optional(),
     shippingOrigin: z.enum(["national", "international"]),
     variations: manualOptionsSchema.default([]),
+    colorImages: colorPhotosSchema.default({}),
   })
   .superRefine((data, context) => {
     if (data.compareAtPrice !== null && data.compareAtPrice <= data.price) context.addIssue({ code: z.ZodIssueCode.custom, path: ["compareAtPrice"], message: "O preço anterior deve ser maior que o preço de venda." });
@@ -88,7 +90,7 @@ export const createSellerProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => productSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: productId, error } = await context.supabase.rpc("create_seller_product_v5" as never, {
+    const { data: productId, error } = await context.supabase.rpc("create_seller_product_v6" as never, {
       _title: data.title,
       _description: data.description,
       _price: data.price,
@@ -105,6 +107,7 @@ export const createSellerProduct = createServerFn({ method: "POST" })
       _variations: data.variations,
       _compare_at_price: data.compareAtPrice,
       _supplier_cost: data.supplierCost,
+      _color_images: data.colorImages,
     } as never);
 
     if (error || !productId) {
@@ -125,9 +128,20 @@ export const updateSellerProduct = createServerFn({ method: "POST" })
     const { data: store } = await context.supabase.from("stores").select("id")
       .eq("id", product.store_id).eq("owner_id", context.userId).eq("status", "approved").maybeSingle();
     if (!store) throw new Error("Você só pode editar produtos da sua própria loja aprovada.");
-    const variations = data.variations === null ? null : mergeEditedOptions(
+    let variations = data.variations === null ? null : mergeEditedOptions(
       Array.isArray(product.variations) ? product.variations as never : [], data.variations, Boolean(product.supplier),
     );
+    if (data.colorImages != null) {
+      const { data: rows, error: mediaError } = await context.supabase.from("product_media").select("storage_path").eq("product_id", product.id).eq("store_id", store.id);
+      if (mediaError) throw new Error("Não foi possível conferir as fotos do produto.");
+      const allowed = new Set(data.media ? data.media.map(m => m.storagePath ?? m.url) : (rows ?? []).map(m => m.storage_path));
+      const existing = Array.isArray(product.variations) ? product.variations as Array<{ name: string; options: string[]; images?: Record<string, string> }> : [];
+      const official = existing.find(g => g.name === "Cor")?.images ?? {};
+      for (const [color, path] of Object.entries(data.colorImages)) {
+        if (!allowed.has(path) && official[color] !== path) throw new Error("Escolha uma foto pertencente ao produto para cada cor.");
+      }
+      variations = withColorPhotos(variations ?? existing, data.colorImages);
+    }
     const { error } = await context.supabase.rpc("update_seller_product_priced" as never, {
       _product_id: data.productId, _fields: data, _variations: variations, _media: data.media,
     } as never);

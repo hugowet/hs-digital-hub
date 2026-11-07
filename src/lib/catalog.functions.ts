@@ -7,6 +7,7 @@ import type { Product, ProductMedia } from "@/lib/catalog";
 import { catalogSearchGroups } from "@/lib/catalog-search";
 import { usesDailySelection } from "@/lib/storefront-selection";
 import { isPurchasableVariant } from "./variant-availability";
+import { displayColorPhotos } from "./color-photos";
 
 const MEDIA_BUCKET = "product-images";
 
@@ -49,6 +50,7 @@ async function signProductBatch(products: Product[]) {
           ...product,
           image_url: media.find((item) => item.media_type === "image")?.url ?? media[0]?.url ?? null,
           gallery_urls: media.map((item) => item.url),
+          variations: displayColorPhotos(product.variations ?? [], signedByPath),
           media,
         };
       }
