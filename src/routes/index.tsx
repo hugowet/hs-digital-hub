@@ -603,7 +603,11 @@ function Home() {
             </div>
           </div>
 
-          <Tabs id="resultados-busca" value={search.supplier ?? "all"} onValueChange={(value) => setSearch({ supplier: value === "cj" || value === "amazon" ? value : null })} className="mb-5 scroll-mt-28">
+          <Tabs id="resultados-busca" value={search.supplier ?? "all"} onValueChange={async (value) => {
+            const scroll = window.scrollY;
+            await setSearch({ supplier: value === "cj" || value === "amazon" ? value : null });
+            window.requestAnimationFrame(() => window.requestAnimationFrame(() => window.scrollTo({ top: scroll, behavior: "instant" })));
+          }} className="mb-5 scroll-mt-28">
             <TabsList aria-label="Origem dos produtos" className="grid h-auto w-full grid-cols-3 gap-1.5 bg-transparent p-0 sm:max-w-xl">
               <TabsTrigger value="all" className="h-11 min-w-0 whitespace-normal px-1.5 text-[11px] leading-tight bg-secondary text-secondary-foreground data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:ring-2 data-[state=active]:ring-ring data-[state=active]:ring-offset-2 sm:text-sm">Todos os produtos</TabsTrigger>
               <TabsTrigger value="cj" className="h-11 min-w-0 whitespace-normal px-1.5 text-[11px] leading-tight bg-primary text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:ring-2 data-[state=active]:ring-ring data-[state=active]:ring-offset-2 sm:text-sm">Produtos internacionais</TabsTrigger>
