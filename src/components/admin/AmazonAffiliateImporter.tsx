@@ -33,6 +33,7 @@ import { TREND_CATEGORY_LABELS } from "@/lib/amazon-trend-categories";
 import type { AmazonOptionGroup } from "@/lib/amazon-options";
 import { fetchAmazonProduct, searchAmazonTrends, getAmazonAutoImportStatus, setAmazonAutoImport } from "@/lib/amazon.functions";
 import { AmazonLinkBatch } from "./AmazonLinkBatch";
+import { amazonSourceMetadata } from "@/lib/amazon-source";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -65,6 +66,7 @@ export function AmazonAffiliateImporter() {
   // Campos do formulário
   const [title, setTitle] = useState("");
   const [amazonUrl, setAmazonUrl] = useState("");
+  const [readSource, setReadSource] = useState<ReturnType<typeof amazonSourceMetadata> | null>(null);
   const [costPrice, setCostPrice] = useState("");
   const [description, setDescription] = useState("");
   const [amazonCategory, setAmazonCategory] = useState("");
@@ -154,6 +156,7 @@ export function AmazonAffiliateImporter() {
     setFetchingLink(true);
     try {
       const data = await fetchAmazonProduct({ data: { url } });
+      setReadSource(data.source);
       if (data.title) setTitle(data.title);
       setAmazonCategory(data.amazonCategory);
       setPageOptions(data.variations);
@@ -279,6 +282,7 @@ export function AmazonAffiliateImporter() {
         product_type: "physical",
         specifications: {
           ...specsObject,
+          ...(readSource?.affiliate_original_url === amazonUrl.trim() ? readSource : amazonSourceMetadata(amazonUrl)),
           affiliate_url: finalAffiliateUrl,
           partner: "amazon",
           affiliate_id: AMAZON_AFFILIATE_TAG,
@@ -298,6 +302,7 @@ export function AmazonAffiliateImporter() {
       setPageOptions([]);
       setAmazonCategory("");
       setAmazonUrl("");
+      setReadSource(null);
       setCostPrice("");
       setDescription("");
       setImageUrl("");
@@ -396,6 +401,7 @@ export function AmazonAffiliateImporter() {
           supplier: "amazon",
           product_type: "physical",
           specifications: {
+            ...amazonSourceMetadata(item.url),
             affiliate_url: formatAmazonAffiliateLink(item.url),
             partner: "amazon",
             affiliate_id: AMAZON_AFFILIATE_TAG,
@@ -539,6 +545,7 @@ export function AmazonAffiliateImporter() {
         product_type: "physical",
         specifications: {
           ...data.specs,
+          ...(data.source ?? amazonSourceMetadata(links[i])),
           affiliate_url: formatAmazonAffiliateLink(links[i]),
           partner: "amazon",
           affiliate_id: AMAZON_AFFILIATE_TAG,

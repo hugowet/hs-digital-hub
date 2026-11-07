@@ -18,6 +18,7 @@ import { categorizeAmazonProduct } from "@/lib/amazon-category";
 import { buildAmazonDescription } from "@/lib/amazon-text";
 import { supabase } from "@/integrations/supabase/client";
 import { brl } from "@/lib/format";
+import { amazonSourceMetadata } from "@/lib/amazon-source";
 
 type ProductData = Awaited<ReturnType<typeof fetchAmazonProduct>>;
 type Draft = { id: string; url: string; data: ProductData | null; error: string | null; selected: boolean; published: boolean; group?: string };
@@ -104,7 +105,7 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
           category: categorizeAmazonProduct(data), variations, stock,
           supplier_availability: data.availability, supplier_confirmed_quantity: stock,
           supplier_stock_checked_at: new Date().toISOString(),
-          specifications: { ...data.specs, affiliate_url: url.toString(), partner: "amazon", affiliate_id: "hsdigitalst0c-20" },
+          specifications: { ...data.specs, ...(data.source ?? amazonSourceMetadata(draft.url)), affiliate_url: url.toString(), partner: "amazon", affiliate_id: "hsdigitalst0c-20" },
         }];
       });
       const { error } = await supabase.from("products").insert(rows);

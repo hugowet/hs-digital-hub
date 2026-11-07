@@ -9,6 +9,7 @@ import { extractSelectedAmazonOffer } from "./amazon-selected-offer";
 import { validateAmazonProductUrl } from "./amazon-link-batch";
 import { assertAmazonPageReadable } from "./amazon-request-policy";
 import { extractExactAmazonPrice } from "./amazon-price";
+import { amazonSourceMetadata } from "./amazon-source";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
@@ -159,8 +160,10 @@ export async function readAmazonProductPage(rawUrl: string) {
     let specs: Record<string, string> = {};
     let htmlTitle = "";
     let amazonCategory = "";
+    let selectedAsin = expectedAsin;
     if (rawHtml) {
       const { document } = parseHTML(rawHtml);
+      selectedAsin = selectedAsin ?? document.querySelector('input#ASIN')?.getAttribute('value') ?? document.querySelector('[id^="corePrice"][data-csa-c-asin]')?.getAttribute('data-csa-c-asin') ?? undefined;
       description = extractDescription(document);
       specs = extractSpecs(document);
       htmlTitle = cleanText(document.querySelector("#productTitle")?.textContent);
@@ -182,6 +185,7 @@ export async function readAmazonProductPage(rawUrl: string) {
     const images: string[] = Array.from(new Set<string>(hiRes.length ? hiRes : extracted.slice(0, 1))).slice(0, 10);
 
     return {
+      source: amazonSourceMetadata(url, selectedAsin),
       title: sanitizeAmazonText(String(json?.title ?? htmlTitle ?? "")),
       costPrice: exactCost,
       description: description ? buildAmazonDescription(description) : "",

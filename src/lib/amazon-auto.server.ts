@@ -19,6 +19,7 @@ import { calculateAmazonPrice } from "./pricing";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 import { AmazonSearchReadError, amazonReaderHttpError, describeAmazonSearchError, type AmazonSearchPageDiagnostic } from "./amazon-search-diagnostics";
 import { amazonNavigationHeaders, amazonNextAllowedAt, amazonRecoveryAt, assertAmazonPageReadable, isAmazonRoundStop } from './amazon-request-policy';
+import { amazonSourceMetadata, amazonSourceUrl } from './amazon-source';
 
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
 const AMAZON_AFFILIATE_TAG = "hsdigitalst0c-20";
@@ -389,7 +390,7 @@ export async function runAmazonAutoImport(
   if (existingError) throw existingError;
   const knownAsins = new Set<string>();
   for (const row of existing ?? []) {
-    const url = String((row.specifications as Record<string, unknown> | null)?.affiliate_url ?? "");
+    const url = amazonSourceUrl(row.specifications as Record<string, unknown> | null);
     const asin = asinFromUrl(url);
     if (asin) knownAsins.add(asin);
   }
@@ -490,6 +491,7 @@ export async function runAmazonAutoImport(
         product_type: "physical",
         specifications: {
           ...sanitizeAmazonSpecs(data.specs),
+          ...amazonSourceMetadata(candidate.url),
           affiliate_url: affiliateUrl.toString(),
           partner: "amazon",
           affiliate_id: AMAZON_AFFILIATE_TAG,
