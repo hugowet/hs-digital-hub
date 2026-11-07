@@ -48,7 +48,7 @@ export function composeProductShareImage(photoBytes: Uint8Array, logoBytes: Uint
   return new Uint8Array(jpeg.encode(canvas, 85).data);
 }
 
-function allowedImageUrl(value: string, backendOrigin: string) {
+export function allowedImageUrl(value: string, backendOrigin: string) {
   const url = new URL(value);
   const host = url.hostname;
   if (url.protocol !== "https:" || url.username || url.password || (url.port && url.port !== "443")) throw new Error("Invalid image URL");
