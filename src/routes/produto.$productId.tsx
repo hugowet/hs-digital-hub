@@ -71,10 +71,7 @@ export const Route = createFileRoute("/produto/$productId")({
   head: ({ loaderData, params }) => {
     const p = loaderData;
     const title = p?.title ? `${p.title} · HS Digital` : "Produto não encontrado · HS Digital";
-    const desc = plainDescription(
-      p?.description_long || p?.description,
-      p ? `Confira ${p.title} na HS Digital. Veja detalhes e opções de entrega.` : "Este produto não está disponível.",
-    );
+    const desc = plainDescription(p?.description_long || p?.description, p ? `Confira ${p.title} na HS Digital. Veja detalhes e opções de entrega.` : "Este produto não está disponível.");
     const pageUrl = `${SITE_ORIGIN}/produto/${params.productId}`;
 
     return {
@@ -90,37 +87,17 @@ export const Route = createFileRoute("/produto/$productId")({
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: desc },
         ...(!p ? [{ name: "robots", content: "noindex, follow" }] : []),
-        ...(p?.image_url
-          ? [
-              {
-                property: "og:image",
-                content: `https://hsdigitalmarketpla.store/api/public/product-share/${params.productId}?v=hs-logo-1`,
-              },
-              {
-                name: "twitter:image",
-                content: `https://hsdigitalmarketpla.store/api/public/product-share/${params.productId}?v=hs-logo-1`,
-              },
-              { property: "og:image:width", content: "1200" },
-              { property: "og:image:height", content: "630" },
-              { property: "og:image:type", content: "image/jpeg" },
-              { property: "og:image:alt", content: `${p.title} · HS Digital` },
-            ]
-          : []),
+        ...(p?.image_url?.startsWith("https://") ? [
+          { property: "og:image", content: p.image_url },
+          { name: "twitter:image", content: p.image_url },
+        ] : []),
       ],
       links: [{ rel: "canonical", href: pageUrl }],
       scripts: p ? [{ type: "application/ld+json", children: JSON.stringify(productSearchSchema(p)) }] : [],
     };
   },
-  errorComponent: () => (
-    <div role="alert" className="p-8">
-      Não foi possível carregar o produto. <Link to="/">Voltar à loja</Link>
-    </div>
-  ),
-  notFoundComponent: () => (
-    <div className="p-8">
-      Produto não encontrado. <Link to="/">Voltar à loja</Link>
-    </div>
-  ),
+  errorComponent: () => <div role="alert" className="p-8">Não foi possível carregar o produto. <Link to="/">Voltar à loja</Link></div>,
+  notFoundComponent: () => <div className="p-8">Produto não encontrado. <Link to="/">Voltar à loja</Link></div>,
   component: ProductDetailPage,
 });
 
@@ -153,9 +130,7 @@ function getConsistentSalesCount(id: string): number {
 }
 
 function formatSplitPrice(price: number) {
-  const parts = Number(price || 0)
-    .toFixed(2)
-    .split(".");
+  const parts = Number(price || 0).toFixed(2).split(".");
   return {
     reais: Number(parts[0]).toLocaleString("pt-BR"),
     centavos: parts[1] || "00",
@@ -202,12 +177,12 @@ function ProductDetailPage() {
   const { productId } = Route.useParams();
   const navigate = useNavigate();
   const { add } = useCart();
-  const confirmOption = useServerFn(confirmCjOption);
+  const confirmOption=useServerFn(confirmCjOption);
   const [checkingOption, setCheckingOption] = useState<string | null>(null);
-  const sendToSeller = useServerFn(sendSellerMessage);
-  const [sellerChatOpen, setSellerChatOpen] = useState(false);
-  const [sellerMessage, setSellerMessage] = useState("");
-  const [sendingSellerMessage, setSendingSellerMessage] = useState(false);
+  const sendToSeller=useServerFn(sendSellerMessage);
+  const [sellerChatOpen,setSellerChatOpen]=useState(false);
+  const [sellerMessage,setSellerMessage]=useState("");
+  const [sendingSellerMessage,setSendingSellerMessage]=useState(false);
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -240,11 +215,7 @@ function ProductDetailPage() {
   const publishReview = useServerFn(publishProductReview);
   const [savingReview, setSavingReview] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
-  const {
-    data: reviews = [],
-    error: reviewsError,
-    refetch: reloadReviews,
-  } = useQuery({
+  const { data: reviews = [], error: reviewsError, refetch: reloadReviews } = useQuery({
     queryKey: ["product-reviews", productId],
     queryFn: () => loadReviews({ data: { productId } }),
     refetchInterval: 45 * 60 * 1000,
@@ -289,7 +260,9 @@ function ProductDetailPage() {
         const scored = res.products
           .filter((p: Product) => p.id !== productId && norm(p.title).includes(main))
           .map((p: Product) => {
-            const text = `${p.title} ${p.description ?? ""}`.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+            const text = `${p.title} ${p.description ?? ""}`.toLowerCase()
+              .normalize("NFD")
+              .replace(/[̀-ͯ]/g, "");
             const keywordHits = keywords.reduce((acc, w) => acc + (text.includes(w) ? 1 : 0), 0);
             const sold = Number(p.sold_count ?? 0);
             const rating = Number(p.rating ?? 0);
@@ -304,10 +277,7 @@ function ProductDetailPage() {
   });
 
   const allReviews: ReviewItem[] = reviews;
-  const sampleReviews = useMemo(
-    () => getSampleReviews(productId).map((review) => ({ ...review, verified: true, helpfulCount: 0, photos: [] })),
-    [productId],
-  );
+  const sampleReviews = useMemo(() => getSampleReviews(productId).map((review) => ({ ...review, verified: false, helpfulCount: 0, photos: [] })), [productId]);
 
   useEffect(() => {
     initAbandonmentWatcher();
@@ -332,7 +302,10 @@ function ProductDetailPage() {
   const price = delivery.price ?? catalogDisplayPrice(product);
   const priceConfirmed = !isCj || delivery.price !== null;
   const rawOriginal = product?.compare_at_price;
-  const originalPrice = rawOriginal && Number(rawOriginal) > price ? Number(rawOriginal) : null;
+  const originalPrice =
+    rawOriginal && Number(rawOriginal) > price
+      ? Number(rawOriginal)
+      : null;
 
   const discountPercent = !isCj && originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
   const priceParts = formatSplitPrice(price);
@@ -350,7 +323,9 @@ function ProductDetailPage() {
 
   const salesCount = useMemo(() => {
     if (!product) return 120;
-    return product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
+    return product.sold_count && product.sold_count > 0
+      ? product.sold_count
+      : getConsistentSalesCount(product.id);
   }, [product]);
 
   const imagesList = useMemo(() => {
@@ -439,19 +414,8 @@ function ProductDetailPage() {
 
   const handleAddToCart = async (redirectCheckout: boolean) => {
     if (!product) return;
-    if (choiceGroups.length && !pickedLabel) {
-      toast.error(
-        `Escolha ${choiceGroups
-          .filter((g) => g.options.length > 1 && !picked[g.name])
-          .map((g) => g.name.toLowerCase())
-          .join(" e ")} antes de continuar.`,
-      );
-      return;
-    }
-    if (maxAvailableStock < quantity) {
-      toast.error("Esta opção está sem estoque.");
-      return;
-    }
+    if (choiceGroups.length && !pickedLabel) { toast.error(`Escolha ${choiceGroups.filter((g) => g.options.length > 1 && !picked[g.name]).map((g) => g.name.toLowerCase()).join(" e ")} antes de continuar.`); return; }
+    if (maxAvailableStock < quantity) { toast.error("Esta opção está sem estoque."); return; }
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
       toast.info("Faça login para adicionar produtos ao carrinho.");
@@ -468,10 +432,7 @@ function ProductDetailPage() {
         storeId: product.store_id,
         storeName: sellerDisplayName("JJ Kuster", product.category),
         title: product.supplierOptions?.find((option) => option.productId === productId)?.label
-          ? `${product.title} — ${product.supplierOptions.find((option) => option.productId === productId)?.label}`
-          : pickedLabel
-            ? `${product.title} — ${pickedLabel}`
-            : product.title,
+          ? `${product.title} — ${product.supplierOptions.find((option) => option.productId === productId)?.label}` : pickedLabel ? `${product.title} — ${pickedLabel}` : product.title,
         choice: pickedLabel ?? undefined,
         price,
         supplier: product.supplier,
@@ -481,10 +442,10 @@ function ProductDetailPage() {
         quotedShipping: delivery.shipping ?? undefined,
         imageUrl: product.image_url ?? undefined,
         productType: product.product_type || "physical",
-        freeShipping: isCj ? delivery.embeddedFreeShipping : isDigital || price >= 89.9,
+        freeShipping: isCj ? delivery.embeddedFreeShipping : isDigital || price >= 89.90,
         stock: maxAvailableStock,
       },
-      quantity,
+      quantity
     );
 
     if (redirectCheckout) {
@@ -512,25 +473,17 @@ function ProductDetailPage() {
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    if (files.length + newReviewPhotos.length > 5) {
-      toast.error("Selecione até 5 fotos.");
-      return;
-    }
+    if (files.length + newReviewPhotos.length > 5) { toast.error("Selecione até 5 fotos."); return; }
     setUploadingPhotos(true);
     try {
       const photos = [];
       for (const file of files) {
-        if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024)
-          throw new Error("Selecione imagens de até 5 MB.");
+        if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) throw new Error("Selecione imagens de até 5 MB.");
         photos.push(await compressImageToDataUrl(file));
       }
       setNewReviewPhotos((prev) => [...prev, ...photos]);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível ler a foto.");
-    } finally {
-      setUploadingPhotos(false);
-      e.target.value = "";
-    }
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Não foi possível ler a foto."); }
+    finally { setUploadingPhotos(false); e.target.value = ""; }
   };
 
   const removeUploadPhoto = (index: number) => setNewReviewPhotos((prev) => prev.filter((_, idx) => idx !== index));
@@ -545,16 +498,7 @@ function ProductDetailPage() {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) throw new Error("Faça login para publicar sua avaliação.");
       const id = crypto.randomUUID();
-      const reviewData = reviewInput.parse({
-        id,
-        productId,
-        author: newReviewAuthor,
-        rating: newReviewRating,
-        comment: newReviewComment,
-        photoPaths: [],
-        city: newReviewCity,
-        state: newReviewState,
-      });
+      const reviewData = reviewInput.parse({ id, productId, author: newReviewAuthor, rating: newReviewRating, comment: newReviewComment, photoPaths: [], city: newReviewCity, state: newReviewState });
       for (const [index, photo] of newReviewPhotos.entries()) {
         const blob = await (await fetch(photo)).blob();
         const path = reviewPhotoPath(data.user.id, productId, id, index);
@@ -566,20 +510,13 @@ function ProductDetailPage() {
       published = true;
       const refreshed = await reloadReviews();
       if (refreshed.error) throw new Error("Avaliação salva; não foi possível atualizar a lista. Recarregue a página.");
-      setNewReviewAuthor("");
-      setNewReviewComment("");
-      setNewReviewRating(5);
-      setNewReviewPhotos([]);
-      setShowReviewForm(false);
-      setNewReviewCity("");
-      setNewReviewState("");
+      setNewReviewAuthor(""); setNewReviewComment(""); setNewReviewRating(5); setNewReviewPhotos([]); setShowReviewForm(false);
+      setNewReviewCity(""); setNewReviewState("");
       toast.success("Sua avaliação foi salva com sucesso!");
     } catch (err) {
       if (!published && paths.length) await supabase.storage.from("review-photos").remove(paths);
       toast.error(err instanceof Error ? err.message : "Não foi possível salvar a avaliação.");
-    } finally {
-      setSavingReview(false);
-    }
+    } finally { setSavingReview(false); }
   };
 
   if (!product) {
@@ -605,9 +542,7 @@ function ProductDetailPage() {
       <main className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-4 sm:py-6 flex-1">
         {/* Breadcrumb simples */}
         <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <Link to="/" className="hover:text-primary transition">
-            Início
-          </Link>
+          <Link to="/" className="hover:text-primary transition">Início</Link>
           <span>/</span>
           <span className="capitalize">{product.category || "Produtos"}</span>
           <span>/</span>
@@ -669,9 +604,7 @@ function ProductDetailPage() {
                   }}
                   className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-background/80 shadow-md backdrop-blur-sm z-10"
                 >
-                  <Heart
-                    className={`h-5 w-5 ${isFavorite ? "fill-rose-500 text-rose-500" : "text-muted-foreground"}`}
-                  />
+                  <Heart className={`h-5 w-5 ${isFavorite ? "fill-rose-500 text-rose-500" : "text-muted-foreground"}`} />
                 </button>
 
                 {zoomPos && (
@@ -691,20 +624,18 @@ function ProductDetailPage() {
                   <span>+{salesCount} vendidos</span>
                   <span>•</span>
                   <span className="flex items-center gap-1 text-amber-500 font-bold">
-                    ★{" "}
-                    {reviews.length
-                      ? (reviews.reduce((sum, rev) => sum + rev.rating, 0) / reviews.length).toFixed(1)
-                      : "—"}
+                    ★ {reviews.length ? (reviews.reduce((sum, rev) => sum + rev.rating, 0) / reviews.length).toFixed(1) : "—"}
                   </span>
                 </div>
 
-                <h1 className="mt-2 text-base sm:text-xl font-bold leading-snug text-foreground">{product.title}</h1>
+                <h1 className="mt-2 text-base sm:text-xl font-bold leading-snug text-foreground">
+                  {product.title}
+                </h1>
 
                 <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span>Vendido e entregue por</span>
                   <span className="font-bold text-primary flex items-center gap-1">
-                    {sellerDisplayName("JJ Kuster", product.category)}{" "}
-                    <BadgeCheck className="h-3.5 w-3.5 text-primary" />
+                    {sellerDisplayName("JJ Kuster", product.category)} <BadgeCheck className="h-3.5 w-3.5 text-primary" />
                   </span>
                 </div>
 
@@ -712,24 +643,15 @@ function ProductDetailPage() {
                 <div className="mt-2">
                   {(product as any)?.supplier === "cj" || product.shipping_origin === "international" ? (
                     <>
-                      <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
-                        <Truck className="h-3.5 w-3.5" />
-                        Produto internacional · envio do exterior
-                      </span>
-                      <ul className="mt-2 grid grid-cols-3 gap-1.5 text-center text-[10px] font-semibold text-foreground">
-                        <li className="rounded-lg border border-border bg-muted/30 p-2">
-                          <BadgeCheck className="mx-auto mb-1 h-4 w-4 text-primary" />
-                          Compra protegida
-                        </li>
-                        <li className="rounded-lg border border-border bg-muted/30 p-2">
-                          <Truck className="mx-auto mb-1 h-4 w-4 text-primary" />
-                          Rastreio por etapas
-                        </li>
-                        <li className="rounded-lg border border-border bg-muted/30 p-2">
-                          <CheckCircle2 className="mx-auto mb-1 h-4 w-4 text-primary" />
-                          Pix ou cartão
-                        </li>
-                      </ul>
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+                      <Truck className="h-3.5 w-3.5" />
+                      Produto internacional · envio do exterior
+                    </span>
+                    <ul className="mt-2 grid grid-cols-3 gap-1.5 text-center text-[10px] font-semibold text-foreground">
+                      <li className="rounded-lg border border-border bg-muted/30 p-2"><BadgeCheck className="mx-auto mb-1 h-4 w-4 text-primary" />Compra protegida</li>
+                      <li className="rounded-lg border border-border bg-muted/30 p-2"><Truck className="mx-auto mb-1 h-4 w-4 text-primary" />Rastreio por etapas</li>
+                      <li className="rounded-lg border border-border bg-muted/30 p-2"><CheckCircle2 className="mx-auto mb-1 h-4 w-4 text-primary" />Pix ou cartão</li>
+                    </ul>
                     </>
                   ) : (product as any)?.supplier === "amazon" || product.shipping_origin === "national" ? (
                     <span className="inline-flex items-center gap-1.5 rounded-md border border-success/40 bg-success/10 px-2.5 py-1 text-[11px] font-bold text-success">
@@ -746,90 +668,46 @@ function ProductDetailPage() {
 
                 {/* Bloco de Preço */}
                 <div className="mt-4 rounded-xl bg-muted/20 p-4 border border-border/80">
-                  {discountPercent > 0 && originalPrice && (
-                    <div className="flex items-center gap-2 leading-none">
-                      <span className="rounded bg-[#00a650] px-1.5 py-0.5 text-[11px] font-bold text-white">
-                        {discountPercent}% OFF
-                      </span>
-                      <span className="text-xs text-muted-foreground line-through">{brl(originalPrice)}</span>
-                    </div>
-                  )}
+                  {discountPercent > 0 && originalPrice && <div className="flex items-center gap-2 leading-none">
+                    <span className="rounded bg-[#00a650] px-1.5 py-0.5 text-[11px] font-bold text-white">
+                      {discountPercent}% OFF
+                    </span>
+                    <span className="text-xs text-muted-foreground line-through">
+                      {brl(originalPrice)}
+                    </span>
+                  </div>}
 
-                  {price > 0 && (
-                    <div data-testid="detail-price" className="mt-2 flex items-baseline gap-1">
-                      <span className="text-sm font-semibold text-foreground">R$</span>
-                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-                        {priceParts.reais}
-                      </span>
-                      <span className="text-sm font-semibold text-foreground">{priceParts.centavos}</span>
-                    </div>
-                  )}
-                  {!priceConfirmed && (
-                    <div className="mt-2 space-y-2 text-xs text-muted-foreground">
-                      <p>
-                        {delivery.loading
-                          ? "Calculando frete para o CEP do seu endereço…"
-                          : !delivery.userId
-                            ? "Entre na sua conta para ver o valor exato com frete."
-                            : !delivery.postalCode
-                              ? "Cadastre seu endereço para ver o valor exato com frete."
-                              : delivery.error || "Frete ainda não calculado."}
-                      </p>
-                      {!delivery.loading && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (!delivery.userId) navigate({ to: "/auth", search: { reason: "login-required" } });
-                            else if (!delivery.postalCode) navigate({ to: "/conta" });
-                            else void delivery.retry();
-                          }}
-                        >
-                          {!delivery.userId
-                            ? "Entrar"
-                            : !delivery.postalCode
-                              ? "Cadastrar endereço"
-                              : "Tentar novamente"}
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                  {price > 0 && <div data-testid="detail-price" className="mt-2 flex items-baseline gap-1">
+                    <span className="text-sm font-semibold text-foreground">R$</span>
+                    <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+                      {priceParts.reais}
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">{priceParts.centavos}</span>
+                  </div>}
+                  {!priceConfirmed && <div className="mt-2 space-y-2 text-xs text-muted-foreground">
+                    <p>{delivery.loading ? "Calculando frete para o CEP do seu endereço…" : !delivery.userId ? "Entre na sua conta para ver o valor exato com frete." : !delivery.postalCode ? "Cadastre seu endereço para ver o valor exato com frete." : delivery.error || "Frete ainda não calculado."}</p>
+                    {!delivery.loading && <Button variant="outline" size="sm" onClick={() => {
+                      if (!delivery.userId) navigate({ to: "/auth", search: { reason: "login-required" } });
+                      else if (!delivery.postalCode) navigate({ to: "/conta" });
+                      else void delivery.retry();
+                    }}>{!delivery.userId ? "Entrar" : !delivery.postalCode ? "Cadastrar endereço" : "Tentar novamente"}</Button>}
+                  </div>}
 
-                  {price > 0 && (
-                    <p className="mt-1 text-xs text-emerald-600 font-medium flex items-center gap-1">
-                      <Zap className="h-3.5 w-3.5 fill-emerald-600" />
-                      em {maxInstallments}x de {brl(installmentValue)} sem juros
-                    </p>
-                  )}
-                  {isCj && priceConfirmed && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")} ·{" "}
-                      {delivery.embeddedFreeShipping ? "Frete grátis" : `Frete ${brl(delivery.shipping ?? 0)}`} · Envio
-                      Express
-                    </p>
-                  )}
-                  {isCj && priceConfirmed && (
-                    <div className="mt-2 text-xs text-muted-foreground" data-testid="delivery-estimate">
-                      <p className="font-semibold text-foreground">{formatDeliveryRange(delivery.arrivalRange)}</p>
-                      {delivery.arrivalRange && (
-                        <p className="mt-1">
-                          Estimativa se enviado hoje, em dias corridos. Preparação e fiscalização aduaneira podem
-                          alterar as datas; o prazo começa no envio após o pagamento confirmado.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  {(product as any)?.supplier === "amazon" && (
-                    <div className="mt-2 text-xs text-muted-foreground" data-testid="delivery-estimate-amazon">
-                      <p className="font-semibold text-foreground">
-                        {formatDeliveryRange(deliveryDateRange(5, 12, new Date(), true))}
-                      </p>
-                      <p className="mt-1">
-                        Produto nacional · estimativa em dias úteis a partir da confirmação do pagamento. O prazo exato
-                        é confirmado no checkout pelo seu CEP.
-                      </p>
-                    </div>
-                  )}
+                  {price > 0 && <p className="mt-1 text-xs text-emerald-600 font-medium flex items-center gap-1">
+                    <Zap className="h-3.5 w-3.5 fill-emerald-600" />
+                    em {maxInstallments}x de {brl(installmentValue)} sem juros
+                  </p>}
+                  {isCj && priceConfirmed && <p className="mt-2 text-xs text-muted-foreground">
+                    CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")} · {delivery.embeddedFreeShipping ? "Frete grátis" : `Frete ${brl(delivery.shipping ?? 0)}`} · Envio Express
+                  </p>}
+                  {isCj && priceConfirmed && <div className="mt-2 text-xs text-muted-foreground" data-testid="delivery-estimate">
+                    <p className="font-semibold text-foreground">{formatDeliveryRange(delivery.arrivalRange)}</p>
+                    {delivery.arrivalRange && <p className="mt-1">Estimativa se enviado hoje, em dias corridos. Preparação e fiscalização aduaneira podem alterar as datas; o prazo começa no envio após o pagamento confirmado.</p>}
+                  </div>}
+                  {(product as any)?.supplier === "amazon" && <div className="mt-2 text-xs text-muted-foreground" data-testid="delivery-estimate-amazon">
+                    <p className="font-semibold text-foreground">{formatDeliveryRange(deliveryDateRange(5, 12, new Date(), true))}</p>
+                    <p className="mt-1">Produto nacional · estimativa em dias úteis a partir da confirmação do pagamento. O prazo exato é confirmado no checkout pelo seu CEP.</p>
+                  </div>}
                 </div>
 
                 {product.supplierOptions?.length > 1 && (
@@ -837,10 +715,7 @@ function ProductDetailPage() {
                     <legend className="mb-2 text-sm font-semibold">Cor / Tamanho / Modelo</legend>
                     <div className="flex flex-wrap gap-2">
                       {product.supplierOptions.filter(isPurchasableVariant).map((option) => (
-                        <Button
-                          key={option.productId}
-                          size="sm"
-                          variant={option.productId === productId ? "default" : "outline"}
+                        <Button key={option.productId} size="sm" variant={option.productId === productId ? "default" : "outline"}
                           aria-pressed={option.productId === productId}
                           title={option.label}
                           disabled={Boolean(checkingOption)}
@@ -848,71 +723,37 @@ function ProductDetailPage() {
                             if (option.productId === productId || checkingOption) return;
                             setCheckingOption(option.productId);
                             try {
-                              if (product.supplier === "cj")
-                                await confirmOption({ data: { parentId: productId, productId: option.productId } });
-                              setQuantity(1);
-                              setSelectedImage(0);
-                              await navigate({
-                                ...selectionNavigation,
-                                to: "/produto/$productId",
-                                params: { productId: option.productId },
-                              });
-                            } catch {
-                              toast.error("Esta opção não tem estoque confirmado. Escolha outra.");
-                            } finally {
-                              setCheckingOption(null);
-                            }
-                          }}
-                        >
+                              if (product.supplier === "cj") await confirmOption({ data: { parentId: productId, productId: option.productId } });
+                              setQuantity(1); setSelectedImage(0);
+                              await navigate({ ...selectionNavigation, to: "/produto/$productId", params: { productId: option.productId } });
+                            } catch { toast.error("Esta opção não tem estoque confirmado. Escolha outra."); }
+                            finally { setCheckingOption(null); }
+                          }}>
                           {option.label}
                         </Button>
                       ))}
                     </div>
                   </fieldset>
                 )}
-                {!(product.supplierOptions?.length > 1) &&
-                  choiceGroups.map((group) => (
-                    <fieldset key={group.name} className="mt-4">
-                      <legend className="mb-2 text-sm font-semibold">
-                        {group.name}:{" "}
-                        <span className="font-normal">
-                          {group.options.length === 1 ? group.options[0] : (picked[group.name] ?? "escolha")}
-                        </span>
-                      </legend>
-                      <div className="flex flex-wrap gap-2">
-                        {group.options.map((option) => {
-                          const active = group.options.length === 1 || picked[group.name] === option;
-                          return (
-                            <Button
-                              key={option}
-                              type="button"
-                              size="sm"
-                              variant={active ? "default" : "outline"}
-                              aria-pressed={active}
-                              onClick={() => {
-                                setPicked((prev) => ({ ...prev, [group.name]: option }));
-                                setSelectedImage(0);
-                                setZoomPos(null);
-                              }}
-                            >
-                              {option}
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </fieldset>
-                  ))}
-                {choiceGroups.some((g) => g.selected) && !(product.supplierOptions?.length > 1) && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Outras cores e tamanhos têm a disponibilidade conferida com o fornecedor após o pagamento.
-                  </p>
-                )}
+                {!(product.supplierOptions?.length > 1) && choiceGroups.map((group) => (
+                  <fieldset key={group.name} className="mt-4">
+                    <legend className="mb-2 text-sm font-semibold">{group.name}: <span className="font-normal">{group.options.length === 1 ? group.options[0] : picked[group.name] ?? "escolha"}</span></legend>
+                    <div className="flex flex-wrap gap-2">
+                      {group.options.map((option) => {
+                        const active = group.options.length === 1 || picked[group.name] === option;
+                        return (
+                          <Button key={option} type="button" size="sm" variant={active ? "default" : "outline"} aria-pressed={active}
+                            onClick={() => { setPicked((prev) => ({ ...prev, [group.name]: option })); setSelectedImage(0); setZoomPos(null); }}>
+                            {option}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                ))}
+                {choiceGroups.some((g) => g.selected) && !(product.supplierOptions?.length > 1) && <p className="mt-2 text-xs text-muted-foreground">Outras cores e tamanhos têm a disponibilidade conferida com o fornecedor após o pagamento.</p>}
                 {/* Estoque e Quantidade */}
-                {maxAvailableStock === 0 && (
-                  <p className="mt-4 text-sm font-semibold text-destructive" role="status">
-                    Produto indisponível no momento
-                  </p>
-                )}
+                {maxAvailableStock === 0 && <p className="mt-4 text-sm font-semibold text-destructive" role="status">Produto indisponível no momento</p>}
                 <div className="mt-4 flex items-center justify-between border-y border-border py-3">
                   <span className="text-xs text-muted-foreground">Quantidade:</span>
                   <div className="flex items-center gap-2">
@@ -965,23 +806,162 @@ function ProductDetailPage() {
 
               {/* Conversa direta com o vendedor sobre este produto */}
               <Dialog open={sellerChatOpen} onOpenChange={setSellerChatOpen}>
- Aqui está o código completo pronto para você copiar e colar no editor do seu projeto.
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Fale com o vendedor</DialogTitle>
+                  </DialogHeader>
+                  <form
+                    className="space-y-3"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const body = sellerMessage.trim();
+                      if (!body || sendingSellerMessage) return;
+                      setSendingSellerMessage(true);
+                      try {
+                        const { data: authData } = await supabase.auth.getUser();
+                        if (!authData.user) {
+                          toast.info("Entre na sua conta para falar com o vendedor.");
+                          setSellerChatOpen(false);
+                          navigate({ to: "/auth" });
+                          return;
+                        }
+                        await sendToSeller({ data: { productId, body } });
+                        toast.success("Mensagem enviada! O vendedor responde pelo painel dele.");
+                        setSellerMessage("");
+                        setSellerChatOpen(false);
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : "Não foi possível enviar a mensagem.");
+                      } finally {
+                        setSendingSellerMessage(false);
+                      }
+                    }}
+                  >
+                    <Textarea
+                      value={sellerMessage}
+                      onChange={(e) => setSellerMessage(e.target.value)}
+                      placeholder="Tire sua dúvida sobre tamanho, cor, prazo de entrega..."
+                      maxLength={2000}
+                      rows={4}
+                      required
+                    />
+                    <Button type="submit" className="w-full" disabled={!sellerMessage.trim() || sendingSellerMessage}>
+                      <Send className="h-4 w-4 mr-2" />
+                      {sendingSellerMessage ? "Enviando..." : "Enviar mensagem"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+        </div>
 
-1. Linha ~284: Definição das avaliações
+        {/* 2. DESCRIÇÃO DO PRODUTO */}
+        <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
+          <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" /> Descrição do Produto
+          </h2>
+          <div className="mt-4 space-y-4 text-sm text-foreground/90 leading-relaxed">
+            {(() => {
+              const original = product.description_long || product.description || "Descrição completa em processamento.";
+              const full = product.supplier === "amazon" ? normalizeAmazonDeliveryText(original) : original;
+              if (product.supplier === "cj" && product.description_long) {
+                const sections = formatCjDescription(product.description_long);
+                if (sections.length) return (
+                  <div className="space-y-5">
+                    {sections.map((s, i) => (
+                      <div key={i} className={i ? "border-t border-border pt-4" : ""}>
+                        {s.title && <p className="mb-2 text-base font-black text-foreground">{s.title}</p>}
+                        {s.paragraphs.map((p, j) => <p key={j} className="mb-2 text-sm sm:text-base">{p}</p>)}
+                        {s.bullets.length > 0 && (
+                          <ul className="space-y-1.5">
+                            {s.bullets.map((b, j) => (
+                              <li key={j} className="flex gap-2 text-sm sm:text-base">
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{b}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {s.specs.length > 0 && (
+                          <dl className="mt-1 overflow-hidden rounded-xl border border-border text-xs sm:text-sm">
+                            {s.specs.map(([k, v], j) => (
+                              <div key={j} className={`grid grid-cols-[40%_60%] ${j % 2 ? "bg-card" : "bg-muted/30"}`}>
+                                <dt className="p-2.5 font-semibold text-muted-foreground">{k}</dt>
+                                <dd className="p-2.5 text-foreground">{v}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              const { contents, rest } = extractProductContents(full);
+              const desc = rest || full;
+              const marker = "Método de entrega:";
+              const idx = desc.indexOf(marker);
+              const head = idx < 0 ? desc : desc.slice(0, idx).trimEnd();
+              const tail = idx < 0 ? "" : desc.slice(idx).trimStart();
+              return (
+                <>
+                  {contents.length > 0 && (
+                    <div className="border-b border-border pb-4">
+                      <p className="mb-2 font-black text-foreground">O que vem no produto</p>
+                      <ul className="space-y-1">
+                        {contents.map((item, i) => (
+                          <li key={i} className="flex gap-2 text-sm sm:text-base">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                            <span>
+                              <strong className="font-bold text-foreground">Contém: {item}</strong>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <p className="whitespace-pre-line text-sm sm:text-base text-foreground/90 font-normal">
+                    {head}
+                    {tail ? (
+                      <>
+                        {head ? "\n\n" : null}
+                        <span className="font-semibold text-orange-600 dark:text-orange-400">{tail}</span>
+                      </>
+                    ) : null}
+                  </p>
+                </>
+              );
+            })()}
+          </div>
+        </section>
 
-Localize a linha ~284 de `src/routes/produto.$productId.tsx` e garanta que `verified: true` esteja ativo:
+        {/* 3. ESPECIFICAÇÕES TÉCNICAS DO PRODUTO (SEM DADOS DE AFILIADO) */}
+        {parsedSpecs.length > 0 && (
+          <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
+            <h2 className="text-lg sm:text-xl font-black text-foreground pb-3 border-b border-border flex items-center gap-2">
+              <Sliders className="h-5 w-5 text-primary" /> Especificações Técnicas
+            </h2>
+            <div className="mt-4 overflow-hidden rounded-xl border border-border">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <tbody>
+                  {parsedSpecs.map(([label, val], idx) => (
+                    <tr
+                      key={idx}
+                      className={idx % 2 === 0 ? "bg-muted/30" : "bg-card"}
+                    >
+                      <td className="w-1/3 sm:w-1/4 p-3 font-semibold text-muted-foreground border-b border-border capitalize">
+                        {String(label).replace(/_/g, " ")}
+                      </td>
+                      <td className="p-3 text-foreground font-medium border-b border-border">
+                        {String(val)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
-```tsx
-  const sampleReviews = useMemo(() => getSampleReviews(productId).map((review) => ({ ...review, verified: true, helpfulCount: 0, photos: [] })), [productId]);
-```
-
----
-
-2. Linhas ~968 a ~1157: Bloco completo da seção de Avaliações
-
-Substitua todo o bloco `{/* 4. AVALIAÇÕES E COMENTÁRIOS DOS CLIENTES */}` por este código. Já removi o texto de "exemplo ilustrativo", ativei o selo verde Compra Verificada e atualizei a contagem de estrelas do topo para somar a nota real:
-
-```tsx
         {/* 4. AVALIAÇÕES E COMENTÁRIOS DOS CLIENTES */}
         <section className="mt-6 rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border gap-3">
@@ -991,14 +971,14 @@ Substitua todo o bloco `{/* 4. AVALIAÇÕES E COMENTÁRIOS DOS CLIENTES */}` por
               </h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-2xl font-black text-foreground">
-                  {[...allReviews, ...sampleReviews].length ? ([...allReviews, ...sampleReviews].reduce((sum, rev) => sum + rev.rating, 0) / [...allReviews, ...sampleReviews].length).toFixed(1) : "—"}
+                  {allReviews.length ? (allReviews.reduce((sum, rev) => sum + rev.rating, 0) / allReviews.length).toFixed(1) : "—"}
                 </span>
                 <div className="flex text-amber-500">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <Star key={s} className="h-4 w-4 fill-amber-500" />
                   ))}
                 </div>
-                <span className="text-xs text-muted-foreground">({[...allReviews, ...sampleReviews].length} avaliações)</span>
+                <span className="text-xs text-muted-foreground">({allReviews.length} avaliações)</span>
               </div>
             </div>
 
@@ -1078,188 +1058,6 @@ Substitua todo o bloco `{/* 4. AVALIAÇÕES E COMENTÁRIOS DOS CLIENTES */}` por
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-2">
-                  Adicionar Fotos Reais do Produto:
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {newReviewPhotos.map((photo, pIdx) => (
-                    <div key={pIdx} className="relative h-14 w-14 rounded-lg overflow-hidden border border-border">
-                      <img src={photo} alt="" className="h-full w-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeUploadPhoto(pIdx)}
-                        className="absolute top-0.5 right-0.5 rounded-full bg-black/70 p-0.5 text-white hover:bg-black"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                  {newReviewPhotos.length < 5 && (
-                    <label className="flex h-14 w-14 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary">
-                      <Camera className="h-4 w-4" />
-                      <span className="text-[9px] mt-0.5">Adicionar</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handlePhotoUpload}
-                        className="hidden"
-                        disabled={uploadingPhotos}
-                      />
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="submit" disabled={savingReview || uploadingPhotos} className="text-xs font-bold">
-                  <Send className="h-3.5 w-3.5 mr-1.5" /> {savingReview ? "Salvando..." : uploadingPhotos ? "Preparando fotos..." : "Publicar Avaliação"}
-                </Button>
-              </div>
-            </form>
-          )}
-
-          {/* Lista de Avaliações */}
-          <div className="mt-6 space-y-3">
-            {[...allReviews, ...sampleReviews].map((rev) => (
-              <div key={rev.id} className="rounded-xl border border-border/80 bg-card p-4 text-xs sm:text-sm space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground">{rev.author}</span>
-                    {rev.city && <span className="text-[10px] text-muted-foreground">{rev.city}</span>}
-                    {rev.verified && (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-success font-semibold">
-                        <BadgeCheck className="h-3 w-3" /> Compra Verificada
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[11px] text-muted-foreground">{rev.date}</span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={
-                        "h-3.5 w-3.5 " +
-                        (star <= rev.rating ? "fill-amber-500 text-amber-500" : "text-muted-foreground/30")
-                      }
-                    />
-                  ))}
-                </div>
-
-                <p className="text-foreground/90 leading-relaxed">{rev.comment}</p>
-
-                {rev.photos && rev.photos.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {rev.photos.map((pUrl, pIdx) => (
-                      <a
-                        key={pIdx}
-                        href={pUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block h-16 w-16 overflow-hidden rounded-lg border border-border bg-muted/40"
-                      >
-                        <img src={pUrl} alt="" className="h-full w-full object-cover" />
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-                
-          {/* Formulário de Nova Avaliação */}
-          {showReviewForm && (
-            <form
-              onSubmit={handleSubmitReview}
-              className="mt-6 rounded-xl border border-primary/30 bg-muted/20 p-4 space-y-4"
-            >
-              <h3 className="font-bold text-sm text-foreground">Deixe sua opinião e fotos do produto</h3>
-
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Sua Nota:</label>
-                <div className="flex gap-1.5">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setNewReviewRating(star)}
-                      className="p-1 focus:outline-none"
-                    >
-                      <Star
-                        className={`h-6 w-6 ${
-                          star <= newReviewRating ? "fill-amber-500 text-amber-500" : "text-muted-foreground/40"
-                        }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Seu Nome:</label>
-                <Input
-                  value={newReviewAuthor}
-                  onChange={(e) => setNewReviewAuthor(e.target.value)}
-                  placeholder="Ex: João Silva"
-                  className="text-xs"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-[minmax(0,1fr)_100px] gap-3">
-                <div className="min-w-0">
-                  <label htmlFor="review-city" className="text-xs font-semibold text-muted-foreground block mb-1">
-                    Cidade (opcional):
-                  </label>
-                  <Input
-                    id="review-city"
-                    value={newReviewCity}
-                    onChange={(e) => setNewReviewCity(e.target.value)}
-                    placeholder="Ex: Boa Vista"
-                    maxLength={90}
-                    autoComplete="address-level2"
-                    className="text-xs"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="review-state" className="text-xs font-semibold text-muted-foreground block mb-1">
-                    Estado:
-                  </label>
-                  <Select
-                    value={newReviewState || "none"}
-                    onValueChange={(value) => setNewReviewState(value === "none" ? "" : value)}
-                  >
-                    <SelectTrigger id="review-state" className="w-full text-xs">
-                      <SelectValue placeholder="UF" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">UF</SelectItem>
-                      {reviewStates.map((state) => (
-                        <SelectItem key={state} value={state}>
-                          {state}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Seu Comentário:</label>
-                <textarea
-                  value={newReviewComment}
-                  onChange={(e) => setNewReviewComment(e.target.value)}
-                  placeholder="Conte o que achou do produto, da entrega e da qualidade..."
-                  rows={3}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none"
-                  required
-                />
-              </div>
-
               {/* Upload de Fotos do Cliente */}
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-2">
@@ -1267,10 +1065,7 @@ Substitua todo o bloco `{/* 4. AVALIAÇÕES E COMENTÁRIOS DOS CLIENTES */}` por
                 </label>
                 <div className="flex flex-wrap gap-2 items-center">
                   {newReviewPhotos.map((photo, pIdx) => (
-                    <div
-                      key={pIdx}
-                      className="relative h-16 w-16 rounded-lg border border-border overflow-hidden group"
-                    >
+                    <div key={pIdx} className="relative h-16 w-16 rounded-lg border border-border overflow-hidden group">
                       <img src={photo} alt="" className="h-full w-full object-cover" />
                       <button
                         type="button"
@@ -1285,19 +1080,20 @@ Substitua todo o bloco `{/* 4. AVALIAÇÕES E COMENTÁRIOS DOS CLIENTES */}` por
                   <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary/60 bg-background text-muted-foreground hover:text-foreground transition">
                     <Camera className="h-5 w-5 mb-0.5" />
                     <span className="text-[9px] font-medium">+ Foto</span>
-                    <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                    />
                   </label>
                 </div>
               </div>
 
               <div className="pt-2 flex justify-end">
-                <Button
-                  type="submit"
-                  disabled={savingReview || uploadingPhotos}
-                  className="font-bold text-xs bg-primary text-primary-foreground"
-                >
-                  <Send className="h-3.5 w-3.5 mr-1.5" />{" "}
-                  {savingReview ? "Salvando..." : uploadingPhotos ? "Preparando fotos..." : "Publicar Avaliação"}
+                <Button type="submit" disabled={savingReview || uploadingPhotos} className="font-bold text-xs bg-primary text-primary-foreground">
+                  <Send className="h-3.5 w-3.5 mr-1.5" /> {savingReview ? "Salvando..." : uploadingPhotos ? "Preparando fotos..." : "Publicar Avaliação"}
                 </Button>
               </div>
             </form>
@@ -1305,21 +1101,10 @@ Substitua todo o bloco `{/* 4. AVALIAÇÕES E COMENTÁRIOS DOS CLIENTES */}` por
 
           {/* Lista de Avaliações */}
           <div className="mt-6 space-y-4">
-            {reviewsError && (
-              <p role="alert" className="text-destructive">
-                Não foi possível carregar as avaliações.{" "}
-                <Button variant="ghost" onClick={() => reloadReviews()}>
-                  Tentar novamente
-                </Button>
-              </p>
-            )}
+            {reviewsError && <p role="alert" className="text-destructive">Não foi possível carregar as avaliações. <Button variant="ghost" onClick={() => reloadReviews()}>Tentar novamente</Button></p>}
             {[...allReviews, ...sampleReviews].map((rev) => (
               <div key={rev.id} className="rounded-xl border border-border/80 bg-card p-4 text-xs sm:text-sm space-y-2">
-                {rev.id.startsWith("sample-") && (
-                  <p className="text-muted-foreground font-semibold">
-                    Exemplo ilustrativo — não é avaliação de cliente nem compra verificada
-                  </p>
-                )}
+                {rev.id.startsWith("sample-") && <p className="text-muted-foreground font-semibold">Exemplo ilustrativo — não é avaliação de cliente nem compra verificada</p>}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-foreground">{rev.author}</span>
@@ -1337,7 +1122,9 @@ Substitua todo o bloco `{/* 4. AVALIAÇÕES E COMENTÁRIOS DOS CLIENTES */}` por
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
-                      className={`h-3.5 w-3.5 ${star <= rev.rating ? "fill-amber-500" : "text-muted-foreground/30"}`}
+                      className={`h-3.5 w-3.5 ${
+                        star <= rev.rating ? "fill-amber-500" : "text-muted-foreground/30"
+                      }`}
                     />
                   ))}
                 </div>
