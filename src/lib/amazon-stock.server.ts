@@ -7,10 +7,20 @@ import { AMAZON_DELIVERY_METHOD_TEXT, buildAmazonDescription, sanitizeAmazonSpec
 import { amazonPricePatch, extractAmazonOfferPrice } from './amazon-price';
 import { amazonNavigationHeaders, assertAmazonPageReadable, isAmazonRoundStop } from './amazon-request-policy';
 import { amazonReaderHttpError } from './amazon-search-diagnostics';
-import { extractSelectedAmazonOffer, confirmedSelectedAmazonStock } from './amazon-selected-offer';
+import { extractSelectedAmazonOffer } from './amazon-selected-offer';
 import { amazonSourceUrl } from './amazon-source';
 
-export async function checkAmazonStock(supabaseAdmin: any, product: any) {
+/** Amazon only blocks a sale when the page explicitly says unavailable; ambiguous reads keep the last stock. */
+export function amazonStockAfterRead(availability: string, existingStock: unknown) {
+  const current = Math.max(0, Math.floor(Number(existingStock) || 0));
+  if (availability === "unavailable") return 0;
+  if (availability === "available") return current > 0 ? current : AMAZON_DEFAULT_STOCK;
+  return current;
+}
+
+export const AMAZON_DEFAULT_STOCK = 999;
+
+export async function checkAmazonStock(supabaseAdmin: any, product: any, timeoutMs = 25000) {
   const rawUrl = amazonSourceUrl(product.specifications);
   let html = "";
   try {
@@ -22,7 +32,7 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
     const connection = process.env["FIRECRAWL_API_KEY"];
     if (!key || !connection) throw new Error("Missing reader configuration");
     const response = await fetch("https://connector-gateway.lovable.dev/firecrawl/v2/scrape", {
-      method: "POST", signal: AbortSignal.timeout(25000),
+      method: "POST", signal: AbortSignal.timeout(timeoutMs),
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "X-Connection-Api-Key": connection },
       body: JSON.stringify({ url: url.toString(), headers: amazonNavigationHeaders(), formats: ["rawHtml"], maxAge: 0, onlyMainContent: false, location: { country: "BR", languages: ["pt-BR"] } }),
     });
@@ -32,8 +42,8 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
     html = String(payload?.data?.rawHtml ?? payload?.rawHtml ?? "");
   } catch (error) {
     if (isAmazonRoundStop(error)) throw error;
-    // Failed reads never authorize checkout from stale or invented stock.
-    return 0;
+    // A failed read is not proof of missing stock: keep the last saved quantity.
+    return Math.max(0, Math.floor(Number(product.stock) || 0));
   }
 
   const availability = extractAmazonAvailability(html);
@@ -61,8 +71,7 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any) {
     const userSpecCount = Object.keys(oldSpecs).filter((k) => k !== "affiliate_url" && !k.startsWith("_")).length;
     if (Object.keys(specs).length > userSpecCount) patch.specifications = { ...specs, ...oldSpecs };
   } catch { /* conteúdo opcional */ }
-  const variations = (patch.variations as any[]) ?? product.variations;
-  const quantity = Math.min(offer.stock, confirmedSelectedAmazonStock(availability, variations ?? []));
+  const quantity = amazonStockAfterRead(availability, product.stock);
 
   const { error } = await supabaseAdmin.from("products").update({
     ...patch,
@@ -88,15 +97,21 @@ export async function refreshAmazonStockBatch(supabaseAdmin: any, storeId: strin
 }
 
 export async function assertAmazonStock(supabaseAdmin: any, items: { productId: string; quantity: number }[]) {
-  const { data, error } = await supabaseAdmin.from("products").select("id,description,specifications,variations,stock")
+  const { data, error } = await supabaseAdmin.from("products").select("id,description,specifications,variations,stock,supplier_availability,supplier_stock_checked_at")
     .eq("supplier", "amazon").in("id", items.map((item) => item.productId));
   if (error) throw error;
-  for (let i = 0; i < (data ?? []).length; i += 6) {
-    await Promise.all(data.slice(i, i + 6).map(async (product: any) => {
-      const quantity = await checkAmazonStock(supabaseAdmin, product);
-      const requested = items.filter((item) => item.productId === product.id).reduce((sum, item) => sum + item.quantity, 0);
-      if (quantity < requested) throw new Error("Produto indisponível ou quantidade não confirmada pelo fornecedor. Atualize o carrinho antes de pagar.");
-    }));
+  const requestedFor = (id: string) => items.filter((item) => item.productId === id).reduce((sum, item) => sum + item.quantity, 0);
+  const recent = Date.now() - 30 * 60_000;
+  // Recently confirmed offers skip the slow live read; others get one short read so Pix is not delayed.
+  const toCheck = (data ?? []).filter((product: any) => !(product.supplier_availability === "available"
+    && Number(product.stock) >= requestedFor(product.id)
+    && Date.parse(product.supplier_stock_checked_at ?? "") > recent));
+  const results = await Promise.all(toCheck.map(async (product: any) => {
+    try { return { product, quantity: await checkAmazonStock(supabaseAdmin, product, 8000) }; }
+    catch { return { product, quantity: Math.max(0, Number(product.stock) || 0) }; }
+  }));
+  for (const { product, quantity } of results) {
+    if (quantity < requestedFor(product.id)) throw new Error("Este produto esgotou na Amazon. Remova-o do carrinho para continuar.");
   }
 }
 
