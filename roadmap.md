@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Edição completa — 07/11
+- [ ] Ampliar edição dos próprios produtos: preço, estoque, categoria, descrição, origem, cores, numerações, medidas e fotos; preservar identidade e pedidos.
+- [ ] Verificar salvamento e reabertura com conta de vendedor, sem modificar anúncio real.
+
 ## Cores e cadastro manual — 06/11
 - [x] Campos de origem, tamanhos e cores disponíveis para todas as contas de vendedor, sem filtro por e-mail; gravação limitada à própria loja.
 - [x] Camisa recapturada da Amazon com Branco/Preto e P/M/G reais; fotos associadas oficialmente, sem alterar preços ou inventar estoque. Leitor combina fontes parciais e detecta dimensões ausentes.
