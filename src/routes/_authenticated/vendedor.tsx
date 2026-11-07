@@ -72,6 +72,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { startMercadoPagoConnection } from "@/lib/payments.functions";
 import { processSupplierFulfillment, syncCjProducts, getCjSupplierStatus, updateCjContent, setCjAutoImport } from "@/lib/suppliers.functions";
 import { createSellerProduct } from "@/lib/products.functions";
+import { SellerProductEditor } from "@/components/seller-product-editor";
+import { packageMeasures } from "@/lib/manual-package-measures";
 import { BR_SIZES, US_SIZES, OPTION_COLORS, manualProductOptions } from "@/lib/manual-product-options";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -114,14 +116,6 @@ function SellerCenterPage() {
 
   // Estado para Edição de Produto
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editPrice, setEditPrice] = useState("");
-  const [editCompareAt, setEditCompareAt] = useState("");
-  const [editSupplierCost, setEditSupplierCost] = useState("");
-  const [editStock, setEditStock] = useState("");
-  const [editImageUrl, setEditImageUrl] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [savingEdit, setSavingEdit] = useState(false);
 
   const [activeTab, setActiveTab] = useState("products");
   const [productSearch, setProductSearch] = useState("");
@@ -217,53 +211,7 @@ function SellerCenterPage() {
     },
   });
 
-  const handleOpenEdit = (p: any) => {
-    setEditingProduct(p);
-    setEditTitle(p.title || "");
-    setEditPrice(String(p.price || ""));
-    setEditCompareAt(p.compare_at_price ? String(p.compare_at_price) : "");
-    setEditSupplierCost(p.supplier_cost ? String(p.supplier_cost) : "");
-    setEditStock(String(p.stock ?? ""));
-    setEditImageUrl(p.image_url || "");
-    setEditDescription(p.description || "");
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingProduct) return;
-    setSavingEdit(true);
-    try {
-      const parsedPrice = parseFloat(editPrice.replace(",", "."));
-      const parsedStock = parseInt(editStock, 10);
-      const parsedCompareAt = editCompareAt ? parseFloat(editCompareAt.replace(",", ".")) : null;
-
-      if (isNaN(parsedPrice) || parsedPrice <= 0) {
-        toast.error("Preço inválido.");
-        return;
-      }
-
-      const { error } = await supabase
-        .from("products")
-        .update({
-          title: editTitle.trim(),
-          price: parsedPrice,
-          compare_at_price: parsedCompareAt,
-          stock: isNaN(parsedStock) ? 0 : parsedStock,
-          image_url: editImageUrl.trim() || null,
-          description: editDescription.trim() || null,
-        })
-        .eq("id", editingProduct.id);
-
-      if (error) throw error;
-
-      toast.success("Produto atualizado com sucesso!");
-      setEditingProduct(null);
-      qc.invalidateQueries({ queryKey: ["store-products"] });
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao salvar alterações.");
-    } finally {
-      setSavingEdit(false);
-    }
-  };
+  const handleOpenEdit = (p: any) => setEditingProduct(p);
 
   if (storeLoading) {
     return (
@@ -471,49 +419,13 @@ function SellerCenterPage() {
           <DialogFooter><Button variant="outline" disabled={removingProduct} onClick={() => setDeletingProduct(null)}>Cancelar</Button><Button variant="destructive" disabled={removingProduct} onClick={handleRemoveProduct}>{removingProduct ? "Excluindo..." : "Excluir produto"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Editar Produto</DialogTitle>
-            <DialogDescription>Altere as informações do seu produto abaixo.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div>
-              <Label className="text-xs">Título</Label>
-              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label className="text-xs">Preço de Venda (R$)</Label>
-                <Input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Estoque</Label>
-                <Input value={editStock} onChange={(e) => setEditStock(e.target.value)} />
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs">URL da Imagem Principal</Label>
-              <Input value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
-            </div>
-            <div>
-              <Label className="text-xs">Descrição</Label>
-              <Textarea
-                rows={3}
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingProduct(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveEdit} disabled={savingEdit}>
-              {savingEdit ? "Salvando..." : "Salvar Alterações"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+      <Dialog open={!!editingProduct} onOpenChange={(open) => { if (!open) setEditingProduct(null); }}>
+        {editingProduct && <SellerProductEditor key={editingProduct.id} product={editingProduct} onCancel={() => setEditingProduct(null)} onSaved={() => {
+          setEditingProduct(null);
+          qc.invalidateQueries({ queryKey: ["store-products"] });
+          qc.invalidateQueries({ queryKey: ["catalog"] });
+          router.invalidate();
+        }} />}
       </Dialog>
     </Shell>
   );
@@ -663,6 +575,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [costPrice, setCostPrice] = useState("");
+  const [compareAtPrice, setCompareAtPrice] = useState("");
   const [stock, setStock] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -765,6 +678,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         return;
       }
 
+      if (compareAtPrice && Number(compareAtPrice.replace(",", ".")) <= parsedPrice) throw new Error("O preço anterior deve ser maior que o preço de venda.");
       const dims = [weightKg, heightCm, widthCm, lengthCm].map((v) => parseFloat(v.replace(",", ".")));
       if (dims.some((v) => !Number.isFinite(v) || v <= 0)) {
         toast.error("Informe peso e medidas da embalagem para calcular o frete.");
@@ -793,6 +707,8 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           title: title.trim(),
           description: description.trim(),
           price: parsedPrice,
+          compareAtPrice: compareAtPrice.trim() ? Number(compareAtPrice.replace(",", ".")) : null,
+          supplierCost: costPrice.trim() ? Number(costPrice.replace(",", ".")) : null,
           stock: isNaN(parsedStock) ? 0 : parsedStock,
           category: category as never,
           productType: "physical",
@@ -811,6 +727,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       setTitle("");
       setPrice("");
       setCostPrice("");
+      setCompareAtPrice("");
       setStock("");
       setDescription("");
       setCategory("");
@@ -864,6 +781,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         </div>
       </div>
 
+      <div className="space-y-1.5"><Label htmlFor="form-compare">Preço anterior real (R$) · opcional</Label><Input id="form-compare" type="number" step="0.01" min="0.01" value={compareAtPrice} onChange={(e) => setCompareAtPrice(e.target.value)} /></div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="form-stock">Estoque inicial</Label>
@@ -943,7 +861,14 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           id="form-desc"
           rows={3}
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => {
+            setDescription(e.target.value);
+            const measures = packageMeasures(e.target.value);
+            if (measures.weightKg) setWeightKg(measures.weightKg);
+            if (measures.heightCm) setHeightCm(measures.heightCm);
+            if (measures.widthCm) setWidthCm(measures.widthCm);
+            if (measures.lengthCm) setLengthCm(measures.lengthCm);
+          }}
           placeholder="Detalhes, medidas, composição..."
         />
       </div>

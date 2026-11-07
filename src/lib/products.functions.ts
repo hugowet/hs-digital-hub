@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { manualOptionsSchema } from "./manual-product-options";
+import { sellerEditSchema, mergeEditedOptions } from "./seller-product-edit";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -36,6 +37,8 @@ const productSchema = z
     title: z.string().trim().min(2, "Título deve ter no mínimo 2 caracteres").max(160),
     description: z.string().trim().max(5_000).default(""),
     price: z.number().positive("Preço deve ser maior que zero").max(99_999_999.99),
+    compareAtPrice: z.number().positive().nullable().default(null),
+    supplierCost: z.number().min(0).nullable().default(null),
     stock: z.number().int().min(0, "Estoque deve ser positivo").max(1_000_000),
     category: z.enum(categories, {
       errorMap: () => ({ message: "Selecione uma categoria válida" }),
@@ -51,6 +54,7 @@ const productSchema = z
     variations: manualOptionsSchema.default([]),
   })
   .superRefine((data, context) => {
+    if (data.compareAtPrice !== null && data.compareAtPrice <= data.price) context.addIssue({ code: z.ZodIssueCode.custom, path: ["compareAtPrice"], message: "O preço anterior deve ser maior que o preço de venda." });
     if (data.productType === "digital") {
       if (!data.deliveryUrl || !data.deliveryUrl.startsWith("https://")) {
         context.addIssue({
@@ -84,7 +88,7 @@ export const createSellerProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => productSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: productId, error } = await context.supabase.rpc("create_seller_product_v4", {
+    const { data: productId, error } = await context.supabase.rpc("create_seller_product_v5" as never, {
       _title: data.title,
       _description: data.description,
       _price: data.price,
@@ -99,11 +103,34 @@ export const createSellerProduct = createServerFn({ method: "POST" })
       _length_cm: data.lengthCm ?? 0,
       _shipping_origin: data.shippingOrigin,
       _variations: data.variations,
-    });
+      _compare_at_price: data.compareAtPrice,
+      _supplier_cost: data.supplierCost,
+    } as never);
 
     if (error || !productId) {
       throw new Error(error?.message ?? "Não foi possível cadastrar o produto.");
     }
 
     return { productId };
+  });
+
+export const updateSellerProduct = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => sellerEditSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    if (!categories.includes(data.category as typeof categories[number])) throw new Error("Selecione uma categoria válida.");
+    const { data: product, error: readError } = await context.supabase.from("products")
+      .select("id,store_id,variations,supplier").eq("id", data.productId).single();
+    if (readError || !product) throw new Error("Produto não encontrado.");
+    const { data: store } = await context.supabase.from("stores").select("id")
+      .eq("id", product.store_id).eq("owner_id", context.userId).eq("status", "approved").maybeSingle();
+    if (!store) throw new Error("Você só pode editar produtos da sua própria loja aprovada.");
+    const variations = data.variations === null ? null : mergeEditedOptions(
+      Array.isArray(product.variations) ? product.variations as never : [], data.variations, Boolean(product.supplier),
+    );
+    const { error } = await context.supabase.rpc("update_seller_product_priced" as never, {
+      _product_id: data.productId, _fields: data, _variations: variations, _media: data.media,
+    } as never);
+    if (error) throw new Error(error.message);
+    return { productId: data.productId };
   });
