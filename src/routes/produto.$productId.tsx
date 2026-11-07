@@ -88,8 +88,8 @@ export const Route = createFileRoute("/produto/$productId")({
         { name: "twitter:description", content: desc },
         ...(!p ? [{ name: "robots", content: "noindex, follow" }] : []),
         ...(p?.image_url ? [
-          { property: "og:image", content: `${SITE_ORIGIN}/api/public/product-share/${params.productId}?v=hs-logo-1` },
-          { name: "twitter:image", content: `${SITE_ORIGIN}/api/public/product-share/${params.productId}?v=hs-logo-1` },
+          { property: "og:image", content: `https://hsdigitalmarketpla.store/api/public/product-share/${params.productId}?v=hs-logo-1` },
+          { name: "twitter:image", content: `https://hsdigitalmarketpla.store/api/public/product-share/${params.productId}?v=hs-logo-1` },
           { property: "og:image:width", content: "1200" },
           { property: "og:image:height", content: "630" },
           { property: "og:image:type", content: "image/jpeg" },
