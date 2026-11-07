@@ -617,6 +617,13 @@
       "when": 1794002089116,
       "tag": "0087_fix_manual_product_media_alias",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1794033221993,
+      "tag": "0088_seller_full_product_edit",
+      "breakpoints": true
     }
   ]
 }

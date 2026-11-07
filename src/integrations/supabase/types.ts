@@ -3327,6 +3327,15 @@ export type Database = {
         Returns: undefined
       }
       trend_register_view: { Args: { _video_id: string }; Returns: number }
+      update_seller_product_full: {
+        Args: {
+          _fields: Json
+          _media: Json
+          _product_id: string
+          _variations: Json
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "seller" | "buyer"
