@@ -87,13 +87,9 @@ export const Route = createFileRoute("/produto/$productId")({
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: desc },
         ...(!p ? [{ name: "robots", content: "noindex, follow" }] : []),
-        ...(p?.image_url ? [
-          { property: "og:image", content: `https://hsdigitalmarketpla.store/api/public/product-share/${params.productId}?v=hs-logo-1` },
-          { name: "twitter:image", content: `https://hsdigitalmarketpla.store/api/public/product-share/${params.productId}?v=hs-logo-1` },
-          { property: "og:image:width", content: "1200" },
-          { property: "og:image:height", content: "630" },
-          { property: "og:image:type", content: "image/jpeg" },
-          { property: "og:image:alt", content: `${p.title} · HS Digital` },
+        ...(p?.image_url?.startsWith("https://") ? [
+          { property: "og:image", content: p.image_url },
+          { name: "twitter:image", content: p.image_url },
         ] : []),
       ],
       links: [{ rel: "canonical", href: pageUrl }],
