@@ -60,3 +60,4 @@ Game rewards are issued and rate-limited atomically in the database; shipping co
 - Resolve @acemir/cssom to its CommonJS library entry in Vite so LinkeDOM gets named parser exports instead of the browser-only global script; keep it bundled for Workers.
 - Today's and seven-day audience counts filter the verified owner account ID server-side, including historical rows; other audience metrics remain unchanged to preserve their scope.
 - Contents extraction is additive; shared delivery normalization preserves published descriptions at display/import time.
+- Amazon checkout stock only blocks on an explicit unavailable page; failed/ambiguous reads keep saved stock and recent confirmations skip live reads, so Pix creation is never stalled by the reader.
