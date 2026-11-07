@@ -7,7 +7,7 @@ import { AMAZON_DELIVERY_METHOD_TEXT, buildAmazonDescription, sanitizeAmazonSpec
 import { amazonPricePatch, extractAmazonOfferPrice } from './amazon-price';
 import { amazonNavigationHeaders, assertAmazonPageReadable, isAmazonRoundStop } from './amazon-request-policy';
 import { amazonReaderHttpError } from './amazon-search-diagnostics';
-import { extractSelectedAmazonOffer, confirmedSelectedAmazonStock } from './amazon-selected-offer';
+import { extractSelectedAmazonOffer } from './amazon-selected-offer';
 import { amazonSourceUrl } from './amazon-source';
 
 /** Amazon only blocks a sale when the page explicitly says unavailable; ambiguous reads keep the last stock. */
@@ -71,9 +71,6 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any, timeout
     const userSpecCount = Object.keys(oldSpecs).filter((k) => k !== "affiliate_url" && !k.startsWith("_")).length;
     if (Object.keys(specs).length > userSpecCount) patch.specifications = { ...specs, ...oldSpecs };
   } catch { /* conteúdo opcional */ }
-  const variations = (patch.variations as any[]) ?? product.variations;
-  void confirmedSelectedAmazonStock;
-  void variations;
   const quantity = amazonStockAfterRead(availability, product.stock);
 
   const { error } = await supabaseAdmin.from("products").update({
