@@ -1,11 +1,11 @@
 # HS Digital — MVP
 
 ## Edição completa — 07/11
-- [ ] Preencher medidas automaticamente apenas quando informadas no texto, sem inventar dados de frete.
-- [ ] Separar preço anterior real, custo e venda no cadastro e edição; exibir riscado apenas com redução real.
-- [ ] Manter Mais vendidos ao filtrar nacionais/importados e preservar posição da vitrine ao trocar esses filtros.
-- [ ] Ampliar edição dos próprios produtos: preço, estoque, categoria, descrição, origem, cores, numerações, medidas e fotos; preservar identidade e pedidos.
-- [ ] Verificar salvamento e reabertura com conta de vendedor, sem modificar anúncio real.
+- [x] Preencher medidas automaticamente apenas quando informadas no texto com unidades; cadastro real de teste preencheu 250 g e 3/20/30 cm, sem estimativas inventadas.
+- [x] Separar preço anterior real, custo e venda no cadastro e edição; referência R$40 e venda R$35 gravadas no anúncio de teste; preço alterado para R$36 e lido de volta. Nove testes passaram.
+- [x] Mais vendidos mantido nos três filtros; no celular a posição 1018 permaneceu 1018 em todas as trocas, inclusive na primeira.
+- [x] Edição completa dos próprios produtos por transação autenticada, mantendo identidade, pedidos e metadados oficiais não editados; fotos privadas com referências estáveis.
+- [x] Cadastro → edição → salvar → reabrir na JJ Kuster conferidos com preço, cores Preto/Branco e US S/10.5; anúncio de teste retirado da vitrine. Sete fotos da camisa real carregaram no editor, sem alterar anúncio real. Build OK; alterações de tela ainda precisam publicar.
 
 ## Cores e cadastro manual — 06/11
 - [x] Campos de origem, tamanhos e cores disponíveis para todas as contas de vendedor, sem filtro por e-mail; gravação limitada à própria loja.
