@@ -1,5 +1,8 @@
 # HS Digital — MVP
 
+## Link original Amazon — 07/11
+- [ ] Preservar o link do produto e a identidade Amazon em todas as importações, mantendo fotos e opções oficiais para conferência posterior; verificar testes sem alterar preço, estoque ou produtos publicados.
+
 ## Logo nos links de produto — 07/11
 - [x] Prévia JPEG 1200×630 da camisa conferida com logo no canto, preservando foto original; somente capas de produtos públicos ativos, destinos limitados e formatos JPEG/PNG com limites. Formatos não suportados preservam a prévia original. Requer publicação para chegar às redes sociais.
 
