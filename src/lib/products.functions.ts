@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { manualOptionsSchema } from "./manual-product-options";
+import { sellerEditSchema, mergeEditedOptions } from "./seller-product-edit";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -106,4 +107,25 @@ export const createSellerProduct = createServerFn({ method: "POST" })
     }
 
     return { productId };
+  });
+
+export const updateSellerProduct = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => sellerEditSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    if (!categories.includes(data.category as typeof categories[number])) throw new Error("Selecione uma categoria válida.");
+    const { data: product, error: readError } = await context.supabase.from("products")
+      .select("id,store_id,variations,supplier").eq("id", data.productId).single();
+    if (readError || !product) throw new Error("Produto não encontrado.");
+    const { data: store } = await context.supabase.from("stores").select("id")
+      .eq("id", product.store_id).eq("owner_id", context.userId).eq("status", "approved").maybeSingle();
+    if (!store) throw new Error("Você só pode editar produtos da sua própria loja aprovada.");
+    const variations = data.variations === null ? null : mergeEditedOptions(
+      Array.isArray(product.variations) ? product.variations as never : [], data.variations, Boolean(product.supplier),
+    );
+    const { error } = await context.supabase.rpc("update_seller_product_full" as never, {
+      _product_id: data.productId, _fields: data, _variations: variations, _media: data.media,
+    } as never);
+    if (error) throw new Error(error.message);
+    return { productId: data.productId };
   });
