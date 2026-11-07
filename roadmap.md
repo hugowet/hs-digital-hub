@@ -1,9 +1,9 @@
 # HS Digital — MVP
 
 ## Fotos por cor — 07/11
-- [ ] Vincular fotos às cores no cadastro e edição de qualquer vendedor, com referências privadas estáveis.
-- [ ] Preservar associações oficiais dos importados; trocar foto ao selecionar cor sem inventar associações.
-- [ ] Conferir cadastro, edição, salvar, recarregar e troca entre três cores no celular.
+- [x] Cadastro e edição de qualquer vendedor incluem Foto de cada cor; caminhos privados são persistidos e assinados apenas para exibição.
+- [x] Associações oficiais Amazon preservadas e CJ mantém fotos reais dos produtos-filhos; não inferir cor pela ordem da galeria. Produtos antigos sem vínculo precisam da associação real no editor.
+- [x] Cadastro → edição de vínculos → salvar → produto → Preto/Branco/Rosa → recarregar conferidos no celular com três fotos carregadas, sem erros; anúncios de teste retirados. Doze testes Vitest e sete do leitor Amazon passaram; build OK. Ainda precisa publicar.
 
 ## Edição completa — 07/11
 - [x] Preencher medidas automaticamente apenas quando informadas no texto com unidades; cadastro real de teste preencheu 250 g e 3/20/30 cm, sem estimativas inventadas.
