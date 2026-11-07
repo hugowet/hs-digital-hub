@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CATEGORIES } from "@/lib/catalog";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { ProductCard } from "@/components/product-card";
+import { mixByOrigin } from "@/lib/origin-mix";
 
 function CategoryRow({ slug, label }: { slug: string; label: string }) {
   const { data = [] } = useQuery({
@@ -12,8 +13,11 @@ function CategoryRow({ slug, label }: { slug: string; label: string }) {
     throwOnError: false,
     queryFn: async () => {
       try {
-        const res = await fetchCatalogPage({ data: { category: slug, pageSize: 12 } });
-        return res.products;
+        const [amazon, cj] = await Promise.all([
+          fetchCatalogPage({ data: { category: slug, supplier: "amazon", pageSize: 12 } }).catch(() => ({ products: [] })),
+          fetchCatalogPage({ data: { category: slug, supplier: "cj", pageSize: 3 } }).catch(() => ({ products: [] })),
+        ]);
+        return mixByOrigin([...amazon.products, ...cj.products]).slice(0, 15);
       } catch {
         return [];
       }
