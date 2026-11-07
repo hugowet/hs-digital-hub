@@ -16,7 +16,7 @@ import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/c
 type Photo = { storagePath?: string; url?: string; preview: string; file?: File; mediaType: "image" | "video"; mimeType?: string; sizeBytes?: number };
 type EditableProduct = {
   id: string; store_id: string; title: string; description?: string; description_long?: string;
-  price: number; stock: number; category: string; supplier?: string; supplier_cost?: number; supplier_cost_currency?: string;
+  price: number; compare_at_price?: number; stock: number; category: string; supplier?: string; supplier_cost?: number; supplier_cost_currency?: string;
   shipping_origin?: string; weight_kg?: number; height_cm?: number; width_cm?: number; length_cm?: number;
   image_url?: string; gallery_urls?: string[];
   variations?: Array<{ name: string; options: string[] }>;
@@ -38,6 +38,7 @@ export function SellerProductEditor({ product, onSaved, onCancel }: { product: E
   const [fields, setFields] = useState({ title: product.title, description: product.description ?? "", descriptionLong: product.description_long ?? "", price: String(product.price), supplierCost: product.supplier_cost == null ? "" : String(product.supplier_cost), stock: String(product.stock), category: product.category, shippingOrigin: productShippingOrigin(product) ?? "", weightKg: product.weight_kg == null ? "" : String(product.weight_kg), heightCm: product.height_cm == null ? "" : String(product.height_cm), widthCm: product.width_cm == null ? "" : String(product.width_cm), lengthCm: product.length_cm == null ? "" : String(product.length_cm) });
   const [options, setOptions] = useState(() => Object.fromEntries(["Cor", "Tamanho", "Tamanho (US)"].map(name => [name, product.variations?.find(g => g.name === name)?.options.join(", ") ?? ""])));
   const [optionsChanged, setOptionsChanged] = useState(false);
+  const [compareAt, setCompareAt] = useState(product.compare_at_price == null ? "" : String(product.compare_at_price));
   const [photos, setPhotos] = useState(() => initialPhotos(product));
   const [photosChanged, setPhotosChanged] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -78,7 +79,7 @@ export function SellerProductEditor({ product, onSaved, onCancel }: { product: E
     const number = (v: string) => v.trim() ? Number(v.replace(",", ".")) : null;
     setBusy(true);
     try {
-      const pending = sellerEditSchema.parse({ ...fields, productId: product.id, price: number(fields.price), stock: number(fields.stock), supplierCost: number(fields.supplierCost), weightKg: number(fields.weightKg), heightCm: number(fields.heightCm), widthCm: number(fields.widthCm), lengthCm: number(fields.lengthCm), variations: optionsChanged ? Object.entries(options).flatMap(([name, text]) => values(text).length ? [{ name, options: values(text) }] : []) : null, media: photosChanged ? photos.map((p, i) => ({ ...p, ...(p.file ? { storagePath: `${product.store_id}/${crypto.randomUUID()}_${i}.${p.file.type === "image/jpeg" ? "jpg" : p.file.type.split("/")[1]}` } : {}) })) : null });
+      const pending = sellerEditSchema.parse({ ...fields, compareAtPrice: number(compareAt), productId: product.id, price: number(fields.price), stock: number(fields.stock), supplierCost: number(fields.supplierCost), weightKg: number(fields.weightKg), heightCm: number(fields.heightCm), widthCm: number(fields.widthCm), lengthCm: number(fields.lengthCm), variations: optionsChanged ? Object.entries(options).flatMap(([name, text]) => values(text).length ? [{ name, options: values(text) }] : []) : null, media: photosChanged ? photos.map((p, i) => ({ ...p, ...(p.file ? { storagePath: `${product.store_id}/${crypto.randomUUID()}_${i}.${p.file.type === "image/jpeg" ? "jpg" : p.file.type.split("/")[1]}` } : {}) })) : null });
       if (pending.media) {
         for (let i = 0; i < photos.length; i++) {
           const photo = photos[i]; const path = pending.media[i]?.storagePath;
@@ -99,6 +100,7 @@ export function SellerProductEditor({ product, onSaved, onCancel }: { product: E
     <form onSubmit={submit} className="space-y-5">
       <fieldset disabled={busy} className="space-y-5">
         <div><Label htmlFor="edit-title">Título do produto</Label><Input id="edit-title" value={fields.title} onChange={e => change("title", e.target.value)} required maxLength={160} /></div>
+        <div><Label htmlFor="edit-compare">Preço anterior real (R$) · opcional</Label><Input id="edit-compare" type="number" step="0.01" min="0.01" value={compareAt} onChange={e => setCompareAt(e.target.value)} /></div>
         <div className="grid grid-cols-2 gap-3">{([["price", "Preço de venda (R$)"], ["supplierCost", `Preço de custo (${product.supplier_cost_currency ?? "BRL"})`], ["stock", "Estoque"]] as const).map(([key, label]) => <div key={key}><Label htmlFor={`edit-${key}`}>{label}</Label><Input id={`edit-${key}`} type="number" step={key === "stock" ? "1" : "0.01"} min={key === "price" ? "0.01" : "0"} required={key !== "supplierCost"} value={fields[key]} onChange={e => change(key, e.target.value)} /></div>)}
           <div><Label htmlFor="edit-category">Categoria</Label><select id="edit-category" required value={fields.category} onChange={e => change("category", e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"><option value="">Escolha a categoria</option>{!CATEGORIES.some(c => c.slug === fields.category) && fields.category && <option value={fields.category}>{fields.category}</option>}{CATEGORIES.map(c => <option key={c.slug} value={c.slug}>{c.label}</option>)}</select></div>
         </div>

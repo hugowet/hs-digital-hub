@@ -368,6 +368,7 @@ function Home() {
   const setSearch = (changes: HomeSearchUpdate, options?: { replace?: boolean }) =>
     navigate({
       ...selectionNavigation,
+      resetScroll: false,
       state: (previous) => ({ hsExitGuard: previous.hsExitGuard }),
       search: (previous) => {
         const next = { ...previous, ...changes } as Record<string, unknown>;
@@ -610,7 +611,7 @@ function Home() {
             </TabsList>
           </Tabs>
 
-          {!isFiltered && <AmazonBestSellersCarousel />}
+          <AmazonBestSellersCarousel />
           {!isFiltered && <CategoryCarousels />}
 
           {/* LISTA DE PRODUTOS */}
