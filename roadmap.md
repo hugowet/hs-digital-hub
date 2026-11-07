@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Fotos por cor — 07/11
+- [ ] Vincular fotos às cores no cadastro e edição de qualquer vendedor, com referências privadas estáveis.
+- [ ] Preservar associações oficiais dos importados; trocar foto ao selecionar cor sem inventar associações.
+- [ ] Conferir cadastro, edição, salvar, recarregar e troca entre três cores no celular.
+
 ## Edição completa — 07/11
 - [x] Preencher medidas automaticamente apenas quando informadas no texto com unidades; cadastro real de teste preencheu 250 g e 3/20/30 cm, sem estimativas inventadas.
 - [x] Separar preço anterior real, custo e venda no cadastro e edição; referência R$40 e venda R$35 gravadas no anúncio de teste; preço alterado para R$36 e lido de volta. Nove testes passaram.

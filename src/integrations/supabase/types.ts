@@ -3113,6 +3113,28 @@ export type Database = {
         }
         Returns: string
       }
+      create_seller_product_v6: {
+        Args: {
+          _category: string
+          _color_images: Json
+          _compare_at_price: number
+          _delivery_url: string
+          _description: string
+          _height_cm: number
+          _length_cm: number
+          _media: Json
+          _price: number
+          _product_type: string
+          _shipping_origin: string
+          _stock: number
+          _supplier_cost: number
+          _title: string
+          _variations: Json
+          _weight_kg: number
+          _width_cm: number
+        }
+        Returns: string
+      }
       daily_storefront_selection: {
         Args: { p_day?: string; p_limit?: number; p_offset?: number }
         Returns: Json

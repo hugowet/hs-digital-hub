@@ -73,6 +73,7 @@ import { startMercadoPagoConnection } from "@/lib/payments.functions";
 import { processSupplierFulfillment, syncCjProducts, getCjSupplierStatus, updateCjContent, setCjAutoImport } from "@/lib/suppliers.functions";
 import { createSellerProduct } from "@/lib/products.functions";
 import { SellerProductEditor } from "@/components/seller-product-editor";
+import { ColorPhotoSelector } from "@/components/color-photo-selector";
 import { packageMeasures } from "@/lib/manual-package-measures";
 import { BR_SIZES, US_SIZES, OPTION_COLORS, manualProductOptions } from "@/lib/manual-product-options";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -589,6 +590,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
   const [colors, setColors] = useState<string[]>([]);
   const [extraSizes, setExtraSizes] = useState("");
   const [extraColors, setExtraColors] = useState("");
+  const [colorPhotoKeys, setColorPhotoKeys] = useState<Record<string, string>>({});
 
   // Fotos selecionadas da galeria (até 10 fotos)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -720,6 +722,10 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
           lengthCm: dims[3],
           shippingOrigin,
           variations,
+          colorImages: Object.fromEntries(Object.entries(colorPhotoKeys).flatMap(([color, preview]) => {
+            const index = filePreviews.indexOf(preview);
+            return index >= 0 && variations.some(g => g.name === "Cor" && g.options.includes(color)) ? [[color, media[index].storagePath]] : [];
+          })),
         },
       });
 
@@ -734,6 +740,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
       setShippingOrigin(""); setSizes([]); setColors([]); setExtraSizes(""); setExtraColors("");
       setSelectedFiles([]);
       setFilePreviews([]);
+      setColorPhotoKeys({});
       onCreated();
     } catch (err: any) {
       toast.error(err.message || "Erro ao cadastrar produto.");
@@ -942,6 +949,7 @@ function ProductForm({ storeId, onCreated }: { storeId: string; onCreated: () =>
         </div>
       </div>
 
+      <ColorPhotoSelector colors={[...new Set([...colors, ...extraColors.split(",").map(v => v.trim()).filter(Boolean)])]} photos={filePreviews.map(preview => ({ key: preview, preview }))} selected={colorPhotoKeys} onChange={(color, key) => setColorPhotoKeys(old => ({ ...old, [color]: key }))} />
       <Button type="submit" disabled={loading} className="w-full mt-4">
         {loading ? "Cadastrando produto..." : "Publicar produto"}
       </Button>

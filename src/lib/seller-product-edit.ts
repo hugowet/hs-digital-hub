@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { manualOptionsSchema } from "./manual-product-options";
+import { colorPhotosSchema } from "./color-photos";
 
 export const sellerEditSchema = z.object({
   productId: z.string().uuid(),
@@ -17,6 +18,7 @@ export const sellerEditSchema = z.object({
   widthCm: z.number().positive().max(1000).nullable(),
   lengthCm: z.number().positive().max(1000).nullable(),
   variations: manualOptionsSchema.nullable(),
+  colorImages: colorPhotosSchema.nullable().optional(),
   media: z.array(z.object({
     storagePath: z.string().min(5).max(500).optional(),
     url: z.string().url().max(2000).refine(v => v.startsWith("https://") && !v.includes("/storage/v1/object/sign/" )).optional(),

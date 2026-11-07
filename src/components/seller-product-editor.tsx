@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ColorPhotoSelector } from "@/components/color-photo-selector";
 
 type Photo = { storagePath?: string; url?: string; preview: string; file?: File; mediaType: "image" | "video"; mimeType?: string; sizeBytes?: number };
 type EditableProduct = {
@@ -19,7 +20,7 @@ type EditableProduct = {
   price: number; compare_at_price?: number; stock: number; category: string; supplier?: string; supplier_cost?: number; supplier_cost_currency?: string;
   shipping_origin?: string; weight_kg?: number; height_cm?: number; width_cm?: number; length_cm?: number;
   image_url?: string; gallery_urls?: string[];
-  variations?: Array<{ name: string; options: string[] }>;
+  variations?: Array<{ name: string; options: string[]; images?: Record<string, string> }>;
   product_media?: Array<{ storage_path: string; media_type: "image" | "video"; mime_type: string; size_bytes: number; position: number }>;
 };
 
@@ -41,6 +42,8 @@ export function SellerProductEditor({ product, onSaved, onCancel }: { product: E
   const [compareAt, setCompareAt] = useState(product.compare_at_price == null ? "" : String(product.compare_at_price));
   const [photos, setPhotos] = useState(() => initialPhotos(product));
   const [photosChanged, setPhotosChanged] = useState(false);
+  const [colorImages, setColorImages] = useState<Record<string, string>>(() => product.variations?.find(g => g.name === "Cor")?.images ?? {});
+  const [colorImagesChanged, setColorImagesChanged] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const objectUrls = useRef<string[]>([]);
   useEffect(() => {
@@ -88,6 +91,15 @@ export function SellerProductEditor({ product, onSaved, onCancel }: { product: E
           if (error) throw new Error(`Não foi possível enviar a foto ${i + 1}.`);
         }
       }
+      if (colorImagesChanged || photosChanged || optionsChanged) {
+        const validColors = values(options["Cor"] ?? "");
+        pending.colorImages = Object.fromEntries(Object.entries(colorImages).flatMap(([color, key]) => {
+          if (!key || !validColors.includes(color)) return [];
+          const index = photos.findIndex(p => (p.storagePath ?? p.url ?? p.preview) === key);
+          if (index < 0) return key.startsWith("https://") && !photosChanged ? [[color, key]] : [];
+          return [[color, pending.media?.[index]?.storagePath ?? pending.media?.[index]?.url ?? key]];
+        }));
+      }
       await save({ data: pending });
       toast.success("Alterações salvas!"); onSaved();
     } catch (error) {
@@ -110,6 +122,7 @@ export function SellerProductEditor({ product, onSaved, onCancel }: { product: E
         <div><Label htmlFor="edit-description">Descrição</Label><Textarea id="edit-description" rows={5} value={fields.description} onChange={e => change("description", e.target.value)} /></div>
         <div><Label htmlFor="edit-descriptionLong">Descrição completa</Label><Textarea id="edit-descriptionLong" rows={5} value={fields.descriptionLong} onChange={e => change("descriptionLong", e.target.value)} /></div>
         <div className="space-y-2"><Label>Fotos do produto ({photos.length}/10)</Label><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{photos.map((photo, index) => <div key={photo.storagePath ?? photo.url ?? photo.preview} className="space-y-1"><div className="aspect-square overflow-hidden rounded-md border bg-muted">{photo.preview && (photo.mediaType === "video" ? <video src={photo.preview} controls className="h-full w-full object-contain" /> : <img src={photo.preview} alt={`Foto ${index + 1}`} className="h-full w-full object-contain" />)}</div><div className="flex items-center justify-between gap-1"><Button type="button" size="sm" variant={index === 0 ? "default" : "outline"} aria-label={`Definir foto ${index + 1} como capa`} onClick={() => { setPhotos(old => [old[index], ...old.filter((_, i) => i !== index)]); setPhotosChanged(true); }}><Star className="size-3" />{index === 0 ? "Capa" : "Capa"}</Button><Button type="button" size="icon" variant="ghost" aria-label={`Remover foto ${index + 1}`} onClick={() => { setPhotos(old => old.filter((_, i) => i !== index)); setPhotosChanged(true); }}><Trash2 className="size-4" /></Button></div></div>)}</div><input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={e => uploadPhotos(e.target.files)} /><Button type="button" variant="outline" disabled={photos.length >= 10} onClick={() => input.current?.click()}><Upload className="size-4" />Adicionar fotos</Button></div>
+        <ColorPhotoSelector colors={values(options["Cor"] ?? "")} photos={photos.filter(p => p.mediaType === "image").map(p => ({ key: p.storagePath ?? p.url ?? p.preview, preview: p.preview }))} selected={colorImages} onChange={(color, key) => { setColorImages(old => ({ ...old, [color]: key })); setColorImagesChanged(true); }} />
       </fieldset>
       <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t bg-background py-3"><Button type="button" variant="outline" disabled={busy} onClick={onCancel}>Cancelar</Button><Button type="submit" disabled={busy}>{busy ? "Salvando..." : "Salvar alterações"}</Button></div>
     </form>
