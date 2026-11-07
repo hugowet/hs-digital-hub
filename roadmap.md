@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## Edição completa — 07/11
+- [ ] Manter Mais vendidos ao filtrar nacionais/importados e preservar posição da vitrine ao trocar esses filtros.
 - [ ] Ampliar edição dos próprios produtos: preço, estoque, categoria, descrição, origem, cores, numerações, medidas e fotos; preservar identidade e pedidos.
 - [ ] Verificar salvamento e reabertura com conta de vendedor, sem modificar anúncio real.
 
