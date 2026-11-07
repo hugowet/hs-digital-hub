@@ -624,6 +624,13 @@
       "when": 1794033221993,
       "tag": "0088_seller_full_product_edit",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1794033365935,
+      "tag": "0089_seller_product_comparable_prices",
+      "breakpoints": true
     }
   ]
 }

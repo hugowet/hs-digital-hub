@@ -3092,6 +3092,27 @@ export type Database = {
         }
         Returns: string
       }
+      create_seller_product_v5: {
+        Args: {
+          _category: string
+          _compare_at_price: number
+          _delivery_url: string
+          _description: string
+          _height_cm: number
+          _length_cm: number
+          _media: Json
+          _price: number
+          _product_type: string
+          _shipping_origin: string
+          _stock: number
+          _supplier_cost: number
+          _title: string
+          _variations: Json
+          _weight_kg: number
+          _width_cm: number
+        }
+        Returns: string
+      }
       daily_storefront_selection: {
         Args: { p_day?: string; p_limit?: number; p_offset?: number }
         Returns: Json
@@ -3328,6 +3349,15 @@ export type Database = {
       }
       trend_register_view: { Args: { _video_id: string }; Returns: number }
       update_seller_product_full: {
+        Args: {
+          _fields: Json
+          _media: Json
+          _product_id: string
+          _variations: Json
+        }
+        Returns: string
+      }
+      update_seller_product_priced: {
         Args: {
           _fields: Json
           _media: Json
