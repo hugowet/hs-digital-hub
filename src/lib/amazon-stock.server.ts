@@ -8,9 +8,10 @@ import { amazonPricePatch, extractAmazonOfferPrice } from './amazon-price';
 import { amazonNavigationHeaders, assertAmazonPageReadable, isAmazonRoundStop } from './amazon-request-policy';
 import { amazonReaderHttpError } from './amazon-search-diagnostics';
 import { extractSelectedAmazonOffer, confirmedSelectedAmazonStock } from './amazon-selected-offer';
+import { amazonSourceUrl } from './amazon-source';
 
 export async function checkAmazonStock(supabaseAdmin: any, product: any) {
-  const rawUrl = String(product.specifications?.affiliate_url ?? "");
+  const rawUrl = amazonSourceUrl(product.specifications);
   let html = "";
   try {
     const url = new URL(rawUrl);
