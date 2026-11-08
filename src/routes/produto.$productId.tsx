@@ -9,6 +9,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { getProductReviews, publishProductReview } from "@/lib/reviews.functions";
+import { getSampleReviews } from "@/lib/sample-reviews";
 import { reviewInput, reviewPhotoPath, reviewStates } from "@/lib/reviews";
 import {
   AlertCircle,
@@ -276,6 +277,7 @@ function ProductDetailPage() {
   });
 
   const allReviews: ReviewItem[] = reviews;
+  const sampleReviews = useMemo(() => getSampleReviews(productId).map((review) => ({ ...review, verified: false, helpfulCount: 0, photos: [] })), [productId]);
 
   useEffect(() => {
     initAbandonmentWatcher();
@@ -1100,8 +1102,9 @@ function ProductDetailPage() {
           {/* Lista de Avaliações */}
           <div className="mt-6 space-y-4">
             {reviewsError && <p role="alert" className="text-destructive">Não foi possível carregar as avaliações. <Button variant="ghost" onClick={() => reloadReviews()}>Tentar novamente</Button></p>}
-            {allReviews.map((rev) => (
+            {[...allReviews, ...sampleReviews].map((rev) => (
               <div key={rev.id} className="rounded-xl border border-border/80 bg-card p-4 text-xs sm:text-sm space-y-2">
+                {rev.id.startsWith("sample-") && <p className="text-muted-foreground font-semibold">Exemplo ilustrativo — não é avaliação de cliente nem compra verificada</p>}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-foreground">{rev.author}</span>
