@@ -38,6 +38,7 @@ import { ProductCard } from "@/components/product-card";
 import { CategoryCarousels } from "@/components/category-carousels";
 import { HsPromotionsCarousel } from "@/components/hs-promotions-carousel";
 import { AmazonBestSellersCarousel } from "@/components/amazon-best-sellers-carousel";
+import { stampCarouselOptions } from "@/lib/amazon-best-sellers";
 import { amazonBestSellersOptions } from "@/lib/amazon-best-sellers";
 import { personalizeProducts, recordCategoryClick, recordSearch } from "@/lib/interest-profile";
 import { IntroAnimation } from "@/components/intro-animation";
@@ -616,6 +617,7 @@ function Home() {
           </Tabs>
 
           <AmazonBestSellersCarousel />
+          <AmazonBestSellersCarousel title="HS Estampas" options={stampCarouselOptions} showFeatured={false} />
           {!isFiltered && <CategoryCarousels />}
 
           {/* LISTA DE PRODUTOS */}

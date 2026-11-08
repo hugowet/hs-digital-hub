@@ -14,7 +14,7 @@ function CategoryRow({ slug, label }: { slug: string; label: string }) {
     queryFn: async () => {
       try {
         const [amazon, cj] = await Promise.all([
-          fetchCatalogPage({ data: { category: slug, supplier: "amazon", pageSize: 12 } }).catch(() => ({ products: [] })),
+          slug === "estampas" ? fetchCatalogPage({ data: { category: slug, supplier: null, pageSize: 15 } }).catch(() => ({ products: [] })) : fetchCatalogPage({ data: { category: slug, supplier: "amazon", pageSize: 12 } }).catch(() => ({ products: [] })),
           fetchCatalogPage({ data: { category: slug, supplier: "cj", pageSize: 3 } }).catch(() => ({ products: [] })),
         ]);
         return mixByOrigin([...amazon.products, ...cj.products]).slice(0, 15);

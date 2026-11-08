@@ -20,3 +20,9 @@ export const amazonBestSellersOptions = queryOptions({
   queryFn: () => fetchAmazonCarousel(),
   staleTime: 60_000,
 });
+import { fetchStampCarousel } from "@/lib/catalog.functions";
+export const stampCarouselOptions = queryOptions({
+  queryKey: ["hs-stamp-carousel"],
+  queryFn: () => fetchStampCarousel(),
+  staleTime: 60_000,
+});
