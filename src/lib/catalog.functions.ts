@@ -247,3 +247,15 @@ export const fetchProduct = createServerFn({ method: "GET" })
     }
     return signed;
   });
+
+export const fetchStampCarousel = createServerFn({ method: "GET" }).handler(async () => {
+  const db = await createPublicClient();
+  const { data: rows, error } = await db.from("hs_stamp_carousel").select("product_id").order("created_at").limit(30);
+  if (error) throw error;
+  const ids = (rows ?? []).map((r) => r.product_id);
+  if (!ids.length) return [] as Product[];
+  const result = await db.from("products").select(cardProjection).in("id", ids).eq("is_active", true);
+  if (result.error) throw result.error;
+  const byId = new Map((result.data ?? []).map((p) => [p.id, p]));
+  return prepareCards(ids.flatMap((id) => { const row = byId.get(id); return row ? [row] : []; }));
+});

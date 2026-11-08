@@ -10,11 +10,13 @@ const list = (v: string) => v.split(/[,\n]/).map((s) => s.trim()).filter(Boolean
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export function MontinkImporter({ storeId }: { storeId: string }) {
-  const [f, setF] = useState({ montinkId: "", title: "", description: "", cost: "", price: "", photos: "", colors: "Preto, Branco", sizes: "P, M, G, GG" });
+  const [f, setF] = useState({ montinkId: "", title: "", description: "", cost: "", price: "", oldPrice: "", photos: "", colors: "Preto, Branco", sizes: "P, M, G, GG" });
   const [saving, setSaving] = useState(false);
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
   const cost = Number(f.cost.replace(",", ".")) || 0;
   const price = Number(f.price.replace(",", ".")) || 0;
+  const oldPrice = Number(f.oldPrice.replace(",", ".")) || 0;
+  const off = oldPrice > price && price > 0 ? Math.round((1 - price / oldPrice) * 100) : 0;
   const profit = price - cost - price * 0.12;
 
   const publish = async () => {
@@ -29,14 +31,14 @@ export function MontinkImporter({ storeId }: { storeId: string }) {
     ].filter(Boolean);
     const { error } = await supabase.from("products").insert({
       store_id: storeId, title: f.title.trim(), description: f.description.trim(), description_long: f.description.trim(),
-      price, supplier_cost: cost, image_url: photos[0], gallery_urls: photos, free_shipping: true, is_active: true,
-      category: "moda", variations: variations as any, stock: 999, supplier: "montink", product_type: "physical",
+      price, compare_at_price: oldPrice > price ? oldPrice : null, supplier_cost: cost, image_url: photos[0], gallery_urls: photos, free_shipping: true, is_active: true,
+      category: "estampas", variations: variations as any, stock: 999, supplier: "montink", product_type: "physical",
       specifications: { montink_product_id: f.montinkId.trim(), partner: "montink" },
     } as any);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Estampa publicada na vitrine!");
-    setF({ ...f, montinkId: "", title: "", description: "", cost: "", price: "", photos: "" });
+    setF({ ...f, montinkId: "", title: "", description: "", cost: "", price: "", oldPrice: "", photos: "" });
   };
 
   return (
@@ -52,6 +54,8 @@ export function MontinkImporter({ storeId }: { storeId: string }) {
         <div><Label>Custo Montink (R$, com frete)</Label><Input inputMode="decimal" value={f.cost} onChange={set("cost")} /></div>
         <div><Label>Preço na vitrine (R$)</Label><Input inputMode="decimal" value={f.price} onChange={set("price")} /></div>
       </div>
+      <div><Label>Preço antigo (opcional, aparece riscado)</Label><Input inputMode="decimal" value={f.oldPrice} onChange={set("oldPrice")} /></div>
+      {off > 0 && <p className="text-sm text-muted-foreground">Na vitrine: <span className="line-through">{brl(oldPrice)}</span> por {brl(price)} · {off}% OFF</p>}
       {price > 0 && cost > 0 && <p className={`text-sm font-medium ${profit > 0 ? "text-success" : "text-destructive"}`}>Você recebe aprox. {brl(profit)} por peça (após comissão 12%).</p>}
       <div><Label>Links das fotos (um por linha)</Label><Textarea value={f.photos} onChange={set("photos")} placeholder="https://..." /></div>
       <div className="grid grid-cols-2 gap-3">

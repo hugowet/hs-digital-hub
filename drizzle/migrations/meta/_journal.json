@@ -645,6 +645,13 @@
       "when": 1794179455090,
       "tag": "0091_montink_supplier",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1794180091872,
+      "tag": "0092_hs_stamp_carousel",
+      "breakpoints": true
     }
   ]
 }

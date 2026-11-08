@@ -590,6 +590,29 @@ export type Database = {
           },
         ]
       }
+      hs_stamp_carousel: {
+        Row: {
+          created_at: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hs_stamp_carousel_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercado_pago_accounts: {
         Row: {
           access_token_encrypted: string
@@ -3164,6 +3187,10 @@ export type Database = {
         Returns: number
       }
       manage_amazon_carousel: {
+        Args: { _include: boolean; _product_ids: string[]; _store_id: string }
+        Returns: number
+      }
+      manage_hs_stamp_carousel: {
         Args: { _include: boolean; _product_ids: string[]; _store_id: string }
         Returns: number
       }
