@@ -43,6 +43,7 @@ export const CATEGORIES = [
   { slug: "autos-motos", label: "Autos & Motos", icon: "CarFront" },
   { slug: "casa-setup", label: "Casa & Setup", icon: "LampDesk" },
   { slug: "moda", label: "Moda", icon: "Shirt" },
+  { slug: "estampas", label: "Estampas", icon: "Shirt" },
   { slug: "casa", label: "Casa", icon: "Sofa" },
   { slug: "beleza", label: "Beleza", icon: "Sparkles" },
   { slug: "games", label: "Games", icon: "Gamepad2" },

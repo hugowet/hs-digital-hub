@@ -30,7 +30,7 @@ export function MontinkImporter({ storeId }: { storeId: string }) {
     const { error } = await supabase.from("products").insert({
       store_id: storeId, title: f.title.trim(), description: f.description.trim(), description_long: f.description.trim(),
       price, supplier_cost: cost, image_url: photos[0], gallery_urls: photos, free_shipping: true, is_active: true,
-      category: "moda", variations: variations as any, stock: 999, supplier: "montink", product_type: "physical",
+      category: "estampas", variations: variations as any, stock: 999, supplier: "montink", product_type: "physical",
       specifications: { montink_product_id: f.montinkId.trim(), partner: "montink" },
     } as any);
     setSaving(false);
