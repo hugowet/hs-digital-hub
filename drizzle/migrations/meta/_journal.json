@@ -638,6 +638,13 @@
       "when": 1794034275741,
       "tag": "0090_manual_color_photo_associations",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1794179455090,
+      "tag": "0091_montink_supplier",
+      "breakpoints": true
     }
   ]
 }
