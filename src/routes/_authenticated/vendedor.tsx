@@ -1,3 +1,4 @@
+import { SellerStampCarouselTab } from "@/components/seller-stamp-carousel-tab";
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { deliveryFields, deliveryReport, deliverySteps, currentDeliveryStep, showsManualPurchaseReport } from "@/lib/order-delivery";
 import { SellerDeliveryAttempt } from "@/components/seller-delivery-attempt";
@@ -287,6 +288,7 @@ function SellerCenterPage() {
           <TabsTrigger value="products">Meus produtos</TabsTrigger>
           {isPlatformOwner && <TabsTrigger value="promotions">Promoções HS</TabsTrigger>}
           {isPlatformOwner && <TabsTrigger value="best-sellers">Mais vendidos</TabsTrigger>}
+          {isPlatformOwner && <TabsTrigger value="stamps">HS Estampas</TabsTrigger>}
           <TabsTrigger value="create">Cadastrar produto</TabsTrigger>
           <TabsTrigger value="sales">Vendas e extrato</TabsTrigger>
           <TabsTrigger value="mercadopago">Mercado Pago</TabsTrigger>
@@ -294,6 +296,7 @@ function SellerCenterPage() {
           {isPlatformOwner && <TabsTrigger value="amazon-affiliate">Importador Amazon</TabsTrigger>}
           {isPlatformOwner && <TabsTrigger value="montink">Montink</TabsTrigger>}
         </TabsList>
+        {isPlatformOwner && <TabsContent value="stamps" className="pt-4"><SellerStampCarouselTab storeId={store.id} /></TabsContent>}
         {isPlatformOwner && <TabsContent value="montink" className="pt-4"><MontinkImporter storeId={store.id} /></TabsContent>}
 
         {/* Aba de Pedidos e Rastreio */}
