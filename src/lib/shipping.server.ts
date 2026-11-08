@@ -206,6 +206,11 @@ export async function quoteCartShipping(
     // Amazon dropshipping ships straight from the supplier: the margin is already in the price, no store origin CEP.
     let rawOptions = suppliers.has("cj")
       ? await cjQuotes(supabaseAdmin, storeId, postalCode, products, firstPurchase && !marginAllocated)
+      : suppliers.has("montink") && suppliers.size === 1
+        ? [{ provider: "supplier", serviceCode: "montink_direct", serviceName: "Produção e envio do fornecedor",
+            carrierName: "Fornecedor nacional", amount: 0, deliveryDaysMin: 7, deliveryDaysMax: 15,
+            providerPayload: { embedded_free_shipping: true, supplier_freight_brl: 0,
+              priced_items: products.map((p: any) => ({ product_id: p.id, unit_price: Number(p.price), quantity: p.quantity })) } } as any]
       : suppliers.has("amazon")
         ? [{ provider: "supplier", serviceCode: "amazon_direct", serviceName: "Envio direto do fornecedor",
             carrierName: "Fornecedor nacional", amount: 0, deliveryDaysMin: 5, deliveryDaysMax: 12,

@@ -168,6 +168,8 @@ export const Route = createFileRoute("/api/public/mercado-pago/webhook")({
         if (payment.status === "approved") {
           const { dispatchPaidCjFulfillments } = await import("@/lib/suppliers.server");
           await dispatchPaidCjFulfillments(supabaseAdmin, transaction.order_id);
+          const { dispatchPaidMontinkFulfillments } = await import("@/lib/montink.server");
+          await dispatchPaidMontinkFulfillments(supabaseAdmin, transaction.order_id).catch(() => undefined);
         }
         
         await supabaseAdmin.from("payment_events").update({ processed_at: new Date().toISOString() })
