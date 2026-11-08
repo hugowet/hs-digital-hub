@@ -292,7 +292,9 @@ function SellerCenterPage() {
           <TabsTrigger value="mercadopago">Mercado Pago</TabsTrigger>
           {isPlatformOwner && <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>}
           {isPlatformOwner && <TabsTrigger value="amazon-affiliate">Importador Amazon</TabsTrigger>}
+          {isPlatformOwner && <TabsTrigger value="montink">Montink</TabsTrigger>}
         </TabsList>
+        {isPlatformOwner && <TabsContent value="montink" className="pt-4"><MontinkImporter storeId={store.id} /></TabsContent>}
 
         {/* Aba de Pedidos e Rastreio */}
         <TabsContent value="orders" className="pt-4">
