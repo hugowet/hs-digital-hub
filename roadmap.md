@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Montink — 09/11
+- [ ] Cotar frete oficial pelo CEP do comprador antes do pagamento, sem custo ou prazo inventado.
+- [ ] Buscar produtos cadastrados na Montink para conferência e publicação explícita, preservando preço, descrição e opções oficiais.
+- [ ] Validar conexão, catálogo e cotação reais sem gerar pedido ou cobrança.
+
 ## Link original Amazon — 07/11
 - [x] Link original e link do produto selecionado preservados nas importações individuais, lotes, páginas e robô; releitura prefere o link selecionado e mantém compatibilidade com anúncios antigos. Fotos/opções, preços, estoque e anúncios existentes não alterados.
 - [x] Testes do vínculo e publicação do robô com leitor simulado; importação externa/publicação de anúncio real não executada para evitar consumo e mudanças na vitrine. Requer publicação do site.
