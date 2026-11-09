@@ -4,13 +4,13 @@
 - Na aba Montink, buscar seus produtos cadastrados e mostrar fotos, nomes, descrições, preços e opções para conferir.
 - Selecionar os produtos e publicar na HS Digital sem digitar todos os dados novamente. Nada será publicado só por buscar.
 - Preservar o preço com a margem que você cadastrou na Montink. Não acrescentar outra margem automaticamente; mostrar separadamente custo e comissão da HS.
-- Consultar o frete real quando o comprador informar o CEP, antes do pagamento, sem você precisar conhecer o endereço antecipadamente.
+- Manter o preço Montink e cobrar o frete separado, conforme sua escolha: consultar o valor real quando o comprador informar o CEP, antes do pagamento. Você não precisa conhecer o endereço antecipadamente.
 
 ## Etapas
 1. Atualizar a autorização Montink por formulário seguro: o teste de leitura recebeu “Token inválido ou vencido”. Não pedir o token no chat.
 2. Conferir uma página real de produtos e o retorno real de frete antes de definir os campos da importação.
 3. Criar busca paginada e seleção para publicação, com prevenção de duplicados por loja e código Montink, preservando descrições, imagens e variações oficiais. Preços ou custos ausentes exigirão conferência, não estimativas.
-4. Substituir o frete Montink atualmente zerado e o prazo fixo por cotações oficiais vinculadas ao comprador, CEP e itens. Respeitar as condições vigentes de frete embutido sem absorver custo desconhecido nem aplicar comissão sobre frete.
+4. Substituir o frete Montink atualmente zerado e o prazo fixo por cotações oficiais vinculadas ao comprador, CEP e itens. Nas estampas Montink, manter o preço cadastrado e somar o frete separado; não oferecer frete grátis automático nem aplicar comissão sobre frete. Não alterar as regras dos demais fornecedores.
 5. Corrigir o envio de pedidos para o formato oficial, incluindo variações e transportadora escolhida; manter envio apenas após pagamento confirmado e proteção contra duplicidade. Resultados incertos de envio não serão repetidos sem reconciliação.
 6. Testar catálogo, seleção, cálculo e bloqueios sem cobrar, produzir ou publicar produtos reais durante os testes. Publicação de produtos exige sua seleção explícita.
 
