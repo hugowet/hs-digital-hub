@@ -838,7 +838,9 @@ function ProductDetailPage() {
                             if (option.productId === productId || checkingOption) return;
                             setCheckingOption(option.productId);
                             try {
-                              if (product.supplier === "cj")
+                              const blocks = product.supplier === "montink" && product.specifications?.montink_description_blocks;
+              if (Array.isArray(blocks) && blocks.length) return blocks.map((b, i) => <p key={i} className={b.bold ? "font-bold" : "font-normal"}>{String(b.text ?? "")}</p>);
+              if (product.supplier === "cj")
                                 await confirmOption({ data: { parentId: productId, productId: option.productId } });
                               setQuantity(1);
                               setSelectedImage(0);

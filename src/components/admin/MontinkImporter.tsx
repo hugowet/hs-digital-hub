@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { listMontinkProducts, previewMontinkProduct, publishMontinkProduct } from "@/lib/montink.functions";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +12,14 @@ const list = (v: string) => v.split(/[,\n]/).map((s) => s.trim()).filter(Boolean
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export function MontinkImporter({ storeId }: { storeId: string }) {
+  const load = useServerFn(listMontinkProducts);
+  const preview = useServerFn(previewMontinkProduct);
+  const publishOfficial = useServerFn(publishMontinkProduct);
+  const [catalog, setCatalog] = useState<Array<{id: string; title: string; price: number; image: string}>>([]);
+  const [selected, setSelected] = useState<Awaited<ReturnType<typeof previewMontinkProduct>> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [productionCost, setProductionCost] = useState("");
+  const report = (e: unknown) => toast.error(e instanceof Error ? e.message : "Não foi possível consultar a Montink.");
   const [f, setF] = useState({ montinkId: "", title: "", description: "", cost: "", price: "", oldPrice: "", photos: "", colors: "Preto, Branco", sizes: "P, M, G, GG" });
   const [saving, setSaving] = useState(false);
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
@@ -31,8 +41,8 @@ export function MontinkImporter({ storeId }: { storeId: string }) {
     ].filter(Boolean);
     const { error } = await supabase.from("products").insert({
       store_id: storeId, title: f.title.trim(), description: f.description.trim(), description_long: f.description.trim(),
-      price, compare_at_price: oldPrice > price ? oldPrice : null, supplier_cost: cost, image_url: photos[0], gallery_urls: photos, free_shipping: true, is_active: true,
-      category: "estampas", variations: variations as any, stock: 999, supplier: "montink", product_type: "physical",
+      price, compare_at_price: oldPrice > price ? oldPrice : null, supplier_cost: cost, image_url: photos[0], gallery_urls: photos, free_shipping: false, is_active: true,
+      category: "estampas", variations: variations as any, stock: 0, supplier: "montink", product_type: "physical",
       specifications: { montink_product_id: f.montinkId.trim(), partner: "montink" },
     } as any);
     setSaving(false);
@@ -43,15 +53,16 @@ export function MontinkImporter({ storeId }: { storeId: string }) {
 
   return (
     <section className="max-w-xl space-y-4">
-      <div className="rounded-md border border-border bg-muted/40 p-4">
-        <h2 className="font-semibold">Importador Montink</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Crie a estampa na Montink, copie o código do produto e as fotos. Quando o pagamento for aprovado, o pedido vai sozinho para a Montink produzir e enviar.</p>
-      </div>
+      <h2 className="font-semibold">Meus produtos Montink</h2>
+      <Button disabled={busy} onClick={async () => { setBusy(true); try { const result = await load({data: {storeId, page: 0}}); setCatalog(result.products); } catch(e) { report(e); } finally { setBusy(false); } }}>{busy ? "Buscando…" : "Buscar meus produtos Montink"}</Button>
+      <div className="divide-y divide-border">{catalog.map(p => <div key={p.id} className="flex items-center gap-3 py-3"><img src={p.image} alt={p.title} className="h-16 w-16 shrink-0 rounded object-contain"/><div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{p.title}</p><p>{brl(p.price)}</p></div><Button size="sm" variant="outline" disabled={busy} onClick={async () => { setBusy(true); try { setSelected(await preview({data: {storeId, id: p.id}})); setProductionCost(""); } catch(e) { report(e); } finally { setBusy(false); } }}>Conferir</Button></div>)}</div>
+      {selected && <section className="space-y-3 border-y border-border py-4"><h3 className="font-bold">{selected.title}</h3><p>{brl(selected.price)}</p>{selected.blocks.map((b,i) => <p key={i} className={`text-sm ${b.bold ? "font-bold" : ""}`}>{b.text}</p>)}<p className="text-sm">Cores: {selected.colors.join(", ")} · Tamanhos: {selected.sizes.join(", ") || "Único"}</p><p className="text-sm text-muted-foreground">Estoque informado: {selected.stock}. Sem estoque confirmado, a compra fica indisponível.</p><Label>Custo de produção Montink, sem frete (R$)</Label><Input inputMode="decimal" value={productionCost} onChange={e => setProductionCost(e.target.value)}/><p className="text-sm text-muted-foreground">Frete separado pelo CEP do comprador. Pedidos externos precisam ser pagos na Montink para produção.</p><div className="flex gap-2"><Button disabled={busy} onClick={async () => { setBusy(true); try { await publishOfficial({data: {storeId, id: selected.id, cost: Number(productionCost.replace(",", "."))}}); toast.success("Produto cadastrado na vitrine."); setSelected(null); } catch(e) { report(e); } finally { setBusy(false); } }}>Publicar este produto</Button><Button variant="outline" onClick={() => setSelected(null)}>Cancelar</Button></div></section>}
+      <details><summary className="cursor-pointer text-sm font-semibold">Cadastro manual</summary><div className="mt-4 space-y-4">
       <div><Label>Código do produto na Montink</Label><Input value={f.montinkId} onChange={set("montinkId")} /></div>
       <div><Label>Título</Label><Input value={f.title} onChange={set("title")} placeholder="Camiseta Procura no Gugo" /></div>
       <div><Label>Descrição</Label><Textarea value={f.description} onChange={set("description")} /></div>
       <div className="grid grid-cols-2 gap-3">
-        <div><Label>Custo Montink (R$, com frete)</Label><Input inputMode="decimal" value={f.cost} onChange={set("cost")} /></div>
+        <div><Label>Custo Montink (R$, sem frete)</Label><Input inputMode="decimal" value={f.cost} onChange={set("cost")} /></div>
         <div><Label>Preço na vitrine (R$)</Label><Input inputMode="decimal" value={f.price} onChange={set("price")} /></div>
       </div>
       <div><Label>Preço antigo (opcional, aparece riscado)</Label><Input inputMode="decimal" value={f.oldPrice} onChange={set("oldPrice")} /></div>
@@ -63,6 +74,7 @@ export function MontinkImporter({ storeId }: { storeId: string }) {
         <div><Label>Tamanhos</Label><Input value={f.sizes} onChange={set("sizes")} /></div>
       </div>
       <Button onClick={publish} disabled={saving}>{saving ? "Publicando..." : "Publicar na vitrine"}</Button>
+      </div></details>
     </section>
   );
 }
