@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## Montink — 09/11
+- [ ] Corrigir fotos Montink para mostrar a peça estampada, não a arte isolada; verificar o anúncio 804e0bf8-a360-47e1-92ae-76f15330aee2 e disponibilidade sob demanda.
 - [ ] Confirmar significado de variacoesEstoque com Montink para disponibilidade por cor/tamanho; produção sob demanda confirmada, zero isolado não comprova falta de peças-base. Não liberar estoque fictício.
 - [x] Cotação oficial Montink implementada com frete separado e exceção no checkout, sem alterar fornecedores restantes; consulta real validada, compra completa ainda não homologada.
 - [x] Busca de 27 produtos e conferência do boné Lupi R$80,30 e descrição na conta JJ Kuster verificadas; publicação explícita preparada, nenhum produto publicado neste teste.
