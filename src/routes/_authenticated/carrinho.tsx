@@ -191,8 +191,9 @@ function CartPage() {
     const quoted = pricedItems.find((entry) => entry.product_id === item.productId && entry.quantity === item.quantity);
     return sum + (quoted ? Number(quoted.unit_price) : item.price) * item.quantity;
   }, 0);
+  const separateShipping = selectedOptions.some(option => option.separateShipping);
   const embeddedShipping = selectedOptions.some((option) => option.embeddedFreeShipping);
-  const firstPurchaseMargin = firstPurchaseEligible && !embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? 10 : 0;
+  const firstPurchaseMargin = firstPurchaseEligible && !separateShipping && !embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? 10 : 0;
   const totalPedido = Math.round((subtotalProdutos + valorFreteCobrado + valorSeguro + firstPurchaseMargin) * 100) / 100;
   const hasPhysicalItems = items.some((item) => item.productType !== "digital");
   const quotesReady = !hasPhysicalItems || (confirmedRequest === requestKey && selectedOptions.length === groups.filter((group) => group.items.some((item) => item.productType !== "digital")).length
@@ -669,7 +670,7 @@ function CartPage() {
 
                 <div className="flex justify-between text-muted-foreground">
                   <span>{embeddedShipping && valorFreteCobrado > 0 ? "Adicional Premium" : "Frete"}</span>
-                  {!embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? (
+                  {!separateShipping && !embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? (
                     <span className="flex items-center gap-1.5">
                       <span className="line-through opacity-60">{brl(valorFreteCobrado)}</span>
                       <span className="font-bold text-[#00a650]">Grátis 🎉</span>
@@ -681,7 +682,7 @@ function CartPage() {
                   )}
                 </div>
 
-                {(embeddedShipping || (subtotalProdutos >= 89.9 && valorFreteCobrado > 0)) && (
+                {!separateShipping && (embeddedShipping || (subtotalProdutos >= 89.9 && valorFreteCobrado > 0)) && (
                   <p className="text-[10px] font-semibold text-[#00a650]">
                     {firstPurchaseEligible
                       ? "Frete grátis na sua primeira compra."
@@ -689,7 +690,7 @@ function CartPage() {
                   </p>
                 )}
 
-                {subtotalProdutos < 89.9 && subtotalProdutos > 0 && (
+                {!separateShipping && subtotalProdutos < 89.9 && subtotalProdutos > 0 && (
                   <p className="text-[10px] font-semibold text-muted-foreground">
                     Faltam {brl(Math.round((89.9 - subtotalProdutos) * 100) / 100)} para você ganhar frete grátis 🚚
                   </p>
