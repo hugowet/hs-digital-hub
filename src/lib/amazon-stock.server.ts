@@ -107,7 +107,7 @@ export async function assertAmazonStock(supabaseAdmin: any, items: { productId: 
     && Number(product.stock) >= requestedFor(product.id)
     && Date.parse(product.supplier_stock_checked_at ?? "") > recent));
   const results = await Promise.all(toCheck.map(async (product: any) => {
-    try { return { product, quantity: await checkAmazonStock(supabaseAdmin, product, 8000) }; }
+    try { return { product, quantity: await checkAmazonStock(supabaseAdmin, product, 4000) }; }
     catch { return { product, quantity: Math.max(0, Number(product.stock) || 0) }; }
   }));
   for (const { product, quantity } of results) {

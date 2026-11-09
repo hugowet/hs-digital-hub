@@ -357,18 +357,25 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     const { data: orderItems, error: itemsError } = await context.supabase.from("order_items")
       .select("product_id,quantity").eq("order_id", transaction.order_id).eq("store_id", transaction.store_id);
     if (itemsError || !orderItems?.length) throw new Error("Não foi possível confirmar os produtos do pedido.");
-    const { assertAmazonStock } = await import("@/lib/amazon-stock.server");
-    await assertAmazonStock(supabaseAdmin, orderItems.flatMap((item) => item.product_id ? [{ productId: item.product_id, quantity: item.quantity }] : []));
-    const { assertAmazonOrderCosts } = await import('@/lib/amazon-stock.server');
-    await assertAmazonOrderCosts(supabaseAdmin, transaction.order_id, transaction.store_id);
-    const accessToken = await decryptSecret(account.access_token_encrypted);
-    const platformAccessToken = await decryptSecret(settings.access_token_encrypted);
-    const [platformUser, collectorUser] = await Promise.all([
+    const { assertAmazonStock, assertAmazonOrderCosts } = await import("@/lib/amazon-stock.server");
+    // Independent checks run in parallel so Pix/cartão/boleto are generated faster.
+    const [, , accessToken, platformAccessToken, userResult, profileResult] = await Promise.all([
+      assertAmazonStock(supabaseAdmin, orderItems.flatMap((item) => item.product_id ? [{ productId: item.product_id, quantity: item.quantity }] : [])),
+      assertAmazonOrderCosts(supabaseAdmin, transaction.order_id, transaction.store_id),
+      decryptSecret(account.access_token_encrypted),
+      decryptSecret(settings.access_token_encrypted),
+      context.supabase.auth.getUser(),
+      context.supabase.from("profiles").select("full_name").eq("id", context.userId).maybeSingle(),
+    ]);
+    const [platformUser, collectorUser, methods] = await Promise.all([
       mercadoPagoRequest<MercadoPagoUser>("/users/me", platformAccessToken),
       mercadoPagoRequest<MercadoPagoUser>("/users/me", accessToken),
+      data.method === "boleto"
+        ? mercadoPagoRequest<Array<{ id: string; status: string }>>("/v1/payment_methods", accessToken)
+        : Promise.resolve(null),
     ]);
     const isPlatformOwnedStore = String(platformUser.id) === account.mercado_pago_user_id;
-    const { data: user } = await context.supabase.auth.getUser();
+    const user = userResult.data;
     const buyerId = user.user?.id;
     if (!buyerId) throw new Error("Usuário não autenticado.");
     const email = data.card?.email ?? user.user?.email;
@@ -384,11 +391,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
       throw new Error("O Mercado Pago não permite pagar usando o CPF do titular da conta vendedora.");
     }
 
-    const { data: profile } = await context.supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", buyerId)
-      .maybeSingle();
+    const profile = profileResult.data;
 
     const fullNameParts = (profile?.full_name || "Cliente").trim().split(/\s+/);
     const firstName = fullNameParts[0] || "Cliente";
@@ -422,8 +425,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
         identification: { type: "CPF", number: data.pix?.identificationNumber },
       };
     } else if (data.method === "boleto" && data.boleto) {
-      const methods = await mercadoPagoRequest<Array<{ id: string; status: string }>>("/v1/payment_methods", accessToken);
-      if (!methods.some((method) => method.id === "bolbradesco" && method.status === "active")) {
+      if (!methods?.some((method) => method.id === "bolbradesco" && method.status === "active")) {
         throw new Error("Boleto não está disponível na conta Mercado Pago desta loja. Escolha Pix ou cartão.");
       }
       body["payment_method_id"] = "bolbradesco";
