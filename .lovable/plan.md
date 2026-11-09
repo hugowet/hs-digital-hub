@@ -3,7 +3,7 @@
 ## Resultado
 - Na aba Montink, buscar seus produtos cadastrados e mostrar fotos, nomes, descrições, preços e opções para conferir.
 - Selecionar os produtos e publicar na HS Digital sem digitar todos os dados novamente. Nada será publicado só por buscar.
-- Preservar o preço com a margem que você cadastrou na Montink. Não acrescentar outra margem automaticamente; mostrar separadamente custo e comissão da HS.
+- Preservar o preço com a margem que você cadastrou na Montink, a descrição completa e os destaques, sem redigitar; usar o boné Lupi mostrado na foto como referência de conferência. Não acrescentar outra margem automaticamente; mostrar separadamente custo e comissão da HS.
 - Manter o preço Montink e cobrar o frete separado, conforme sua escolha: consultar o valor real quando o comprador informar o CEP, antes do pagamento. Você não precisa conhecer o endereço antecipadamente.
 
 ## Etapas
@@ -21,6 +21,6 @@
 
 ## Detalhes técnicos
 - Funções autenticadas no servidor, com validação de proprietário da loja; token somente no servidor.
-- API oficial: `Authorizationtoken`, GET `/products?pga=0&pp=…`, GET `/product/{id}`, POST `/calculate_shipping` e POST `/create_order`.
+- API oficial: `Authorizationtoken`, GET `/products?pga=0&pp=…`, GET `/product/{id}`, GET `/calculate_shipping/{CEP}/{QUANTIDADE_PRODUTOS}` e POST `/create_order`.
 - Confirmar os contratos de resposta com a API real antes de implementar os adaptadores; guardar IDs e variações oficiais no catálogo e snapshots do pedido.
 - Cotações curtas e vinculadas à identidade, CEP e itens no fluxo existente; testes de preço preservado, duplicação, opções e ausência de cotação válida.
