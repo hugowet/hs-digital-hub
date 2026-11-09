@@ -1,10 +1,11 @@
 # HS Digital — MVP
 
 ## Montink — 09/11
-- [ ] Distinguir produção sob demanda de estoque: zero no retorno não comprova indisponibilidade; confirmar a regra oficial antes de bloquear ou liberar compras.
-- [ ] Cotar frete oficial pelo CEP do comprador antes do pagamento, sem custo ou prazo inventado.
-- [ ] Buscar produtos cadastrados na Montink para conferência e publicação explícita, preservando preço, descrição completa, destaques e opções oficiais; boné Lupi da foto como referência, sem redigitar.
-- [ ] Validar conexão, catálogo e cotação reais sem gerar pedido ou cobrança.
+- [ ] Confirmar significado de variacoesEstoque com Montink para disponibilidade por cor/tamanho; produção sob demanda confirmada, zero isolado não comprova falta de peças-base. Não liberar estoque fictício.
+- [x] Cotação oficial Montink implementada com frete separado e exceção no checkout, sem alterar fornecedores restantes; consulta real validada, compra completa ainda não homologada.
+- [x] Busca de 27 produtos e conferência do boné Lupi R$80,30 e descrição na conta JJ Kuster verificadas; publicação explícita preparada, nenhum produto publicado neste teste.
+- [x] Conexão, catálogo e cotação reais confirmados sem pedido/cobrança; quatro testes passaram.
+- [ ] Homologar publicação → checkout → fabricação: requer confirmação de disponibilidade Montink, custo real informado e autorização para pedido pago. Produção também exige pagamento do pedido externo na Montink.
 
 ## Link original Amazon — 07/11
 - [x] Link original e link do produto selecionado preservados nas importações individuais, lotes, páginas e robô; releitura prefere o link selecionado e mantém compatibilidade com anúncios antigos. Fotos/opções, preços, estoque e anúncios existentes não alterados.

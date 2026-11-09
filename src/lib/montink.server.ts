@@ -11,7 +11,7 @@ export function buildMontinkPayload(order: any, items: any[]) {
   const a = order.shipping_address ?? {};
   if (!a.email || !a.cpf || !a.number || !a.neighborhood || !order.shippingId) throw new Error("Pedido Montink sem dados ou transportadora confirmados.");
   return { external_order_id: order.id, customer_name: a.name, customer_email: a.email, customer_document: a.cpf, customer_phone: a.phone, value_total: items.reduce((n, i) => n + i.price * i.quantity, 0), shipping_id: Number(order.shippingId), address: { zipcode: a.postal_code, street: a.address, number: a.number, neighborhood: a.neighborhood, city: a.city, state: a.state, complement: a.note ?? "" }, products: items.map(i => {
-    const choice = Object.fromEntries(String(i.title).split(" — ").at(-1).split(" · ").map((part: string) => part.split(": ")));
+    const choice = Object.fromEntries((String(i.title).split(" — ").at(-1) ?? "").split(" · ").map((part: string) => part.split(": ")));
     if (!choice.Cor) throw new Error("Cor Montink não confirmada no pedido.");
     return { product_id: Number(i.montinkId), quantity: i.quantity, price: i.price, var1: choice.Tamanho ?? "ÚNICO", var2: choice.Cor };
   }) };

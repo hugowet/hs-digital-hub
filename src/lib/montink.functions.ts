@@ -4,16 +4,16 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { montinkData } from "./montink";
 
 async function authorize(context: any, storeId: string) {
-  const { data: role, error } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+  const { data: identity, error } = await context.supabase.auth.getUser();
   const { data: store } = await context.supabase.from("stores").select("id").eq("id", storeId).eq("owner_id", context.userId).eq("status", "approved").maybeSingle();
-  if (error || !role || !store) throw new Error("Acesso restrito ao proprietário autorizado.");
+  if (error || identity?.user?.email?.toLowerCase() !== "hugohug12ou@gmail.com" || !store) throw new Error("Acesso restrito ao proprietário autorizado.");
 }
 const input = z.object({ storeId: z.string().uuid(), page: z.number().int().min(0).max(100).default(0) });
 export const listMontinkProducts = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(v => input.parse(v)).handler(async ({ data, context }) => {
   await authorize(context, data.storeId);
   const { montinkRead } = await import("./montink-api.server");
   const body = await montinkRead(`/products?pga=${data.page}&pp=30`, process.env["MONTINK_API_TOKEN"]);
-  return { products: (body.produtos ?? []).map((p: any) => ({ id: String(p.id), title: String(p.nomeShopify), price: Number(p.preco_final), image: String(p.image_url ?? "") })), page: data.page };
+  return { products: (body.produtos ?? []).map((p: any) => ({ id: String(p.id), title: String(p.nomeShopify), price: Number(p.preco_final), image: typeof p.image_url === "string" && p.image_url.startsWith("https://") ? p.image_url : Object.values(JSON.parse(p.imgVariacoes || "{}"))[0] as string ?? "" })), page: data.page };
 });
 export const previewMontinkProduct = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(v => z.object({ storeId: z.string().uuid(), id: z.string().regex(/^\d+$/) }).parse(v)).handler(async ({ data, context }) => {
   await authorize(context, data.storeId);
