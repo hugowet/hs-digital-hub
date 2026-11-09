@@ -4,6 +4,8 @@ import { decryptSecret } from "@/lib/mercado-pago.server";
 import { priceCjShipment, cjFreightUsd } from "@/lib/cj-landed-pricing";
 import { cjShippingModalities } from "@/lib/shipping-modalities";
 import { cjVariantStock } from "@/lib/cj-variants";
+import { montinkFreight } from "./montink";
+import { montinkRead } from "./montink-api.server";
 
 const MELHOR_ENVIO_API = "https://melhorenvio.com.br/api/v2";
 
@@ -200,6 +202,7 @@ export async function quoteCartShipping(
         continue;
       }
     }
+    if (suppliers.has("montink") && suppliers.size > 1) throw new Error("Finalize produtos Montink em um pedido separado.");
     if (suppliers.has("amazon") && suppliers.size > 1) {
       throw new Error("Finalize produtos Amazon e produtos de estoque próprio em pedidos separados.");
     }
@@ -207,10 +210,7 @@ export async function quoteCartShipping(
     let rawOptions = suppliers.has("cj")
       ? await cjQuotes(supabaseAdmin, storeId, postalCode, products, firstPurchase && !marginAllocated)
       : suppliers.has("montink") && suppliers.size === 1
-        ? [{ provider: "supplier", serviceCode: "montink_direct", serviceName: "Produção e envio do fornecedor",
-            carrierName: "Fornecedor nacional", amount: 0, deliveryDaysMin: 7, deliveryDaysMax: 15,
-            providerPayload: { embedded_free_shipping: true, supplier_freight_brl: 0,
-              priced_items: products.map((p: any) => ({ product_id: p.id, unit_price: Number(p.price), quantity: p.quantity })) } } as any]
+        ? montinkFreight(await montinkRead(`/calculate_shipping/${postalCode}/${products.reduce((n: number, p: any) => n + p.quantity, 0)}`, process.env["MONTINK_API_TOKEN"])).map(entry => ({ provider: "supplier", serviceCode: `montink_${entry.id}`, serviceName: entry.name, carrierName: entry.name, amount: entry.amount, deliveryDaysMin: null, deliveryDaysMax: null, providerPayload: { montink_shipping_id: entry.id, business_days: entry.days, separate_shipping: true, embedded_free_shipping: false, supplier_freight_brl: entry.amount, priced_items: products.map((p: any) => ({ product_id: p.id, unit_price: Number(p.price), quantity: p.quantity })) } }))
       : suppliers.has("amazon")
         ? [{ provider: "supplier", serviceCode: "amazon_direct", serviceName: "Envio direto do fornecedor",
             carrierName: "Fornecedor nacional", amount: 0, deliveryDaysMin: 5, deliveryDaysMax: 12,
