@@ -652,6 +652,13 @@
       "when": 1794180091872,
       "tag": "0092_hs_stamp_carousel",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1794242898472,
+      "tag": "0093_montink_catalog_and_separate_freight",
+      "breakpoints": true
     }
   ]
 }
