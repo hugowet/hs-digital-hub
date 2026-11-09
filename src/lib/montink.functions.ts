@@ -13,7 +13,7 @@ export const listMontinkProducts = createServerFn({ method: "POST" }).middleware
   await authorize(context, data.storeId);
   const { montinkRead } = await import("./montink-api.server");
   const body = await montinkRead(`/products?pga=${data.page}&pp=30`, process.env["MONTINK_API_TOKEN"]);
-  return { products: (body.produtos ?? []).map((p: any) => ({ id: String(p.id), title: String(p.nomeShopify), price: Number(p.preco_final), image: String(p.image_url ?? "") })), page: data.page };
+  return { products: (body.produtos ?? []).map((p: any) => ({ id: String(p.id), title: String(p.nomeShopify), price: Number(p.preco_final), image: typeof p.image_url === "string" ? p.image_url : Object.values(JSON.parse(p.imgVariacoes || "{}"))[0] as string ?? "" })), page: data.page };
 });
 export const previewMontinkProduct = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(v => z.object({ storeId: z.string().uuid(), id: z.string().regex(/^\d+$/) }).parse(v)).handler(async ({ data, context }) => {
   await authorize(context, data.storeId);
