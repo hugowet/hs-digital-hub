@@ -4,9 +4,9 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { montinkData } from "./montink";
 
 async function authorize(context: any, storeId: string) {
-  const { data: role, error } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+  const { data: identity, error } = await context.supabase.auth.getUser();
   const { data: store } = await context.supabase.from("stores").select("id").eq("id", storeId).eq("owner_id", context.userId).eq("status", "approved").maybeSingle();
-  if (error || !role || !store) throw new Error("Acesso restrito ao proprietário autorizado.");
+  if (error || identity?.user?.email?.toLowerCase() !== "hugohug12ou@gmail.com" || !store) throw new Error("Acesso restrito ao proprietário autorizado.");
 }
 const input = z.object({ storeId: z.string().uuid(), page: z.number().int().min(0).max(100).default(0) });
 export const listMontinkProducts = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(v => input.parse(v)).handler(async ({ data, context }) => {
