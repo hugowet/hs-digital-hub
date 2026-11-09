@@ -2,7 +2,7 @@
 
 ## Montink — 09/11
 - [ ] Cotar frete oficial pelo CEP do comprador antes do pagamento, sem custo ou prazo inventado.
-- [ ] Buscar produtos cadastrados na Montink para conferência e publicação explícita, preservando preço, descrição e opções oficiais.
+- [ ] Buscar produtos cadastrados na Montink para conferência e publicação explícita, preservando preço, descrição completa, destaques e opções oficiais; boné Lupi da foto como referência, sem redigitar.
 - [ ] Validar conexão, catálogo e cotação reais sem gerar pedido ou cobrança.
 
 ## Link original Amazon — 07/11
