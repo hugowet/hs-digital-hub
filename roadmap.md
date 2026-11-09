@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## Montink — 09/11
+- [ ] Publicar foto oficial do boné Lupi e associar às opções confirmadas: consulta atual fornece só a arte, cor Branco e nenhum tamanho nomeado; aguarda foto da peça estampada enviada pelo proprietário ou cadastrada na Montink.
 - [ ] Corrigir foto da sacola 804e0bf8-a360-47e1-92ae-76f15330aee2: API oficial fornece somente arte isolada, inclusive em imagens/variacoesCor; aguarda foto oficial da peça estampada na Montink ou enviada pelo proprietário. Não fabricar foto de oferta.
 - [ ] Confirmar significado de variacoesEstoque com Montink para disponibilidade por cor/tamanho; produção sob demanda confirmada, zero isolado não comprova falta de peças-base. Não liberar estoque fictício.
 - [x] Cotação oficial Montink implementada com frete separado e exceção no checkout, sem alterar fornecedores restantes; consulta real validada, compra completa ainda não homologada.
