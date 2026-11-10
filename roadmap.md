@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Fotos dos links manuais — 10/11
+- [x] Prévia estável com logo e assinatura de fotos legadas corrigidas; duas camisetas manuais reais retornaram JPEG 1200×630, metadados sem expiração e três testes passaram. Build OK; precisa publicar. Cache antigo das redes sociais não homologado.
+- [ ] Revisar acessos amplos aos arquivos Trends e Social sem impedir compartilhamento legítimo; decisão de acesso necessária.
+
 ## Montink — 09/11
 - [ ] Publicar foto oficial do boné Lupi e associar às opções confirmadas: consulta atual fornece só a arte, cor Branco e nenhum tamanho nomeado; aguarda foto da peça estampada enviada pelo proprietário ou cadastrada na Montink.
 - [ ] Corrigir foto da sacola 804e0bf8-a360-47e1-92ae-76f15330aee2: API oficial fornece somente arte isolada, inclusive em imagens/variacoesCor; aguarda foto oficial da peça estampada na Montink ou enviada pelo proprietário. Não fabricar foto de oferta.

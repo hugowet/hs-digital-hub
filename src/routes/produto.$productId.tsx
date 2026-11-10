@@ -90,10 +90,13 @@ export const Route = createFileRoute("/produto/$productId")({
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: desc },
         ...(!p ? [{ name: "robots", content: "noindex, follow" }] : []),
-        ...(p?.image_url?.startsWith("https://")
+        ...(p?.image_url
           ? [
-              { property: "og:image", content: p.image_url },
-              { name: "twitter:image", content: p.image_url },
+              { property: "og:image", content: `${SITE_ORIGIN}/api/public/product-share/${params.productId}` },
+              { name: "twitter:image", content: `${SITE_ORIGIN}/api/public/product-share/${params.productId}` },
+              { property: "og:image:width", content: "1200" },
+              { property: "og:image:height", content: "630" },
+              { property: "og:image:alt", content: p.title },
             ]
           : []),
       ],
