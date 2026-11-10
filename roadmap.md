@@ -2,7 +2,7 @@
 
 ## Fotos dos links manuais — 10/11
 - [x] Prévia estável com logo e assinatura de fotos legadas corrigidas; duas camisetas manuais reais retornaram JPEG 1200×630, metadados sem expiração e três testes passaram. Build OK; precisa publicar. Cache antigo das redes sociais não homologado.
-- [ ] Revisar acessos amplos aos arquivos Trends e Social sem impedir compartilhamento legítimo; decisão de acesso necessária.
+- [x] Proteção aprovada e aplicada: arquivos de conversas somente para participantes/grupos; Trends somente arquivos próprios ou vinculados a publicações. Regras relidas e consultas autenticadas aceitas; não havia mídia privada de terceiros para exercitar negativa real. Cinco testes de compartilhamento passaram; build OK.
 
 ## Montink — 09/11
 - [ ] Publicar foto oficial do boné Lupi e associar às opções confirmadas: consulta atual fornece só a arte, cor Branco e nenhum tamanho nomeado; aguarda foto da peça estampada enviada pelo proprietário ou cadastrada na Montink.
