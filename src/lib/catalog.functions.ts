@@ -35,7 +35,15 @@ async function signProductBatch(products: Product[]) {
     if (error) throw error;
 
     const rows = (mediaRows ?? []) as Array<ProductMedia & { product_id: string }>;
-    const paths = rows.map((item) => item.storage_path);
+    // Older manual/imported products may have no product_media rows. Include their
+    // stored cover/gallery and explicitly associated color photos as well.
+    const paths = [...new Set([
+      ...rows.map((item) => item.storage_path),
+      ...storedProducts.flatMap((product) => [
+        product.image_url, ...(product.gallery_urls ?? []),
+        ...(product.variations ?? []).flatMap((group) => Object.values(group.images ?? {})),
+      ].filter((path): path is string => Boolean(path) && isStoredMediaPath(path as string))),
+    ])];
     const { data: signed } = await supabaseAdmin.storage.from(MEDIA_BUCKET).createSignedUrls(paths, 60 * 60);
     const signedByPath = new Map(paths.map((path, index) => [path, signed?.[index]?.signedUrl ?? path]));
 
@@ -59,6 +67,7 @@ async function signProductBatch(products: Product[]) {
         ...product,
         image_url: product.image_url ? signLegacy(product.image_url) : null,
         gallery_urls: (product.gallery_urls ?? []).map(signLegacy),
+        variations: displayColorPhotos(product.variations ?? [], signedByPath),
         media: [],
       };
     });
