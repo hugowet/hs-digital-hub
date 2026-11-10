@@ -1,7 +1,7 @@
 # HS Digital — MVP
 
 ## Fotos dos links manuais — 10/11
-- [ ] Usar prévia estável com logo para links de produtos e assinar fotos legadas sem registros de mídia; conferir com produto manual real.
+- [x] Prévia estável com logo e assinatura de fotos legadas corrigidas; duas camisetas manuais reais retornaram JPEG 1200×630, metadados sem expiração e três testes passaram. Build OK; precisa publicar. Cache antigo das redes sociais não homologado.
 - [ ] Revisar acessos amplos aos arquivos Trends e Social sem impedir compartilhamento legítimo; decisão de acesso necessária.
 
 ## Montink — 09/11
