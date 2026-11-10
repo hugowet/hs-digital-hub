@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => {
   const builder = { inputValidator: () => builder, handler: (handler: (args: unknown) => unknown) => handler };
   return builder;
-} }));
+}, createServerOnlyFn: (fn: unknown) => fn }));
+vi.mock("@tanstack/start-server-core", () => ({ createSsrRpc: () => (args: unknown) => import("./catalog.functions").then(module => module.fetchProduct.__executeServer(args)) }));
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: {
     from: () => ({ select: () => ({ in: () => ({ order: async () => ({ data: mocks.rows }) }) }) }),
