@@ -659,6 +659,13 @@
       "when": 1794242898472,
       "tag": "0093_montink_catalog_and_separate_freight",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1794289679374,
+      "tag": "0094_scope_social_and_published_trend_media",
+      "breakpoints": true
     }
   ]
 }
