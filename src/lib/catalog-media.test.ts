@@ -4,6 +4,10 @@ const mocks = vi.hoisted(() => ({
   rows: [] as unknown[], paths: [] as string[],
   product: {} as Record<string, unknown>,
 }));
+vi.mock("@tanstack/react-start", () => ({ createServerFn: () => {
+  const builder = { inputValidator: () => builder, handler: (handler: (args: unknown) => unknown) => handler };
+  return builder;
+} }));
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: {
     from: () => ({ select: () => ({ in: () => ({ order: async () => ({ data: mocks.rows }) }) }) }),
