@@ -12,8 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { catalogDisplayPrice } from "@/lib/product-price";
 import { useCjPrice } from "@/lib/use-cj-price";
 import { formatDeliveryRange } from "@/lib/delivery-estimate";
-import { useProductMargin } from '@/lib/product-margin-context';
-import { productShippingOrigin } from '@/lib/manual-product-options';
+import { useProductMargin } from "@/lib/product-margin-context";
+import { productShippingOrigin } from "@/lib/manual-product-options";
 
 // Faixas de desconto conforme solicitado: 5, 6, 7, 12, 22, 35, 50, 66, 71%
 export const DISCOUNT_TIERS = [5, 6, 7, 12, 22, 35, 50, 66, 71] as const;
@@ -32,7 +32,10 @@ export function cleanTitle(title: string): string {
 
   let clean = title
     // Remove termos de busca e spam de dropshipping
-    .replace(/\b(wish|ebay|aliexpress|amazon|hot sale|quick sale|dropshipping|wholesale|factory price|2023|2024|2025|2026|new arrival|top quality|high quality|free shipping)\b/gi, "")
+    .replace(
+      /\b(wish|ebay|aliexpress|amazon|hot sale|quick sale|dropshipping|wholesale|factory price|2023|2024|2025|2026|new arrival|top quality|high quality|free shipping)\b/gi,
+      "",
+    )
     // Remove termos de público genéricos
     .replace(/\b(europe and america|european and american|ladies|women's|womens|women|men's|mens|men)\b/gi, "")
     // Tradução e mapeamento de produtos específicos do catálogo
@@ -40,11 +43,17 @@ export function cleanTitle(title: string): string {
     .replace(/\bWireless Bluetooth Earphones?\b/gi, "Fone de Ouvido Bluetooth Sem Fio")
     .replace(/\bCar Luminous Valve Cap\b/gi, "Tampa de Válvula Automotiva Luminosa")
     .replace(/\bSmart Watch\b/gi, "Relógio Smartwatch Inteligente")
-    .replace(/\bAluminum Alloy Soft Tail Oil Brake Damping Mountain Bike\b/gi, "Bicicleta Mountain Bike Full Suspension")
+    .replace(
+      /\bAluminum Alloy Soft Tail Oil Brake Damping Mountain Bike\b/gi,
+      "Bicicleta Mountain Bike Full Suspension",
+    )
     .replace(/\bPortable Long-Range UHF RFID Scanner Wireless Android\b/gi, "Leitor Coletor RFID UHF Portátil")
     .replace(/\bBolsa de Negócios Vintage Acabamento Manual\b/gi, "Pasta Executiva Vintage em Couro")
     .replace(/\bCaixa de Som Bluetooth Sem Fio para Banho\b/gi, "Caixa de Som Bluetooth À Prova D'Água")
-    .replace(/\bColar de Prata S925 Masculino Luxo Fashion Diamante Mosan[a-z]*\b/gi, "Corrente de Prata 925 Masculina Cravejada")
+    .replace(
+      /\bColar de Prata S925 Masculino Luxo Fashion Diamante Mosan[a-z]*\b/gi,
+      "Corrente de Prata 925 Masculina Cravejada",
+    )
     .replace(/\bSports Car S1000RR Titanium\b/gi, "Escapamento Esportivo Titanium S1000RR")
     .replace(/\bAlloy Outdoor Mobile Power\b/gi, "Power Bank Turbo Alumínio")
     .replace(/\bbusiness automático Hollow\b/gi, "Relógio Automático Esqueleto Hollow")
@@ -122,7 +131,9 @@ function getInstallmentDetails(price: number): { text: string } {
 }
 
 function formatSplitPrice(price: number) {
-  const parts = Number(price || 0).toFixed(2).split(".");
+  const parts = Number(price || 0)
+    .toFixed(2)
+    .split(".");
   return {
     reais: Number(parts[0]).toLocaleString("pt-BR"),
     centavos: parts[1] || "00",
@@ -138,47 +149,43 @@ function getConsistentSalesCount(id: string): number {
   return 42 + (Math.abs(hash) % 190);
 }
 
-export function ProductCard({
-  product,
-}: {
-  product: Product & { originalPrice?: number | null };
-}) {
+export function ProductCard({ product }: { product: Product & { originalPrice?: number | null } }) {
   const { add } = useCart();
   const navigate = useNavigate();
   const displayTitle = cleanTitle(product.title);
   const margin = useProductMargin(product.id);
 
   const isDigital =
-    product.product_type === "digital" ||
-    product.category?.includes("digital") ||
-    product.category?.includes("cursos");
+    product.product_type === "digital" || product.category?.includes("digital") || product.category?.includes("cursos");
 
   const isCj = product.supplier === "cj" && !isDigital;
   const delivery = useCjPrice(product.id, 1, isCj, true);
   // O preço base já fica estampado no cartão; a cotação confirmada pelo CEP
   // substitui em segundo plano quando chega, sem deixar o cartão vazio.
   const price = delivery.price ?? catalogDisplayPrice(product);
-  const confirmed = true;
   const cjConfirmed = isCj && delivery.price !== null;
 
   // Desconto diversificado estilo Mercado Livre (5, 6, 7, 12, 22, 35, 50, 66, 71%)
-  const discountPercent = !isCj && Number(product.compare_at_price) > price
-    ? Math.round((1 - price / Number(product.compare_at_price)) * 100) : 0;
+  const discountPercent =
+    !isCj && Number(product.compare_at_price) > price
+      ? Math.round((1 - price / Number(product.compare_at_price)) * 100)
+      : 0;
   const rawOriginal = product.originalPrice ?? product.compare_at_price;
-  const originalPrice =
-    rawOriginal && Number(rawOriginal) > price
-      ? Number(rawOriginal)
-      : null;
+  const originalPrice = rawOriginal && Number(rawOriginal) > price ? Number(rawOriginal) : null;
 
   const priceParts = formatSplitPrice(price);
   const installment = getInstallmentDetails(price);
   const soldCount =
     product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
 
-  const isFreeShipping = isCj ? delivery.embeddedFreeShipping : price >= 89.90 || isDigital;
+  const isFreeShipping = isCj ? delivery.embeddedFreeShipping : price >= 89.9 || isDigital;
 
   return (
-    <article ref={delivery.ref} data-product-id={product.id} className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
+    <article
+      ref={delivery.ref}
+      data-product-id={product.id}
+      className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg"
+    >
       {/* Imagem do Produto */}
       <div className="relative aspect-square max-h-56 w-full overflow-hidden bg-muted/20">
         {product.image_url ? (
@@ -210,8 +217,16 @@ export function ProductCard({
               <Package className="h-3 w-3" /> Físico
             </span>
           )}
-          {!isDigital && productShippingOrigin(product) === "international" && <span className="rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">✈️ Importado</span>}
-          {!isDigital && productShippingOrigin(product) === "national" && <span className="rounded-md bg-success px-2 py-0.5 text-[10px] font-semibold text-success-foreground">🇧🇷 Nacional</span>}
+          {!isDigital && productShippingOrigin(product) === "international" && (
+            <span className="rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">
+              ✈️ Importado
+            </span>
+          )}
+          {!isDigital && productShippingOrigin(product) === "national" && (
+            <span className="rounded-md bg-success px-2 py-0.5 text-[10px] font-semibold text-success-foreground">
+              🇧🇷 Nacional
+            </span>
+          )}
         </div>
       </div>
 
@@ -235,38 +250,63 @@ export function ProductCard({
         {/* Bloco de Preços no Estilo Mercado Livre */}
         <div className="mt-auto pt-3">
           {/* Linha 1: [XX% OFF] + Preço Riscado */}
-          {discountPercent > 0 && originalPrice && <div className="flex items-center gap-1.5 leading-none">
-            <span className="rounded bg-[#00a650] px-1.5 py-0.5 text-[10px] font-bold text-white">
-              {discountPercent}% OFF
-            </span>
-            <span className="text-xs text-muted-foreground line-through">
-              {brl(originalPrice)}
-            </span>
-          </div>}
+          {discountPercent > 0 && originalPrice && (
+            <div className="flex items-center gap-1.5 leading-none">
+              <span className="rounded bg-[#00a650] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                {discountPercent}% OFF
+              </span>
+              <span className="text-xs text-muted-foreground line-through">{brl(originalPrice)}</span>
+            </div>
+          )}
 
-          {/* Linha 2: Preço em destaque com centavos sobrescritos — sempre estampado */}
-          <div data-testid="product-price" className="mt-1 flex items-start leading-none text-foreground">
-            <span className="text-xl md:text-2xl font-normal tracking-tight">
-              R$ {priceParts.reais}
-            </span>
-            <span className="text-[11px] font-semibold tracking-tight ml-0.5">
-              {priceParts.centavos}
-            </span>
-          </div>
+          {/* Linha 2: Preço em destaque — Se for CJ abaixo de R$ 89,90, destaca peça + envio China */}
+          {isCj && !isFreeShipping ? (
+            <div className="mt-1 flex flex-col gap-0.5">
+              <div data-testid="product-price" className="flex items-baseline gap-1 text-foreground leading-none">
+                <span className="text-xl md:text-2xl font-normal tracking-tight">R$ {priceParts.reais}</span>
+                <span className="text-[11px] font-semibold tracking-tight ml-0.5">{priceParts.centavos}</span>
+                <span className="text-[11px] text-muted-foreground font-normal ml-1">(peça)</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold">✈️ Envio China</span>
+                <span className="text-[11px]">
+                  {cjConfirmed ? `+ ${brl(delivery.shipping ?? 0)} frete` : "+ Frete internacional no CEP"}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div data-testid="product-price" className="mt-1 flex items-start leading-none text-foreground">
+              <span className="text-xl md:text-2xl font-normal tracking-tight">R$ {priceParts.reais}</span>
+              <span className="text-[11px] font-semibold tracking-tight ml-0.5">{priceParts.centavos}</span>
+            </div>
+          )}
 
           {/* Linha 3: Parcelamento */}
-          {margin && <div className="mt-2 border-t border-border pt-2 text-xs" aria-label="Sua margem estimada">
-            <p className="font-semibold text-success">Margem estimada: {margin.margin == null ? 'A confirmar' : brl(margin.margin)}</p>
-            <p className="mt-1 text-[10px] text-muted-foreground">Sobre {brl(margin.price)} · após comissão, antes de frete, taxas e impostos.</p>
-          </div>}
-          <p className="mt-1.5 text-xs text-foreground/80 font-normal leading-tight">
-            {installment.text}
-          </p>
-          {cjConfirmed && <p className="mt-1 text-[11px] text-muted-foreground">Entrega no CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")}</p>}
-          {cjConfirmed && <p className="mt-1 text-[11px] text-muted-foreground">{formatDeliveryRange(delivery.arrivalRange)}{delivery.arrivalRange ? " · se enviado hoje" : ""}</p>}
+          {margin && (
+            <div className="mt-2 border-t border-border pt-2 text-xs" aria-label="Sua margem estimada">
+              <p className="font-semibold text-success">
+                Margem estimada: {margin.margin == null ? "A confirmar" : brl(margin.margin)}
+              </p>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Sobre {brl(margin.price)} · após comissão, antes de frete, taxas e impostos.
+              </p>
+            </div>
+          )}
+          <p className="mt-1.5 text-xs text-foreground/80 font-normal leading-tight">{installment.text}</p>
+          {cjConfirmed && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Entrega no CEP {delivery.postalCode.replace(/(\d{5})(\d{3})/, "$1-$2")}
+            </p>
+          )}
+          {cjConfirmed && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {formatDeliveryRange(delivery.arrivalRange)}
+              {delivery.arrivalRange ? " · se enviado hoje" : ""}
+            </p>
+          )}
 
-          {/* Linha 4: Frete Grátis ou com Desconto */}
-          {!isDigital && (
+          {/* Linha 4: Frete Grátis ou Entrega para Produtos Nacionais / Montink / Estoque Próprio */}
+          {!isDigital && !isCj && (
             <div className="mt-1 flex items-baseline gap-1 text-xs">
               {isFreeShipping ? (
                 <>
@@ -278,13 +318,21 @@ export function ProductCard({
               ) : (
                 <>
                   <span className="rounded bg-[#3483fa]/10 px-1.5 py-0.5 text-[10px] font-extrabold text-[#3483fa]">
-                    {cjConfirmed ? `Frete ${brl(delivery.shipping ?? 0)}` : "Entrega"}
+                    Entrega
                   </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {isCj && !cjConfirmed ? "Frete confirmado no seu CEP" : "Calculado no seu CEP"}
-                  </span>
+                  <span className="text-[11px] text-muted-foreground">Calculado no seu CEP</span>
                 </>
               )}
+            </div>
+          )}
+
+          {/* Linha 4: Frete Grátis exclusivo para CJ acima de R$ 89,90 */}
+          {!isDigital && isCj && isFreeShipping && (
+            <div className="mt-1 flex items-baseline gap-1 text-xs">
+              <span className="font-semibold text-[#00a650]">Frete grátis</span>
+              <span className="rounded bg-[#00a650]/15 px-1 py-0.2 text-[10px] font-extrabold text-[#00a650]">
+                FULL
+              </span>
             </div>
           )}
 
@@ -333,7 +381,8 @@ export function ProductCard({
               toast.success("Adicionado ao carrinho!");
             }}
           >
-            <ShoppingCart className="mr-1.5 h-3.5 w-3.5" /> {Number(product.stock) <= 0 ? "Estoque acabou" : "Adicionar"}
+            <ShoppingCart className="mr-1.5 h-3.5 w-3.5" />{" "}
+            {Number(product.stock) <= 0 ? "Estoque acabou" : "Adicionar"}
           </Button>
         </div>
       </div>
