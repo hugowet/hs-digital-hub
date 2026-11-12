@@ -1,5 +1,13 @@
 # HS Digital — MVP
 
+## Correções autorizadas — 12/11
+- [x] Preservar o preço do pedido Amazon durante pagamento, sem erro por reajuste posterior; cinco testes passaram, mantendo estoque e segurança. Pagamento real não gerado.
+- [x] Separar produto/envio no resumo e propagar frete separado Montink; sem alteração dos totais ou regras financeiras. 29 testes relacionados passaram; build OK.
+- [x] Convite compacto no canto inferior direito conferido em 434×794 e 1280×1800, fechamento mantido por sessão.
+- [ ] Definir cobertura financeira do frete do Clube HS antes de descontar custos reais do fornecedor.
+- [x] Restaurar vínculo owner_id no acesso Trends e reler política aplicada; publicações mantidas, aviso marcado resolvido. Outros avisos de leituras públicas não alterados.
+- [ ] Homologar resumo e pagamento com produto real: sessão entrou, mas adição do produto escolhido não persistiu no navegador; nenhuma cobrança executada. Ajustes da tela ainda não publicados.
+
 ## Fotos dos links manuais — 10/11
 - [x] Prévia estável com logo e assinatura de fotos legadas corrigidas; duas camisetas manuais reais retornaram JPEG 1200×630, metadados sem expiração e três testes passaram. Build OK; precisa publicar. Cache antigo das redes sociais não homologado.
 - [x] Proteção aprovada e aplicada: arquivos de conversas somente para participantes/grupos; Trends somente arquivos próprios ou vinculados a publicações. Regras relidas e consultas autenticadas aceitas; não havia mídia privada de terceiros para exercitar negativa real. Cinco testes de compartilhamento passaram; build OK.

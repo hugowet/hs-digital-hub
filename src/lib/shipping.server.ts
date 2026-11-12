@@ -197,6 +197,7 @@ export async function quoteCartShipping(
           amount: Number(row.amount), itemPrices: row.provider_payload.priced_items,
           supplierFreight: Number(row.provider_payload.supplier_freight_brl),
           embeddedFreeShipping: Boolean(row.provider_payload.embedded_free_shipping),
+          separateShipping: Boolean(row.provider_payload.separate_shipping),
           deliveryDaysMin: row.delivery_days_min, deliveryDaysMax: row.delivery_days_max, expiresAt: row.expires_at,
         })) });
         continue;
@@ -238,6 +239,7 @@ export async function quoteCartShipping(
           itemPrices: (option.providerPayload.priced_items ?? []) as Array<{ product_id: string; unit_price: number; quantity: number }>,
           supplierFreight: Number(option.providerPayload.supplier_freight_brl ?? option.amount),
           embeddedFreeShipping: Boolean(option.providerPayload.embedded_free_shipping),
+          separateShipping: Boolean(option.providerPayload.separate_shipping),
           deliveryDaysMin: option.deliveryDaysMin,
           deliveryDaysMax: option.deliveryDaysMax,
           expiresAt,
@@ -282,6 +284,7 @@ export async function quoteCartShipping(
         itemPrices: (quote.provider_payload?.priced_items ?? []) as Array<{ product_id: string; unit_price: number; quantity: number }>,
         supplierFreight: Number(quote.provider_payload?.supplier_freight_brl ?? quote.amount),
         embeddedFreeShipping: Boolean(quote.provider_payload?.embedded_free_shipping),
+        separateShipping: Boolean(quote.provider_payload?.separate_shipping),
         deliveryDaysMin: quote.delivery_days_min,
         deliveryDaysMax: quote.delivery_days_max,
         expiresAt: quote.expires_at,

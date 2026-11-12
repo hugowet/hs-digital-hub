@@ -125,6 +125,7 @@ function CartPage() {
         itemPrices?: Array<{ product_id: string; unit_price: number; quantity: number }>;
         supplierFreight?: number;
         embeddedFreeShipping?: boolean;
+        separateShipping?: boolean;
         deliveryDaysMin: number | null;
         deliveryDaysMax: number | null;
         expiresAt: string;
@@ -664,26 +665,26 @@ function CartPage() {
                   </div>
                 </>}
                 <div className="flex justify-between text-muted-foreground">
-                  <span>{economizou > 0 ? "Subtotal com desconto" : "Subtotal produtos"}</span>
+                  <span>{economizou > 0 ? "Valor dos produtos com desconto" : "Valor dos produtos"}</span>
                   <span>{brl(subtotalProdutos)}</span>
                 </div>
 
                 <div className="flex justify-between text-muted-foreground">
-                  <span>{embeddedShipping && valorFreteCobrado > 0 ? "Adicional Premium" : "Frete"}</span>
+                  <span>{embeddedShipping && !separateShipping && valorFreteCobrado > 0 ? "Adicional Premium" : "Valor do envio"}</span>
                   {!separateShipping && !embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? (
                     <span className="flex items-center gap-1.5">
                       <span className="line-through opacity-60">{brl(valorFreteCobrado)}</span>
-                      <span className="font-bold text-[#00a650]">Grátis 🎉</span>
+                      <span className="font-bold text-success">Grátis 🎉</span>
                     </span>
                   ) : (
-                    <span className={valorFreteCobrado === 0 && quotes.length > 0 ? "font-bold text-[#00a650]" : ""}>
+                    <span className={valorFreteCobrado === 0 && quotes.length > 0 ? "font-bold text-success" : ""}>
                       {quotes.length === 0 ? "A calcular" : valorFreteCobrado === 0 ? "Grátis" : brl(valorFreteCobrado)}
                     </span>
                   )}
                 </div>
 
                 {!separateShipping && (embeddedShipping || (subtotalProdutos >= 89.9 && valorFreteCobrado > 0)) && (
-                  <p className="text-[10px] font-semibold text-[#00a650]">
+                  <p className="text-[10px] font-semibold text-success">
                     {firstPurchaseEligible
                       ? "Frete grátis na sua primeira compra."
                       : "Frete grátis."}

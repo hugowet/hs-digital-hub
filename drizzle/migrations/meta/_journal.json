@@ -673,6 +673,13 @@
       "when": 1794373035919,
       "tag": "0095_cheapest_amazon_first_storefront",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1794444928524,
+      "tag": "0096_restore_trends_owner_id_read_scope",
+      "breakpoints": true
     }
   ]
 }

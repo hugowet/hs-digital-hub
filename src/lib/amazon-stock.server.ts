@@ -124,6 +124,10 @@ export async function assertAmazonOrderCosts(db: any, orderId: string, storeId: 
   if (productError) throw productError;
   for (const item of items ?? []) {
     const product = products?.find((p: any) => p.id === item.product_id);
-    if (product && Math.abs(Number(product.price) - Number(item.unit_price)) > 0.02) throw new Error('O preço do fornecedor mudou. Cancele este pedido ainda não pago e atualize o carrinho para aceitar o novo preço.');
+    // Orders keep the price accepted at checkout. Catalog refreshes must not invalidate Pix/card/boleto.
+    if (product && Math.abs(Number(product.price) - Number(item.unit_price)) > 0.02) {
+      console.warn('amazon_order_catalog_price_changed', { orderId, storeId, productId: product.id,
+        acceptedPrice: Number(item.unit_price), catalogPrice: Number(product.price) });
+    }
   }
 }
