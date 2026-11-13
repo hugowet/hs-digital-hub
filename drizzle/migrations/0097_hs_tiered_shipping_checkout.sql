@@ -1,0 +1,46 @@
+CREATE TABLE public.hs_shipping_stores (store_id uuid PRIMARY KEY REFERENCES public.stores(id), created_at timestamptz NOT NULL DEFAULT now());
+GRANT SELECT ON public.hs_shipping_stores TO authenticated;
+GRANT ALL ON public.hs_shipping_stores TO service_role;
+ALTER TABLE public.hs_shipping_stores ENABLE ROW LEVEL SECURITY;
+CREATE POLICY hs_shipping_scope_read ON public.hs_shipping_stores FOR SELECT TO authenticated USING (true);
+INSERT INTO public.hs_shipping_stores(store_id) SELECT id FROM public.stores WHERE id='8bc94f28-2c61-4de2-97d3-596d80ebae06' AND owner_id='c624eb5f-4c7e-4dae-8d92-e02983b77378';
+CREATE TABLE public.hs_shipping_expenses (order_id uuid NOT NULL REFERENCES public.orders(id), store_id uuid NOT NULL REFERENCES public.stores(id), buyer_id uuid NOT NULL, supplier_amount numeric(12,2) NOT NULL CHECK(supplier_amount>=0), buyer_amount numeric(12,2) NOT NULL CHECK(buyer_amount>=0), hs_expense numeric(12,2) NOT NULL CHECK(hs_expense>=0), created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(order_id,store_id));
+GRANT SELECT ON public.hs_shipping_expenses TO authenticated;
+GRANT ALL ON public.hs_shipping_expenses TO service_role;
+ALTER TABLE public.hs_shipping_expenses ENABLE ROW LEVEL SECURITY;
+CREATE POLICY hs_shipping_expense_admin ON public.hs_shipping_expenses FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
+COMMENT ON TABLE public.hs_shipping_expenses IS 'HS own-store freight operating commitments, not funded balances or external seller payouts. Cancelled/unpaid orders are not paid expenses.';
+CREATE OR REPLACE FUNCTION public.hs_shipping_identity() RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT jsonb_build_object('admin', public.has_role(auth.uid(),'admin') OR EXISTS(SELECT 1 FROM auth.users WHERE id=auth.uid() AND lower(email)='hugoet373@gmail.com' AND email_confirmed_at IS NOT NULL), 'club', public.club_has_access(auth.uid()), 'storeIds', COALESCE((SELECT jsonb_agg(store_id) FROM public.hs_shipping_stores),'[]'::jsonb)) WHERE auth.uid() IS NOT NULL $$;
+REVOKE ALL ON FUNCTION public.hs_shipping_identity() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.hs_shipping_identity() TO authenticated;
+CREATE OR REPLACE FUNCTION public.hs_shipping_tier(_subtotal numeric,_free boolean) RETURNS numeric LANGUAGE sql IMMUTABLE SET search_path=public AS $$ SELECT CASE WHEN _free OR round(_subtotal,2)>=89.90 THEN 0.00 WHEN round(_subtotal,2)<=39.90 THEN 9.90 ELSE 17.90 END $$;
+REVOKE ALL ON FUNCTION public.hs_shipping_tier(numeric,boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.hs_shipping_tier(numeric,boolean) TO authenticated,service_role;
+CREATE OR REPLACE FUNCTION public.create_marketplace_order_v4(_items jsonb,_shipping_address jsonb,_shipping_quote_ids jsonb,_coupon_id uuid DEFAULT NULL) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE oid uuid; ident jsonb; subtotal numeric; freight numeric; charged numeric; included numeric; adj numeric; t record; share numeric; remaining numeric; cnt integer;
+BEGIN
+IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Entre na sua conta.'; END IF;
+IF EXISTS(SELECT 1 FROM jsonb_array_elements(_items) i JOIN public.products p ON p.id=(i->>'product_id')::uuid WHERE NOT EXISTS(SELECT 1 FROM public.hs_shipping_stores s WHERE s.store_id=p.store_id)) THEN RETURN public.create_marketplace_order_v3(_items,_shipping_address,_shipping_quote_ids,_coupon_id); END IF;
+PERFORM set_config('lock_timeout','5s',true);
+PERFORM pg_advisory_xact_lock(hashtextextended(auth.uid()::text,847221));
+ident:=public.hs_shipping_identity();
+SELECT COALESCE(sum((q.provider_payload->>'first_purchase_margin_included')::numeric),0) INTO included FROM public.shipping_quotes q WHERE q.buyer_id=auth.uid() AND q.id IN(SELECT value::uuid FROM jsonb_each_text(_shipping_quote_ids));
+IF included>0 AND (included>10.01 OR EXISTS(SELECT 1 FROM public.orders WHERE buyer_id=auth.uid() AND status NOT IN('cancelled','payment_failed'))) THEN RAISE EXCEPTION 'Atualize o preço e envio para seu histórico atual.'; END IF;
+oid:=public.create_marketplace_order_v2(_items,_shipping_address,_shipping_quote_ids);
+SELECT sum(unit_price*quantity) INTO subtotal FROM public.order_items WHERE order_id=oid;
+SELECT count(*) INTO cnt FROM public.order_shipments WHERE order_id=oid;
+charged:=CASE WHEN cnt=0 THEN 0 ELSE public.hs_shipping_tier(subtotal,COALESCE((ident->>'admin')::boolean,false) OR COALESCE((ident->>'club')::boolean,false)) END;
+remaining:=charged;
+FOR t IN SELECT pt.*,COALESCE(os.amount,0) AS freight,sq.provider_payload FROM public.payment_transactions pt LEFT JOIN public.order_shipments os ON os.order_id=pt.order_id AND os.store_id=pt.store_id LEFT JOIN public.shipping_quotes sq ON sq.id=os.quote_id WHERE pt.order_id=oid ORDER BY pt.id FOR UPDATE OF pt LOOP
+IF t.provider_payload IS NULL THEN share:=0; ELSE share:=remaining; remaining:=0; END IF;
+INSERT INTO public.hs_shipping_expenses(order_id,store_id,buyer_id,supplier_amount,buyer_amount,hs_expense) VALUES(oid,t.store_id,auth.uid(),t.freight,share,greatest(t.freight-share,0));
+adj:=round(COALESCE((t.provider_payload->>'first_purchase_margin_included')::numeric,0)*(1-COALESCE((SELECT commission_rate FROM public.platform_settings WHERE id=true),0.12)),2);
+UPDATE public.payment_transactions SET gross_amount=gross_amount-t.freight+share,platform_fee=platform_fee+adj,seller_amount=seller_amount-t.freight+share-adj WHERE id=t.id;
+END LOOP;
+UPDATE public.orders SET total=subtotal+charged,platform_fee=(SELECT sum(platform_fee) FROM public.payment_transactions WHERE order_id=oid),seller_amount=(SELECT sum(seller_amount) FROM public.payment_transactions WHERE order_id=oid),shipping_address=COALESCE(shipping_address,'{}'::jsonb)||jsonb_build_object('shipping_total',charged,'tiered_shipping',true,'embedded_free_shipping',false,'hs_shipping_expense',(SELECT sum(hs_expense) FROM public.hs_shipping_expenses WHERE order_id=oid)) WHERE id=oid;
+RETURN oid;
+END $$;
+REVOKE ALL ON FUNCTION public.create_marketplace_order_v4(jsonb,jsonb,jsonb,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.create_marketplace_order_v4(jsonb,jsonb,jsonb,uuid) TO authenticated;
+CREATE OR REPLACE FUNCTION public.guard_cj_order_profit() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE q public.shipping_quotes%ROWTYPE; target numeric; supplier_total numeric; rate numeric; expense numeric:=0; BEGIN SELECT sq.* INTO q FROM public.order_shipments os JOIN public.shipping_quotes sq ON sq.id=os.quote_id WHERE os.order_id=NEW.order_id AND os.store_id=NEW.store_id AND sq.provider='cj'; IF NOT FOUND THEN RETURN NEW; END IF; IF q.provider_payload->>'profit_guard_version' IS DISTINCT FROM '1' THEN RAISE EXCEPTION 'Atualize a cotação CJ para proteger o custo e a margem antes de pagar.'; END IF; SELECT commission_rate INTO rate FROM public.platform_settings WHERE id=true; IF rate IS DISTINCT FROM (q.provider_payload->>'commission_rate')::numeric THEN RAISE EXCEPTION 'A comissão mudou. Atualize a cotação CJ.'; END IF; SELECT sum((value->>'supplier_item_cost_brl')::numeric*(value->>'quantity')::integer) INTO supplier_total FROM jsonb_array_elements(q.provider_payload->'priced_items'); supplier_total:=supplier_total+(q.provider_payload->>'supplier_freight_brl')::numeric; target:=(q.provider_payload->>'protected_net_target')::numeric; SELECT e.hs_expense INTO expense FROM public.hs_shipping_expenses e JOIN public.hs_shipping_stores s ON s.store_id=e.store_id WHERE e.order_id=NEW.order_id AND e.store_id=NEW.store_id; IF supplier_total IS NULL OR target IS NULL OR NEW.seller_amount+COALESCE(expense,0)<greatest(supplier_total,target)-0.02 THEN RAISE EXCEPTION 'Compra bloqueada: valor disponível não cobre custo e margem CJ. Atualize a cotação.'; END IF; RETURN NEW; END $$;
+CREATE OR REPLACE FUNCTION public.create_marketplace_checkout(_items jsonb,_shipping_address jsonb,_shipping_quote_ids jsonb,_coupon_id uuid DEFAULT NULL,_warranty_id text DEFAULT NULL) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE oid uuid; amount numeric; title text; tx uuid; BEGIN IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Entre na sua conta.'; END IF; IF _warranty_id IS NOT NULL THEN CASE _warranty_id WHEN '1_year' THEN amount:=5;title:='1 ano'; WHEN '1_5_years' THEN amount:=6;title:='1 ano e meio'; WHEN '2_years' THEN amount:=7;title:='2 anos'; ELSE RAISE EXCEPTION 'Garantia inválida.'; END CASE; END IF; oid:=public.create_marketplace_order_v4(_items,_shipping_address,_shipping_quote_ids,_coupon_id); IF amount IS NOT NULL THEN SELECT id INTO tx FROM public.payment_transactions WHERE order_id=oid ORDER BY created_at,id LIMIT 1 FOR UPDATE; IF tx IS NULL THEN RAISE EXCEPTION 'Pedido sem transação.'; END IF; UPDATE public.orders SET total=total+amount,platform_fee=platform_fee+amount,shipping_address=COALESCE(shipping_address,'{}'::jsonb)||jsonb_build_object('warranty',jsonb_build_object('id',_warranty_id,'title',title,'amount',amount)) WHERE id=oid; UPDATE public.payment_transactions SET gross_amount=gross_amount+amount,platform_fee=platform_fee+amount WHERE id=tx; END IF; RETURN oid; END $$;

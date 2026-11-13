@@ -34,6 +34,8 @@ import { createMarketplaceCheckout } from "@/lib/payments.functions";
 import { quoteMarketplaceShipping } from "@/lib/shipping.functions";
 import { getMyCoupons } from "@/lib/games.functions";
 import { getFirstPurchaseShippingEligibility } from "@/lib/checkout.functions";
+import { getShippingIdentity } from "@/lib/checkout.functions";
+import { shippingTier } from "@/lib/shipping-tier";
 import { supabase } from "@/integrations/supabase/client";
 import { useDeliveryAddress } from "@/lib/delivery-context";
 import { cartSavings, quotePriceChanged } from "@/lib/cart-savings";
@@ -80,6 +82,10 @@ function CartPage() {
   const quoteShipping = useServerFn(quoteMarketplaceShipping);
   const loadCoupons = useServerFn(getMyCoupons);
   const loadFirstPurchaseEligibility = useServerFn(getFirstPurchaseShippingEligibility);
+  const loadShippingIdentity = useServerFn(getShippingIdentity);
+  const { data: shippingIdentity } = useQuery({
+    queryKey: ["shipping-identity"], queryFn: () => loadShippingIdentity(), staleTime: 0,
+  });
   const groups = groupByStore(items);
   const delivery = useDeliveryAddress();
   const addressLoaded = useRef(false);
@@ -169,7 +175,7 @@ function CartPage() {
   }, [coupons]);
 
   // Calcula o valor total do frete baseado nas opções selecionadas
-  const valorFreteCobrado = useMemo(() => {
+  const freteFornecedor = useMemo(() => {
     let sum = 0;
     for (const group of quotes) {
       const selectedId = selectedQuotes[group.storeId] || group.options[0]?.id;
@@ -194,9 +200,12 @@ function CartPage() {
   }, 0);
   const separateShipping = selectedOptions.some(option => option.separateShipping);
   const embeddedShipping = selectedOptions.some((option) => option.embeddedFreeShipping);
-  const firstPurchaseMargin = firstPurchaseEligible && !separateShipping && !embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? 10 : 0;
-  const totalPedido = Math.round((subtotalProdutos + valorFreteCobrado + valorSeguro + firstPurchaseMargin) * 100) / 100;
+  const tieredShipping = Boolean(shippingIdentity && groups.every(group => shippingIdentity.storeIds.includes(group.storeId)));
+  const exemptShipping = shippingIdentity?.admin || shippingIdentity?.club;
   const hasPhysicalItems = items.some((item) => item.productType !== "digital");
+  const valorFreteCobrado = tieredShipping ? (hasPhysicalItems ? shippingTier(subtotalProdutos, Boolean(exemptShipping)) : 0) : freteFornecedor;
+  const firstPurchaseMargin = !tieredShipping && firstPurchaseEligible && !separateShipping && !embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? 10 : 0;
+  const totalPedido = Math.round((subtotalProdutos + valorFreteCobrado + valorSeguro + firstPurchaseMargin) * 100) / 100;
   const quotesReady = !hasPhysicalItems || (confirmedRequest === requestKey && selectedOptions.length === groups.filter((group) => group.items.some((item) => item.productType !== "digital")).length
     && selectedOptions.every((option) => Date.parse(option.expiresAt) > clock) && !quoting);
   const { data: referencePrices = [] } = useQuery({
@@ -365,7 +374,7 @@ function CartPage() {
               }
             : undefined,
           shippingQuoteIds,
-          couponId: applyGameCoupon && bestGameCoupon && valorFreteCobrado > 0 && subtotalProdutos < 89.9 ? bestGameCoupon.id : undefined,
+          couponId: !tieredShipping && applyGameCoupon && bestGameCoupon && valorFreteCobrado > 0 && subtotalProdutos < 89.9 ? bestGameCoupon.id : undefined,
           warranty:
             selectedWarranty && selectedWarranty.amount > 0
               ? { id: selectedWarranty.id, title: selectedWarranty.title, amount: selectedWarranty.amount }
@@ -595,7 +604,7 @@ function CartPage() {
                               <span className="block text-muted-foreground">{formatDeliveryRange(deliveryDateRange(option.deliveryDaysMin, option.deliveryDaysMax, new Date(clock), option.provider === "melhor_envio"))}</span>
                             </div>
                           </div>
-                          <strong className="shrink-0">{option.amount === 0 ? "Frete incluso" : `+${brl(option.amount)}`}</strong>
+                          {!tieredShipping && <strong className="shrink-0">{option.amount === 0 ? "Frete incluso" : `+${brl(option.amount)}`}</strong>}
                         </label>
                       ))}
                     </div>
@@ -670,8 +679,10 @@ function CartPage() {
                 </div>
 
                 <div className="flex justify-between text-muted-foreground">
-                  <span>{embeddedShipping && !separateShipping && valorFreteCobrado > 0 ? "Adicional Premium" : "Valor do envio"}</span>
-                  {!separateShipping && !embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? (
+                  <span>{!tieredShipping && embeddedShipping && !separateShipping && valorFreteCobrado > 0 ? "Adicional Premium" : "Valor do envio"}</span>
+                  {tieredShipping ? (
+                    <span className={valorFreteCobrado === 0 ? "font-bold text-success" : ""}>{valorFreteCobrado === 0 ? "Grátis" : brl(valorFreteCobrado)}</span>
+                  ) : !separateShipping && !embeddedShipping && subtotalProdutos >= 89.9 && valorFreteCobrado > 0 ? (
                     <span className="flex items-center gap-1.5">
                       <span className="line-through opacity-60">{brl(valorFreteCobrado)}</span>
                       <span className="font-bold text-success">Grátis 🎉</span>
@@ -683,7 +694,8 @@ function CartPage() {
                   )}
                 </div>
 
-                {!separateShipping && (embeddedShipping || (subtotalProdutos >= 89.9 && valorFreteCobrado > 0)) && (
+                {tieredShipping && valorFreteCobrado === 0 && <p className="text-[10px] font-semibold text-success">Frete grátis</p>}
+                {!tieredShipping && !separateShipping && (embeddedShipping || (subtotalProdutos >= 89.9 && valorFreteCobrado > 0)) && (
                   <p className="text-[10px] font-semibold text-success">
                     {firstPurchaseEligible
                       ? "Frete grátis na sua primeira compra."
@@ -691,7 +703,7 @@ function CartPage() {
                   </p>
                 )}
 
-                {!separateShipping && subtotalProdutos < 89.9 && subtotalProdutos > 0 && (
+                {((tieredShipping && !exemptShipping) || (!tieredShipping && !separateShipping)) && subtotalProdutos < 89.9 && subtotalProdutos > 0 && (
                   <p className="text-[10px] font-semibold text-muted-foreground">
                     Faltam {brl(Math.round((89.9 - subtotalProdutos) * 100) / 100)} para você ganhar frete grátis 🚚
                   </p>
@@ -746,7 +758,7 @@ function CartPage() {
                 size="lg"
                 className="w-full font-bold mt-4 shadow-md"
                 onClick={handleCheckout}
-                disabled={submitting || quoting || !quotesReady || !priceChangeAccepted}
+                disabled={submitting || quoting || !quotesReady || !priceChangeAccepted || !shippingIdentity}
               >
                 {submitting ? (
                   <>

@@ -680,6 +680,13 @@
       "when": 1794444928524,
       "tag": "0096_restore_trends_owner_id_read_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1794550425960,
+      "tag": "0097_hs_tiered_shipping_checkout",
+      "breakpoints": true
     }
   ]
 }

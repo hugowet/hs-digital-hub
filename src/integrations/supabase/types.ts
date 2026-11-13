@@ -590,6 +590,74 @@ export type Database = {
           },
         ]
       }
+      hs_shipping_expenses: {
+        Row: {
+          buyer_amount: number
+          buyer_id: string
+          created_at: string
+          hs_expense: number
+          order_id: string
+          store_id: string
+          supplier_amount: number
+        }
+        Insert: {
+          buyer_amount: number
+          buyer_id: string
+          created_at?: string
+          hs_expense: number
+          order_id: string
+          store_id: string
+          supplier_amount: number
+        }
+        Update: {
+          buyer_amount?: number
+          buyer_id?: string
+          created_at?: string
+          hs_expense?: number
+          order_id?: string
+          store_id?: string
+          supplier_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hs_shipping_expenses_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hs_shipping_expenses_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hs_shipping_stores: {
+        Row: {
+          created_at: string
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hs_shipping_stores_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hs_stamp_carousel: {
         Row: {
           created_at: string
@@ -3054,6 +3122,15 @@ export type Database = {
         }
         Returns: string
       }
+      create_marketplace_order_v4: {
+        Args: {
+          _coupon_id?: string
+          _items: Json
+          _shipping_address: Json
+          _shipping_quote_ids: Json
+        }
+        Returns: string
+      }
       create_seller_product: {
         Args: {
           _category: string
@@ -3184,6 +3261,11 @@ export type Database = {
       hs_bank_request_credit: { Args: { _store_id: string }; Returns: string }
       hs_promo_price: {
         Args: { _cost: number; _regular: number; _share: number }
+        Returns: number
+      }
+      hs_shipping_identity: { Args: never; Returns: Json }
+      hs_shipping_tier: {
+        Args: { _free: boolean; _subtotal: number }
         Returns: number
       }
       manage_amazon_carousel: {

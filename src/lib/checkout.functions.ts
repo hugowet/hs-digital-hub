@@ -2,6 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export const getShippingIdentity = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase.rpc("hs_shipping_identity");
+    if (error) throw error;
+    const result = data as { admin?: boolean; club?: boolean; storeIds?: string[] } | null;
+    return { admin: result?.admin === true, club: result?.club === true, storeIds: result?.storeIds ?? [] };
+  });
+
 export const getFirstPurchaseShippingEligibility = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
