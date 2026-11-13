@@ -5,8 +5,8 @@ import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 
 type Raster = { width: number; height: number; data: Uint8Array };
 const LIMIT = 6 * 1024 * 1024;
-const WIDTH = 1200;
-const HEIGHT = 630;
+const WIDTH = 800;
+const HEIGHT = 800;
 
 function decode(bytes: Uint8Array): Raster {
   if (bytes[0] === 255 && bytes[1] === 216) {
@@ -53,7 +53,7 @@ export function composeProductShareImage(photoBytes: Uint8Array, logoBytes?: Uin
   const height = Math.max(1, Math.round(photo.height * scale));
   draw(photo, Math.floor((WIDTH - width) / 2), Math.floor((HEIGHT - height) / 2), width, height);
   if (logo) {
-    draw(logo, WIDTH - 168, HEIGHT - 168, 144, 144);
+    draw(logo, WIDTH - 130, HEIGHT - 130, 110, 110);
   }
   return new Uint8Array(jpeg.encode(canvas, 85).data);
 }
