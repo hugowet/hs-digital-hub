@@ -93,6 +93,11 @@ export const Route = createFileRoute("/produto/$productId")({
         ...(p?.image_url
           ? [
               { property: "og:image", content: `${SITE_ORIGIN}/api/public/product-share/${params.productId}` },
+              {
+                property: "og:image:secure_url",
+                content: `${SITE_ORIGIN}/api/public/product-share/${params.productId}`,
+              },
+              { property: "og:image:type", content: "image/jpeg" },
               { name: "twitter:image", content: `${SITE_ORIGIN}/api/public/product-share/${params.productId}` },
               { property: "og:image:width", content: "1200" },
               { property: "og:image:height", content: "630" },
@@ -841,9 +846,15 @@ function ProductDetailPage() {
                             if (option.productId === productId || checkingOption) return;
                             setCheckingOption(option.productId);
                             try {
-                              const blocks = product.supplier === "montink" && product.specifications?.montink_description_blocks;
-              if (Array.isArray(blocks) && blocks.length) return blocks.map((b, i) => <p key={i} className={b.bold ? "font-bold" : "font-normal"}>{String(b.text ?? "")}</p>);
-              if (product.supplier === "cj")
+                              const blocks =
+                                product.supplier === "montink" && product.specifications?.montink_description_blocks;
+                              if (Array.isArray(blocks) && blocks.length)
+                                return blocks.map((b, i) => (
+                                  <p key={i} className={b.bold ? "font-bold" : "font-normal"}>
+                                    {String(b.text ?? "")}
+                                  </p>
+                                ));
+                              if (product.supplier === "cj")
                                 await confirmOption({ data: { parentId: productId, productId: option.productId } });
                               setQuantity(1);
                               setSelectedImage(0);
