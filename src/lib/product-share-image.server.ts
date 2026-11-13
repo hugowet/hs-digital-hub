@@ -111,8 +111,18 @@ export async function productShareImage(productId: string): Promise<Response> {
     return new Response(composeProductShareImage(photo, logo), { headers: {
       "Content-Type": "image/jpeg", "Cache-Control": "public, max-age=300, s-maxage=3600", "X-Content-Type-Options": "nosniff",
     } });
-  } catch {
-    // Preserve the original product preview if a source format cannot be decoded.
-    return Response.redirect(cover, 302);
+   } catch {
+    // Retorna os bytes da imagem diretamente sem 302
+    try {
+      const bytes = await imageBytes(cover);
+      return new Response(bytes, {
+        headers: {
+          "Content-Type": "image/jpeg",
+          "Cache-Control": "public, max-age=300, s-maxage=3600",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    } catch {
+      return Response.redirect(cover, 302);
+    }
   }
-}
