@@ -99,8 +99,8 @@ export const Route = createFileRoute("/produto/$productId")({
               },
               { property: "og:image:type", content: "image/jpeg" },
               { name: "twitter:image", content: `${SITE_ORIGIN}/api/public/product-share/${params.productId}` },
-              { property: "og:image:width", content: "1200" },
-              { property: "og:image:height", content: "630" },
+              { property: "og:image:width", content: "800" },
+              { property: "og:image:height", content: "800" },
               { property: "og:image:alt", content: p.title },
             ]
           : []),
