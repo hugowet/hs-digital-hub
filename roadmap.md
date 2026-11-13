@@ -1,5 +1,11 @@
 # HS Digital — MVP
 
+## Frete escalonado e avisos — 13/11
+- [ ] Parte 1: aplicar faixas R$ 9,90 / R$ 17,90 / grátis no carrinho e pedido, com exceção administrativa validada no servidor e preservação do repasse.
+- [ ] Parte 1: testar limites das faixas e total real no checkout.
+- [ ] Parte 2: centralizar instalação e reduzir convite para 260px no canto superior direito; validar sem sobreposição.
+- [ ] Rever achado de segurança Trends listado neste turno.
+
 ## Correções autorizadas — 12/11
 - [x] Preservar o preço do pedido Amazon durante pagamento, sem erro por reajuste posterior; cinco testes passaram, mantendo estoque e segurança. Pagamento real não gerado.
 - [x] Separar produto/envio no resumo e propagar frete separado Montink; sem alteração dos totais ou regras financeiras. 29 testes relacionados passaram; build OK.
