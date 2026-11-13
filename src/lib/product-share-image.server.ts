@@ -22,18 +22,17 @@ function decode(bytes: Uint8Array): Raster {
     data[i * 4] = png.data[i * png.channels];
     data[i * 4 + 1] = png.data[i * png.channels + 1];
     data[i * 4 + 2] = png.data[i * png.channels + 2];
-    data[i * 4 + 3] = png.channels === 4 ? png.data[i * 4 + 3] : 255;
+    data[i * 4 + 3] = png.channels === 4 ? png.data[i * png.channels + 3] : 255;
   }
   return { width: png.width, height: png.height, data };
 }
 
-// Pure JS raster composition: no native binaries or runtime WASM compilation.
-export function composeProductShareImage(photoBytes: Uint8Array, logoBytes: Uint8Array) {
+export function composeProductShareImage(photoBytes: Uint8Array, logoBytes?: Uint8Array | null) {
   const photo = decode(photoBytes);
-  const logo = decode(logoBytes);
+  const logo = logoBytes ? decode(logoBytes) : null;
   const canvas: Raster = { width: WIDTH, height: HEIGHT, data: new Uint8Array(WIDTH * HEIGHT * 4).fill(255) };
   const draw = (image: Raster, x: number, y: number, width: number, height: number) => {
-    for (let dy = 0; dy < height; dy++)
+    for (let dy = 0; dy < height; dy++) {
       for (let dx = 0; dx < width; dx++) {
         const src =
           (Math.min(image.height - 1, Math.floor((dy * image.height) / height)) * image.width +
@@ -41,25 +40,30 @@ export function composeProductShareImage(photoBytes: Uint8Array, logoBytes: Uint
           4;
         const dst = ((y + dy) * WIDTH + x + dx) * 4;
         const alpha = image.data[src + 3] / 255;
-        for (let channel = 0; channel < 3; channel++)
+        for (let channel = 0; channel < 3; channel++) {
           canvas.data[dst + channel] = Math.round(
             image.data[src + channel] * alpha + canvas.data[dst + channel] * (1 - alpha),
           );
+        }
       }
+    }
   };
   const scale = Math.min(WIDTH / photo.width, HEIGHT / photo.height);
   const width = Math.max(1, Math.round(photo.width * scale));
   const height = Math.max(1, Math.round(photo.height * scale));
   draw(photo, Math.floor((WIDTH - width) / 2), Math.floor((HEIGHT - height) / 2), width, height);
-  draw(logo, WIDTH - 168, HEIGHT - 168, 144, 144);
+  if (logo) {
+    draw(logo, WIDTH - 168, HEIGHT - 168, 144, 144);
+  }
   return new Uint8Array(jpeg.encode(canvas, 85).data);
 }
 
 export function allowedImageUrl(value: string, backendOrigin: string) {
   const url = new URL(value);
   const host = url.hostname;
-  if (url.protocol !== "https:" || url.username || url.password || (url.port && url.port !== "443"))
+  if (url.protocol !== "https:" || url.username || url.password || (url.port && url.port !== "443")) {
     throw new Error("Invalid image URL");
+  }
   const supplierHost = ["media-amazon.com", "images-amazon.com", "cjdropshipping.com", "alicdn.com"].some(
     (domain) => host === domain || host.endsWith(`.${domain}`),
   );
@@ -70,32 +74,16 @@ export function allowedImageUrl(value: string, backendOrigin: string) {
 }
 
 async function imageBytes(url: string) {
-  const response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(10_000) });
-  if (!response.ok || Number(response.headers.get("content-length") || 0) > LIMIT) throw new Error("Image unavailable");
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error("Missing image");
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  while (true) {
-    const chunk = await reader.read();
-    if (chunk.done) break;
-    size += chunk.value.length;
-    if (size > LIMIT) {
-      await reader.cancel();
-      throw new Error("Image too large");
-    }
-    chunks.push(chunk.value);
+  const response = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(10_000) });
+  if (!response.ok || Number(response.headers.get("content-length") || 0) > LIMIT) {
+    throw new Error("Image unavailable");
   }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return bytes;
+  const arrayBuffer = await response.arrayBuffer();
+  return new Uint8Array(arrayBuffer);
 }
 
 let logoBytesPromise: Promise<Uint8Array> | undefined;
+
 export async function productShareImage(productId: string): Promise<Response> {
   const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? "";
   const backend = process.env.SUPABASE_URL ?? "";
@@ -110,32 +98,42 @@ export async function productShareImage(productId: string): Promise<Response> {
       },
     },
   });
+
   const { data: product, error } = await client
     .from("products")
     .select("id,image_url,store_id")
     .eq("id", productId)
     .eq("is_active", true)
     .maybeSingle();
+
   if (error) return new Response("Image unavailable", { status: 503 });
   if (!product?.image_url) return new Response("Not found", { status: 404 });
+
   let cover = product.image_url as string;
   if (!cover.startsWith("https://")) {
-    // Sign only the exact cover of a publicly readable active product, scoped to its store.
-    if (!cover.startsWith(`${product.store_id}/`) || cover.includes(".."))
+    if (!cover.startsWith(`${product.store_id}/`) || cover.includes("..")) {
       return new Response("Not found", { status: 404 });
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await supabaseAdmin.storage.from("product-images").createSignedUrl(cover, 300);
     if (!data?.signedUrl) return new Response("Not found", { status: 404 });
     cover = data.signedUrl;
   }
+
   cover = allowedImageUrl(cover, new URL(backend).origin);
+
   try {
-    logoBytesPromise ??= imageBytes(`https://hsdigitalmarketpla.store${logoAsset.url}`).catch((error) => {
-      logoBytesPromise = undefined;
-      throw error;
-    });
-    const [photo, logo] = await Promise.all([imageBytes(cover), logoBytesPromise]);
-    return new Response(composeProductShareImage(photo, logo), {
+    const photo = await imageBytes(cover);
+    let logo: Uint8Array | null = null;
+    try {
+      logoBytesPromise ??= imageBytes(`https://hsdigitalmarketpla.store${logoAsset.url}`).catch(() => undefined);
+      logo = (await logoBytesPromise) ?? null;
+    } catch {
+      logo = null;
+    }
+
+    const finalImage = composeProductShareImage(photo, logo);
+    return new Response(finalImage, {
       headers: {
         "Content-Type": "image/jpeg",
         "Cache-Control": "public, max-age=300, s-maxage=3600",
@@ -143,18 +141,6 @@ export async function productShareImage(productId: string): Promise<Response> {
       },
     });
   } catch {
-    // Retorna os bytes da imagem diretamente sem 302
-    try {
-      const bytes = await imageBytes(cover);
-      return new Response(bytes, {
-        headers: {
-          "Content-Type": "image/jpeg",
-          "Cache-Control": "public, max-age=300, s-maxage=3600",
-          "X-Content-Type-Options": "nosniff",
-        },
-      });
-    } catch {
-      return Response.redirect(cover, 302);
-    }
+    return Response.redirect(cover, 302);
   }
 }
