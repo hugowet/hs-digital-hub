@@ -33,12 +33,19 @@ export function composeProductShareImage(photoBytes: Uint8Array, logoBytes: Uint
   const logo = decode(logoBytes);
   const canvas: Raster = { width: WIDTH, height: HEIGHT, data: new Uint8Array(WIDTH * HEIGHT * 4).fill(255) };
   const draw = (image: Raster, x: number, y: number, width: number, height: number) => {
-    for (let dy = 0; dy < height; dy++) for (let dx = 0; dx < width; dx++) {
-      const src = (Math.min(image.height - 1, Math.floor(dy * image.height / height)) * image.width + Math.min(image.width - 1, Math.floor(dx * image.width / width))) * 4;
-      const dst = ((y + dy) * WIDTH + x + dx) * 4;
-      const alpha = image.data[src + 3] / 255;
-      for (let channel = 0; channel < 3; channel++) canvas.data[dst + channel] = Math.round(image.data[src + channel] * alpha + canvas.data[dst + channel] * (1 - alpha));
-    }
+    for (let dy = 0; dy < height; dy++)
+      for (let dx = 0; dx < width; dx++) {
+        const src =
+          (Math.min(image.height - 1, Math.floor((dy * image.height) / height)) * image.width +
+            Math.min(image.width - 1, Math.floor((dx * image.width) / width))) *
+          4;
+        const dst = ((y + dy) * WIDTH + x + dx) * 4;
+        const alpha = image.data[src + 3] / 255;
+        for (let channel = 0; channel < 3; channel++)
+          canvas.data[dst + channel] = Math.round(
+            image.data[src + channel] * alpha + canvas.data[dst + channel] * (1 - alpha),
+          );
+      }
   };
   const scale = Math.min(WIDTH / photo.width, HEIGHT / photo.height);
   const width = Math.max(1, Math.round(photo.width * scale));
@@ -51,8 +58,11 @@ export function composeProductShareImage(photoBytes: Uint8Array, logoBytes: Uint
 export function allowedImageUrl(value: string, backendOrigin: string) {
   const url = new URL(value);
   const host = url.hostname;
-  if (url.protocol !== "https:" || url.username || url.password || (url.port && url.port !== "443")) throw new Error("Invalid image URL");
-  const supplierHost = ["media-amazon.com", "images-amazon.com", "cjdropshipping.com", "alicdn.com"].some((domain) => host === domain || host.endsWith(`.${domain}`));
+  if (url.protocol !== "https:" || url.username || url.password || (url.port && url.port !== "443"))
+    throw new Error("Invalid image URL");
+  const supplierHost = ["media-amazon.com", "images-amazon.com", "cjdropshipping.com", "alicdn.com"].some(
+    (domain) => host === domain || host.endsWith(`.${domain}`),
+  );
   const storedImage = url.origin === backendOrigin && url.pathname.startsWith("/storage/v1/object/");
   const assetImage = host === "hsdigitalmarketpla.store" && url.pathname.startsWith("/__l5e/assets-v1/");
   if (!supplierHost && !storedImage && !assetImage) throw new Error("Image host not allowed");
@@ -70,12 +80,18 @@ async function imageBytes(url: string) {
     const chunk = await reader.read();
     if (chunk.done) break;
     size += chunk.value.length;
-    if (size > LIMIT) { await reader.cancel(); throw new Error("Image too large"); }
+    if (size > LIMIT) {
+      await reader.cancel();
+      throw new Error("Image too large");
+    }
     chunks.push(chunk.value);
   }
   const bytes = new Uint8Array(size);
   let offset = 0;
-  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
   return bytes;
 }
 
@@ -85,20 +101,28 @@ export async function productShareImage(productId: string): Promise<Response> {
   const backend = process.env.SUPABASE_URL ?? "";
   const client = createClient(backend, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch: (input, init) => {
-      const headers = new Headers(init?.headers);
-      if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
-      headers.set("apikey", key);
-      return fetch(input, { ...init, headers });
-    } },
+    global: {
+      fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
+        headers.set("apikey", key);
+        return fetch(input, { ...init, headers });
+      },
+    },
   });
-  const { data: product, error } = await client.from("products").select("id,image_url,store_id").eq("id", productId).eq("is_active", true).maybeSingle();
+  const { data: product, error } = await client
+    .from("products")
+    .select("id,image_url,store_id")
+    .eq("id", productId)
+    .eq("is_active", true)
+    .maybeSingle();
   if (error) return new Response("Image unavailable", { status: 503 });
   if (!product?.image_url) return new Response("Not found", { status: 404 });
   let cover = product.image_url as string;
   if (!cover.startsWith("https://")) {
     // Sign only the exact cover of a publicly readable active product, scoped to its store.
-    if (!cover.startsWith(`${product.store_id}/`) || cover.includes("..")) return new Response("Not found", { status: 404 });
+    if (!cover.startsWith(`${product.store_id}/`) || cover.includes(".."))
+      return new Response("Not found", { status: 404 });
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await supabaseAdmin.storage.from("product-images").createSignedUrl(cover, 300);
     if (!data?.signedUrl) return new Response("Not found", { status: 404 });
@@ -106,12 +130,19 @@ export async function productShareImage(productId: string): Promise<Response> {
   }
   cover = allowedImageUrl(cover, new URL(backend).origin);
   try {
-    logoBytesPromise ??= imageBytes(`https://hsdigitalmarketpla.store${logoAsset.url}`).catch((error) => { logoBytesPromise = undefined; throw error; });
+    logoBytesPromise ??= imageBytes(`https://hsdigitalmarketpla.store${logoAsset.url}`).catch((error) => {
+      logoBytesPromise = undefined;
+      throw error;
+    });
     const [photo, logo] = await Promise.all([imageBytes(cover), logoBytesPromise]);
-    return new Response(composeProductShareImage(photo, logo), { headers: {
-      "Content-Type": "image/jpeg", "Cache-Control": "public, max-age=300, s-maxage=3600", "X-Content-Type-Options": "nosniff",
-    } });
-   } catch {
+    return new Response(composeProductShareImage(photo, logo), {
+      headers: {
+        "Content-Type": "image/jpeg",
+        "Cache-Control": "public, max-age=300, s-maxage=3600",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch {
     // Retorna os bytes da imagem diretamente sem 302
     try {
       const bytes = await imageBytes(cover);
@@ -126,3 +157,4 @@ export async function productShareImage(productId: string): Promise<Response> {
       return Response.redirect(cover, 302);
     }
   }
+}
