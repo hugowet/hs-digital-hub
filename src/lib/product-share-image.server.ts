@@ -82,7 +82,7 @@ async function imageBytes(url: string) {
   return new Uint8Array(arrayBuffer);
 }
 
-let logoBytesPromise: Promise<Uint8Array> | undefined;
+let logoBytesPromise: Promise<Uint8Array | undefined> | undefined;
 
 export async function productShareImage(productId: string): Promise<Response> {
   const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? "";

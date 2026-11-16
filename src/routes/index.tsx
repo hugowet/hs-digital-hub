@@ -429,6 +429,7 @@ function Home() {
       <SignupInvite />
       {/* A typed search covers the whole store: a leftover category/origin/price filter must not hide results. */}
       <SiteHeader
+        christmas
         query={search.q}
         onQueryChange={(q) => { setSearch(q && q !== search.q ? { q, category: null, supplier: null, range: "all", free: false } : { q }); }}
         suggestions={suggestions}

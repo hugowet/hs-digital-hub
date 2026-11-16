@@ -687,6 +687,13 @@
       "when": 1794550425960,
       "tag": "0097_hs_tiered_shipping_checkout",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1794832031983,
+      "tag": "0098_scope_shipping_configuration_reads",
+      "breakpoints": true
     }
   ]
 }

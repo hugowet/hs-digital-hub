@@ -59,6 +59,13 @@
 }
 
 :root {
+  --christmas-red: oklch(0.65 0.23 26);
+  --christmas-gold: oklch(0.88 0.16 88);
+  --christmas-green: oklch(0.76 0.18 149);
+  --christmas-blue: oklch(0.8 0.11 230);
+  --christmas-snow: oklch(0.99 0 0);
+  --christmas-wire: oklch(0.3 0.045 150);
+  --christmas-snow-shadow: 0 1px 3px oklch(0.3 0.02 250 / 35%);
   --bank: oklch(0.48 0.19 255);
   --bank-foreground: oklch(0.99 0 0);
   --bank-soft: oklch(0.95 0.025 245);
@@ -286,4 +293,63 @@ html {
   .intro-lupi {
     display: none;
   }
+}
+
+.hs-christmas-decoration, .hs-christmas-hat {
+  pointer-events: none;
+  user-select: none;
+}
+.hs-christmas-hat {
+  position: absolute;
+  width: 39px;
+  height: 29px;
+  top: -11px;
+  left: -5px;
+  transform: rotate(-14deg);
+}
+.hs-hat-red { fill: var(--christmas-red); }
+.hs-hat-trim { fill: var(--christmas-snow); }
+.hs-christmas-lights {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 10px;
+  display: flex;
+  justify-content: space-around;
+  border-top: 1px solid var(--christmas-wire);
+  overflow: hidden;
+}
+.hs-christmas-bulb {
+  width: 5px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 2px 2px 50% 50%;
+  background: var(--christmas-red);
+  box-shadow: 0 0 5px var(--christmas-red);
+  animation: hs-light-glimmer 3.6s ease-in-out infinite alternate;
+}
+.hs-christmas-bulb:nth-child(4n+2) { background: var(--christmas-gold); box-shadow: 0 0 5px var(--christmas-gold); animation-delay: -1s; }
+.hs-christmas-bulb:nth-child(4n+3) { background: var(--christmas-green); box-shadow: 0 0 5px var(--christmas-green); animation-delay: -2s; }
+.hs-christmas-bulb:nth-child(4n+4) { background: var(--christmas-blue); box-shadow: 0 0 5px var(--christmas-blue); animation-delay: -3s; }
+.hs-christmas-snow { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+.hs-snowflake {
+  position: absolute;
+  top: -24px;
+  font-size: 15px;
+  color: var(--christmas-snow);
+  text-shadow: var(--christmas-snow-shadow);
+  opacity: 0.5;
+  animation: hs-snowfall 20s linear infinite;
+}
+.hs-snowflake:nth-child(3n) { font-size: 11px; opacity: 0.35; }
+@keyframes hs-snowfall {
+  from { transform: translate3d(0, -24px, 0) rotate(0); }
+  to { transform: translate3d(28px, calc(100dvh + 48px), 0) rotate(100deg); }
+}
+@keyframes hs-light-glimmer { from { opacity: 0.55; } to { opacity: 1; } }
+@media (max-width: 640px) {
+  .hs-christmas-bulb:nth-child(n+19), .hs-snowflake:nth-child(n+11) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hs-christmas-bulb { animation: none; }
+  .hs-christmas-snow { display: none; }
 }

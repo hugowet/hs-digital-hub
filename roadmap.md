@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Natal — 16/11
+- [x] Gorro, luzes e neve aplicados somente na vitrine, sem alterar funcionalidades; retirada em 05/01/2027 às 00h de Boa Vista, inclusive com aba aberta.
+- [x] Seis testes passaram; vitrine e busca conferidas em 390×844 e 1280×1800, sem transbordamento; retirada em 05/01 validada na tela e build OK. Não publicado.
+- [x] Leitura direta da configuração de frete limitada a admin/proprietário; acesso Trends já protege arquivos próprios ou publicados, política relida; dois achados resolvidos. Leituras públicas do feed/carrossel permanecem intencionais.
+
 ## Frete escalonado e avisos — 13/11
 - [ ] Parte 1: aplicar faixas R$ 9,90 / R$ 17,90 / grátis no carrinho e pedido, com exceção administrativa validada no servidor e preservação do repasse.
 - [ ] Parte 1: testar limites das faixas e total real no checkout.

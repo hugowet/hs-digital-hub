@@ -1,0 +1,1 @@
+ALTER POLICY hs_shipping_scope_read ON public.hs_shipping_stores TO authenticated USING (public.has_role((SELECT auth.uid()), 'admin') OR EXISTS (SELECT 1 FROM public.stores s WHERE s.id = hs_shipping_stores.store_id AND s.owner_id = (SELECT auth.uid())));
