@@ -694,6 +694,13 @@
       "when": 1794832031983,
       "tag": "0098_scope_shipping_configuration_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1794885844052,
+      "tag": "0099_catalog_search_caller_permissions",
+      "breakpoints": true
     }
   ]
 }

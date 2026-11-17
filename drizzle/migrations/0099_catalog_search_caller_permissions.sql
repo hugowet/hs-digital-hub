@@ -1,0 +1,1 @@
+ALTER FUNCTION public.search_catalog_supplier_ids(jsonb,text,numeric,numeric,boolean,text,integer,integer,text) SECURITY INVOKER;

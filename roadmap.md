@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Retirada solicitada — 17/11
+- [x] Retirar decoração natalina, categoria Estampas e abas Montink/HS Estampas, preservando registros e pedidos anteriores.
+- [x] Vitrine e painel JJ Kuster conferidos: sem decoração, categoria ou abas retiradas; produto Montink desativado, sem apagar histórico. 12 testes passaram; build OK. Busca respeita permissões do visitante e acesso Trends reconferido; ambos os avisos resolvidos. Mudanças de tela ainda não publicadas.
+
 ## Natal — 16/11
 - [x] Gorro, luzes e neve aplicados somente na vitrine, sem alterar funcionalidades; retirada em 05/01/2027 às 00h de Boa Vista, inclusive com aba aberta.
 - [x] Seis testes passaram; vitrine e busca conferidas em 390×844 e 1280×1800, sem transbordamento; retirada em 05/01 validada na tela e build OK. Não publicado.

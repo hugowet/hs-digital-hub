@@ -39,24 +39,20 @@ import { catalogSearchGroups, normalizeCatalogSearch } from "@/lib/catalog-searc
 import { useMessageUnread } from "@/hooks/use-message-unread";
 import { UnreadDot } from "@/components/unread-dot";
 import { selectionNavigation } from "@/lib/exit-navigation";
-import { ChristmasDecoration, ChristmasHat, useChristmasDecoration } from "@/components/christmas-decoration";
 
 declare module "@tanstack/react-router" {
   interface HistoryState { hsMobileMenu?: boolean }
 }
 
 export function SiteHeader({
-  christmas = false,
   query = "",
   onQueryChange,
   suggestions = [],
 }: {
-  christmas?: boolean;
   query?: string;
   onQueryChange?: (value: string) => void;
   suggestions?: Array<{ id: string; title: string; category: string }>;
 }) {
-  const christmasActive = useChristmasDecoration(christmas);
   const { count, clear } = useCart();
   const navigate = useNavigate();
   const router = useRouter();
@@ -209,7 +205,6 @@ export function SiteHeader({
 
   return (
     <header className="sticky top-0 z-50 brand-gradient text-primary-foreground shadow-md">
-      {christmasActive && <ChristmasDecoration />}
       <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 py-2.5 sm:py-3">
         <div className="flex items-center gap-2 sm:gap-3">
           <Link to="/" className="flex shrink-0 items-center gap-2">
@@ -221,7 +216,6 @@ export function SiteHeader({
               height={40}
               className="h-9 w-9 sm:h-10 sm:w-10 rounded-full ring-1 ring-white/20 object-cover"
             />
-            {christmasActive && <ChristmasHat />}
             </span>
             <span className="font-display text-base sm:text-lg font-bold tracking-tight max-sm:hidden">
               HS Digital

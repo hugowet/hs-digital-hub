@@ -38,7 +38,6 @@ import { ProductCard } from "@/components/product-card";
 import { CategoryCarousels } from "@/components/category-carousels";
 import { HsPromotionsCarousel } from "@/components/hs-promotions-carousel";
 import { AmazonBestSellersCarousel } from "@/components/amazon-best-sellers-carousel";
-import { stampCarouselOptions } from "@/lib/amazon-best-sellers";
 import { amazonBestSellersOptions } from "@/lib/amazon-best-sellers";
 import { personalizeProducts, recordCategoryClick, recordSearch } from "@/lib/interest-profile";
 import { IntroAnimation } from "@/components/intro-animation";
@@ -355,7 +354,7 @@ function Home() {
 
   const activeCategories = useMemo(() => {
       const uniqueSlugs = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
-      const extraSlugs = uniqueSlugs.filter((slug) => !CATEGORIES.some((category) => category.slug === slug));
+      const extraSlugs = uniqueSlugs.filter((slug) => slug !== "estampas" && !CATEGORIES.some((category) => category.slug === slug));
       return [...CATEGORIES, ...extraSlugs.map((slug) => {
         const found = CATEGORIES.find((c) => c.slug === slug);
         if (found) return found;
@@ -429,7 +428,6 @@ function Home() {
       <SignupInvite />
       {/* A typed search covers the whole store: a leftover category/origin/price filter must not hide results. */}
       <SiteHeader
-        christmas
         query={search.q}
         onQueryChange={(q) => { setSearch(q && q !== search.q ? { q, category: null, supplier: null, range: "all", free: false } : { q }); }}
         suggestions={suggestions}
@@ -618,7 +616,6 @@ function Home() {
           </Tabs>
 
           <AmazonBestSellersCarousel />
-          <AmazonBestSellersCarousel title="HS Estampas" options={stampCarouselOptions} showFeatured={false} />
           {!isFiltered && <CategoryCarousels />}
 
           {/* LISTA DE PRODUTOS */}
