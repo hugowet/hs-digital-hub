@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## AdSense — 17/11
+- [x] Código público fornecido e ads.txt instalados; navegador confirmou script único, conta correta e ads.txt HTTP 200, sem carregar anúncios de teste. Defaults de publicidade negados antes do script; não alteradas compras ou preços. Build OK.
+- [ ] Publicar e concluir no AdSense: Adicionei o código → Verificar → Pedir revisão; ativar anúncios automáticos e configurar mensagem de consentimento em Privacidade e mensagens. Bloqueador: ações no painel Google pelo proprietário e aprovação do Google; anúncios reais não verificados.
+
 ## Margem Amazon por custo — 17/11
 - [x] Amazon abaixo de R$ 100 pelo custo confirmado exato, sem margem; R$ 100 ou mais preserva cálculo configurado. CJ, frete e pedidos fechados mantidos; cálculo compartilhado por links, tendências e atualização.
 - [x] 257 anúncios JJ Kuster atualizados com custos BRL salvos; releitura confirmou zero divergências, sem consultas pagas. 57 testes passaram; produto real conferido autenticado por R$ 39,00, sem erros e build OK. Nova regra de importação/sincronização precisa publicar; não realizada compra/cobrança nem leitura Amazon externa.
