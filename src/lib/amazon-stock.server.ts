@@ -1,6 +1,6 @@
 import { parseHTML } from "linkedom";
 import { extractAmazonAvailability } from "./amazon-availability";
-import { extractDescription, extractSpecs } from "./amazon.functions";
+import { extractDescription, extractSpecs } from "./amazon-content";
 import { extractAmazonOptions, shouldReplaceOptions } from "./amazon-options";
 import { amazonHiResFromHtml } from "./amazon-image";
 import { AMAZON_DELIVERY_METHOD_TEXT, buildAmazonDescription, sanitizeAmazonSpecs } from "./amazon-text";
@@ -68,8 +68,7 @@ export async function checkAmazonStock(supabaseAdmin: any, product: any, timeout
     else if (shouldReplaceOptions(product.variations, options)) patch.variations = options;
     const specs = sanitizeAmazonSpecs(extractSpecs(document));
     const oldSpecs = product.specifications ?? {};
-    const userSpecCount = Object.keys(oldSpecs).filter((k) => k !== "affiliate_url" && !k.startsWith("_")).length;
-    if (Object.keys(specs).length > userSpecCount) patch.specifications = { ...specs, ...oldSpecs };
+    if (Object.keys(specs).some((key) => !oldSpecs[key])) patch.specifications = { ...specs, ...oldSpecs };
   } catch { /* conteúdo opcional */ }
   const quantity = amazonStockAfterRead(availability, product.stock);
 

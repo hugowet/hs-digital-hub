@@ -71,6 +71,7 @@ export function AmazonAffiliateImporter() {
   const [description, setDescription] = useState("");
   const [amazonCategory, setAmazonCategory] = useState("");
   const [pageOptions, setPageOptions] = useState<AmazonOptionGroup[]>([]);
+  const [readStock, setReadStock] = useState<{ quantity: number; availability: string; url: string } | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [galleryInput, setGalleryInput] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
@@ -160,6 +161,7 @@ export function AmazonAffiliateImporter() {
       if (data.title) setTitle(data.title);
       setAmazonCategory(data.amazonCategory);
       setPageOptions(data.variations);
+      setReadStock({ quantity: data.confirmedStock, availability: data.availability, url });
       if (data.costPrice > 0) setCostPrice(String(data.costPrice));
       if (data.description) setDescription(data.description);
       if (data.mainImage) setImageUrl(data.mainImage);
@@ -187,6 +189,7 @@ export function AmazonAffiliateImporter() {
       if (data.title) setTitle(data.title);
       setAmazonCategory(String(data.amazonCategory || data.category || ""));
       setPageOptions([]);
+      setReadStock(null);
       if (data.costPrice) setCostPrice(String(data.costPrice));
       if (data.description) setDescription(data.description);
       if (data.mainImage) setImageUrl(data.mainImage);
@@ -277,7 +280,10 @@ export function AmazonAffiliateImporter() {
         is_active: true,
         category: categorizeAmazonProduct({ title: sanitizeAmazonText(title.trim()), description: finalDescription, amazonCategory }),
         variations: withAmazonSizeFallback(pageOptions, { title, description: finalDescription, amazonCategory }),
-        stock: 999,
+        stock: readStock?.url === amazonUrl.trim() ? readStock.quantity : 0,
+        supplier_availability: readStock?.url === amazonUrl.trim() ? readStock.availability : "unknown",
+        supplier_confirmed_quantity: readStock?.url === amazonUrl.trim() ? readStock.quantity : 0,
+        supplier_stock_checked_at: readStock?.url === amazonUrl.trim() ? new Date().toISOString() : null,
         supplier: "amazon",
         product_type: "physical",
         specifications: {
@@ -301,6 +307,7 @@ export function AmazonAffiliateImporter() {
       setTitle("");
       setPageOptions([]);
       setAmazonCategory("");
+      setReadStock(null);
       setAmazonUrl("");
       setReadSource(null);
       setCostPrice("");
@@ -540,7 +547,10 @@ export function AmazonAffiliateImporter() {
         is_active: true,
         category,
         variations: withAmazonSizeFallback(data.variations, { title: sanitizeAmazonText(data.title), description, amazonCategory: data.amazonCategory }),
-        stock: 999,
+        stock: data.confirmedStock,
+        supplier_availability: data.availability,
+        supplier_confirmed_quantity: data.confirmedStock,
+        supplier_stock_checked_at: new Date().toISOString(),
         supplier: "amazon",
         product_type: "physical",
         specifications: {

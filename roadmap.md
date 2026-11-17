@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Dados completos Amazon — 17/11
+- [x] Ampliar leitura compartilhada da descrição e ficha técnica nos links, tendências e atualização existente; publicação manual/tendências preserva disponibilidade confirmada, sem estoque fictício.
+- [x] 49 testes passaram; leitura real da Cadence preencheu 23 atributos na conta JJ Kuster, sem publicar anúncio; ficha existente conferida no desktop/celular e build OK. Publicação do robô testada com leitor simulado. Acesso Trends já vinculado a owner_id/publicações: aviso reconferido e resolvido. Mudanças não publicadas; produtos antigos não reimportados em massa.
+
 ## Retirada solicitada — 17/11
 - [x] Retirar decoração natalina, categoria Estampas e abas Montink/HS Estampas, preservando registros e pedidos anteriores.
 - [x] Vitrine e painel JJ Kuster conferidos: sem decoração, categoria ou abas retiradas; produto Montink desativado, sem apagar histórico. 12 testes passaram; build OK. Busca respeita permissões do visitante e acesso Trends reconferido; ambos os avisos resolvidos. Mudanças de tela ainda não publicadas.

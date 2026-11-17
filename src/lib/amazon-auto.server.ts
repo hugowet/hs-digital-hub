@@ -9,7 +9,7 @@
  * MAX_CATEGORIES_PER_RUN categorias varridas, para nunca estourar tempo/cota.
  */
 import { parseHTML } from "linkedom";
-import { extractDescription, extractSpecs } from "./amazon.functions";
+import { extractDescription, extractSpecs, complementAmazonSpecs } from "./amazon-content";
 import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
 import { categorizeAmazonProduct } from "./amazon-category";
 import { withAmazonSizeFallback } from "./amazon-variations";
@@ -310,7 +310,7 @@ const PRODUCT_SCHEMA = {
 async function fetchProductData(url: string) {
   const payload = await scrapePage(url, [
     "rawHtml",
-    { type: "json", schema: PRODUCT_SCHEMA, prompt: "Extraia título, preço atual em reais e todas as URLs de fotos do produto desta página da Amazon." },
+    { type: "json", schema: PRODUCT_SCHEMA, prompt: "Extraia título, preço atual em reais, todas as URLs de fotos e todas as especificações técnicas do próprio produto (marca, modelo, materiais, cor, tamanho, dimensões, peso, potência, voltagem, garantia, componentes incluídos), inclusive nos grupos de Especificações do produto. Use somente fatos presentes na página, nunca produtos recomendados nem opções ou estoque estimados." },
   ]);
   const json = payload?.json ?? null;
   const rawHtml: string = typeof payload?.rawHtml === "string" ? payload.rawHtml : "";
@@ -327,6 +327,7 @@ async function fetchProductData(url: string) {
     htmlTitle = (document.querySelector("#productTitle")?.textContent ?? "").replace(/\s+/g, " ").trim();
     amazonCategory = (document.querySelector("#wayfinding-breadcrumbs_feature_div")?.textContent ?? "").replace(/\s+/g, " ").trim();
   }
+  complementAmazonSpecs(specs, json?.specs);
   const extracted: string[] = Array.isArray(json?.images)
     ? json.images.filter((u: unknown) => typeof u === "string" && u.startsWith("http")).map(amazonFullResImage)
     : [];

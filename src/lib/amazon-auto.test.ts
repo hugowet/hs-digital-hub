@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-vi.mock("./amazon.functions", () => ({ extractDescription: vi.fn(), extractSpecs: vi.fn() }));
+vi.mock("./amazon-content", () => ({ extractDescription: vi.fn(), extractSpecs: vi.fn(() => ({})), complementAmazonSpecs: (specs: Record<string, string>) => specs }));
 import { AMAZON_AUTO_KEYWORDS, isTrustworthyTrend, isCoherentPrice, searchCategoryWinners, runAmazonAutoImport } from "./amazon-auto.server";
 import { describeAmazonSearchError } from "./amazon-search-diagnostics";
 

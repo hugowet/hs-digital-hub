@@ -10,6 +10,7 @@ import { validateAmazonProductUrl } from "./amazon-link-batch";
 import { assertAmazonPageReadable } from "./amazon-request-policy";
 import { extractExactAmazonPrice } from "./amazon-price";
 import { amazonSourceMetadata } from "./amazon-source";
+import { extractDescription, extractSpecs, complementAmazonSpecs } from "./amazon-content";
 
 const ALLOWED_EMAILS = ["hugoet373@gmail.com", "hugohug12ou@gmail.com"];
 const GATEWAY_V2 = "https://connector-gateway.lovable.dev/firecrawl/v2";
@@ -23,80 +24,10 @@ const PRODUCT_SCHEMA = {
   },
 };
 
+export { extractDescription, extractSpecs } from "./amazon-content";
+
 function cleanText(value: string | null | undefined): string {
   return (value ?? "").replace(/\s+/g, " ").trim();
-}
-
-/** "Sobre este item": bullets de #feature-bullets / .a-unordered-list.a-vertical.a-spacing-mini → markdown. */
-export function extractDescription(doc: Document): string {
-  const container =
-    doc.querySelector("#feature-bullets") ??
-    doc.querySelector(".a-unordered-list.a-vertical.a-spacing-mini") ??
-    doc.querySelector("#feature-bullets_feature_div");
-  if (!container) return extractLongDescription(doc);
-  const bullets = Array.from(container.querySelectorAll("li .a-list-item, li"))
-    .map((li) => cleanText(li.textContent))
-    .filter((t) => t.length > 2 && !/certifique-se|verifique se/i.test(t));
-  const unique = [...new Set(bullets)];
-  if (!unique.length) return extractLongDescription(doc);
-  return unique.map((t) => `• ${t}`).join("\n");
-}
-
-/** Páginas sem "Sobre este item": usa a "Descrição do produto" e os destaques. */
-function extractLongDescription(doc: Document): string {
-  const parts: string[] = [];
-  const facts = Array.from(doc.querySelectorAll("#productFactsDesktopExpander .product-facts-detail"))
-    .map((row) => Array.from(row.querySelectorAll(".a-col-left, .a-col-right")).map((c) => cleanText(c.textContent)).filter(Boolean).join(": "))
-    .filter((t) => t.length > 3);
-  const box = doc.querySelector("div#productDescription");
-  const paragraphs = box ? Array.from(box.querySelectorAll("p, li")).map((p) => cleanText(p.textContent)).filter((t) => t.length > 2) : [];
-  if (box && !paragraphs.length) { const t = cleanText(box.textContent); if (t) paragraphs.push(t); }
-  if (paragraphs.length) parts.push(...[...new Set(paragraphs)]);
-  if (facts.length) parts.push(...[...new Set(facts)].map((t) => `• ${t}`));
-  return parts.join("\n").slice(0, 6000);
-}
-
-function addSpec(specs: Record<string, string>, key: string, value: string) {
-  const k = cleanText(key).replace(/[:\u200e\u200f]+$/g, "");
-  const v = cleanText(value);
-  if (k && v && k.length < 80 && v.length < 500 && !specs[k]) specs[k] = v;
-}
-
-/** Tabelas de especificações: #productDetails_techSpec_section_1, .prodDetTable, #detailBullets_feature_div. */
-export function extractSpecs(doc: Document): Record<string, string> {
-  const specs: Record<string, string> = {};
-
-  // 1) Tabelas de informações técnicas (th/td)
-  const tables = [
-    ...Array.from(doc.querySelectorAll("#productDetails_techSpec_section_1 tr")),
-    ...Array.from(doc.querySelectorAll("#productDetails_detailBullets_sections1 tr")),
-    ...Array.from(doc.querySelectorAll(".prodDetTable tr")),
-  ];
-  for (const row of tables) {
-    const th = row.querySelector("th");
-    const td = row.querySelector("td");
-    if (th && td) addSpec(specs, th.textContent ?? "", td.textContent ?? "");
-  }
-
-  // 2) Detail bullets ("Marca: X", "Cor: Y" ...)
-  const bulletContainer =
-    doc.querySelector("#detailBullets_feature_div") ?? doc.querySelector("#detailBulletsWrapper_feature_div");
-  if (bulletContainer) {
-    for (const li of Array.from(bulletContainer.querySelectorAll("li"))) {
-      const label = li.querySelector(".a-text-bold");
-      if (label) {
-        const full = cleanText(li.textContent);
-        const key = cleanText(label.textContent);
-        addSpec(specs, key, full.replace(key, "").replace(/^[:\s]+/, ""));
-      } else {
-        const text = cleanText(li.textContent);
-        const idx = text.indexOf(":");
-        if (idx > 0 && idx < 60) addSpec(specs, text.slice(0, idx), text.slice(idx + 1));
-      }
-    }
-  }
-
-  return specs;
 }
 
 export const fetchAmazonProduct = createServerFn({ method: "POST" })
@@ -130,7 +61,7 @@ export async function readAmazonProductPage(rawUrl: string) {
         url,
         formats: [
           "rawHtml",
-          { type: "json", schema: PRODUCT_SCHEMA, prompt: "Extraia título e todas as URLs de fotos do produto desta página da Amazon. Não estime preços." },
+          { type: "json", schema: PRODUCT_SCHEMA, prompt: "Extraia título, todas as URLs de fotos e todas as especificações técnicas do próprio produto, incluindo marca, modelo, materiais, cor, tamanho, dimensões, peso, potência, voltagem, garantia e componentes incluídos. Leia também Especificações do produto e seus grupos expansíveis. Use somente fatos presentes na página, não produtos recomendados. Não estime preços, opções ou estoque." },
         ],
         onlyMainContent: false,
         waitFor: 3000,
@@ -170,13 +101,7 @@ export async function readAmazonProductPage(rawUrl: string) {
       amazonCategory = cleanText(document.querySelector("#wayfinding-breadcrumbs_feature_div")?.textContent);
     }
 
-    // A Amazon carrega a tabela de especificações por demanda; quando o HTML não a traz,
-    // usa a leitura inteligente da página como complemento (somente fatos presentes na página).
-    if (Object.keys(specs).length === 0 && json?.specs && typeof json.specs === "object") {
-      for (const [k, v] of Object.entries(json.specs as Record<string, unknown>)) {
-        addSpec(specs, k, String(v));
-      }
-    }
+    complementAmazonSpecs(specs, json?.specs);
 
     const extracted: string[] = Array.isArray(json?.images)
       ? json.images.filter((u: unknown) => typeof u === "string" && u.startsWith("http")).map(amazonFullResImage)
