@@ -35,5 +35,20 @@ describe('preço confirmado Amazon', () => {
   });
   it('aceita oferta principal e ignora preço riscado', () => expect(extractAmazonOfferPrice(html('80,00'),'B012345678')).toBe(80));
   it('ignora identidade diferente e valores sem comprovação', () => { expect(extractAmazonOfferPrice(html('80,00'),'B098765432')).toBeNull(); expect(extractAmazonOfferPrice(html('4,99'),'B012345678')).toBeNull(); });
-  it('acompanha subida e queda mantendo regra de margem R$15', () => { expect(amazonPricePatch(80).price).toBe(94.9); expect(amazonPricePatch(60).price).toBe(74.9); expect(amazonPricePatch(null)).toEqual({}); });
+  it('abaixo de R$100 mantém o valor original exato sem margem', () => {
+    expect(amazonPricePatch(26.99).price).toBe(26.99);
+    expect(amazonPricePatch(99.99).price).toBe(99.99);
+  });
+  it('em R$100 mantém a margem anteriormente configurada', () => {
+    expect(amazonPricePatch(100).price).toBe(114.9);
+  });
+  it('acima de R$100 mantém a tabela configurada', () => {
+    expect(amazonPricePatch(100.01).price).toBe(140.9);
+    expect(amazonPricePatch(300).price).toBe(419.9);
+  });
+  it('acompanha subida e queda inclusive ao atravessar R$100', () => {
+    expect([60, 80, 99.99, 100, 147.55, 59.99].map(cost => amazonPricePatch(cost).price))
+      .toEqual([60, 80, 99.99, 114.9, 206.9, 59.99]);
+    expect(amazonPricePatch(null)).toEqual({});
+  });
 });

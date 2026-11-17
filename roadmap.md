@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Margem Amazon por custo — 17/11
+- [x] Amazon abaixo de R$ 100 pelo custo confirmado exato, sem margem; R$ 100 ou mais preserva cálculo configurado. CJ, frete e pedidos fechados mantidos; cálculo compartilhado por links, tendências e atualização.
+- [x] 257 anúncios JJ Kuster atualizados com custos BRL salvos; releitura confirmou zero divergências, sem consultas pagas. 57 testes passaram; produto real conferido autenticado por R$ 39,00, sem erros e build OK. Nova regra de importação/sincronização precisa publicar; não realizada compra/cobrança nem leitura Amazon externa.
+
 ## Dados completos Amazon — 17/11
 - [x] Ampliar leitura compartilhada da descrição e ficha técnica nos links, tendências e atualização existente; publicação manual/tendências preserva disponibilidade confirmada, sem estoque fictício.
 - [x] 49 testes passaram; leitura real da Cadence preencheu 23 atributos na conta JJ Kuster, sem publicar anúncio; ficha existente conferida no desktop/celular e build OK. Publicação do robô testada com leitor simulado. Acesso Trends já vinculado a owner_id/publicações: aviso reconferido e resolvido. Mudanças não publicadas; produtos antigos não reimportados em massa.

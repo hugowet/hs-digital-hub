@@ -213,10 +213,9 @@ export function AmazonAffiliateImporter() {
 
   // Cálculos de Margem Dinâmica com a nova regra
   const rawCost = parseFloat(costPrice.replace(",", ".")) || 0;
-  const currentMarginRate = getAmazonMarginRate(rawCost);
-  const currentMarginPercent = Math.round(currentMarginRate * 100);
   const calculatedSalePrice = calculateAmazonFinalPrice(rawCost);
   const grossProfit = rawCost > 0 ? Number((calculatedSalePrice - rawCost).toFixed(2)) : 0;
+  const currentMarginPercent = rawCost > 0 ? Math.round(grossProfit / rawCost * 100) : 0;
 
   // Processa as URLs da galeria
   const parsedGalleryUrls = galleryInput
@@ -593,7 +592,7 @@ export function AmazonAffiliateImporter() {
 
   // Recalcular Preço de Todos os Produtos Amazon Já Cadastrados
   const handleRecalculateAllAmazonProducts = async () => {
-    if (!confirm("Deseja aplicar a nova regra de preços com terminação ,90 ou ,97 em todos os produtos da Amazon já cadastrados?")) {
+    if (!confirm("Recalcular preços Amazon: abaixo de R$ 100 mantém o custo original sem margem; a partir de R$ 100 mantém a margem configurada. O frete não muda. Continuar?")) {
       return;
     }
 
@@ -1068,7 +1067,7 @@ export function AmazonAffiliateImporter() {
               <span className="font-mono text-emerald-600 font-extrabold">R$ {calculatedSalePrice.toFixed(2)}</span>
             </div>
             <p className="text-[10px] text-muted-foreground text-right italic">
-              Terminação comercial: {calculatedSalePrice.toFixed(2).endsWith("97") ? ",97" : ",90"}
+              {rawCost < 100 ? "Preço original Amazon · sem margem no produto" : `Terminação comercial: ${calculatedSalePrice.toFixed(2).endsWith("97") ? ",97" : ",90"}`}
             </p>
           </div>
 

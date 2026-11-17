@@ -51,9 +51,8 @@ test("margem fixa só vale até R$100 de custo", () => {
   assert.equal(lowTicketMargin(LOW_TICKET_LIMIT + 0.01, true), null);
 });
 
-test("preço estampado Amazon de ticket baixo usa a margem de R$15", () => {
-  // custo 60 → 75, terminação comercial ajusta para 74.90
-  assert.equal(calculateAmazonPrice(60), 74.9);
+test("preço Amazon abaixo de R$100 não leva margem; demais faixas ficam intactas", () => {
+  assert.equal(calculateAmazonPrice(60), 60);
   // custo 300 (> 100) segue a tabela dinâmica: 300 * 1.4 = 420 → 419.90
   assert.equal(calculateAmazonPrice(300), 419.9);
 });

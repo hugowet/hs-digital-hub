@@ -51,10 +51,12 @@ export function calculateLowTicketPrice(costBrl: number, margin: number): number
 }
 
 /**
- * Preço estampado da vitrine para produtos Amazon: custo até R$ 100 leva a
- * margem de primeira compra (R$ 15) para parecer barato; acima, tabela dinâmica.
+ * Amazon abaixo de R$ 100 mantém o custo exato, sem margem ou terminação.
+ * A partir de R$ 100 preserva a precificação anterior; CJ não muda.
  */
 export function calculateAmazonPrice(costBrl: number): number {
+  if (!Number.isFinite(costBrl) || costBrl <= 0) return 0;
+  if (costBrl < LOW_TICKET_LIMIT) return costBrl;
   const margin = lowTicketMargin(costBrl, true);
   return margin === null ? calculateFinalPrice(costBrl) : calculateLowTicketPrice(costBrl, margin);
 }
