@@ -2704,6 +2704,7 @@ export type Database = {
           description: string
           duration_seconds: number
           id: string
+          is_published: boolean
           likes_count: number
           music_title: string
           post_type: string
@@ -2720,6 +2721,7 @@ export type Database = {
           description?: string
           duration_seconds?: number
           id?: string
+          is_published?: boolean
           likes_count?: number
           music_title?: string
           post_type?: string
@@ -2736,6 +2738,7 @@ export type Database = {
           description?: string
           duration_seconds?: number
           id?: string
+          is_published?: boolean
           likes_count?: number
           music_title?: string
           post_type?: string

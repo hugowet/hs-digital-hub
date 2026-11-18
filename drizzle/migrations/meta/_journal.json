@@ -708,6 +708,13 @@
       "when": 1794977824041,
       "tag": "0100_fix_hs_shipping_payment_allocation",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1794978372697,
+      "tag": "0101_scope_trends_publication_and_file_reads",
+      "breakpoints": true
     }
   ]
 }
