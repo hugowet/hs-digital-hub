@@ -3,7 +3,8 @@
 ## Cobrança e resumo do frete — 18/11
 - [x] Corrigir colisão entre dados do pagamento e da cotação; frete atribuído uma vez à transação física, preservando faixas, comissão e validações existentes.
 - [x] Separar produtos, frete, adicionais registrados, cupom e total no resumo do pedido.
-- [ ] Validar pedido autenticado de R$ 7,47 + R$ 9,90 = R$ 17,37, sem cobrança real; preservar pedido antigo com pagamento iniciado/cancelado.
+- [x] Sete testes passaram, incluindo checkout autenticado: produtos R$ 7,47 + frete R$ 9,90 = cobrança R$ 17,37; comissão R$ 0,90 e recebível R$ 16,47. Resumo conferido desktop/celular, build OK. Pedidos temporários cancelados e estoque restaurado; pedido antigo já cancelado preservado. Nenhum Pix emitido; tela precisa publicar.
+- [x] Teste adicional antigo de modalidades apresentou expectativa Amazon desatualizada (R$ 419,90 versus cálculo vigente R$ 374,90); preços e teste fora do escopo não alterados.
 
 ## AdSense — 17/11
 - [x] Código público fornecido e ads.txt instalados; navegador confirmou script único, conta correta e ads.txt HTTP 200, sem carregar anúncios de teste. Defaults de publicidade negados antes do script; não alteradas compras ou preços. Build OK.
