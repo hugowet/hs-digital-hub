@@ -701,6 +701,13 @@
       "when": 1794885844052,
       "tag": "0099_catalog_search_caller_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1794977824041,
+      "tag": "0100_fix_hs_shipping_payment_allocation",
+      "breakpoints": true
     }
   ]
 }

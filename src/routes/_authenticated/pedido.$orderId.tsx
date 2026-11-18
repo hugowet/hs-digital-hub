@@ -167,6 +167,14 @@ function OrderPaymentPage() {
   if (isLoading) return <Shell><div className="h-64 animate-pulse bg-muted" /></Shell>;
   if (!data) return <Shell><div className="py-20 text-center"><p>Pedido não encontrado.</p><Button asChild className="mt-4"><Link to="/">Voltar à vitrine</Link></Button></div></Shell>;
 
+  const itemCount = data.items.reduce((sum, item) => sum + item.quantity, 0);
+  const productsSubtotal = data.items.reduce((sum, item) => sum + Number(item.unit_price) * item.quantity, 0);
+  const address = data.order.shipping_address && typeof data.order.shipping_address === "object" && !Array.isArray(data.order.shipping_address) ? data.order.shipping_address : {};
+  const shippingTotal = Number(address.shipping_total ?? 0);
+  const warranty = address.warranty && typeof address.warranty === "object" && !Array.isArray(address.warranty) ? Number(address.warranty.amount ?? 0) : 0;
+  const extraMargin = Number(address.first_purchase_margin ?? 0);
+  const couponDiscount = Number(data.order.coupon_discount ?? 0);
+
   return <Shell>
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="flex items-start gap-2">
@@ -210,7 +218,19 @@ function OrderPaymentPage() {
           </DialogContent>
         </Dialog>
       </div>
-      <aside className="surface-card h-fit p-4 lg:sticky lg:top-28"><h2 className="font-semibold">Resumo</h2><div className="mt-3 flex justify-between border-b border-border pb-3 text-sm"><span className="text-muted-foreground">{data.items.reduce((sum, item) => sum + item.quantity, 0)} itens</span><strong>{brl(Number(data.order.total))}</strong></div><p className="mt-3 text-xs text-muted-foreground">Em carrinhos com várias lojas, cada pagamento é confirmado separadamente. O pedido fica pago após todas as lojas receberem.</p><Button variant="outline" className="mt-4 w-full" onClick={() => navigate({ to: "/" })}>Continuar comprando</Button></aside>
+      <aside aria-label="Resumo do pedido" className="surface-card h-fit p-4 lg:sticky lg:top-28">
+        <h2 className="font-semibold">Resumo do pedido</h2>
+        <div className="mt-3 space-y-2 border-b border-border pb-3 text-sm">
+          <div className="flex justify-between gap-3"><span className="text-muted-foreground">Produtos ({itemCount} {itemCount === 1 ? "item" : "itens"})</span><span className="shrink-0">{brl(productsSubtotal)}</span></div>
+          <div className="flex justify-between gap-3"><span className="text-muted-foreground">Frete</span><span className={shippingTotal > 0 ? "shrink-0" : "shrink-0 font-medium text-success"}>{shippingTotal > 0 ? brl(shippingTotal) : "Grátis"}</span></div>
+          {warranty > 0 && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Garantia adicional</span><span className="shrink-0">{brl(warranty)}</span></div>}
+          {extraMargin > 0 && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Adicional registrado no pedido</span><span className="shrink-0">{brl(extraMargin)}</span></div>}
+          {couponDiscount > 0 && <div className="flex justify-between gap-3 text-success"><span>Desconto do cupom</span><span className="shrink-0">−{brl(couponDiscount)}</span></div>}
+        </div>
+        <div className="mt-3 flex justify-between gap-3 font-bold"><span>Total</span><span className="shrink-0 text-primary">{brl(Number(data.order.total))}</span></div>
+        <p className="mt-3 text-xs text-muted-foreground">Em carrinhos com várias lojas, cada pagamento é confirmado separadamente. O pedido fica pago após todas as lojas receberem.</p>
+        <Button variant="outline" className="mt-4 w-full" onClick={() => navigate({ to: "/" })}>Continuar comprando</Button>
+      </aside>
     </div>
   </Shell>;
 }

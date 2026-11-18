@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Cobrança e resumo do frete — 18/11
+- [x] Corrigir colisão entre dados do pagamento e da cotação; frete atribuído uma vez à transação física, preservando faixas, comissão e validações existentes.
+- [x] Separar produtos, frete, adicionais registrados, cupom e total no resumo do pedido.
+- [ ] Validar pedido autenticado de R$ 7,47 + R$ 9,90 = R$ 17,37, sem cobrança real; preservar pedido antigo com pagamento iniciado/cancelado.
+
 ## AdSense — 17/11
 - [x] Código público fornecido e ads.txt instalados; navegador confirmou script único, conta correta e ads.txt HTTP 200, sem carregar anúncios de teste. Defaults de publicidade negados antes do script; não alteradas compras ou preços. Build OK.
 - [ ] Publicar e concluir no AdSense: Adicionei o código → Verificar → Pedir revisão; ativar anúncios automáticos e configurar mensagem de consentimento em Privacidade e mensagens. Bloqueador: ações no painel Google pelo proprietário e aprovação do Google; anúncios reais não verificados.

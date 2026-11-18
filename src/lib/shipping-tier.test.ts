@@ -20,6 +20,7 @@ describe("frete escalonado HS", () => {
     expect(shippingTier(100, true)).toBe(0);
   });
   it("total soma uma vez a faixa sem margem adicional", () => {
+    expect(shippingTierTotal(7.47, false)).toBe(17.37);
     expect(shippingTierTotal(39.9, false)).toBe(49.8);
     expect(shippingTierTotal(39.91, false)).toBe(57.81);
     expect(shippingTierTotal(89.9, false)).toBe(89.9);
