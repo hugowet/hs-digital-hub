@@ -28,6 +28,7 @@ import { Route as AuthenticatedHsBankRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedJogosRouteImport } from './routes/_authenticated/jogos'
 import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
 import { Route as AuthenticatedSocialRouteImport } from './routes/_authenticated/social'
+import { Route as AuthenticatedVendedorRouteImport } from './routes/_authenticated/vendedor'
 import { Route as ProdutoProductIdRouteImport } from './routes/produto.$productId'
 import { Route as AuthenticatedPedidoOrderIdRouteImport } from './routes/_authenticated/pedido.$orderId'
 import { Route as ApiPublicAmazonAutoImportRouteImport } from './routes/api/public/amazon/auto-import'
@@ -137,6 +138,11 @@ const AuthenticatedSocialRoute = AuthenticatedSocialRouteImport.update({
   path: '/social',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedVendedorRoute = AuthenticatedVendedorRouteImport.update({
+  id: '/vendedor',
+  path: '/vendedor',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ProdutoProductIdRoute = ProdutoProductIdRouteImport.update({
   id: '/produto/$productId',
   path: '/produto/$productId',
@@ -233,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/jogos': typeof AuthenticatedJogosRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/social': typeof AuthenticatedSocialRoute
+  '/vendedor': typeof AuthenticatedVendedorRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
   '/api/public/amazon/auto-import': typeof ApiPublicAmazonAutoImportRoute
@@ -266,6 +273,7 @@ export interface FileRoutesByTo {
   '/jogos': typeof AuthenticatedJogosRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/social': typeof AuthenticatedSocialRoute
+  '/vendedor': typeof AuthenticatedVendedorRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
   '/api/public/amazon/auto-import': typeof ApiPublicAmazonAutoImportRoute
@@ -301,6 +309,7 @@ export interface FileRoutesById {
   '/_authenticated/jogos': typeof AuthenticatedJogosRoute
   '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/_authenticated/social': typeof AuthenticatedSocialRoute
+  '/_authenticated/vendedor': typeof AuthenticatedVendedorRoute
   '/produto/$productId': typeof ProdutoProductIdRoute
   '/_authenticated/pedido/$orderId': typeof AuthenticatedPedidoOrderIdRoute
   '/api/public/amazon/auto-import': typeof ApiPublicAmazonAutoImportRoute
@@ -336,6 +345,7 @@ export interface FileRouteTypes {
     | '/jogos'
     | '/notificacoes'
     | '/social'
+    | '/vendedor'
     | '/produto/$productId'
     | '/pedido/$orderId'
     | '/api/public/amazon/auto-import'
@@ -369,6 +379,7 @@ export interface FileRouteTypes {
     | '/jogos'
     | '/notificacoes'
     | '/social'
+    | '/vendedor'
     | '/produto/$productId'
     | '/pedido/$orderId'
     | '/api/public/amazon/auto-import'
@@ -403,6 +414,7 @@ export interface FileRouteTypes {
     | '/_authenticated/jogos'
     | '/_authenticated/notificacoes'
     | '/_authenticated/social'
+    | '/_authenticated/vendedor'
     | '/produto/$productId'
     | '/_authenticated/pedido/$orderId'
     | '/api/public/amazon/auto-import'
@@ -578,6 +590,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSocialRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/vendedor': {
+      id: '/_authenticated/vendedor'
+      path: '/vendedor'
+      fullPath: '/vendedor'
+      preLoaderRoute: typeof AuthenticatedVendedorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/produto/$productId': {
       id: '/produto/$productId'
       path: '/produto/$productId'
@@ -682,6 +701,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedJogosRoute: typeof AuthenticatedJogosRoute
   AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
   AuthenticatedSocialRoute: typeof AuthenticatedSocialRoute
+  AuthenticatedVendedorRoute: typeof AuthenticatedVendedorRoute
   AuthenticatedPedidoOrderIdRoute: typeof AuthenticatedPedidoOrderIdRoute
 }
 
@@ -695,6 +715,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedJogosRoute: AuthenticatedJogosRoute,
   AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
   AuthenticatedSocialRoute: AuthenticatedSocialRoute,
+  AuthenticatedVendedorRoute: AuthenticatedVendedorRoute,
   AuthenticatedPedidoOrderIdRoute: AuthenticatedPedidoOrderIdRoute,
 }
 
