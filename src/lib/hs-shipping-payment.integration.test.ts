@@ -25,7 +25,7 @@ test.runIf(Boolean(process.env.HS_SHIPPING_TEST_SESSION_FILE))("pedido real de R
   expect(Number(order?.shipping_address?.shipping_total)).toBe(9.9);
   expect(transactions).toHaveLength(1);
   expect(Number(transactions?.[0]?.gross_amount)).toBe(17.37);
-  expect(Number(transactions?.[0]?.platform_fee)).toBe(0.9);
-  expect(Number(transactions?.[0]?.seller_amount)).toBe(16.47);
+  expect(Number(transactions?.[0]?.platform_fee)).toBe(0);
+  expect(Number(transactions?.[0]?.seller_amount)).toBe(17.37);
   expect(transactions?.[0]?.provider_payment_id).toBeNull();
 }, 30_000);

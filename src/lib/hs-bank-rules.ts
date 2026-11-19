@@ -1,5 +1,5 @@
 export const HS_BANK_POLICY = {
-  commissionRate: 0.12,
+  commissionRate: 0,
   repaymentRate: 0.15,
   salesHistoryDays: 30,
   analysisRate: 0.30,

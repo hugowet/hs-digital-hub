@@ -8,7 +8,7 @@ describe("HS Bank financial safeguards", () => {
     expect(creditAnalysisCents(0)).toBe(0);
   });
   it("requires 90 days as the consistency analysis reference", () => expect(HS_BANK_POLICY.consistencyDays).toBe(90));
-  it("keeps the confirmed 12% commission", () => expect(HS_BANK_POLICY.commissionRate).toBe(0.12));
+  it("charges zero marketplace commission during seller recruitment", () => expect(HS_BANK_POLICY.commissionRate).toBe(0));
   it("requires paid sales within the last 30 days", () => {
     const now = Date.parse("2026-10-27T05:02:00Z");
     expect(hasRecentPaidSale([{ status: "approved", paidAt: "2026-09-27T05:02:00Z" }], now)).toBe(true);

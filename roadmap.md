@@ -1,5 +1,9 @@
 # HS Digital — MVP
 
+## Comissão temporária e recebimento — 19/11
+- [x] Comissão de novas vendas zerada na configuração vigente, preservando pedidos anteriores, preços e frete; política da carteira alinhada e 12 testes passaram.
+- [x] Painel Admin autenticado confirmou taxa 0,00%; JJ Kuster já recebe pela própria conta Mercado Pago conectada, sem application_fee quando corresponde à conta da plataforma. Disponibilidade do dinheiro segue o provedor; não realizada cobrança real nem alteradas liberações internas dos demais vendedores.
+
 ## Cobrança e resumo do frete — 18/11
 - [x] Corrigir colisão entre dados do pagamento e da cotação; frete atribuído uma vez à transação física, preservando faixas, comissão e validações existentes.
 - [x] Separar produtos, frete, adicionais registrados, cupom e total no resumo do pedido.
