@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Frete de estoque próprio — 19/11
+- [ ] Configurar R$ 38,40 por envio dos produtos manuais JJ Kuster, preservando preço da vitrine e outros fornecedores.
+- [ ] Separar produtos, envio e desconto no carrinho e conferir a aplicação segura dos cupons dos jogos.
+- [ ] Validar cotação e checkout autenticados sem cobrança real.
+
 ## Comissão temporária e recebimento — 19/11
 - [x] Comissão de novas vendas zerada na configuração vigente, preservando pedidos anteriores, preços e frete; política da carteira alinhada e 12 testes passaram.
 - [x] Painel Admin autenticado confirmou taxa 0,00%; JJ Kuster já recebe pela própria conta Mercado Pago conectada, sem application_fee quando corresponde à conta da plataforma. Disponibilidade do dinheiro segue o provedor; não realizada cobrança real nem alteradas liberações internas dos demais vendedores.
