@@ -16,7 +16,7 @@ import adsenseConsentDefaults from "../lib/adsense-consent-defaults.js?raw";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CartProvider } from "../lib/cart";
 import { DeliveryProvider } from "../lib/delivery-context";
-import { ProductMarginProvider } from '../lib/product-margin-context';
+import { ProductMarginProvider } from "../lib/product-margin-context";
 import { RadioProvider } from "../lib/radio-context";
 import { Toaster } from "../components/ui/sonner";
 import { AuraChatWidget } from "../components/aura-chat-widget";
@@ -98,6 +98,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "author", content: "HS Digital" },
       { name: "google-adsense-account", content: "ca-pub-3820770113277599" },
+      { name: "google-site-verification", content: "y7A0Z5PjSMBniOLPH9ovYgetgRK27QcART7yOZUtNj4" },
       { name: "theme-color", content: "#321b53" },
       { property: "og:site_name", content: "HS Digital Marketplace" },
       { property: "og:type", content: "website" },
@@ -154,19 +155,19 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <DeliveryProvider>
-      <ProductMarginProvider>
-      <CartProvider>
-        <RadioProvider>
-          <Outlet />
-          <Toaster position="top-center" richColors />
-          <AccountNotificationListener />
-          <SiteViewTracker />
-          {pathname === "/" && <InstallAppPrompt />}
-          {pathname === "/" && <AuraChatWidget />}
-          <ExitConfirmGuard active={pathname === "/"} />
-        </RadioProvider>
-      </CartProvider>
-      </ProductMarginProvider>
+        <ProductMarginProvider>
+          <CartProvider>
+            <RadioProvider>
+              <Outlet />
+              <Toaster position="top-center" richColors />
+              <AccountNotificationListener />
+              <SiteViewTracker />
+              {pathname === "/" && <InstallAppPrompt />}
+              {pathname === "/" && <AuraChatWidget />}
+              <ExitConfirmGuard active={pathname === "/"} />
+            </RadioProvider>
+          </CartProvider>
+        </ProductMarginProvider>
       </DeliveryProvider>
     </QueryClientProvider>
   );
