@@ -2108,9 +2108,14 @@ export type Database = {
       stores: {
         Row: {
           balance: number
+          city: string | null
+          company_name: string | null
           contract_accepted_at: string | null
           created_at: string
           description: string | null
+          document_number: string | null
+          document_type: string | null
+          estimated_stock: string | null
           id: string
           logo_url: string | null
           mercado_pago_access_token_encrypted: string | null
@@ -2119,19 +2124,30 @@ export type Database = {
           mercado_pago_token_expires_at: string | null
           mercado_pago_user_id: string | null
           name: string
+          niche: string | null
           origin_postal_code: string | null
+          owner_full_name: string | null
           owner_id: string | null
+          pending_update: Json | null
+          phone: string | null
           pix_key: string | null
           pix_key_type: string | null
           rating: number
           slug: string
+          state: string | null
           status: string
+          update_requested_at: string | null
         }
         Insert: {
           balance?: number
+          city?: string | null
+          company_name?: string | null
           contract_accepted_at?: string | null
           created_at?: string
           description?: string | null
+          document_number?: string | null
+          document_type?: string | null
+          estimated_stock?: string | null
           id?: string
           logo_url?: string | null
           mercado_pago_access_token_encrypted?: string | null
@@ -2140,19 +2156,30 @@ export type Database = {
           mercado_pago_token_expires_at?: string | null
           mercado_pago_user_id?: string | null
           name: string
+          niche?: string | null
           origin_postal_code?: string | null
+          owner_full_name?: string | null
           owner_id?: string | null
+          pending_update?: Json | null
+          phone?: string | null
           pix_key?: string | null
           pix_key_type?: string | null
           rating?: number
           slug: string
+          state?: string | null
           status?: string
+          update_requested_at?: string | null
         }
         Update: {
           balance?: number
+          city?: string | null
+          company_name?: string | null
           contract_accepted_at?: string | null
           created_at?: string
           description?: string | null
+          document_number?: string | null
+          document_type?: string | null
+          estimated_stock?: string | null
           id?: string
           logo_url?: string | null
           mercado_pago_access_token_encrypted?: string | null
@@ -2161,13 +2188,19 @@ export type Database = {
           mercado_pago_token_expires_at?: string | null
           mercado_pago_user_id?: string | null
           name?: string
+          niche?: string | null
           origin_postal_code?: string | null
+          owner_full_name?: string | null
           owner_id?: string | null
+          pending_update?: Json | null
+          phone?: string | null
           pix_key?: string | null
           pix_key_type?: string | null
           rating?: number
           slug?: string
+          state?: string | null
           status?: string
+          update_requested_at?: string | null
         }
         Relationships: []
       }
