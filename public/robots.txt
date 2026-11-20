@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://hs-digital-marck.lovable.app/sitemap.xml
+Sitemap: https://hsdigitalmarketpla.store/sitemap.xml
