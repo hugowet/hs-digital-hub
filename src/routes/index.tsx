@@ -145,35 +145,56 @@ export const Route = createFileRoute("/")({
     if (search.free) params.set("free", "true");
     const url = `${SITE_ORIGIN}/${params.size ? `?${params}` : ""}`;
     return {
-    meta: [
-      { title: "HS Digital Marketplace | Eletrônicos, ferramentas, moda e casa" },
-      {
-        name: "description",
-        content:
-          "Encontre eletrônicos, ferramentas, acessórios para carros e motos, moda e utilidades na HS Digital. Confira preços, detalhes e entrega para seu endereço.",
-      },
-      { property: "og:title", content: "HS Digital · Marketplace" },
-      { property: "og:description", content: "Produtos selecionados, compra rápida e entrega segura na HS Digital." },
-      { property: "og:type", content: "website" },
-      { property: "og:url", content: url },
-      { property: "og:image", content: `https://hs-digital-marck.lovable.app${ogShareAsset.url}` },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "HS Digital Marketplace" },
-      ...(params.size ? [{ name: "robots", content: "noindex, follow" }] : []),
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "HS Digital · Marketplace" },
-      { name: "twitter:description", content: "Produtos nacionais e internacionais. Confira preços e entrega para seu endereço." },
-      { name: "twitter:image", content: `https://hs-digital-marck.lovable.app${ogShareAsset.url}` },
-    ],
-    links: [{ rel: "canonical", href: url }],
-    scripts: params.size ? [] : [{ type: "application/ld+json", children: JSON.stringify({
-      "@context": "https://schema.org", "@type": "WebSite", name: "HS Digital Marketplace", url: SITE_ORIGIN,
-    }) }],
-  };
+      meta: [
+        { title: "HS Digital Marketplace | Eletrônicos, ferramentas, moda e casa" },
+        {
+          name: "description",
+          content:
+            "Encontre eletrônicos, ferramentas, acessórios para carros e motos, moda e utilidades na HS Digital. Confira preços, detalhes e entrega para seu endereço.",
+        },
+        { property: "og:title", content: "HS Digital · Marketplace" },
+        { property: "og:description", content: "Produtos selecionados, compra rápida e entrega segura na HS Digital." },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: url },
+        { property: "og:image", content: `${SITE_ORIGIN}${ogShareAsset.url}` },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { property: "og:image:alt", content: "HS Digital Marketplace" },
+        ...(params.size ? [{ name: "robots", content: "noindex, follow" }] : []),
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: "HS Digital · Marketplace" },
+        {
+          name: "twitter:description",
+          content: "Produtos nacionais e internacionais. Confira preços e entrega para seu endereço.",
+        },
+        { name: "twitter:image", content: `${SITE_ORIGIN}${ogShareAsset.url}` },
+      ],
+      links: [{ rel: "canonical", href: url }],
+      scripts: params.size
+        ? []
+        : [
+            {
+              type: "application/ld+json",
+              children: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                name: "HS Digital Marketplace",
+                url: SITE_ORIGIN,
+              }),
+            },
+          ],
+    };
   },
-  errorComponent: () => <div role="alert" className="p-8">Não foi possível carregar a vitrine. <a href="/">Tentar novamente</a></div>,
-  notFoundComponent: () => <div className="p-8">Página não encontrada. <Link to="/">Voltar à loja</Link></div>,
+  errorComponent: () => (
+    <div role="alert" className="p-8">
+      Não foi possível carregar a vitrine. <a href="/">Tentar novamente</a>
+    </div>
+  ),
+  notFoundComponent: () => (
+    <div className="p-8">
+      Página não encontrada. <Link to="/">Voltar à loja</Link>
+    </div>
+  ),
   component: Home,
 });
 
@@ -208,8 +229,8 @@ function RadioNavButton() {
   const { isPlaying, isLocutorSpeaking } = useRadio();
 
   return (
-    <Button 
-      asChild 
+    <Button
+      asChild
       className={`relative w-fit font-bold border-none shadow-sm rounded-full transition-all duration-300 ${
         isPlaying
           ? "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/30 shadow-md ring-2 ring-purple-300 ring-offset-1"
@@ -253,9 +274,25 @@ const BANNER_SLIDES: BannerSlide[] = [
   { kind: "rapaz" },
   { kind: "lupi" },
   { kind: "highlight", title: "Clube HS", text: "Sua experiência HS vai além das compras.", icon: Crown },
-  { kind: "highlight", title: "Afiliados HS", text: "Compartilhe a HS Digital. Conheça nosso programa de afiliados.", icon: Users },
-  { kind: "highlight", title: "Jogos & Prêmios", text: "Junte moedas e conquiste cupons de desconto no frete!", icon: Gamepad2, buyerOnly: true },
-  { kind: "highlight", title: "Rádio HS", text: "Dê play na sua música. Continue curtindo enquanto compra.", icon: Radio },
+  {
+    kind: "highlight",
+    title: "Afiliados HS",
+    text: "Compartilhe a HS Digital. Conheça nosso programa de afiliados.",
+    icon: Users,
+  },
+  {
+    kind: "highlight",
+    title: "Jogos & Prêmios",
+    text: "Junte moedas e conquiste cupons de desconto no frete!",
+    icon: Gamepad2,
+    buyerOnly: true,
+  },
+  {
+    kind: "highlight",
+    title: "Rádio HS",
+    text: "Dê play na sua música. Continue curtindo enquanto compra.",
+    icon: Radio,
+  },
 ];
 
 function BuyerGamesPromoLink() {
@@ -285,7 +322,10 @@ function BuyerGamesPromoLink() {
       )}
 
       {/* Botão do Clube HS */}
-      <Button asChild className="w-fit bg-amber-500 hover:bg-amber-600 text-white font-bold border-none shadow-sm rounded-full">
+      <Button
+        asChild
+        className="w-fit bg-amber-500 hover:bg-amber-600 text-white font-bold border-none shadow-sm rounded-full"
+      >
         <Link to="/clube-hs">
           <Crown className="h-4 w-4 mr-2 fill-white" /> Clube HS
         </Link>
@@ -341,7 +381,9 @@ function Home() {
       const seller = roles?.some((item) => item.role === "seller") ?? false;
       if (active) setIsBuyer((roles?.some((item) => item.role === "buyer") ?? false) && !seller);
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
   const bannerSlides = useMemo(() => BANNER_SLIDES.filter((slide) => !slide.buyerOnly || isBuyer), [isBuyer]);
@@ -353,18 +395,30 @@ function Home() {
   }, [bannerSlides.length]);
 
   const activeCategories = useMemo(() => {
-      const uniqueSlugs = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
-      const extraSlugs = uniqueSlugs.filter((slug) => slug !== "estampas" && !CATEGORIES.some((category) => category.slug === slug));
-      return [...CATEGORIES, ...extraSlugs.map((slug) => {
+    const uniqueSlugs = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
+    const extraSlugs = uniqueSlugs.filter(
+      (slug) => slug !== "estampas" && !CATEGORIES.some((category) => category.slug === slug),
+    );
+    return [
+      ...CATEGORIES,
+      ...extraSlugs.map((slug) => {
         const found = CATEGORIES.find((c) => c.slug === slug);
         if (found) return found;
         const formatted = slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
         return { slug, label: formatted, icon: "ShoppingBasket" };
-      })];
+      }),
+    ];
   }, [data]);
 
   // Search and filter choices update the storefront entry, never the Back stack.
-  const isFiltered = Boolean(search.supplier || search.q || search.category || search.free || search.range !== "all" || search.sort !== "popular");
+  const isFiltered = Boolean(
+    search.supplier ||
+    search.q ||
+    search.category ||
+    search.free ||
+    search.range !== "all" ||
+    search.sort !== "popular",
+  );
   const setSearch = (changes: HomeSearchUpdate, options?: { replace?: boolean }) =>
     navigate({
       ...selectionNavigation,
@@ -411,7 +465,9 @@ function Home() {
 
   const activeCategory = activeCategories.find((category) => category.slug === search.category);
   const activeRange = PRICE_RANGES.find((item) => item.id === search.range);
-  const hasActiveFilters = Boolean(search.category || search.range !== "all" || search.sort !== "popular" || search.free);
+  const hasActiveFilters = Boolean(
+    search.category || search.range !== "all" || search.sort !== "popular" || search.free,
+  );
   const hasSearchQuery = Boolean(search.q || search.category);
 
   const suggestions = useMemo(() => {
@@ -429,7 +485,9 @@ function Home() {
       {/* A typed search covers the whole store: a leftover category/origin/price filter must not hide results. */}
       <SiteHeader
         query={search.q}
-        onQueryChange={(q) => { setSearch(q && q !== search.q ? { q, category: null, supplier: null, range: "all", free: false } : { q }); }}
+        onQueryChange={(q) => {
+          setSearch(q && q !== search.q ? { q, category: null, supplier: null, range: "all", free: false } : { q });
+        }}
         suggestions={suggestions}
       />
 
@@ -446,7 +504,8 @@ function Home() {
                     HS Digital Marketplace
                   </h1>
                   <p className="mt-2 text-sm text-blue-100 sm:text-base md:text-lg">
-                    Produtos nacionais e internacionais com pagamento pelo Mercado Pago. Confira o prazo de entrega para seu endereço.
+                    Produtos nacionais e internacionais com pagamento pelo Mercado Pago. Confira o prazo de entrega para
+                    seu endereço.
                   </p>
 
                   <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00a650] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm">
@@ -493,76 +552,73 @@ function Home() {
             </section>
           </>
         )}
-<HsPromotionsCarousel />
-{/* BANNER DE FRETE GRÁTIS ANTES DAS CATEGORIAS */}
-<section className="relative mb-5 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-emerald-700 to-emerald-950 p-2 shadow-xl sm:p-3">
-  <div className="flex flex-col items-center gap-3 rounded-xl bg-black/70 p-3 md:flex-row">
-    <div className="relative aspect-square w-44 shrink-0 overflow-hidden rounded-xl border-2 border-emerald-400 bg-black/70 shadow-lg sm:w-52">
-      {bannerSlides.map((slide, index) => (
-        <div
-          key={slide.kind === "highlight" ? slide.title : slide.kind}
-          className={`absolute inset-0 transition-opacity duration-1000 ${index === bannerSlide % bannerSlides.length ? "opacity-100" : "opacity-0"}`}
-        >
-          {slide.kind === "rapaz" ? (
-            <img
-              src="/images/banner-frete-gratis.jpg"
-              alt="HS Digital: frete grátis na sua primeira compra"
-              className="h-full w-full object-cover"
-              loading="eager"
-            />
-          ) : slide.kind === "lupi" ? (
-            <img
-              src={lupiBannerSquare}
-              alt="Lupi, o lobo da HS Digital, com um carrinho cheio de compras"
-              className="h-full w-full object-cover"
-              loading="eager"
-            />
-          ) : (
-            <div className="grid h-full w-full place-items-center bg-gradient-to-br from-emerald-950 via-emerald-700 to-emerald-950">
-              <slide.icon className="size-24 text-amber-300" aria-hidden="true" />
+        <HsPromotionsCarousel />
+        {/* BANNER DE FRETE GRÁTIS ANTES DAS CATEGORIAS */}
+        <section className="relative mb-5 overflow-hidden rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-950 via-emerald-700 to-emerald-950 p-2 shadow-xl sm:p-3">
+          <div className="flex flex-col items-center gap-3 rounded-xl bg-black/70 p-3 md:flex-row">
+            <div className="relative aspect-square w-44 shrink-0 overflow-hidden rounded-xl border-2 border-emerald-400 bg-black/70 shadow-lg sm:w-52">
+              {bannerSlides.map((slide, index) => (
+                <div
+                  key={slide.kind === "highlight" ? slide.title : slide.kind}
+                  className={`absolute inset-0 transition-opacity duration-1000 ${index === bannerSlide % bannerSlides.length ? "opacity-100" : "opacity-0"}`}
+                >
+                  {slide.kind === "rapaz" ? (
+                    <img
+                      src="/images/banner-frete-gratis.jpg"
+                      alt="HS Digital: frete grátis na sua primeira compra"
+                      className="h-full w-full object-cover"
+                      loading="eager"
+                    />
+                  ) : slide.kind === "lupi" ? (
+                    <img
+                      src={lupiBannerSquare}
+                      alt="Lupi, o lobo da HS Digital, com um carrinho cheio de compras"
+                      className="h-full w-full object-cover"
+                      loading="eager"
+                    />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center bg-gradient-to-br from-emerald-950 via-emerald-700 to-emerald-950">
+                      <slide.icon className="size-24 text-amber-300" aria-hidden="true" />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          )}
-        </div>
-      ))}
-    </div>
 
-    <div className="text-center text-white md:text-left">
-      {currentSlide.kind === "highlight" ? (
-        <>
-          <currentSlide.icon className="h-10 w-10 text-amber-300" aria-hidden="true" />
-          <h2 className="mt-3 text-1xl font-black uppercase sm:text-2xl">{currentSlide.title}</h2>
-          <p className="mt-2 text-sm text-white/85">{currentSlide.text}</p>
-        </>
-      ) : (
-        <>
-          <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
-            <Zap className="h-4 w-4" />
-          </span>
-          <h2 className="mt-3 text-1xl font-black uppercase sm:text-2xl">
-            Venha para HS Digital{" "}
-            <span className="text-emerald-300">!</span>
-          </h2>
-        </>
-      )}
+            <div className="text-center text-white md:text-left">
+              {currentSlide.kind === "highlight" ? (
+                <>
+                  <currentSlide.icon className="h-10 w-10 text-amber-300" aria-hidden="true" />
+                  <h2 className="mt-3 text-1xl font-black uppercase sm:text-2xl">{currentSlide.title}</h2>
+                  <p className="mt-2 text-sm text-white/85">{currentSlide.text}</p>
+                </>
+              ) : (
+                <>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase">
+                    <Zap className="h-4 w-4" />
+                  </span>
+                  <h2 className="mt-3 text-1xl font-black uppercase sm:text-2xl">
+                    Venha para HS Digital <span className="text-emerald-300">!</span>
+                  </h2>
+                </>
+              )}
 
-      <button
-        type="button"
-        onClick={() => setSearch({ free: true, category: null })}
-        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:scale-105 hover:bg-amber-300"
-      >
-        <Gift className="h-5 w-5" />
-         EVOLUA SEU JEITO DE COMPRAR🛒
-      </button>
-    </div>
-  </div>
-</section>
+              <button
+                type="button"
+                onClick={() => setSearch({ free: true, category: null })}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:scale-105 hover:bg-amber-300"
+              >
+                <Gift className="h-5 w-5" />
+                EVOLUA SEU JEITO DE COMPRAR🛒
+              </button>
+            </div>
+          </div>
+        </section>
 
         <div className="mx-auto max-w-7xl px-4 py-6">
           {/* CATEGORIAS EM DESTAQUE */}
           <div className="mb-6">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
-              Categorias em destaque
-            </h2>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Categorias em destaque</h2>
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none]">
               <button
                 type="button"
@@ -586,7 +642,10 @@ function Home() {
                   <button
                     key={category.slug}
                     type="button"
-                    onClick={() => { recordCategoryClick(category.slug); setSearch({ category: category.slug }); }}
+                    onClick={() => {
+                      recordCategoryClick(category.slug);
+                      setSearch({ category: category.slug });
+                    }}
                     className={`flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-2xl border text-xs font-medium transition ${
                       active
                         ? "border-primary bg-primary/10 text-primary font-bold shadow-sm"
@@ -603,15 +662,40 @@ function Home() {
             </div>
           </div>
 
-          <Tabs id="resultados-busca" value={search.supplier ?? "all"} onValueChange={async (value) => {
-            const scroll = window.scrollY;
-            await setSearch({ supplier: value === "cj" || value === "amazon" ? value : null });
-            window.requestAnimationFrame(() => window.requestAnimationFrame(() => window.scrollTo({ top: scroll, behavior: "instant" })));
-          }} className="mb-5 scroll-mt-28">
-            <TabsList aria-label="Origem dos produtos" className="grid h-auto w-full grid-cols-3 gap-1.5 bg-transparent p-0 sm:max-w-xl">
-              <TabsTrigger value="all" className="h-11 min-w-0 whitespace-normal px-1.5 text-[11px] leading-tight bg-secondary text-secondary-foreground data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:ring-2 data-[state=active]:ring-ring data-[state=active]:ring-offset-2 sm:text-sm">Todos os produtos</TabsTrigger>
-              <TabsTrigger value="cj" className="h-11 min-w-0 whitespace-normal px-1.5 text-[11px] leading-tight bg-primary text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:ring-2 data-[state=active]:ring-ring data-[state=active]:ring-offset-2 sm:text-sm">Produtos internacionais</TabsTrigger>
-              <TabsTrigger value="amazon" className="h-11 min-w-0 whitespace-normal px-1.5 text-[11px] leading-tight bg-success text-success-foreground data-[state=active]:bg-success data-[state=active]:text-success-foreground data-[state=active]:ring-2 data-[state=active]:ring-success data-[state=active]:ring-offset-2 sm:text-sm">Produtos nacionais</TabsTrigger>
+          <Tabs
+            id="resultados-busca"
+            value={search.supplier ?? "all"}
+            onValueChange={async (value) => {
+              const scroll = window.scrollY;
+              await setSearch({ supplier: value === "cj" || value === "amazon" ? value : null });
+              window.requestAnimationFrame(() =>
+                window.requestAnimationFrame(() => window.scrollTo({ top: scroll, behavior: "instant" })),
+              );
+            }}
+            className="mb-5 scroll-mt-28"
+          >
+            <TabsList
+              aria-label="Origem dos produtos"
+              className="grid h-auto w-full grid-cols-3 gap-1.5 bg-transparent p-0 sm:max-w-xl"
+            >
+              <TabsTrigger
+                value="all"
+                className="h-11 min-w-0 whitespace-normal px-1.5 text-[11px] leading-tight bg-secondary text-secondary-foreground data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:ring-2 data-[state=active]:ring-ring data-[state=active]:ring-offset-2 sm:text-sm"
+              >
+                Todos os produtos
+              </TabsTrigger>
+              <TabsTrigger
+                value="cj"
+                className="h-11 min-w-0 whitespace-normal px-1.5 text-[11px] leading-tight bg-primary text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:ring-2 data-[state=active]:ring-ring data-[state=active]:ring-offset-2 sm:text-sm"
+              >
+                Produtos internacionais
+              </TabsTrigger>
+              <TabsTrigger
+                value="amazon"
+                className="h-11 min-w-0 whitespace-normal px-1.5 text-[11px] leading-tight bg-success text-success-foreground data-[state=active]:bg-success data-[state=active]:text-success-foreground data-[state=active]:ring-2 data-[state=active]:ring-success data-[state=active]:ring-offset-2 sm:text-sm"
+              >
+                Produtos nacionais
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -622,7 +706,15 @@ function Home() {
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">
-                {activeCategory ? activeCategory.label : search.q ? "Resultados da busca" : search.supplier === "cj" ? "Produtos internacionais" : search.supplier === "amazon" ? "Produtos nacionais" : "Todos os produtos"}
+                {activeCategory
+                  ? activeCategory.label
+                  : search.q
+                    ? "Resultados da busca"
+                    : search.supplier === "cj"
+                      ? "Produtos internacionais"
+                      : search.supplier === "amazon"
+                        ? "Produtos nacionais"
+                        : "Todos os produtos"}
               </h2>
               <p className="text-xs text-gray-500">
                 {filtered.length} produto{filtered.length === 1 ? "" : "s"} encontrado{filtered.length === 1 ? "" : "s"}
@@ -632,7 +724,8 @@ function Home() {
             <Select
               value={search.sort}
               onValueChange={(val) => {
-                if (val === "popular" || val === "best-selling" || val === "price-asc" || val === "price-desc") setSearch({ sort: val });
+                if (val === "popular" || val === "best-selling" || val === "price-asc" || val === "price-desc")
+                  setSearch({ sort: val });
               }}
             >
               <SelectTrigger aria-label="Ordenar produtos" className="w-[150px] h-9 text-xs bg-background">
@@ -650,12 +743,13 @@ function Home() {
           {filtered.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
               <p className="text-sm font-semibold text-gray-700">Nenhum produto encontrado</p>
-              <p className="mt-1 text-xs text-gray-500">
-                Tente outro termo ou navegue pelas categorias acima.
-              </p>
+              <p className="mt-1 text-xs text-gray-500">Tente outro termo ou navegue pelas categorias acima.</p>
             </div>
           ) : (
-            <div aria-busy={isSearching} className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 transition-opacity ${isSearching ? "opacity-60" : ""}`}>
+            <div
+              aria-busy={isSearching}
+              className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 transition-opacity ${isSearching ? "opacity-60" : ""}`}
+            >
               {filtered.map((prod) => (
                 <ProductCard key={prod.id} product={prod} />
               ))}
