@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import logoAsset from "@/assets/hs-digital-logo.png.asset.json";
 import { ShieldCheck, Lock, RotateCcw, MessageCircle, Mail, MapPin, CreditCard, CheckCircle2 } from "lucide-react";
 
@@ -109,6 +110,9 @@ export function SiteFooter() {
         <div>
           <h4 className="text-sm font-semibold text-white">Ajuda & Segurança</h4>
           <ul className="mt-3 space-y-2 text-xs text-white/70">
+            <li>
+              <Link to="/sobre" className="hover:text-white transition-colors">Sobre a HS Digital</Link>
+            </li>
             <li>Frete, Prazos e Rastreio</li>
             <li>Política de Trocas e Devoluções</li>
             <li>Termos de Uso e Compra</li>

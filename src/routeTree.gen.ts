@@ -18,6 +18,7 @@ import { Route as RadioRouteImport } from './routes/radio'
 import { Route as RadioHsRouteImport } from './routes/radio-hs'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedCarrinhoRouteImport } from './routes/_authenticated/carrinho'
@@ -85,6 +86,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SobreRoute = SobreRouteImport.update({
+  id: '/sobre',
+  path: '/sobre',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrendsRoute = TrendsRouteImport.update({
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/radio-hs': typeof RadioHsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sobre': typeof SobreRoute
   '/trends': typeof TrendsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/carrinho': typeof AuthenticatedCarrinhoRoute
@@ -263,6 +270,7 @@ export interface FileRoutesByTo {
   '/radio-hs': typeof RadioHsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sobre': typeof SobreRoute
   '/trends': typeof TrendsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/carrinho': typeof AuthenticatedCarrinhoRoute
@@ -299,6 +307,7 @@ export interface FileRoutesById {
   '/radio-hs': typeof RadioHsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sobre': typeof SobreRoute
   '/trends': typeof TrendsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/carrinho': typeof AuthenticatedCarrinhoRoute
@@ -335,6 +344,7 @@ export interface FileRouteTypes {
     | '/radio-hs'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/sobre'
     | '/trends'
     | '/admin'
     | '/carrinho'
@@ -369,6 +379,7 @@ export interface FileRouteTypes {
     | '/radio-hs'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/sobre'
     | '/trends'
     | '/admin'
     | '/carrinho'
@@ -404,6 +415,7 @@ export interface FileRouteTypes {
     | '/radio-hs'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/sobre'
     | '/trends'
     | '/_authenticated/admin'
     | '/_authenticated/carrinho'
@@ -440,6 +452,7 @@ export interface RootRouteChildren {
   RadioHsRoute: typeof RadioHsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SobreRoute: typeof SobreRoute
   TrendsRoute: typeof TrendsRoute
   ProdutoProductIdRoute: typeof ProdutoProductIdRoute
   ApiPublicAmazonAutoImportRoute: typeof ApiPublicAmazonAutoImportRoute
@@ -518,6 +531,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sobre': {
+      id: '/sobre'
+      path: '/sobre'
+      fullPath: '/sobre'
+      preLoaderRoute: typeof SobreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trends': {
@@ -732,6 +752,7 @@ const rootRouteChildren: RootRouteChildren = {
   RadioHsRoute: RadioHsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SobreRoute: SobreRoute,
   TrendsRoute: TrendsRoute,
   ProdutoProductIdRoute: ProdutoProductIdRoute,
   ApiPublicAmazonAutoImportRoute: ApiPublicAmazonAutoImportRoute,
