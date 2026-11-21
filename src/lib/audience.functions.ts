@@ -11,6 +11,10 @@ async function ensureAdmin(context: { supabase: any; userId: string }) {
   if (error || !data) throw new Error("Acesso de administrador necessário.");
 }
 
+function topEntries(map: Map<string, number>) {
+  return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count]) => ({ name, count }));
+}
+
 export type AudienceStats = {
   onlineNow: number;
   totalAccounts: number;
@@ -23,6 +27,10 @@ export type AudienceStats = {
   uniqueVisitors30d: number;
   viewsByDay: Array<{ day: string; count: number }>;
   topPages: Array<{ path: string; count: number }>;
+  countries: Array<{ name: string; count: number }>;
+  cities: Array<{ name: string; count: number }>;
+  devices: Array<{ name: string; count: number }>;
+  locatedVisits30d: number;
 };
 
 export const getAudienceStats = createServerFn({ method: "GET" })
@@ -51,7 +59,7 @@ export const getAudienceStats = createServerFn({ method: "GET" })
         .gte("created_at", historySince.toISOString()),
       supabaseAdmin
         .from("site_page_views")
-        .select("path,session_id,created_at,user_id")
+        .select("path,session_id,created_at,user_id,country_code,city,region,device_type")
         .gte("created_at", viewsSince.toISOString())
         .order("created_at", { ascending: false })
         .limit(50000),
@@ -80,6 +88,10 @@ export const getAudienceStats = createServerFn({ method: "GET" })
     const pageCounts = new Map<string, number>();
     const visitors = new Set<string>();
     const activeNow = new Set<string>();
+    const countries = new Map<string, number>();
+    const cities = new Map<string, number>();
+    const devices = new Map<string, number>();
+    let locatedVisits30d = 0;
     const { viewsToday, views7d } = countAudienceVisits(views.data ?? [], todayKey, weekKey);
     let views30d = 0;
     for (const row of views.data ?? []) {
@@ -88,6 +100,10 @@ export const getAudienceStats = createServerFn({ method: "GET" })
       visitors.add(String(row.session_id));
       if (viewsByDayMap.has(key)) viewsByDayMap.set(key, (viewsByDayMap.get(key) ?? 0) + 1);
       pageCounts.set(row.path, (pageCounts.get(row.path) ?? 0) + 1);
+      if (row.country_code || row.city || row.device_type) locatedVisits30d += 1;
+      if (row.country_code) countries.set(row.country_code, (countries.get(row.country_code) ?? 0) + 1);
+      if (row.city) { const place = [row.city, row.region, row.country_code].filter(Boolean).join(" · "); cities.set(place, (cities.get(place) ?? 0) + 1); }
+      if (row.device_type) devices.set(row.device_type, (devices.get(row.device_type) ?? 0) + 1);
       if (String(row.created_at) >= viewingSince) activeNow.add(String(row.session_id));
     }
 
@@ -106,6 +122,10 @@ export const getAudienceStats = createServerFn({ method: "GET" })
         .sort((a, b) => b[1] - a[1])
         .slice(0, 8)
         .map(([path, count]) => ({ path, count })),
+      countries: topEntries(countries),
+      cities: topEntries(cities),
+      devices: topEntries(devices),
+      locatedVisits30d,
     };
   });
 

@@ -1803,23 +1803,35 @@ export type Database = {
       }
       site_page_views: {
         Row: {
+          city: string | null
+          country_code: string | null
           created_at: string
+          device_type: string | null
           id: number
           path: string
+          region: string | null
           session_id: string
           user_id: string | null
         }
         Insert: {
+          city?: string | null
+          country_code?: string | null
           created_at?: string
+          device_type?: string | null
           id?: never
           path: string
+          region?: string | null
           session_id: string
           user_id?: string | null
         }
         Update: {
+          city?: string | null
+          country_code?: string | null
           created_at?: string
+          device_type?: string | null
           id?: never
           path?: string
+          region?: string | null
           session_id?: string
           user_id?: string | null
         }
@@ -3387,6 +3399,18 @@ export type Database = {
       read_trend_pin: { Args: { _video_id: string }; Returns: string }
       record_page_view: {
         Args: { _path: string; _session: string }
+        Returns: undefined
+      }
+      record_page_view_details: {
+        Args: {
+          _city: string
+          _country: string
+          _device: string
+          _path: string
+          _region: string
+          _session: string
+          _user_id: string
+        }
         Returns: undefined
       }
       record_seller_delivery_attempt: {

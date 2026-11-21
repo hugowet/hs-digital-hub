@@ -715,6 +715,13 @@
       "when": 1794978372697,
       "tag": "0101_scope_trends_publication_and_file_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1795229914160,
+      "tag": "0102_audience_location_device",
+      "breakpoints": true
     }
   ]
 }

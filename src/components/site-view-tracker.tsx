@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useRouterState } from "@tanstack/react-router";
 
-import { supabase } from "@/integrations/supabase/client";
+import { recordSiteView } from "@/lib/page-view.functions";
 
 const SESSION_KEY = "hs-view-session";
 
@@ -20,7 +20,7 @@ export function SiteViewTracker() {
 
   useEffect(() => {
     if (!pathname || pathname.startsWith("/api")) return;
-    void supabase.rpc("record_page_view", { _path: pathname, _session: viewSessionId() }).then(() => undefined, () => undefined);
+    void recordSiteView({ data: { path: pathname, session: viewSessionId() } }).then(() => undefined, () => undefined);
   }, [pathname]);
 
   return null;

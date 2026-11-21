@@ -385,6 +385,29 @@ function AdminPage() {
                 </div>
               </section>
 
+              <div className="grid gap-4 lg:grid-cols-3">
+                {([
+                  ["Países", audience?.countries ?? [], (name: string) => { try { return new Intl.DisplayNames(["pt-BR"], { type: "region" }).of(name) ?? name; } catch { return name; } }],
+                  ["Cidades aproximadas", audience?.cities ?? [], (name: string) => name],
+                  ["Dispositivos", audience?.devices ?? [], (name: string) => ({ mobile: "Celular", desktop: "Computador", tablet: "Tablet", unknown: "Não identificado" } as Record<string, string>)[name] ?? name],
+                ] as const).map(([title, items, label]) => (
+                  <section key={title} className="surface-card p-5">
+                    <h2 className="text-base font-semibold">{title}</h2>
+                    <p className="text-xs text-muted-foreground">Visitas dos últimos 30 dias</p>
+                    <ul className="mt-3 space-y-2">
+                      {items.map((item) => (
+                        <li key={item.name} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="truncate text-muted-foreground">{label(item.name)}</span>
+                          <span className="shrink-0 font-semibold tabular-nums">{item.count}</span>
+                        </li>
+                      ))}
+                      {items.length === 0 && <li className="text-sm text-muted-foreground">Aparece nas próximas visitas registradas.</li>}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Local aproximado pela rede, sem GPS e sem guardar IP. Visitas antigas não tinham essas informações.</p>
+
               <section className="surface-card p-5">
                 <h2 className="text-base font-semibold">Páginas mais visitadas</h2>
                 <p className="text-xs text-muted-foreground">Últimos 30 dias</p>

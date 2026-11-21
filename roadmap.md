@@ -1,5 +1,11 @@
 # HS Digital — MVP
 
+## Audiência — 21/11
+- [x] Registrar país, cidade aproximada e dispositivo nas novas visitas, sem inventar histórico nem guardar IP/GPS; oito testes passaram.
+- [x] Painel autenticado mostrou duas visitas de computador gravadas pela prévia; país/cidade ficam ausentes quando a hospedagem não fornece localização. Conferidos desktop e celular, build OK; exclusão do proprietário preservada.
+- [ ] Confirmar país/cidade no domínio após publicar; a prévia local não fornece localização da rede. Aviso de hidratação AdSense e transbordamento do gráfico antigo observados, fora desta alteração.
+- [x] Achado Trends reconferido: acesso já limitado ao dono ou arquivo correspondente publicado; somente o ID listado foi resolvido.
+
 ## Frete de estoque próprio — 19/11
 - [ ] Configurar R$ 38,40 por envio dos produtos manuais JJ Kuster, preservando preço da vitrine e outros fornecedores.
 - [ ] Separar produtos, envio e desconto no carrinho e conferir a aplicação segura dos cupons dos jogos.
