@@ -1515,6 +1515,7 @@ export type Database = {
           supplier_variant_parent_id: string | null
           title: string
           variations: Json
+          video_url: string | null
           weight_kg: number | null
           width_cm: number | null
         }
@@ -1563,6 +1564,7 @@ export type Database = {
           supplier_variant_parent_id?: string | null
           title: string
           variations?: Json
+          video_url?: string | null
           weight_kg?: number | null
           width_cm?: number | null
         }
@@ -1611,6 +1613,7 @@ export type Database = {
           supplier_variant_parent_id?: string | null
           title?: string
           variations?: Json
+          video_url?: string | null
           weight_kg?: number | null
           width_cm?: number | null
         }
