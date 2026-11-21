@@ -7,6 +7,7 @@ const DESCRIPTION =
   "Conheça a HS Digital Marketplace: marketplace brasileiro criado em 2026 por Hugo Rogério em Rolim de Moura - RO, com pagamentos pelo Mercado Pago.";
 
 export const Route = createFileRoute("/sobre")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: TITLE },
