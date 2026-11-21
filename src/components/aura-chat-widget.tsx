@@ -364,11 +364,25 @@ export function AuraChatWidget() {
             sessionStorage.setItem("hs-aura-teaser", "1");
             setIsOpen(true);
           }}
-          className="fixed bottom-24 right-5 z-50 flex items-center gap-2 rounded-2xl rounded-br-none border border-purple-500/40 bg-background/95 px-3.5 py-2.5 text-xs font-semibold text-foreground shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-500"
+          className="fixed bottom-38 right-5 z-50 flex items-center gap-2 rounded-2xl rounded-br-none border border-purple-500/40 bg-background/95 px-3.5 py-2.5 text-xs font-semibold text-foreground shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-500"
         >
           <Sparkles className="h-4 w-4 text-purple-400" />
           Dúvidas? Fale com a Aura
         </button>
+      )}
+
+      {/* Botão Flutuante do WhatsApp (em cima da Aura) */}
+      {!isOpen && (
+        <a
+          href="https://wa.me/5569993612254?text=Ol%C3%A1%2C%20estou%20na%20HS%20Digital%20e%20gostaria%20de%20tirar%20uma%20d%C3%BAvida"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Falar com suporte no WhatsApp"
+          className="fixed bottom-22 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl transition-all duration-300 hover:scale-110 hover:bg-[#20ba59] hover:shadow-2xl active:scale-95"
+        >
+          <MessageCircle className="h-7 w-7 fill-white text-[#25D366]" />
+          <span className="sr-only">Atendimento WhatsApp</span>
+        </a>
       )}
 
       {/* Botão Flutuante da Aura */}
