@@ -1,5 +1,19 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRight, CircleHelp, Loader2, Mic, MicOff, Package, Send, ShoppingBag, Sparkles, Store, Tag, X } from "lucide-react";
+import {
+  ArrowRight,
+  CircleHelp,
+  Loader2,
+  MessageCircle,
+  Mic,
+  MicOff,
+  Package,
+  Send,
+  ShoppingBag,
+  Sparkles,
+  Store,
+  Tag,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -24,8 +38,21 @@ function AuraAvatar() {
 }
 
 const AURA_ROUTES = new Set([
-  "/", "/carrinho", "/compras", "/conta", "/cupons", "/notificacoes", "/jogos", "/social",
-  "/trends", "/clube-hs", "/radio", "/hs-bank", "/afiliados", "/vendedor", "/auth",
+  "/",
+  "/carrinho",
+  "/compras",
+  "/conta",
+  "/cupons",
+  "/notificacoes",
+  "/jogos",
+  "/social",
+  "/trends",
+  "/clube-hs",
+  "/radio",
+  "/hs-bank",
+  "/afiliados",
+  "/vendedor",
+  "/auth",
 ]);
 
 /** Extrai a etiqueta de navegação da resposta da IA, aceitando apenas rotas conhecidas. */
