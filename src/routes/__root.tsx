@@ -94,6 +94,39 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   staticData: { sitemap: false },
   head: () => ({
     meta: [
+          scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "HS Digital Marketplace",
+          "url": "https://hsdigitalmarketpla.store",
+          "logo": "https://hsdigitalmarketpla.store/favicon.ico",
+          "foundingDate": "2026",
+          "founder": {
+            "@type": "Person",
+            "name": "Hugo Rogério",
+            "jobTitle": "Fundador e Criador"
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Rolim de Moura",
+            "addressRegion": "RO",
+            "addressCountry": "BR"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+55-69-99361-2254",
+            "contactType": "customer service",
+            "email": "hugoet373@gmail.com",
+            "availableLanguage": "Portuguese"
+          },
+          "description": "Marketplace brasileiro com inteligência artificial Aura, rádio própria e compras protegidas pelo Mercado Pago."
+        }),
+      },
+    ],
+
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "author", content: "HS Digital" },
