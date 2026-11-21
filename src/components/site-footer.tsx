@@ -98,7 +98,7 @@ export function SiteFooter() {
                 className="inline-flex items-center gap-2 hover:text-white transition-colors"
               >
                 <Mail className="h-4 w-4 shrink-0 text-primary" />
-                hugoet373@gmail.com
+                Suporte Oficial HS Digital (E-mail)
               </a>
             </li>
             <li className="pt-1 text-white/50">Horário: Segunda a Sexta, das 08h às 18h</li>
