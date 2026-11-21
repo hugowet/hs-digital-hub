@@ -146,13 +146,13 @@ export const Route = createFileRoute("/")({
     const url = `${SITE_ORIGIN}/${params.size ? `?${params}` : ""}`;
     return {
       meta: [
-        { title: "HS Digital Marketplace | Eletrônicos, ferramentas, moda e casa" },
+        { title: "HS Digital | Loja Online e Marketplace Oficial" },
         {
           name: "description",
           content:
-            "Encontre eletrônicos, ferramentas, acessórios para carros e motos, moda e utilidades na HS Digital. Confira preços, detalhes e entrega para seu endereço.",
+            "HS Digital: compre eletrônicos, ferramentas, moda e utilidades com entrega rápida. Loja oficial criada por Hugo Rogério em Rolim de Moura - RO com pagamento protegido Mercado Pago.",
         },
-        { property: "og:title", content: "HS Digital · Marketplace" },
+        { property: "og:title", content: "HS Digital · Loja Online Oficial" },
         { property: "og:description", content: "Produtos selecionados, compra rápida e entrega segura na HS Digital." },
         { property: "og:type", content: "website" },
         { property: "og:url", content: url },
@@ -162,7 +162,7 @@ export const Route = createFileRoute("/")({
         { property: "og:image:alt", content: "HS Digital Marketplace" },
         ...(params.size ? [{ name: "robots", content: "noindex, follow" }] : []),
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: "HS Digital · Marketplace" },
+        { name: "twitter:title", content: "HS Digital · Loja Online Oficial" },
         {
           name: "twitter:description",
           content: "Produtos nacionais e internacionais. Confira preços e entrega para seu endereço.",
@@ -178,7 +178,8 @@ export const Route = createFileRoute("/")({
               children: JSON.stringify({
                 "@context": "https://schema.org",
                 "@type": "WebSite",
-                name: "HS Digital Marketplace",
+                name: "HS Digital",
+                alternateName: ["HS Digital Marketplace", "hsdigitalmarketpla.store"],
                 url: SITE_ORIGIN,
               }),
             },
