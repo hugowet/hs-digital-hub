@@ -136,17 +136,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             "Marketplace brasileiro com inteligência artificial Aura, rádio própria e compras protegidas pelo Mercado Pago.",
         }),
       },
-    ],
-    links: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "author", content: "HS Digital" },
-      { name: "google-adsense-account", content: "ca-pub-3820770113277599" },
-      { name: "google-site-verification", content: "y7A0Z5PjSMBniOLPH9ovYgetgRK27QcART7yOZUtNj4" },
-      { name: "theme-color", content: "#321b53" },
-      { property: "og:site_name", content: "HS Digital Marketplace" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { children: adsenseConsentDefaults },
+      {
+        async: true,
+        src: "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3820770113277599",
+        crossOrigin: "anonymous",
+      },
     ],
     links: [
       {
@@ -163,15 +158,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/icon-192.png" },
     ],
-    scripts: [
-      { children: adsenseConsentDefaults },
-      {
-        async: true,
-        src: "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3820770113277599",
-        crossOrigin: "anonymous",
-      },
-    ],
   }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
