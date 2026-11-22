@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  import { Link, useNavigate } from "@tanstack/react-router";
+import { Package, ShoppingCart, Star, Zap } from "lucide-react";
   Outlet,
   Link,
   createRootRouteWithContext,
