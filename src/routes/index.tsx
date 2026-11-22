@@ -150,7 +150,7 @@ export const Route = createFileRoute("/")({
         {
           name: "description",
           content:
-            "HS Digital: compre eletrônicos, ferramentas, moda e utilidades com entrega rápida. Loja oficial criada por Hugo Rogério em Rolim de Moura - RO com pagamento protegido Mercado Pago.",
+            "HS Digital: marketplace brasileiro com eletrônicos, ferramentas, moda e utilidades. Loja oficial criada por Hugo Rogério com pagamento protegido pelo Mercado Pago e entrega para todo o Brasil.",
         },
         { property: "og:title", content: "HS Digital · Loja Online Oficial" },
         { property: "og:description", content: "Produtos selecionados, compra rápida e entrega segura na HS Digital." },
