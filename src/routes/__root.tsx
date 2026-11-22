@@ -123,7 +123,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   "@type": "PostalAddress",
   addressCountry: "BR"
 }
-,
+
           },
           contactPoint: {
             "@type": "ContactPoint",
