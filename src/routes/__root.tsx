@@ -120,10 +120,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             jobTitle: "Fundador e Criador",
           },
           address: {
-            "@type": "PostalAddress",
-            addressLocality: "Rolim de Moura",
-            addressRegion: "RO",
-            addressCountry: "BR",
+  "@type": "PostalAddress",
+  addressCountry: "BR"
+}
+,
           },
           contactPoint: {
             "@type": "ContactPoint",
