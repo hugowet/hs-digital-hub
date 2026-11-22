@@ -149,6 +149,85 @@ function getConsistentSalesCount(id: string): number {
   }
   return 42 + (Math.abs(hash) % 190);
 }
+function ProductVideoThumbnail({ product, displayTitle }: { product: Product; displayTitle: string }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
+  const timerRef = useRef<any>(null);
+
+  // Junta a foto principal e as fotos adicionais da galeria (se existirem)
+  const images = [product.image_url, ...(product.gallery_urls || [])].filter(Boolean) as string[];
+
+  useEffect(() => {
+    if (isHovered && images.length > 1) {
+      timerRef.current = setInterval(() => {
+        setImageIndex((prev) => (prev + 1) % images.length);
+      }, 1200);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+      setImageIndex(0);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isHovered, images.length]);
+
+  const currentImg = images[imageIndex] || product.image_url;
+
+  return (
+    <div
+      className="relative aspect-square max-h-56 w-full overflow-hidden bg-muted/20"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={() => setIsHovered(true)}
+    >
+      {currentImg ? (
+        <Link to="/produto/$productId" params={{ productId: product.id }} className="relative block h-full w-full">
+          <img
+            src={currentImg}
+            alt={displayTitle}
+            loading="lazy"
+            decoding="async"
+            width={400}
+            height={400}
+            className={`h-full w-full object-contain p-3 transition-all duration-700 ease-out ${
+              isHovered ? "scale-115 -translate-y-1 brightness-105" : "scale-100 group-hover:scale-105"
+            }`}
+          />
+          {/* Efeito feixe de luz passando como vídeo no hover */}
+          {isHovered && (
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent animate-pulse" />
+          )}
+        </Link>
+      ) : (
+        <div className="grid h-full w-full place-items-center text-muted-foreground">
+          <Package className="h-12 w-12 opacity-30" />
+        </div>
+      )}
+
+      {/* Selo interativo de vídeo no canto superior direito */}
+      {currentImg && (
+        <div
+          className={`pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm transition-all duration-300 ${
+            isHovered
+              ? "bg-red-600 text-white scale-105 shadow-red-500/30"
+              : "bg-black/60 text-white/90 backdrop-blur-sm"
+          }`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${isHovered ? "bg-white animate-ping" : "bg-red-500"}`} />
+          <Play className="h-2.5 w-2.5 fill-current" />
+          <span>{isHovered ? "Ao vivo" : "Vídeo"}</span>
+        </div>
+      )}
+
+      {/* Barra de progresso do vídeo na base da foto */}
+      {isHovered && currentImg && (
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-1 bg-black/40 overflow-hidden">
+          <div className="h-full bg-primary w-full animate-pulse" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ProductCard({ product }: { product: Product & { originalPrice?: number | null } }) {
   const { add } = useCart();
