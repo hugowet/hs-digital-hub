@@ -266,25 +266,9 @@ export function ProductCard({ product }: { product: Product & { originalPrice?: 
       data-product-id={product.id}
       className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg"
     >
-      {/* Imagem do Produto */}
-      <div className="relative aspect-square max-h-56 w-full overflow-hidden bg-muted/20">
-        {product.image_url ? (
-          <Link to="/produto/$productId" params={{ productId: product.id }} className="block h-full w-full">
-            <img
-              src={product.image_url}
-              alt={displayTitle}
-              loading="lazy"
-              decoding="async"
-              width={400}
-              height={400}
-              className="h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-105"
-            />
-          </Link>
-        ) : (
-          <div className="grid h-full w-full place-items-center text-muted-foreground">
-            <Package className="h-12 w-12 opacity-30" />
-          </div>
-        )}
+         {/* Miniatura Dinâmica de Vídeo */}
+      <ProductVideoThumbnail product={product} displayTitle={displayTitle} />
+
 
         {/* Tag Tipo de Produto */}
         <div className="absolute left-2 top-2 flex flex-col gap-1">
