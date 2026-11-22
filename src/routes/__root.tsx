@@ -120,9 +120,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             jobTitle: "Fundador e Criador",
           },
           address: {
-  "@type": "PostalAddress",
-  addressCountry: "BR"
-}
+            "@type": "PostalAddress",
+            addressCountry: "BR",
+          },
 
           contactPoint: {
             "@type": "ContactPoint",
