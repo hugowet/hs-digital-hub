@@ -111,7 +111,9 @@ export function SiteFooter() {
           <h4 className="text-sm font-semibold text-white">Ajuda & Segurança</h4>
           <ul className="mt-3 space-y-2 text-xs text-white/70">
             <li>
-              <Link to="/sobre" className="hover:text-white transition-colors">Sobre a HS Digital</Link>
+              <Link to="/sobre" className="hover:text-white transition-colors">
+                Sobre a HS Digital
+              </Link>
             </li>
             <li>Frete, Prazos e Rastreio</li>
             <li>Política de Trocas e Devoluções</li>
@@ -126,7 +128,7 @@ export function SiteFooter() {
           <ul className="mt-3 space-y-2 text-xs text-white/70">
             <li className="flex items-start gap-1.5">
               <MapPin className="h-4 w-4 shrink-0 text-white/40 mt-0.5" />
-              <span>Rolim de Moura - RO · Brasil</span>
+              <span>Atendimento Nacional · Internacional</span>
             </li>
             <li className="text-white/50 text-[11px] leading-relaxed pt-1">
               Operação em conformidade com o Decreto Federal nº 7.962/2013 (Lei do E-commerce) e Código de Defesa do
