@@ -1,7 +1,8 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
 import { sellerDisplayName } from "@/lib/seller-display";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Package, ShoppingCart, Star, Zap } from "lucide-react";
+import { Package, ShoppingCart, Star, Zap, Play } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
