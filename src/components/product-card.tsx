@@ -175,7 +175,7 @@ function ProductVideoThumbnail({ product, displayTitle }: { product: Product; di
 
   return (
     <div
-      className="relative aspect-square max-h-56 w-full overflow-hidden bg-muted/20"
+      className="relative h-full w-full overflow-hidden"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onTouchStart={() => setIsHovered(true)}
@@ -266,12 +266,12 @@ export function ProductCard({ product }: { product: Product & { originalPrice?: 
       data-product-id={product.id}
       className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg"
     >
-         {/* Miniatura Dinâmica de Vídeo */}
-      <ProductVideoThumbnail product={product} displayTitle={displayTitle} />
-
+      {/* Contêiner da Foto com Efeito de Vídeo e Tags */}
+      <div className="relative aspect-square max-h-56 w-full overflow-hidden bg-muted/20">
+        <ProductVideoThumbnail product={product} displayTitle={displayTitle} />
 
         {/* Tag Tipo de Produto */}
-        <div className="absolute left-2 top-2 flex flex-col gap-1">
+        <div className="absolute left-2 top-2 flex flex-col gap-1 pointer-events-none z-10">
           {isDigital ? (
             <span className="flex items-center gap-1 rounded-md bg-purple-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
               <Zap className="h-3 w-3" /> Digital
