@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-import lupiCart from "@/assets/lupi-full-shopping-cart.png";
-
 const INTRO_SESSION_KEY = "hs-digital-intro-seen";
+const INTRO_DURATION_MS = 5_000;
 
 export function IntroAnimation() {
   const [visible, setVisible] = useState(false);
@@ -18,7 +17,7 @@ export function IntroAnimation() {
 
   useEffect(() => {
     if (!visible) return;
-    const timer = window.setTimeout(() => setVisible(false), 3_400);
+    const timer = window.setTimeout(() => setVisible(false), INTRO_DURATION_MS);
     return () => window.clearTimeout(timer);
   }, [visible]);
 
@@ -29,15 +28,6 @@ export function IntroAnimation() {
       <Button variant="ghost" className="absolute right-4 top-4 z-10 text-ink-foreground hover:bg-ink-foreground/10 hover:text-ink-foreground" onClick={() => setVisible(false)}>
         Entrar na loja <ArrowRight className="size-4" />
       </Button>
-      <div className="intro-lupi absolute left-0 w-[min(88vw,760px)]">
-        <img
-          src={lupiCart}
-          alt="Lupi empurrando um carrinho cheio de compras"
-          className="h-auto w-full object-contain"
-          decoding="async"
-          fetchPriority="high"
-        />
-      </div>
 
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center">
         <div>

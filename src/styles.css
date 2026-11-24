@@ -213,23 +213,14 @@ html {
   }
 }
 
-@keyframes intro-lupi-cross {
-  from {
-    transform: translate3d(-110%, -50%, 0);
-  }
-  to {
-    transform: translate3d(calc(100vw + 15%), -50%, 0);
-  }
-}
-
 @keyframes intro-title-reveal {
   0%,
-  54% {
+  8% {
     opacity: 0;
     transform: translateY(18px) scale(0.97);
   }
-  64%,
-  88% {
+  18%,
+  92% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
@@ -241,12 +232,12 @@ html {
 
 @keyframes intro-tagline-reveal {
   0%,
-  62% {
+  16% {
     opacity: 0;
     transform: translateY(12px);
   }
-  72%,
-  88% {
+  26%,
+  92% {
     opacity: 1;
     transform: translateY(0);
   }
@@ -257,23 +248,15 @@ html {
 }
 
 .intro-stage {
-  animation: intro-stage-exit 3s ease-in-out forwards;
-}
-
-.intro-lupi {
-  top: 50%;
-  animation: intro-lupi-cross 3s linear forwards;
-  backface-visibility: hidden;
-  contain: layout paint;
-  will-change: transform;
+  animation: intro-stage-exit 5s ease-in-out forwards;
 }
 
 .intro-title {
-  animation: intro-title-reveal 3s ease-out forwards;
+  animation: intro-title-reveal 5s ease-out forwards;
 }
 
 .intro-tagline {
-  animation: intro-tagline-reveal 3s ease-out forwards;
+  animation: intro-tagline-reveal 5s ease-out forwards;
 }
 
 @keyframes intro-highlight-reveal {
@@ -282,17 +265,8 @@ html {
 }
 .intro-highlight { animation: intro-highlight-reveal 350ms ease-out both; }
 
-@media (max-width: 640px) {
-  .intro-lupi {
-    width: min(135vw, 680px);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .intro-highlight { animation: none; }
-  .intro-lupi {
-    display: none;
-  }
 }
 
 .hs-christmas-decoration, .hs-christmas-hat {
