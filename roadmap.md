@@ -1,6 +1,7 @@
 # HS Digital — MVP
 
 ## Vitrine sem produtos — 24/11
+- [x] Auditoria completa: vitrine, busca/filtros, categorias, carrosséis, detalhe/recomendações, compartilhamento JPEG e sitemap com 7.598 produtos principais ativos passaram; seleção diária, ranqueamento, importação, estoque, preços e telas autenticadas seguem suas permissões próprias, sem nova falha de visibilidade.
 - [x] Restaurar a leitura pública dos produtos ativos sem alterar cadastro, preços ou estoque; a regra de vendedor/admin passou a ser exclusiva de usuários autenticados.
 - [x] Vitrine como visitante voltou a exibir produtos e promoções; busca e filtros conferidos após a correção.
 - [x] Dois achados automáticos resolvidos: busca antiga restrita ao serviço interno e mídias Trends vinculadas ao autor/publicação; seis testes passaram.
