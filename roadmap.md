@@ -1,5 +1,12 @@
 # HS Digital — MVP
 
+## História e catálogo no Google — 24/11
+- [x] Publicar na página Sobre a história enviada por Hugo, com fotos, nome completo e dados estruturados consistentes.
+- [x] Reforçar os dados públicos dos produtos com foto estável, marca confirmada, categoria, preço, estoque e navegação estruturada.
+- [x] Validar testes, compilação e leitura pública da página Sobre e de um produto real.
+- [ ] Após publicar, solicitar a indexação da página Sobre e reenviar o sitemap; exibição e posição dependem do Google.
+- [ ] Criar a primeira conta gratuita no Google Merchant Center e cadastrar o catálogo; Hugo confirmou que ainda não possui conta, então essa etapa externa ficará orientada após a preparação do site.
+
 ## Vitrine sem produtos — 24/11
 - [x] Auditoria completa: vitrine, busca/filtros, categorias, carrosséis, detalhe/recomendações, compartilhamento JPEG e sitemap com 7.598 produtos principais ativos passaram; seleção diária, ranqueamento, importação, estoque, preços e telas autenticadas seguem suas permissões próprias, sem nova falha de visibilidade.
 - [x] Restaurar a leitura pública dos produtos ativos sem alterar cadastro, preços ou estoque; a regra de vendedor/admin passou a ser exclusiva de usuários autenticados.

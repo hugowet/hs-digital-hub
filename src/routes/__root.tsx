@@ -111,13 +111,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@context": "https://schema.org",
           "@type": "Organization",
           name: "HS Digital Marketplace",
+          alternateName: "HS Digital",
           url: "https://hsdigitalmarketpla.store",
           logo: "https://hsdigitalmarketpla.store/favicon.ico",
           foundingDate: "2026",
           founder: {
             "@type": "Person",
-            name: "Hugo Rogério",
+            name: "Hugo Rogério dos Santos",
+            alternateName: "Hugo Rogério",
             jobTitle: "Fundador e Criador",
+            url: "https://hsdigitalmarketpla.store/sobre",
           },
           address: {
             "@type": "PostalAddress",

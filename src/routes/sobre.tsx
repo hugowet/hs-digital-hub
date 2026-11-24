@@ -1,12 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ShieldCheck, MessageCircle, MapPin, Sparkles, Truck, Store, UserCheck, Award, Users } from "lucide-react";
+import {
+  ShieldCheck,
+  MessageCircle,
+  MapPin,
+  Sparkles,
+  Truck,
+  Store,
+  UserCheck,
+  Award,
+  Users,
+  BookOpen,
+  CalendarDays,
+  Home,
+  Rocket,
+} from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 
-const TITLE = "Sobre a HS Digital Marketplace | Hugo Rogério - Fundador";
+const TITLE = "Nossa História | HS Digital Marketplace e Hugo Rogério";
 const DESCRIPTION =
-  "Conheça a HS Digital Marketplace: plataforma brasileira de comércio eletrônico fundada em 2026 por Hugo Rogério, conectando múltiplos lojistas, vendedores parceiros e compradores em todo o Brasil.";
+  "Conheça a história da HS Digital Marketplace, da ideia criada por Hugo Rogério dos Santos em 2023 ao marketplace brasileiro lançado em 2026.";
 const PROFILE_IMAGE =
   "https://hsdigitalmarketpla.store/__l5e/assets-v1/56687e64-f7b3-4418-93f1-0bf8749fdfb8/hugo-rogerio-perfil.jpg";
+const PAGE_URL = "https://hsdigitalmarketpla.store/sobre";
 
 export const Route = createFileRoute("/sobre")({
   staticData: { sitemap: true },
@@ -16,12 +31,15 @@ export const Route = createFileRoute("/sobre")({
       { name: "description", content: DESCRIPTION },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
-      { property: "og:type", content: "profile" },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: PAGE_URL },
       { property: "og:image", content: PROFILE_IMAGE },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: TITLE },
+      { name: "twitter:description", content: DESCRIPTION },
       { name: "twitter:image", content: PROFILE_IMAGE },
     ],
-    links: [{ rel: "canonical", href: "https://hsdigitalmarketpla.store/sobre" }],
+    links: [{ rel: "canonical", href: PAGE_URL }],
     scripts: [
       {
         type: "application/ld+json",
@@ -29,27 +47,40 @@ export const Route = createFileRoute("/sobre")({
           "@context": "https://schema.org",
           "@type": "AboutPage",
           name: TITLE,
-          url: "https://hsdigitalmarketpla.store/sobre",
+          description: DESCRIPTION,
+          url: PAGE_URL,
           primaryImageOfPage: PROFILE_IMAGE,
           about: {
             "@type": "Organization",
             name: "HS Digital Marketplace",
+            alternateName: "HS Digital",
             url: "https://hsdigitalmarketpla.store",
             foundingDate: "2026",
             description:
-              "Marketplace brasileiro com múltiplos vendedores parceiros, compras protegidas e envio com rastreio em todo o território nacional.",
+              "Marketplace brasileiro criado por Hugo Rogério dos Santos. A marca HS Digital surgiu em 2023 e ampliou seu propósito em 2026 para conectar compradores e vendedores.",
             founder: {
               "@type": "Person",
-              name: "Hugo Rogério",
+              name: "Hugo Rogério dos Santos",
+              alternateName: "Hugo Rogério",
               jobTitle: "Fundador e Idealizador",
+              birthDate: "2000-02-21",
+              birthPlace: { "@type": "Place", name: "Bahia, Brasil" },
               image: PROFILE_IMAGE,
-              sameAs: "https://hsdigitalmarketpla.store/sobre",
+              url: PAGE_URL,
             },
-            areaServed: {
-              "@type": "Country",
-              name: "Brasil",
-            },
+            areaServed: { "@type": "Country", name: "Brasil" },
           },
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Início", item: "https://hsdigitalmarketpla.store/" },
+            { "@type": "ListItem", position: 2, name: "Nossa História", item: PAGE_URL },
+          ],
         }),
       },
     ],
@@ -100,6 +131,44 @@ const galeria = [
   },
 ];
 
+const historia = [
+  {
+    icon: CalendarDays,
+    periodo: "2023",
+    titulo: "O início: visão e empreendedorismo com recursos próprios",
+    texto:
+      "A ideia original da marca surgiu em 2023, inicialmente batizada como HS Digital — unindo as iniciais de Hugo Santos ao foco inicial em infoprodutos, como e-books e templates.",
+  },
+  {
+    icon: Home,
+    periodo: "Os primeiros seis meses",
+    titulo: "Uma operação que começou dentro de casa",
+    texto:
+      "Sem capital inicial para investir imediatamente na construção de uma plataforma própria, Hugo transformou o desafio em oportunidade. Com espírito prático, iniciou suas operações utilizando a própria residência como estoque. Ele adquiria produtos em grandes plataformas de comércio eletrônico, como a Shopee, divulgava nas redes sociais e realizava pessoalmente as embalagens e entregas locais em sua cidade. Durante seis meses, essa operação funcionou como sua fonte de renda extra e laboratório prático de vendas e atendimento ao cliente.",
+  },
+  {
+    icon: BookOpen,
+    periodo: "A virada de chave",
+    titulo: "Uma pausa para planejar algo maior",
+    texto:
+      "Após mudar de cidade e enfrentar o desafio de recomeçar longe de sua rede inicial de contatos, Hugo decidiu pausar as revendas locais para planejar um passo muito maior.",
+  },
+  {
+    icon: Rocket,
+    periodo: "Início de 2026",
+    titulo: "A evolução para marketplace",
+    texto:
+      "O projeto ganhou uma nova dimensão. Mantendo a essência da marca original, a empresa expandiu seu propósito para além dos produtos digitais e passou a atuar com um catálogo amplo — abrangendo eletrônicos, ferramentas, utilidades e diversos outros segmentos. Nascia assim a HS Digital Marketplace, uma plataforma estruturada para conectar compradores e vendedores de forma ágil, segura e eficiente.",
+  },
+  {
+    icon: Sparkles,
+    periodo: "O presente e o futuro",
+    titulo: "Inovação e oportunidades no comércio digital",
+    texto:
+      "Hoje, aos 26 anos, Hugo Rogério dos Santos lidera a HS Digital Marketplace com foco em inovação, escalabilidade e marketing estratégico — área em que também atua impulsionando o crescimento de negócios parceiros. O que começou dentro de casa, com zero investimento e muita força de vontade, consolidou-se como uma empresa em pleno crescimento, movida pelo propósito de gerar oportunidades no comércio digital brasileiro.",
+  },
+];
+
 const items = [
   {
     icon: Users,
@@ -136,12 +205,11 @@ function SobrePage() {
           ← Voltar à vitrine
         </Link>
 
-        {/* Card do Fundador */}
         <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card p-6 md:p-8">
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
             <img
               src={PROFILE_IMAGE}
-              alt="Hugo Rogério, criador e fundador da HS Digital Marketplace"
+              alt="Hugo Rogério dos Santos, criador e fundador da HS Digital Marketplace"
               className="h-36 w-36 rounded-2xl object-cover shadow-md sm:h-44 sm:w-44"
               loading="eager"
             />
@@ -154,13 +222,11 @@ function SobrePage() {
                   <Award className="h-3.5 w-3.5 text-primary" /> Marketplace Brasileiro
                 </span>
               </div>
-              <h1 className="mt-3 font-display text-3xl font-bold sm:text-4xl">Hugo Rogério</h1>
-              <p className="mt-1 text-sm font-medium text-muted-foreground">
-                Fundador da HS Digital Marketplace · Brasil
-              </p>
+              <h1 className="mt-3 font-display text-3xl font-bold sm:text-4xl">Hugo Rogério dos Santos</h1>
+              <p className="mt-1 text-sm font-medium text-muted-foreground">Fundador da HS Digital Marketplace · Brasil</p>
               <p className="mt-4 text-base leading-relaxed text-muted-foreground">
                 A <strong className="text-foreground">HS Digital Marketplace</strong> foi criada por{" "}
-                <strong className="text-foreground">Hugo Rogério</strong> como uma plataforma aberta e dinâmica,
+                <strong className="text-foreground">Hugo Rogério dos Santos</strong> como uma plataforma aberta e dinâmica,
                 reunindo múltiplos vendedores parceiros de várias regiões do país e catálogo selecionado de fornecedores
                 homologados, sempre com compra segura, split de pagamento e suporte dedicado.
               </p>
@@ -168,8 +234,39 @@ function SobrePage() {
           </div>
         </section>
 
-        {/* Galeria de Fotos */}
-        <section className="mt-10">
+        <section className="mt-12" aria-labelledby="nossa-historia">
+          <div className="max-w-3xl">
+            <span className="text-sm font-semibold uppercase tracking-wide text-primary">Nossa trajetória</span>
+            <h2 id="nossa-historia" className="mt-2 font-display text-3xl font-bold">
+              Nossa História: como nasceu a HS Digital Marketplace
+            </h2>
+            <p className="mt-4 leading-relaxed text-muted-foreground">
+              A HS Digital Marketplace nasceu da visão empreendedora e da determinação de Hugo Rogério dos Santos. Nascido
+              no dia 21 de fevereiro de 2000, no estado da Bahia, Hugo mudou-se ainda criança para Rondônia ao lado de seus
+              pais, Rosilene Rogério Homem e Valdenir Jesus dos Santos, e de seus quatro irmãos — Verônica, Yuri, Vitória e
+              João Vitor — em busca de novas oportunidades e crescimento.
+            </p>
+          </div>
+
+          <div className="mt-8 space-y-4">
+            {historia.map(({ icon: Icon, periodo, titulo, texto }) => (
+              <article key={periodo} className="rounded-2xl border border-border bg-card p-6">
+                <div className="flex items-start gap-4">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-primary">{periodo}</p>
+                    <h3 className="mt-1 font-display text-xl font-semibold">{titulo}</h3>
+                    <p className="mt-3 leading-relaxed text-muted-foreground">{texto}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-12">
           <div>
             <h2 className="font-display text-2xl font-bold">Galeria & Identidade Oficial</h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -178,9 +275,9 @@ function SobrePage() {
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {galeria.map((foto, idx) => (
+            {galeria.map((foto) => (
               <figure
-                key={idx}
+                key={foto.url}
                 className="overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-md"
               >
                 <img src={foto.url} alt={foto.alt} className="h-64 w-full object-cover" loading="lazy" />
@@ -190,8 +287,7 @@ function SobrePage() {
           </div>
         </section>
 
-        {/* Como funciona o Marketplace */}
-        <section className="mt-10">
+        <section className="mt-12">
           <h2 className="font-display text-2xl font-bold">Como funciona a HS Digital</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Uma estrutura completa para aproximar clientes de lojas qualificadas em todo o país.
@@ -208,8 +304,7 @@ function SobrePage() {
           </div>
         </section>
 
-        {/* Atendimento Oficial */}
-        <section className="mt-10 rounded-xl border border-border bg-card p-6">
+        <section className="mt-12 rounded-xl border border-border bg-card p-6">
           <h2 className="font-display text-2xl font-bold">Atendimento Oficial</h2>
           <ul className="mt-4 space-y-3 text-sm">
             <li>

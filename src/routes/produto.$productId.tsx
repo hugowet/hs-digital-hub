@@ -57,7 +57,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/lib/cart";
 import { fetchCatalogPage } from "@/lib/catalog.functions";
 import { productQueryOptions } from "@/lib/product-query";
-import { SITE_ORIGIN, plainDescription, productSearchSchema } from "@/lib/seo";
+import {
+  SITE_ORIGIN,
+  plainDescription,
+  productBreadcrumbSchema,
+  productSearchSchema,
+  productShareUrl,
+} from "@/lib/seo";
 import { brl } from "@/lib/format";
 import type { Product } from "@/lib/catalog";
 import { ProductCard } from "@/components/product-card";
@@ -76,6 +82,7 @@ export const Route = createFileRoute("/produto/$productId")({
       p ? `Confira ${p.title} na HS Digital. Veja detalhes e opções de entrega.` : "Este produto não está disponível.",
     );
     const pageUrl = `${SITE_ORIGIN}/produto/${params.productId}`;
+    const shareImage = p?.image_url ? productShareUrl(params.productId) : null;
 
     return {
       meta: [
@@ -90,15 +97,12 @@ export const Route = createFileRoute("/produto/$productId")({
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: desc },
         ...(!p ? [{ name: "robots", content: "noindex, follow" }] : []),
-        ...(p?.image_url
+        ...(shareImage
           ? [
-              { property: "og:image", content: `${SITE_ORIGIN}/api/public/product-share/${params.productId}` },
-              {
-                property: "og:image:secure_url",
-                content: `${SITE_ORIGIN}/api/public/product-share/${params.productId}`,
-              },
+              { property: "og:image", content: shareImage },
+              { property: "og:image:secure_url", content: shareImage },
               { property: "og:image:type", content: "image/jpeg" },
-              { name: "twitter:image", content: `${SITE_ORIGIN}/api/public/product-share/${params.productId}` },
+              { name: "twitter:image", content: shareImage },
               { property: "og:image:width", content: "800" },
               { property: "og:image:height", content: "800" },
               { property: "og:image:alt", content: p.title },
@@ -106,7 +110,12 @@ export const Route = createFileRoute("/produto/$productId")({
           : []),
       ],
       links: [{ rel: "canonical", href: pageUrl }],
-      scripts: p ? [{ type: "application/ld+json", children: JSON.stringify(productSearchSchema(p)) }] : [],
+      scripts: p
+        ? [
+            { type: "application/ld+json", children: JSON.stringify(productSearchSchema(p)) },
+            { type: "application/ld+json", children: JSON.stringify(productBreadcrumbSchema(p)) },
+          ]
+        : [],
     };
   },
   errorComponent: () => (
