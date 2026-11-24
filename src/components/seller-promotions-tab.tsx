@@ -63,7 +63,7 @@ export function SellerPromotionsTab({ storeId }: { storeId: string }) {
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex items-center gap-2">{p.image_url && <img src={p.image_url} alt="" className="size-14 shrink-0 rounded object-contain" loading="lazy" />}<p className="line-clamp-3 text-sm font-medium">{p.title}</p></div>
             <p className="text-xs text-muted-foreground">Normal: {brl(regular)} · Custo: {cost === null ? 'Não confirmado' : brl(cost)}</p>
-            {estimate ? <><p className="mt-1 text-sm font-bold text-primary">Promoção: {brl(estimate.price)}</p><p className="text-sm text-success">Lucro estimado: {brl(estimate.profit)}</p></> : <p className="mt-1 text-xs text-destructive">Inativo, sem custo confirmado ou margem insuficiente</p>}
+            {estimate ? <><p className="mt-1 text-sm font-bold text-primary">Promoção: {brl(estimate.price)}</p><p className="text-sm text-success">Lucro estimado: {brl(estimate.profit)}</p></> : <p className="mt-1 text-xs text-muted-foreground">{!p.is_active ? "Produto inativo" : cost === null || Number(cost) <= 0 ? "Custo do fornecedor ainda não confirmado" : "Sem margem para desconto (abaixo de R$ 100 é vendido pelo custo)"}</p>}
             {promo && <p className="mt-2 text-xs font-medium">Ativa: {brl(Number(promo.promo_price))} · até {new Date(promo.ends_at).toLocaleDateString('pt-BR')}</p>}
           </div>
         </label>;

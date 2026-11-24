@@ -2,7 +2,7 @@
 import { sellerDisplayName } from "@/lib/seller-display";
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Package, ShoppingCart, Star, Zap, Play } from "lucide-react";
+import { Package, ShoppingCart, Star, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -204,27 +204,6 @@ function ProductVideoThumbnail({ product, displayTitle }: { product: Product; di
         </div>
       )}
 
-      {/* Selo interativo de vídeo no canto superior direito */}
-      {currentImg && (
-        <div
-          className={`pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm transition-all duration-300 ${
-            isHovered
-              ? "bg-red-600 text-white scale-105 shadow-red-500/30"
-              : "bg-black/60 text-white/90 backdrop-blur-sm"
-          }`}
-        >
-          <span className={`h-1.5 w-1.5 rounded-full ${isHovered ? "bg-white animate-ping" : "bg-red-500"}`} />
-          <Play className="h-2.5 w-2.5 fill-current" />
-          <span>{isHovered ? "Ao vivo" : "Vídeo"}</span>
-        </div>
-      )}
-
-      {/* Barra de progresso do vídeo na base da foto */}
-      {isHovered && currentImg && (
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-1 bg-black/40 overflow-hidden">
-          <div className="h-full bg-primary w-full animate-pulse" />
-        </div>
-      )}
     </div>
   );
 }
