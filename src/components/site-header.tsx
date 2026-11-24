@@ -1,3 +1,4 @@
+import { productSlugParam } from "@/lib/seo";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -277,7 +278,7 @@ export function SiteHeader({
                       setLocalQuery(item.title);
                       if (onQueryChange) { onQueryChange(item.title); window.setTimeout(() => { (document.activeElement as HTMLElement | null)?.blur?.(); document.getElementById("resultados-busca")?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 200); }
                       setSearchFocused(false);
-                      navigate({ to: "/produto/$productId", params: { productId: item.id } });
+                      navigate({ to: "/produto/$productId", params: { productId: productSlugParam(item.id, item.title) } });
                     }}
                     className="h-auto w-full justify-between rounded-none px-4 py-3 text-left text-sm hover:bg-muted/60"
                   >

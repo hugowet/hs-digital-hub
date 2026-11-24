@@ -1,4 +1,5 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
+import { productSlugParam } from "@/lib/seo";
 import { sellerDisplayName } from "@/lib/seller-display";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -452,7 +453,7 @@ function CartPage() {
                       <div className="flex-1 min-w-0">
                         <Link
                           to="/produto/$productId"
-                          params={{ productId: item.productId }}
+                          params={{ productId: productSlugParam(item.productId, item.title) }}
                           className="text-xs md:text-sm font-medium line-clamp-2 hover:text-primary leading-snug"
                         >
                           {item.title}

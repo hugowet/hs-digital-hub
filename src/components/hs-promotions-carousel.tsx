@@ -1,3 +1,4 @@
+import { productSlugParam } from "@/lib/seo";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -78,7 +79,7 @@ export function HsPromotionsCarousel() {
             {promos.map((p) => {
               const off = Math.round((1 - p.promo_price / p.regular_price) * 100);
               return (
-                <Link key={p.product_id} to="/produto/$productId" params={{ productId: p.product_id }}
+                <Link key={p.product_id} to="/produto/$productId" params={{ productId: productSlugParam(p.product_id, p.title) }}
                   className="w-40 shrink-0 snap-start overflow-hidden rounded-xl bg-card text-card-foreground shadow">
                   <div className="relative aspect-square bg-muted">
                     {p.image_url && <img src={p.image_url} alt={p.title} className="h-full w-full object-contain" loading="lazy" />}

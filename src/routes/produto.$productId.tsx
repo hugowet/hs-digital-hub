@@ -4,7 +4,7 @@ import { extractProductContents } from "@/lib/product-contents";
 import { formatCjDescription } from "@/lib/cj-presentation";
 import { normalizeAmazonDeliveryText } from "@/lib/amazon-text";
 import { CheckCircle2 } from "lucide-react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,6 +63,9 @@ import {
   productBreadcrumbSchema,
   productSearchSchema,
   productShareUrl,
+  productIdFromParam,
+  productPageUrl,
+  productSlugParam,
 } from "@/lib/seo";
 import { brl } from "@/lib/format";
 import type { Product } from "@/lib/catalog";
@@ -73,7 +76,21 @@ import { recordProductView } from "@/lib/interest-profile";
 
 export const Route = createFileRoute("/produto/$productId")({
   staticData: { sitemap: true },
-  loader: ({ params, context }) => context.queryClient.ensureQueryData(productQueryOptions(params.productId)),
+  params: {
+    parse: (raw) => ({ productId: productIdFromParam(raw.productId) }),
+    stringify: (parsed) => ({ productId: parsed.productId }),
+  },
+  loader: async ({ params, context, location }) => {
+    const product = await context.queryClient.ensureQueryData(productQueryOptions(params.productId));
+    if (product?.title) {
+      const wanted = productSlugParam(params.productId, product.title);
+      const current = decodeURIComponent(location.pathname.split("/").pop() ?? "");
+      if (current !== wanted) {
+        throw redirect({ to: "/produto/$productId", params: { productId: wanted }, search: location.search, replace: true, statusCode: 301 });
+      }
+    }
+    return product;
+  },
   head: ({ loaderData, params }) => {
     const p = loaderData;
     const title = p?.title ? `${p.title} · HS Digital` : "Produto não encontrado · HS Digital";
@@ -81,7 +98,7 @@ export const Route = createFileRoute("/produto/$productId")({
       p?.description_long || p?.description,
       p ? `Confira ${p.title} na HS Digital. Veja detalhes e opções de entrega.` : "Este produto não está disponível.",
     );
-    const pageUrl = `${SITE_ORIGIN}/produto/${params.productId}`;
+    const pageUrl = productPageUrl(params.productId, p?.title);
     const shareImage = p?.image_url ? productShareUrl(params.productId) : null;
 
     return {
@@ -888,7 +905,7 @@ function ProductDetailPage() {
                               await navigate({
                                 ...selectionNavigation,
                                 to: "/produto/$productId",
-                                params: { productId: option.productId },
+                                params: { productId: productSlugParam(option.productId, option.title) },
                               });
                             } catch {
                               toast.error("Esta opção não tem estoque confirmado. Escolha outra.");

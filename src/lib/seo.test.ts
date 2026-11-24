@@ -60,7 +60,7 @@ describe("dados públicos do produto para o Google", () => {
         "@type": "ListItem",
         position: 2,
         name: product.title,
-        item: `https://hsdigitalmarketpla.store/produto/${product.id}`,
+        item: `https://hsdigitalmarketpla.store/produto/furadeira-de-impacto-650w-${product.id}`,
       },
     ]);
   });

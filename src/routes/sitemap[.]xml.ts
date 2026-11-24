@@ -3,7 +3,7 @@ import { getRouterInstance } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { isSitemapRouteIncluded, sitemapPathForLocation, sitemapStaticPaths, sitemapXML, type SitemapEntry } from "@/lib/sitemap";
 import { allPublicProductIds } from "@/lib/sitemap-products";
-import { SITE_ORIGIN } from "@/lib/seo";
+import { SITE_ORIGIN, productSlugParam } from "@/lib/seo";
 
 export const Route = createFileRoute("/sitemap.xml")({
   staticData: { sitemap: false },
@@ -26,11 +26,11 @@ export const Route = createFileRoute("/sitemap.xml")({
           } },
         });
         const ids = await allPublicProductIds(async (offset, limit) => {
-          const { data, error } = await client.from("products").select("id").eq("is_active", true)
+          const { data, error } = await client.from("products").select("id,title").eq("is_active", true).eq("hidden_untranslated", false)
             .is("supplier_variant_parent_id", null)
             .order("id").range(offset, offset + limit - 1);
           if (error) throw error;
-          return (data ?? []).map((row) => String(row.id));
+          return (data ?? []).map((row) => productSlugParam(String(row.id), row.title));
         });
         for (const id of ids) {
           const location = router.buildLocation({ to: productRoute, params: { productId: id }, search: () => ({}), hash: "" });

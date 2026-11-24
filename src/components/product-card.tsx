@@ -1,4 +1,5 @@
 // @ts-nocheck -- types out of sync with backend schema; see build log
+import { productSlugParam } from "@/lib/seo";
 import { sellerDisplayName } from "@/lib/seller-display";
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -181,7 +182,7 @@ function ProductVideoThumbnail({ product, displayTitle }: { product: Product; di
       onTouchStart={() => setIsHovered(true)}
     >
       {currentImg ? (
-        <Link to="/produto/$productId" params={{ productId: product.id }} className="relative block h-full w-full">
+        <Link to="/produto/$productId" params={{ productId: productSlugParam(product.id, product.title) }} className="relative block h-full w-full">
           <img
             src={currentImg}
             alt={displayTitle}
@@ -278,7 +279,7 @@ export function ProductCard({ product }: { product: Product & { originalPrice?: 
         <h3 className="line-clamp-2 text-xs md:text-sm font-normal text-foreground leading-snug">
           <Link
             to="/produto/$productId"
-            params={{ productId: product.id }}
+            params={{ productId: productSlugParam(product.id, product.title) }}
             className="hover:text-primary"
             title={displayTitle}
           >
@@ -402,7 +403,7 @@ export function ProductCard({ product }: { product: Product & { originalPrice?: 
                 return;
               }
               if (product.supplier === "cj") {
-                navigate({ to: "/produto/$productId", params: { productId: product.id } });
+                navigate({ to: "/produto/$productId", params: { productId: productSlugParam(product.id, product.title) } });
                 return;
               }
               add(

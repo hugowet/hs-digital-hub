@@ -1,3 +1,4 @@
+import { productSlugParam } from "@/lib/seo";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -60,7 +61,7 @@ export function AmazonBestSellersCarousel({ title = "Mais vendidos", options = a
         <div className="-ml-3 flex touch-pan-y">
           {products.map((product, index) => (
             <div key={product.id} data-carousel-product-id={product.id} className="min-w-0 shrink-0 grow-0 basis-1/2 pl-3 sm:basis-1/3 md:basis-1/4 lg:basis-1/5">
-              <Link to="/produto/$productId" params={{ productId: product.id }} className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground">
+              <Link to="/produto/$productId" params={{ productId: productSlugParam(product.id, product.title) }} className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground">
                 <div className="relative aspect-square bg-muted/20">
                   {product.image_url && <img src={product.image_url} alt={product.title} width={400} height={400} loading="lazy" className="h-full w-full object-contain p-3" />}
                   {showFeatured && index === 0 && <span className="absolute left-2 top-2 rounded-md bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">Em destaque</span>}
