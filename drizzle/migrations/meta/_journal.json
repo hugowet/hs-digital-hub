@@ -729,6 +729,13 @@
       "when": 1795503654474,
       "tag": "0103_optimize_products_rls_and_secure_search",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1795503695705,
+      "tag": "0104_index_seller_product_list",
+      "breakpoints": true
     }
   ]
 }

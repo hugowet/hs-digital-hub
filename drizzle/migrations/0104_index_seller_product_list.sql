@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS products_store_active_recent_idx ON public.products (store_id, created_at DESC, id) WHERE is_active;
