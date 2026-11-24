@@ -808,7 +808,7 @@ function MercadoPagoSettings({ configured, publicKey, onSave }: { configured: bo
         <div><Label htmlFor="mp-client-id">Client ID</Label><Input id="mp-client-id" required value={values.clientId} onChange={update("clientId")} inputMode="numeric" className="mt-1" /></div>
         <div><Label htmlFor="mp-access-token">Access Token</Label><Input id="mp-access-token" required type="password" autoComplete="off" value={values.accessToken} onChange={update("accessToken")} placeholder="APP_USR-..." className="mt-1" /></div>
         <div><Label htmlFor="mp-client-secret">Client Secret</Label><Input id="mp-client-secret" required type="password" autoComplete="off" value={values.clientSecret} onChange={update("clientSecret")} className="mt-1" /></div>
-        <div className="sm:col-span-2"><Label htmlFor="mp-webhook-secret">Assinatura secreta do Webhook</Label><Input id="mp-webhook-secret" required type="password" autoComplete="off" value={values.webhookSecret} onChange={update("webhookSecret")} className="mt-1" /><p className="mt-1 text-xs text-muted-foreground">URL após publicar: https://hs-digital-hub.lovable.app/api/public/mercado-pago/webhook</p></div>
+        <div className="sm:col-span-2"><Label htmlFor="mp-webhook-secret">Assinatura secreta do Webhook</Label><Input id="mp-webhook-secret" required type="password" autoComplete="off" value={values.webhookSecret} onChange={update("webhookSecret")} className="mt-1" /><p className="mt-1 text-xs text-muted-foreground">URL após publicar: https://hsdigitalmarketpla.store/api/public/mercado-pago/webhook</p></div>
       </div>
       <Button type="submit" className="mt-4" disabled={saving}>{saving ? "Validando…" : "Validar e salvar produção"}</Button>
     </form>

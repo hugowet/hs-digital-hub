@@ -324,7 +324,7 @@ export const createMercadoPagoPayment = createServerFn({ method: "POST" })
     const origin = safeOrigin(data.origin);
     const paymentNotificationOrigin =
       origin === "http://localhost:8080" || origin.endsWith(".lovable.app")
-        ? "https://hs-digital-marck.lovable.app"
+        ? "https://hsdigitalmarketpla.store"
         : origin;
     const { data: transaction, error } = await context.supabase
       .from("payment_transactions")
