@@ -1539,7 +1539,7 @@ function SellerRequestForm({ userId, onCreated }: { userId: string | null; onCre
                 maxLength={8}
                 value={cep}
                 onChange={(e) => handleCepChange(e.target.value)}
-                placeholder="Ex.: 76940000"
+                placeholder="Ex.: 01001000"
                 className="mt-1"
               />
               {loadingCep && <span className="text-xs text-muted-foreground">Buscando cidade...</span>}
