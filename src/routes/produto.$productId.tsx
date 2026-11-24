@@ -351,6 +351,8 @@ function ProductDetailPage() {
     return product.sold_count && product.sold_count > 0 ? product.sold_count : getConsistentSalesCount(product.id);
   }, [product]);
 
+  const productVideo = typeof product?.video_url === "string" && /^https:\/\//.test(product.video_url) ? product.video_url : "";
+
   const imagesList = useMemo(() => {
     if (!product) return [];
     const list: string[] = [];
@@ -617,8 +619,20 @@ function ProductDetailPage() {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
             {/* Galeria de Fotos */}
             <div className="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-3">
-              {imagesList.length > 1 && (
+              {(imagesList.length > 1 || productVideo) && (
                 <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto max-h-[480px] shrink-0">
+                  {productVideo && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImage(-1)}
+                      aria-label="Ver vídeo do produto"
+                      className={`relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 bg-muted text-[10px] font-bold transition ${
+                        selectedImage === -1 ? "border-primary" : "border-border hover:border-muted-foreground"
+                      }`}
+                    >
+                      ▶ Vídeo
+                    </button>
+                  )}
                   {imagesList.map((img, idx) => (
                     <button
                       key={idx}
@@ -643,6 +657,9 @@ function ProductDetailPage() {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
+                {selectedImage === -1 && productVideo ? (
+                  <video src={productVideo} controls autoPlay muted playsInline className="h-full w-full object-contain bg-background" />
+                ) : (
                 <img
                   src={imagesList[selectedImage] || imagesList[0]}
                   alt={product.title}
@@ -656,6 +673,7 @@ function ProductDetailPage() {
                   }
                   className="h-full w-full object-contain p-2 transition-transform duration-100 ease-out"
                 />
+                )}
 
                 {/* No celular a troca de fotos é por deslize (swipe), sem setas */}
 

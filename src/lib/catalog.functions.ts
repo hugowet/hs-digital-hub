@@ -78,7 +78,7 @@ async function signProductBatch(products: Product[]) {
 }
 
 const projection =
-  "id,title,supplier_title_original,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier,shipping_origin,supplier_product_id,supplier_variant_parent_id";
+  "id,title,supplier_title_original,description,description_long,price,compare_at_price,stock,category,image_url,gallery_urls,video_url,specifications,variations,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier,shipping_origin,supplier_product_id,supplier_variant_parent_id";
 const cardProjection =
   "id,title,price,compare_at_price,stock,category,image_url,free_shipping,rating,reviews_count,sold_count,store_id,product_type,supplier,shipping_origin";
 

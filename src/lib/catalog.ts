@@ -24,6 +24,7 @@ export type Product = {
   description: string | null;
   description_long: string | null;
   gallery_urls: string[];
+  video_url?: string | null;
   specifications: Record<string, string>;
   variations: Array<{ name: string; options: string[]; images?: Record<string, string>; availability?: "unconfirmed" | "confirmed"; asin?: string; selected?: string }>;
   product_type: string;

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { parseHTML } from "linkedom";
-import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
+import { amazonFullResImage, amazonHiResFromHtml, amazonVideosFromHtml } from "./amazon-image";
 import { buildAmazonDescription, sanitizeAmazonSpecs, sanitizeAmazonText } from "./amazon-text";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { parseTrendQuery } from "./amazon-trend-categories";
@@ -116,6 +116,7 @@ export async function readAmazonProductPage(rawUrl: string) {
       description: description ? buildAmazonDescription(description) : "",
       mainImage: images[0] ?? "",
       gallery: images.slice(1),
+      videoUrl: amazonVideosFromHtml(rawHtml)[0] ?? "",
       specs: sanitizeAmazonSpecs(specs),
       amazonCategory,
       variations: selectedOffer.variations,

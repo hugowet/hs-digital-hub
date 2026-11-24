@@ -10,7 +10,7 @@
  */
 import { parseHTML } from "linkedom";
 import { extractDescription, extractSpecs, complementAmazonSpecs } from "./amazon-content";
-import { amazonFullResImage, amazonHiResFromHtml } from "./amazon-image";
+import { amazonFullResImage, amazonHiResFromHtml, amazonVideosFromHtml } from "./amazon-image";
 import { categorizeAmazonProduct } from "./amazon-category";
 import { withAmazonSizeFallback } from "./amazon-variations";
 import { extractAmazonOptions } from "./amazon-options";
@@ -339,6 +339,7 @@ async function fetchProductData(url: string) {
     description,
     mainImage: images[0] ?? "",
     gallery: images.slice(1),
+    videoUrl: amazonVideosFromHtml(rawHtml)[0] ?? "",
     specs,
     amazonCategory,
     variations: extractAmazonOptions(rawHtml),
@@ -480,6 +481,7 @@ export async function runAmazonAutoImport(
         supplier_cost: cost,
         image_url: data.mainImage || null,
         gallery_urls: gallery,
+        video_url: data.videoUrl || null,
         free_shipping: true,
         is_active: true,
         category,

@@ -166,6 +166,7 @@ export function AmazonAffiliateImporter() {
       if (data.description) setDescription(data.description);
       if (data.mainImage) setImageUrl(data.mainImage);
       if (data.gallery.length > 0) setGalleryInput(data.gallery.join("\n"));
+      setVideoUrl(data.videoUrl || "");
       const newSpecs: SpecItem[] = Object.entries(data.specs).map(([key, value]) => ({
         id: Math.random().toString(),
         key,
@@ -542,6 +543,7 @@ export function AmazonAffiliateImporter() {
         supplier_cost: cost,
         image_url: data.mainImage || null,
         gallery_urls: gallery,
+        video_url: data.videoUrl || null,
         free_shipping: true,
         is_active: true,
         category,

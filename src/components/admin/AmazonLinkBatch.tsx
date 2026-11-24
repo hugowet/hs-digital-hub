@@ -100,7 +100,7 @@ export function AmazonLinkBatch({ storeId }: { storeId: string | null }) {
         return [{
           store_id: store.id, title: data.title, description, description_long: description,
           price: calculateAmazonPrice(data.costPrice), supplier_cost: data.costPrice,
-          image_url: data.mainImage, gallery_urls: [data.mainImage, ...data.gallery],
+          image_url: data.mainImage, gallery_urls: [data.mainImage, ...data.gallery], video_url: data.videoUrl || null,
           free_shipping: true, is_active: true, supplier: "amazon", product_type: "physical",
           category: categorizeAmazonProduct(data), variations, stock,
           supplier_availability: data.availability, supplier_confirmed_quantity: stock,
