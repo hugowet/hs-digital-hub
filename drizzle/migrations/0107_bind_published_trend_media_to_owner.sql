@@ -1,0 +1,15 @@
+ALTER POLICY trend_videos_storage_read ON storage.objects
+  TO authenticated
+  USING (
+    bucket_id = 'trend-videos'
+    AND (
+      owner_id = (SELECT auth.uid()::text)
+      OR EXISTS (
+        SELECT 1 FROM public.trend_videos v
+        WHERE v.is_published
+          AND owner_id = v.user_id::text
+          AND split_part(objects.name, '/', 1) = v.user_id::text
+          AND (v.video_url = objects.name OR v.audio_path = objects.name)
+      )
+    )
+  );

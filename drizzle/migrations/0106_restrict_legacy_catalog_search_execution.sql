@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.search_catalog_ids(jsonb, text, numeric, numeric, boolean, text, integer, integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.search_catalog_ids(jsonb, text, numeric, numeric, boolean, text, integer, integer) TO service_role;

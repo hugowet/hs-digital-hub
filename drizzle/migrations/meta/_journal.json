@@ -736,6 +736,27 @@
       "when": 1795503695705,
       "tag": "0104_index_seller_product_list",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1795507305473,
+      "tag": "0105_restore_public_product_visibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1795507349062,
+      "tag": "0106_restrict_legacy_catalog_search_execution",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1795507362761,
+      "tag": "0107_bind_published_trend_media_to_owner",
+      "breakpoints": true
     }
   ]
 }

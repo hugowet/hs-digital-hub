@@ -1,5 +1,10 @@
 # HS Digital — MVP
 
+## Vitrine sem produtos — 24/11
+- [x] Restaurar a leitura pública dos produtos ativos sem alterar cadastro, preços ou estoque; a regra de vendedor/admin passou a ser exclusiva de usuários autenticados.
+- [x] Vitrine como visitante voltou a exibir produtos e promoções; busca e filtros conferidos após a correção.
+- [x] Dois achados automáticos resolvidos: busca antiga restrita ao serviço interno e mídias Trends vinculadas ao autor/publicação; seis testes passaram.
+
 ## Audiência — 21/11
 - [x] Registrar país, cidade aproximada e dispositivo nas novas visitas, sem inventar histórico nem guardar IP/GPS; oito testes passaram.
 - [x] Painel autenticado mostrou duas visitas de computador gravadas pela prévia; país/cidade ficam ausentes quando a hospedagem não fornece localização. Conferidos desktop e celular, build OK; exclusão do proprietário preservada.
