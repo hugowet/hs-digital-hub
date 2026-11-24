@@ -1480,6 +1480,7 @@ export type Database = {
           free_shipping: boolean
           gallery_urls: string[]
           height_cm: number | null
+          hidden_untranslated: boolean
           id: string
           image_url: string | null
           is_active: boolean
@@ -1529,6 +1530,7 @@ export type Database = {
           free_shipping?: boolean
           gallery_urls?: string[]
           height_cm?: number | null
+          hidden_untranslated?: boolean
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -1578,6 +1580,7 @@ export type Database = {
           free_shipping?: boolean
           gallery_urls?: string[]
           height_cm?: number | null
+          hidden_untranslated?: boolean
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -3537,6 +3540,7 @@ export type Database = {
           total_coins: number
         }[]
       }
+      text_looks_english: { Args: { t: string }; Returns: boolean }
       trend_pin_comment: {
         Args: { _comment_id?: string; _video_id: string }
         Returns: undefined
